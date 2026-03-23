@@ -42,13 +42,13 @@ export class ErrorBoundary extends (React.Component as any) {
       }
 
       return (
-        <div className="h-screen flex items-center justify-center bg-[#E4E3E0] p-8">
-          <div className="max-w-md w-full p-12 border border-black bg-white shadow-2xl text-center">
-            <h2 className="text-2xl font-bold tracking-tighter uppercase italic font-serif mb-4">Thông báo lỗi</h2>
-            <p className="text-sm opacity-70 mb-8">{errorMessage}</p>
+        <div className="app-shell flex h-screen items-center justify-center p-8">
+          <div className="panel-card w-full max-w-md rounded-[28px] p-12 text-center">
+            <h2 className="section-title mb-4">Thông báo lỗi</h2>
+            <p className="page-subtitle mb-8 text-sm">{errorMessage}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="px-8 py-3 bg-[#141414] text-[#E4E3E0] text-xs font-bold uppercase tracking-widest hover:bg-black/90 transition-colors"
+              className="primary-btn px-8 py-3"
             >
               Tải lại trang
             </button>
