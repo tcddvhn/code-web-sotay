@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: consolidated_data
+    // Document ID: {unitCode}_{year}_{sheetName}_{sourceRow}
+    // Fields:
+    //   - unitCode: string (required)
+    //   - year: string (required)
+    //   - sheetName: string (required)
+    //   - sourceRow: number (required)
+    //   - label: string (required)
+    //   - values: list (required)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: settings
+    // Document ID: global
+    // Fields:
+    //   - oneDriveLink: string
+    //   - storagePath: string
+    //   - receivedPath: string
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "ldkien116@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidDataRow(data) {
+      return data.unitCode is string && data.unitCode.size() > 0 &&
+             data.year is string && data.year.size() == 4 &&
+             data.sheetName is string && data.sheetName.size() > 0 &&
+             data.sourceRow is number &&
+             data.label is string &&
+             data.values is list &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidSettings(data) {
+      return (!('oneDriveLink' in data) || data.oneDriveLink is string) &&
+             (!('storagePath' in data) || data.storagePath is string) &&
+             (!('receivedPath' in data) || data.receivedPath is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /consolidated_data/{rowId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidDataRow(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /settings/global {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSettings(request.resource.data);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAdmin();
+    }
+  }
+}
