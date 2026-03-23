@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { SHEET_CONFIGS, UNITS, YEARS, SHEET_LABELS, SHEET_COLUMN_HEADERS } from '../constants';
 import { ConsolidatedData, DataRow } from '../types';
-import { Search, ChevronRight, Info, X } from 'lucide-react';
+import { Info, X } from 'lucide-react';
+import { getPinnedYearPreference, getPreferredReportingYear, setPinnedYearPreference } from '../utils/reportingYear';
 
 interface ReportViewProps {
   data: ConsolidatedData;
@@ -9,7 +10,8 @@ interface ReportViewProps {
 
 export function ReportView({ data }: ReportViewProps) {
   const [selectedSheet, setSelectedSheet] = useState(SHEET_CONFIGS[0].name);
-  const [selectedYear, setSelectedYear] = useState(YEARS[0]);
+  const [selectedYear, setSelectedYear] = useState(() => getPreferredReportingYear());
+  const [pinnedYear, setPinnedYear] = useState<string | null>(() => getPinnedYearPreference());
   const [selectedUnit, setSelectedUnit] = useState('ALL');
   const [drillDown, setDrillDown] = useState<{ row: DataRow; colIndex: number } | null>(null);
 
@@ -83,6 +85,24 @@ export function ReportView({ data }: ReportViewProps) {
       .sort((a, b) => b.value - a.value);
   };
 
+  const handleYearChange = (nextYear: string) => {
+    const wasPinned = pinnedYear === selectedYear;
+    setSelectedYear(nextYear);
+
+    if (wasPinned) {
+      setPinnedYearPreference(nextYear);
+      setPinnedYear(nextYear);
+    }
+  };
+
+  const togglePinnedYear = (checked: boolean) => {
+    const nextPinnedYear = checked ? selectedYear : null;
+    setPinnedYearPreference(nextPinnedYear);
+    setPinnedYear(nextPinnedYear);
+  };
+
+  const isPinnedYear = pinnedYear === selectedYear;
+
   return (
     <div className="p-8 h-screen flex flex-col">
       <header className="mb-8 flex justify-between items-end">
@@ -106,11 +126,20 @@ export function ReportView({ data }: ReportViewProps) {
             <label className="col-header block mb-1">Năm</label>
             <select 
               value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
+              onChange={(e) => handleYearChange(e.target.value)}
               className="bg-transparent text-sm font-bold focus:outline-none"
             >
               {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
+            <label className="mt-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+              <input
+                type="checkbox"
+                checked={isPinnedYear}
+                onChange={(e) => togglePinnedYear(e.target.checked)}
+                className="h-3.5 w-3.5 accent-black"
+              />
+              Ghim năm này cho lần mở sau
+            </label>
           </div>
           <div className="px-4 py-2 border border-black bg-white">
             <label className="col-header block mb-1">Đơn vị</label>

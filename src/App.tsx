@@ -8,18 +8,22 @@ import { UNITS, YEARS } from './constants';
 import { Users, FileBarChart, Activity, Lock, LogIn, Link as LinkIcon, Globe } from 'lucide-react';
 import { auth, db, loginWithGoogle, logout, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, onSnapshot, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, serverTimestamp, writeBatch, query, where, getDocs } from 'firebase/firestore';
+
+const DEFAULT_SETTINGS: AppSettings = {
+  oneDriveLink: 'https://onedrive.live.com/...',
+  storagePath: 'C:\\TongHop\\02_LuuFileGoc',
+  receivedPath: 'C:\\TongHop\\01_DaTiepNhan'
+};
+
+const FIRESTORE_BATCH_LIMIT = 400;
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('DASHBOARD');
   const [data, setData] = useState<ConsolidatedData>({});
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [settings, setSettings] = useState<AppSettings>({
-    oneDriveLink: 'https://onedrive.live.com/...',
-    storagePath: 'C:\\TongHop\\02_LuuFileGoc',
-    receivedPath: 'C:\\TongHop\\01_DaTiepNhan'
-  });
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
   const isAuthenticated = useMemo(() => {
     return user?.email === 'ldkien116@gmail.com';
@@ -54,7 +58,10 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, 'settings', 'global'), (snapshot) => {
       if (snapshot.exists()) {
-        setSettings(snapshot.data() as AppSettings);
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...(snapshot.data() as Partial<AppSettings>),
+        });
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'settings/global');
@@ -62,22 +69,84 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  const saveRowsInBatches = async (rows: DataRow[]) => {
+    for (let i = 0; i < rows.length; i += FIRESTORE_BATCH_LIMIT) {
+      const batch = writeBatch(db);
+      const currentRows = rows.slice(i, i + FIRESTORE_BATCH_LIMIT);
+
+      currentRows.forEach((row) => {
+        const rowId = `${row.unitCode}_${row.year}_${row.sheetName}_${row.sourceRow}`;
+        batch.set(doc(db, 'consolidated_data', rowId), {
+          ...row,
+          updatedAt: serverTimestamp(),
+        });
+      });
+
+      await batch.commit();
+    }
+  };
+
+  const deleteRowsInBatches = async (rowIds: string[]) => {
+    for (let i = 0; i < rowIds.length; i += FIRESTORE_BATCH_LIMIT) {
+      const batch = writeBatch(db);
+      const currentRowIds = rowIds.slice(i, i + FIRESTORE_BATCH_LIMIT);
+
+      currentRowIds.forEach((rowId) => {
+        batch.delete(doc(db, 'consolidated_data', rowId));
+      });
+
+      await batch.commit();
+    }
+  };
+
   const handleDataImported = async (newData: DataRow[]) => {
     if (!isAuthenticated) return;
 
     try {
-      // Save each row to Firestore
-      const promises = newData.map(row => {
-        const rowId = `${row.unitCode}_${row.year}_${row.sheetName}_${row.sourceRow}`;
-        return setDoc(doc(db, 'consolidated_data', rowId), {
-          ...row,
-          updatedAt: serverTimestamp()
-        });
-      });
-      await Promise.all(promises);
-      setCurrentView('REPORTS');
+      await saveRowsInBatches(newData);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'consolidated_data');
+    }
+  };
+
+  const handleDeleteUnitData = async (year: string, unitCode: string) => {
+    if (!isAuthenticated) return 0;
+
+    try {
+      const snapshot = await getDocs(query(collection(db, 'consolidated_data'), where('year', '==', year)));
+      const rowIds = snapshot.docs
+        .map((rowDoc) => ({ id: rowDoc.id, data: rowDoc.data() as DataRow }))
+        .filter((rowDoc) => rowDoc.data.unitCode === unitCode)
+        .map((rowDoc) => rowDoc.id);
+
+      if (rowIds.length === 0) {
+        return 0;
+      }
+
+      await deleteRowsInBatches(rowIds);
+      return rowIds.length;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `consolidated_data/${unitCode}/${year}`);
+      return 0;
+    }
+  };
+
+  const handleDeleteYearData = async (year: string) => {
+    if (!isAuthenticated) return 0;
+
+    try {
+      const snapshot = await getDocs(query(collection(db, 'consolidated_data'), where('year', '==', year)));
+      const rowIds = snapshot.docs.map((rowDoc) => rowDoc.id);
+
+      if (rowIds.length === 0) {
+        return 0;
+      }
+
+      await deleteRowsInBatches(rowIds);
+      return rowIds.length;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `consolidated_data/${year}`);
+      return 0;
     }
   };
 
@@ -126,7 +195,13 @@ export default function App() {
       case 'DASHBOARD':
         return <DashboardOverview data={data} />;
       case 'IMPORT':
-        return isAuthenticated ? <ImportFiles onDataImported={handleDataImported} /> : <DashboardOverview data={data} />;
+        return isAuthenticated ? (
+          <ImportFiles
+            onDataImported={handleDataImported}
+            onDeleteUnitData={handleDeleteUnitData}
+            onDeleteYearData={handleDeleteYearData}
+          />
+        ) : <DashboardOverview data={data} />;
       case 'REPORTS':
         return <ReportView data={data} />;
       case 'SETTINGS':
