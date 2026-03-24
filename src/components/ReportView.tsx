@@ -1,8 +1,8 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Download, Search } from 'lucide-react';
+import { Download, Search, X } from 'lucide-react';
 import { UNITS, YEARS } from '../constants';
-import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, Project } from '../types';
+import { ConsolidatedData, FormTemplate, HeaderLayout, Project } from '../types';
 import { auth, db, storage } from '../firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
@@ -16,10 +16,38 @@ interface ReportViewProps {
   onSelectProject: (id: string) => void;
 }
 
+interface CellDetailItem {
+  unitCode: string;
+  unitName: string;
+  value: number;
+}
+
+interface AggregatedReportRow {
+  key: string;
+  projectId: string;
+  templateId: string;
+  year: string;
+  sourceRow: number;
+  label: string;
+  values: number[];
+  details: CellDetailItem[][];
+}
+
+interface ActiveCellDetail {
+  rowLabel: string;
+  columnLabel: string;
+  totalValue: number;
+  items: CellDetailItem[];
+}
+
+type DetailSortOrder = 'desc' | 'asc';
+
 export function ReportView({ data, projects, templates, selectedProjectId, onSelectProject }: ReportViewProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState(() => getPreferredReportingYear());
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeCellDetail, setActiveCellDetail] = useState<ActiveCellDetail | null>(null);
+  const [detailSortOrder, setDetailSortOrder] = useState<DetailSortOrder>('desc');
 
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
   const selectedTemplate = projectTemplates.find((tpl) => tpl.id === selectedTemplateId) || null;
@@ -38,44 +66,76 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     }
   }, [projectTemplates, selectedTemplateId]);
 
-  const aggregatedData = useMemo(() => {
+  useEffect(() => {
+    setActiveCellDetail(null);
+  }, [selectedProjectId, selectedTemplateId, selectedYear, searchTerm]);
+
+  const sortedDetailItems = useMemo(() => {
+    if (!activeCellDetail) {
+      return [];
+    }
+
+    return [...activeCellDetail.items].sort((left, right) => {
+      if (left.value === right.value) {
+        return left.unitName.localeCompare(right.unitName, 'vi');
+      }
+      return detailSortOrder === 'desc' ? right.value - left.value : left.value - right.value;
+    });
+  }, [activeCellDetail, detailSortOrder]);
+
+  const aggregatedRows = useMemo<AggregatedReportRow[]>(() => {
     if (!selectedTemplate) return [];
+
     const rows = data[selectedTemplate.id] || [];
     const yearRows = rows.filter((row) => row.year === selectedYear);
+    const groupedRows = new Map<string, AggregatedReportRow>();
 
-    const labelGroups: { [label: string]: DataRow[] } = {};
     yearRows.forEach((row) => {
-      if (!labelGroups[row.label]) labelGroups[row.label] = [];
-      labelGroups[row.label].push(row);
-    });
+      const groupKey = `${row.sourceRow}::${row.label}`;
+      const existing = groupedRows.get(groupKey);
 
-    const totalRows: DataRow[] = Object.entries(labelGroups).map(([label, group]) => {
-      const numValues = selectedTemplate.columnMapping.dataColumns.length;
-      const summedValues = new Array(numValues).fill(0);
+      if (!existing) {
+        const initialValues = new Array(row.values.length).fill(0);
+        const initialDetails = row.values.map(() => [] as CellDetailItem[]);
 
-      group.forEach((row) => {
-        row.values.forEach((val, i) => {
-          summedValues[i] += val;
+        groupedRows.set(groupKey, {
+          key: groupKey,
+          projectId: row.projectId,
+          templateId: row.templateId,
+          year: row.year,
+          sourceRow: row.sourceRow,
+          label: row.label,
+          values: initialValues,
+          details: initialDetails,
+        });
+      }
+
+      const nextRow = groupedRows.get(groupKey)!;
+      const unitName = UNITS.find((unit) => unit.code === row.unitCode)?.name || row.unitCode;
+
+      row.values.forEach((value, index) => {
+        nextRow.values[index] += value;
+        if (!nextRow.details[index]) {
+          nextRow.details[index] = [];
+        }
+        nextRow.details[index].push({
+          unitCode: row.unitCode,
+          unitName,
+          value,
         });
       });
-
-      return {
-        projectId: selectedTemplate.projectId,
-        templateId: selectedTemplate.id,
-        unitCode: 'TOTAL_HN',
-        year: selectedYear,
-        sourceRow: group[0].sourceRow,
-        label,
-        values: summedValues,
-      };
     });
 
-    const combined = [...yearRows, ...totalRows];
-
-    return combined
+    return Array.from(groupedRows.values())
       .filter((row) => row.label.toLowerCase().includes(searchTerm.toLowerCase()))
-      .sort((a, b) => a.sourceRow - b.sourceRow);
-  }, [data, selectedTemplate, selectedYear, searchTerm]);
+      .sort((a, b) => a.sourceRow - b.sourceRow)
+      .map((row) => ({
+        ...row,
+        details: row.details.map((items) =>
+          [...items].sort((left, right) => left.unitName.localeCompare(right.unitName, 'vi')),
+        ),
+      }));
+  }, [data, searchTerm, selectedTemplate, selectedYear]);
 
   const headerRows = useMemo(() => {
     if (!selectedTemplate?.headerLayout) return null;
@@ -101,6 +161,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         const merge = merges.find((m) => m.startRow === rowNum && m.startCol === colNum);
         let rowSpan = 1;
         let colSpan = 1;
+
         if (merge) {
           rowSpan = merge.endRow - merge.startRow + 1;
           colSpan = merge.endCol - merge.startCol + 1;
@@ -114,6 +175,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         } else {
           occupied[r][c] = true;
         }
+
         const text = cellMap.get(`${rowNum}:${colNum}`) || '';
         rowCells.push({ text, rowSpan, colSpan });
       }
@@ -126,21 +188,14 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
   const tableColSpan = useMemo(() => {
     if (!selectedTemplate) return 0;
     const dataCols = selectedTemplate.columnMapping?.dataColumns?.length || 0;
-    if (headerRows) {
-      return 1 + (1 + dataCols);
-    }
-    return 2 + columnHeaders.length;
+    return headerRows ? 1 + dataCols : 1 + columnHeaders.length;
   }, [selectedTemplate, headerRows, columnHeaders]);
 
   const exportToExcel = async () => {
-    if (!selectedTemplate || aggregatedData.length === 0) return;
+    if (!selectedTemplate || aggregatedRows.length === 0) return;
 
-    const exportRows = aggregatedData.map((row) => {
-      const unit = UNITS.find((u) => u.code === row.unitCode);
-      const unitName = row.unitCode === 'TOTAL_HN' ? 'Tổng hợp' : unit?.name || row.unitCode;
-      const rowData: any = {
-        'Đơn vị': unitName,
-        'Năm': row.year,
+    const exportRows = aggregatedRows.map((row) => {
+      const rowData: Record<string, string | number> = {
         'Tiêu chí': row.label,
       };
       row.values.forEach((val, i) => {
@@ -189,24 +244,34 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     }
   };
 
+  const openCellDetail = (row: AggregatedReportRow, columnIndex: number) => {
+    setDetailSortOrder('desc');
+    setActiveCellDetail({
+      rowLabel: row.label,
+      columnLabel: columnHeaders[columnIndex] || `Cột ${columnIndex + 1}`,
+      totalValue: row.values[columnIndex] || 0,
+      items: row.details[columnIndex] || [],
+    });
+  };
+
   return (
     <div className="p-6 md:p-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-8">
+      <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="page-title">Báo cáo tổng hợp</h2>
           <p className="page-subtitle mt-2 text-sm">Truy xuất dữ liệu đã được tổng hợp theo dự án và biểu mẫu.</p>
         </div>
         <button
           onClick={exportToExcel}
-          disabled={!selectedTemplate || aggregatedData.length === 0}
-          className="primary-btn flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={!selectedTemplate || aggregatedRows.length === 0}
+          className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Download size={16} />
           Xuất file Excel
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-3">
         <div className="panel-card rounded-[20px] p-4">
           <label className="col-header block mb-2">1. Chọn Dự án</label>
           <select
@@ -240,7 +305,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
               placeholder="Tên tiêu chí..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-transparent focus:outline-none text-sm font-medium"
+              className="w-full bg-transparent text-sm font-medium focus:outline-none"
             />
           </div>
         </div>
@@ -265,27 +330,21 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
           Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
         </div>
       ) : (
-        <div className="table-shell rounded-[24px] overflow-hidden">
+        <div className="table-shell overflow-hidden rounded-[24px]">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 {headerRows ? (
                   headerRows.map((row, rowIndex) => (
                     <tr key={`hdr-${rowIndex}`}>
-                      {rowIndex === 0 && (
-                        <th
-                          rowSpan={headerRows.length}
-                          className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10 min-w-[120px]"
-                        >
-                          Đơn vị
-                        </th>
-                      )}
                       {row.map((cell, cellIndex) => (
                         <th
                           key={`hdr-${rowIndex}-${cellIndex}`}
                           colSpan={cell.colSpan}
                           rowSpan={cell.rowSpan}
-                          className="p-3 text-[10px] uppercase tracking-[0.16em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[90px]"
+                          className={`p-3 text-[10px] uppercase tracking-[0.16em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center ${
+                            cellIndex === 0 ? 'sticky left-0 z-10 min-w-[260px]' : 'min-w-[120px]'
+                          }`}
                         >
                           {cell.text || '\u00A0'}
                         </th>
@@ -294,10 +353,14 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                   ))
                 ) : (
                   <tr>
-                    <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10">Đơn vị</th>
-                    <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white">Tiêu chí</th>
+                    <th className="sticky left-0 z-10 p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white min-w-[260px]">
+                      Tiêu chí
+                    </th>
                     {columnHeaders.map((header, i) => (
-                      <th key={i} className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[120px]">
+                      <th
+                        key={i}
+                        className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[120px]"
+                      >
                         {header}
                       </th>
                     ))}
@@ -305,26 +368,29 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                 )}
               </thead>
               <tbody>
-                {aggregatedData.length > 0 ? (
-                  aggregatedData.map((row, idx) => {
-                    const unit = UNITS.find((u) => u.code === row.unitCode);
-                    const isTotal = row.unitCode === 'TOTAL_HN';
-                    const unitName = isTotal ? 'Tổng hợp' : unit?.name || row.unitCode;
-                    return (
-                      <tr key={idx} className={`border-b border-[var(--line)] ${isTotal ? 'bg-[var(--primary-soft)]' : 'bg-white'} hover:bg-[var(--surface-alt)]`}>
-                        <td className="p-4 text-xs border-r border-[var(--line)] sticky left-0 z-10 bg-white">{unitName}</td>
-                        <td className="p-4 text-xs border-r border-[var(--line)]">{row.label}</td>
-                        {row.values.map((val, i) => (
-                          <td key={i} className="p-4 text-xs font-mono text-center border-r border-[var(--line)]">
-                            {val.toLocaleString()}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })
+                {aggregatedRows.length > 0 ? (
+                  aggregatedRows.map((row) => (
+                    <tr key={row.key} className="border-b border-[var(--line)] bg-white hover:bg-[var(--surface-alt)]">
+                      <td className="sticky left-0 z-10 p-4 text-xs border-r border-[var(--line)] bg-white font-medium text-[var(--ink)]">
+                        {row.label}
+                      </td>
+                      {row.values.map((val, index) => (
+                        <td key={`${row.key}-${index}`} className="border-r border-[var(--line)] p-0">
+                          <button
+                            type="button"
+                            onClick={() => openCellDetail(row, index)}
+                            className="h-full w-full p-4 text-center text-xs font-mono text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
+                            title="Xem chi tiết theo đơn vị"
+                          >
+                            {val.toLocaleString('vi-VN')}
+                          </button>
+                        </td>
+                      ))}
+                    </tr>
+                  ))
                 ) : (
                   <tr>
-                    <td colSpan={tableColSpan} className="p-12 text-center opacity-40 italic">
+                    <td colSpan={tableColSpan} className="p-12 text-center italic opacity-40">
                       Không tìm thấy dữ liệu cho tiêu chí này.
                     </td>
                   </tr>
@@ -334,10 +400,76 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
           </div>
         </div>
       )}
+
+      {activeCellDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(44,62,80,0.45)] p-4 backdrop-blur-sm md:p-8">
+          <div className="panel-card flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-[30px]">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5">
+              <div>
+                <div className="surface-tag">{activeCellDetail.columnLabel}</div>
+                <h3 className="section-title mt-3">Chi tiết đơn vị theo ô dữ liệu</h3>
+                <p className="page-subtitle mt-2 text-sm">{activeCellDetail.rowLabel}</p>
+                <p className="mt-3 text-sm font-semibold text-[var(--primary-dark)]">
+                  Tổng cộng: {activeCellDetail.totalValue.toLocaleString('vi-VN')}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-3">
+                <div className="panel-soft rounded-full px-3 py-2">
+                  <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--ink-soft)]">
+                    Sắp xếp giá trị
+                  </label>
+                  <select
+                    value={detailSortOrder}
+                    onChange={(event) => setDetailSortOrder(event.target.value as DetailSortOrder)}
+                    className="mt-1 w-full bg-transparent text-xs font-semibold text-[var(--ink)] focus:outline-none"
+                  >
+                    <option value="desc">Giảm dần</option>
+                    <option value="asc">Tăng dần</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveCellDetail(null)}
+                  className="secondary-btn flex items-center gap-2"
+                >
+                  <X size={16} />
+                  Đóng
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 md:p-6">
+              {sortedDetailItems.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {sortedDetailItems.map((item) => (
+                    <div
+                      key={`${item.unitCode}-${item.unitName}`}
+                      className="grid gap-3 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-4 py-4 md:grid-cols-[minmax(0,1fr)_140px] md:items-center"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[var(--ink)]">{item.unitName}</p>
+                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          {item.unitCode}
+                        </p>
+                      </div>
+                      <div className="text-left md:text-right">
+                        <p className="col-header mb-1">Giá trị</p>
+                        <p className="data-value text-lg font-bold text-[var(--primary-dark)]">
+                          {item.value.toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-soft)]">
+                  Không có đơn vị nào đóng góp dữ liệu cho ô này.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-
-
-
