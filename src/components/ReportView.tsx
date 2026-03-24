@@ -540,7 +540,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
       ) : (
         <div className="table-shell overflow-hidden rounded-[24px]">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-max border-collapse table-auto">
               <thead>
                 {headerRows ? (
                   headerRows.map((row, rowIndex) => (
@@ -550,8 +550,8 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                           key={`hdr-${rowIndex}-${cellIndex}`}
                           colSpan={cell.colSpan}
                           rowSpan={cell.rowSpan}
-                          className={`border-r border-white/20 bg-[var(--primary-dark)] p-3 text-center text-[10px] uppercase tracking-[0.16em] text-white ${
-                            cellIndex === 0 ? 'sticky left-0 z-10 min-w-[280px]' : 'min-w-[120px]'
+                          className={`border-r border-white/20 bg-[var(--primary-dark)] px-2 py-2 text-center align-middle text-[10px] leading-snug tracking-[0.08em] text-white whitespace-normal ${
+                            cellIndex === 0 ? 'sticky left-0 z-10 min-w-[220px] max-w-[280px]' : 'min-w-[72px] max-w-[132px]'
                           }`}
                         >
                           {cell.text || '\u00A0'}
@@ -561,13 +561,13 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                   ))
                 ) : (
                   <tr>
-                    <th className="sticky left-0 z-10 min-w-[280px] border-r border-white/20 bg-[var(--primary-dark)] p-4 text-[10px] uppercase tracking-[0.18em] text-white">
+                    <th className="sticky left-0 z-10 min-w-[220px] max-w-[280px] border-r border-white/20 bg-[var(--primary-dark)] px-3 py-2 text-[10px] leading-snug tracking-[0.08em] text-white whitespace-normal">
                       Tiêu chí
                     </th>
                     {columnHeaders.map((header, index) => (
                       <th
                         key={header || index}
-                        className="min-w-[120px] border-r border-white/20 bg-[var(--primary-dark)] p-4 text-center text-[10px] uppercase tracking-[0.18em] text-white"
+                        className="min-w-[72px] max-w-[132px] border-r border-white/20 bg-[var(--primary-dark)] px-2 py-2 text-center text-[10px] leading-snug tracking-[0.08em] text-white whitespace-normal"
                       >
                         {header}
                       </th>
@@ -579,7 +579,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                 {aggregatedRows.length > 0 ? (
                   aggregatedRows.map((row) => (
                     <tr key={row.key} className="border-b border-[var(--line)] bg-white hover:bg-[var(--surface-alt)]">
-                      <td className="sticky left-0 z-10 border-r border-[var(--line)] bg-white p-4 text-xs font-medium text-[var(--ink)]">
+                      <td className="sticky left-0 z-10 border-r border-[var(--line)] bg-white px-3 py-2 text-[11px] font-medium leading-snug text-[var(--ink)]">
                         {row.label}
                       </td>
                       {row.values.map((value, index) => (
@@ -587,7 +587,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                           <button
                             type="button"
                             onClick={() => openCellDetail(row, index)}
-                            className="h-full w-full p-4 text-center text-xs font-mono text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
+                            className="h-full min-w-[72px] w-full px-2 py-2 text-center text-[11px] font-mono leading-none text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
                             title="Xem chi tiết theo đơn vị"
                           >
                             {value.toLocaleString('vi-VN')}
