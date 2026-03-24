@@ -12,7 +12,7 @@
   arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, SHEET_COLUMN_HEADERS } from '../constants';
+import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS } from '../constants';
 import { FormTemplate, Project } from '../types';
 import { columnIndexToLetter } from './columnUtils';
 
@@ -27,12 +27,12 @@ function buildLegacyTemplates(): FormTemplate[] {
       dataColumns.push(columnIndexToLetter(col));
     }
 
-    const columnHeaders = SHEET_COLUMN_HEADERS[config.name] || dataColumns.map((_, i) => `C�Tt ${i + 1}`);
+    const columnHeaders = dataColumns.map((_, i) => `Cột ${i + 1}`);
 
     return {
       id: `${LEGACY_TEMPLATES_PREFIX}${config.name}`,
       projectId: LEGACY_PROJECT_ID,
-      name: `Bi�fu ${config.name}`,
+      name: `Biểu ${config.name}`,
       sheetName: config.name,
       columnHeaders,
       columnMapping: {
@@ -56,7 +56,7 @@ async function ensureProjectAndTemplates(): Promise<void> {
     const project: Project = {
       id: LEGACY_PROJECT_ID,
       name: DEFAULT_PROJECT_NAME,
-      description: 'Dữ li�?u chuy�fn �'�.i từ h�? th�'ng củ.',
+      description: 'Dữ liệu chuyển đổi từ hệ thống cũ.',
       status: 'ACTIVE',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -173,4 +173,5 @@ async function appendMigrationLog(entry: { action: string; total?: number }) {
     { merge: true },
   );
 }
+
 

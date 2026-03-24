@@ -70,13 +70,14 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
 
     const exportRows = aggregatedData.map((row) => {
       const unit = UNITS.find((u) => u.code === row.unitCode);
+      const unitName = row.unitCode === 'TOTAL_HN' ? 'Tổng hợp' : unit?.name || row.unitCode;
       const rowData: any = {
-        'Đơn v�<': unit?.name || row.unitCode,
-        'N�fm': row.year,
+        'Đơn vị': unitName,
+        'Năm': row.year,
         'Tiêu chí': row.label,
       };
       row.values.forEach((val, i) => {
-        rowData[selectedTemplate.columnHeaders[i] || `Giá tr�< ${i + 1}`] = val;
+        rowData[selectedTemplate.columnHeaders[i] || `Giá trị ${i + 1}`] = val;
       });
       return rowData;
     });
@@ -91,8 +92,8 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     <div className="p-6 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-8">
         <div>
-          <h2 className="page-title">Báo cáo t�.ng hợp</h2>
-          <p className="page-subtitle mt-2 text-sm">Truy xuất dữ li�?u �'ã �'ược t�.ng hợp theo dự án và bi�fu mẫu.</p>
+          <h2 className="page-title">Báo cáo tổng hợp</h2>
+          <p className="page-subtitle mt-2 text-sm">Truy xuất dữ liệu đã được tổng hợp theo dự án và biểu mẫu.</p>
         </div>
         <button
           onClick={exportToExcel}
@@ -119,7 +120,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         </div>
 
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header block mb-2">2. Chọn N�fm</label>
+          <label className="col-header block mb-2">2. Chọn Năm</label>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
@@ -160,7 +161,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
 
       {!selectedTemplate ? (
         <div className="panel-card rounded-[24px] p-10 text-center opacity-60">
-          Chưa chọn bi�fu mẫu. Vui lòng chọn dự án và bi�fu mẫu �'�f hi�fn th�< bạo cáo.
+          Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
         </div>
       ) : (
         <div className="table-shell rounded-[24px] overflow-hidden">
@@ -168,7 +169,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10">Đơn v�<</th>
+                  <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10">Đơn vị</th>
                   <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white">Tiêu chí</th>
                   {selectedTemplate.columnHeaders.map((header, i) => (
                     <th key={i} className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[120px]">
@@ -182,9 +183,10 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                   aggregatedData.map((row, idx) => {
                     const unit = UNITS.find((u) => u.code === row.unitCode);
                     const isTotal = row.unitCode === 'TOTAL_HN';
+                    const unitName = isTotal ? 'Tổng hợp' : unit?.name || row.unitCode;
                     return (
                       <tr key={idx} className={`border-b border-[var(--line)] ${isTotal ? 'bg-[var(--primary-soft)]' : 'bg-white'} hover:bg-[var(--surface-alt)]`}>
-                        <td className="p-4 text-xs border-r border-[var(--line)] sticky left-0 z-10 bg-white">{unit?.name || row.unitCode}</td>
+                        <td className="p-4 text-xs border-r border-[var(--line)] sticky left-0 z-10 bg-white">{unitName}</td>
                         <td className="p-4 text-xs border-r border-[var(--line)]">{row.label}</td>
                         {row.values.map((val, i) => (
                           <td key={i} className="p-4 text-xs font-mono text-center border-r border-[var(--line)]">
@@ -197,7 +199,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                 ) : (
                   <tr>
                     <td colSpan={2 + selectedTemplate.columnHeaders.length} className="p-12 text-center opacity-40 italic">
-                      Không tìm thấy dữ li�?u cho tiêu chí này.
+                      Không tìm thấy dữ liệu cho tiêu chí này.
                     </td>
                   </tr>
                 )}
@@ -209,4 +211,6 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     </div>
   );
 }
+
+
 

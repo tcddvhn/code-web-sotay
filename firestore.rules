@@ -45,13 +45,13 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "ldkien116@gmail.com" && request.auth.token.email_verified == true));
+          request.auth.token.email in ["ldkien116@gmail.com", "admin@sotay.com"]);
     }
 
     function isContributor() {
       return isAuthenticated() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'contributor'] ||
-          (request.auth.token.email == "ldkien116@gmail.com" && request.auth.token.email_verified == true));
+          request.auth.token.email in ["ldkien116@gmail.com", "admin@sotay.com"]);
     }
 
     function isValidDataRow(data) {

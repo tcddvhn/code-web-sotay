@@ -1,4 +1,4 @@
-﻿?import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   collection,
@@ -32,7 +32,7 @@ import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
-import { auth, db, handleFirestoreError, loginWithGoogle, logout, OperationType } from './firebase';
+import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout, OperationType } from './firebase';
 import { AppSettings, ConsolidatedData, DataRow, FormTemplate, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { ensureNQ22Setup, resetNQ22Migration } from './utils/migrateNQ22';
@@ -71,9 +71,10 @@ export default function App() {
   const [migrationHistory, setMigrationHistory] = useState<any[]>([]);
 
   const isAuthenticated = useMemo(() => !!user, [user]);
+  const adminEmails = useMemo(() => new Set(['ldkien116@gmail.com', 'admin@sotay.com']), []);
   const isAdmin = useMemo(
-    () => userProfile?.role === 'admin' || user?.email === 'ldkien116@gmail.com',
-    [userProfile, user],
+    () => userProfile?.role === 'admin' || (user?.email ? adminEmails.has(user.email) : false),
+    [userProfile, user, adminEmails],
   );
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
@@ -101,7 +102,7 @@ export default function App() {
     getDoc(userRef).then((snap) => {
       if (cancelled) return;
       if (!snap.exists()) {
-        const role = user.email === 'ldkien116@gmail.com' ? 'admin' : 'contributor';
+        const role = user.email && adminEmails.has(user.email) ? 'admin' : 'contributor';
         const profile: UserProfile = {
           id: user.uid,
           email: user.email,
@@ -126,7 +127,7 @@ export default function App() {
       cancelled = true;
       unsubscribe();
     };
-  }, [user]);
+  }, [user, adminEmails]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -264,13 +265,13 @@ export default function App() {
     }
 
     let isMounted = true;
-    setMigrationStatus({ running: true, message: 'Đang tạo dự án và chuy�fn �'�.i dữ li�?u...' });
+    setMigrationStatus({ running: true, message: 'Đang tạo dự án và chuyển đổi dữ liệu...' });
 
     ensureNQ22Setup()
       .then((result) => {
         if (!isMounted) return;
         if (result.migrated) {
-          setMigrationStatus({ running: false, message: `Đã chuy�fn �'�.i ${result.total} dòng dữ li�?u.` });
+          setMigrationStatus({ running: false, message: `Đã chuyển đổi ${result.total} dòng dữ liệu.` });
         } else {
           setMigrationStatus({ running: false });
         }
@@ -327,7 +328,7 @@ export default function App() {
   };
 
   const handleDataImported = async (newData: DataRow[]) => {
-    if (!isAdmin) {
+    if (!user) {
       return;
     }
 
@@ -402,7 +403,7 @@ export default function App() {
 
     try {
       await setDoc(doc(db, 'settings', 'global'), settings);
-      alert('Đã lưu cài �'ặt!');
+      alert('Đã lưu cài đặt!');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
     }
@@ -410,15 +411,15 @@ export default function App() {
 
   const handleRerunMigration = async () => {
     if (!isAdmin) return;
-    const confirmed = window.confirm('Chạy lại chuy�fn �'�.i dữ li�?u NQ22? Dữ li�?u �'ã chuy�fn sẽ �'ược tạo lại.');
+    const confirmed = window.confirm('Chạy lại chuyển đổi dữ liệu NQ22? Dữ liệu đã chuyển sẽ được tạo lại.');
     if (!confirmed) return;
 
-    setMigrationStatus({ running: true, message: 'Đang chạy lại chuy�fn �'�.i dữ li�?u...' });
+    setMigrationStatus({ running: true, message: 'Đang chạy lại chuyển đổi dữ liệu...' });
     await resetNQ22Migration();
     const result = await ensureNQ22Setup();
     setMigrationStatus({
       running: false,
-      message: result.migrated ? `Đã chuy�fn �'�.i ${result.total} dòng dữ li�?u.` : 'Đã tạo dự án NQ22.',
+      message: result.migrated ? `Đã chuyển đổi ${result.total} dòng dữ liệu.` : 'Đã tạo dự án NQ22.',
     });
   };
 
@@ -428,6 +429,16 @@ export default function App() {
       setCurrentView('DASHBOARD');
     } catch (error) {
       console.error('Login error:', error);
+    }
+  };
+
+  const handleEmailLogin = async (email: string, password: string) => {
+    try {
+      await loginWithEmail(email, password);
+      setCurrentView('DASHBOARD');
+    } catch (error) {
+      console.error('Email login error:', error);
+      throw error;
     }
   };
 
@@ -450,7 +461,7 @@ export default function App() {
 
   const renderContent = () => {
     if (currentView === 'LOGIN') {
-      return <LoginView onLogin={handleLogin} />;
+      return <LoginView onLogin={handleLogin} onLoginWithEmail={handleEmailLogin} />;
     }
 
     switch (currentView) {
@@ -528,14 +539,14 @@ export default function App() {
       case 'SETTINGS':
         return (
           <div className="p-6 md:p-8">
-            <h2 className="page-title">Cài �'ặt h�? th�'ng</h2>
+            <h2 className="page-title">Cài đặt hệ thống</h2>
             <p className="page-subtitle mt-2 max-w-3xl text-sm">
-              Cấu hình ngu�"n lưu trữ và �'ường dẫn tiếp nhận dữ li�?u tập trung cho toàn h�? th�'ng.
+              Cấu hình nguồn lưu trữ và đường dẫn tiếp nhận dữ liệu tập trung cho toàn hệ thống.
             </p>
 
             <div className="mt-8 max-w-3xl space-y-6">
               <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Link OneDrive (Lưu trữ trực tuyến)</label>
+                <label className="col-header block mb-3">Link OneDrive (Luu tr? tr?c tuy?n)</label>
                 <div className="flex gap-3">
                   <LinkIcon size={18} className="mt-3 text-[var(--primary)]" />
                   <input
@@ -549,7 +560,7 @@ export default function App() {
               </div>
 
               <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Thư mục lưu trữ file g�'c</label>
+                <label className="col-header block mb-3">Thư mục lưu trữ file gốc</label>
                 <input
                   type="text"
                   value={settings.storagePath}
@@ -560,7 +571,7 @@ export default function App() {
               </div>
 
               <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Thư mục lưu trữ file �'ã tiếp nhận</label>
+                <label className="col-header block mb-3">Thư mục lưu trữ file đã tiếp nhận</label>
                 <input
                   type="text"
                   value={settings.receivedPath}
@@ -576,7 +587,7 @@ export default function App() {
                     Lưu cấu hình
                   </button>
                   <button onClick={handleRerunMigration} className="secondary-btn">
-                    Chạy lại chuy�fn �'�.i NQ22
+                    Chạy lại chuyển đổi NQ22
                   </button>
                 </div>
               )}
@@ -587,12 +598,12 @@ export default function App() {
 
               {isAdmin && migrationHistory.length > 0 && (
                 <div className="panel-card rounded-[20px] p-4">
-                  <p className="col-header mb-3">L�<ch sử chuy�fn �'�.i</p>
+                  <p className="col-header mb-3">Lịch sử chuyển đổi</p>
                   <div className="space-y-2 text-xs text-[var(--ink-soft)]">
                     {migrationHistory.map((entry, index) => (
                       <div key={index} className="flex items-center justify-between gap-3">
                         <span className="font-semibold uppercase tracking-[0.12em]">
-                          {entry.action === 'migrate' ? 'Chuy�fn �'�.i' : 'Reset'}
+                          {entry.action === 'migrate' ? 'Chuyển đổi' : 'Reset'}
                         </span>
                         <span>{entry.total ? `${entry.total} dòng` : '-'}</span>
                         <span>
@@ -626,24 +637,64 @@ export default function App() {
   );
 }
 
-function LoginView({ onLogin }: { onLogin: () => void }) {
+function LoginView({ onLogin, onLoginWithEmail }: { onLogin: () => void; onLoginWithEmail: (email: string, password: string) => Promise<void> }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const submitEmailLogin = async () => {
+    setError(null);
+    if (!email || !password) {
+      setError('Vui lòng nhập email và mật khẩu.');
+      return;
+    }
+    try {
+      await onLoginWithEmail(email.trim(), password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể đăng nhập bằng tài khoản này.');
+    }
+  };
+
   return (
     <div className="h-full flex items-center justify-center p-6 md:p-8">
       <div className="panel-card w-full max-w-md rounded-[28px] p-8 md:p-12 text-center">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
           <Lock size={30} />
         </div>
-        <h2 className="section-title">Đ�fng nhập h�? th�'ng</h2>
-        <p className="page-subtitle mt-3 text-sm">Dành cho quản tr�< viên tiếp nhận và hợp nhất dữ li�?u báo cáo.</p>
+        <h2 className="section-title">Đăng nhập hệ thống</h2>
+        <p className="page-subtitle mt-3 text-sm">Dành cho quản trị viên tiếp nhận và hợp nhất dữ liệu báo cáo.</p>
 
         <div className="mt-8 space-y-4">
+          <div className="panel-soft rounded-[20px] p-4 text-left">
+            <label className="col-header block mb-2">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="field-input"
+              placeholder="email@domain.com"
+            />
+            <label className="col-header block mt-4 mb-2">Mật khẩu</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="field-input"
+              placeholder="Nhập mật khẩu"
+            />
+            <button onClick={submitEmailLogin} className="primary-btn mt-4 w-full">
+              Đăng nhập bằng tài khoản
+            </button>
+          </div>
+
           <button onClick={onLogin} className="primary-btn flex w-full items-center justify-center gap-3">
             <LogIn size={18} />
-            Đ�fng nhập v�>i Google
+            Đăng nhập với Google
           </button>
           <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--ink-soft)]">
-            Ch�? tài khoản admin �'ược cấp quyền tiếp nhận dữ li�?u
+            Chỉ tài khoản được cấp quyền mới có thể tiếp nhận dữ liệu
           </p>
+          {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       </div>
     </div>
@@ -704,7 +755,7 @@ function DashboardOverview({
     const map = new Map<string, string>();
     Object.entries(assignments).forEach(([userId, unitCodes]) => {
       const user = users.find((u) => u.id === userId);
-      const name = user?.displayName || user?.email || 'Chua r�';
+      const name = user?.displayName || user?.email || 'Chua r?';
       unitCodes.forEach((code) => {
         map.set(code, name);
       });
@@ -760,23 +811,23 @@ function DashboardOverview({
   const assignees = useMemo(() => users.filter((u) => u.role === 'contributor'), [users]);
 
   const stats = [
-    { label: 'T�.ng �'ơn v�<', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
+    { label: 'Tổng đơn vị', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
     {
-      label: 'Đơn v�< �'ã tiếp nhận',
+      label: 'Đơn vị đã tiếp nhận',
       value: `${submittedCount}/${totalUnits}`,
       icon: FileBarChart,
       iconColor: 'text-[var(--success)]',
       tone: 'bg-[rgba(47,110,73,0.12)]',
     },
     {
-      label: 'Dòng dữ li�?u �'ã lưu',
+      label: 'Dòng dữ liệu đã lưu',
       value: totalRows.toLocaleString('vi-VN'),
       icon: Layers3,
       iconColor: 'text-[var(--gold)]',
       tone: 'bg-[var(--gold-soft)]',
     },
     {
-      label: 'Tỷ l�? hoàn thành',
+      label: 'Tỷ lệ hoàn thành',
       value: `${completionRate}%`,
       icon: Activity,
       iconColor: 'text-[var(--primary-dark)]',
@@ -795,10 +846,10 @@ function DashboardOverview({
     <div className="p-6 md:p-8">
       <header className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="surface-tag">N�fm t�.ng hợp {dashboardYear}</div>
-          <h2 className="page-title mt-4">H�? THỐNG QUẢN TRỊ DỮ LI�?U TCĐ, ĐV TẬP TRUNG</h2>
+          <div className="surface-tag">Năm tổng hợp {dashboardYear}</div>
+          <h2 className="page-title mt-4">HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG</h2>
           <p className="page-subtitle mt-3 max-w-3xl text-sm">
-            Theo dõi nhanh tình hình tiếp nhận dữ li�?u của 132 �'ơn v�<, s�' bi�fu �'ã nhập và mức �'�T hoàn thành t�.ng hợp trên toàn h�? th�'ng.
+            Theo dõi nhanh tình hình tiếp nhận dữ liệu của 132 đơn vị, số biểu đã nhập và mức độ hoàn thành tổng hợp trên toàn hệ thống.
           </p>
         </div>
 
@@ -806,7 +857,7 @@ function DashboardOverview({
           <div className="flex items-center gap-2">
             <Globe size={15} className="text-[var(--success)]" />
             <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--primary-dark)]">
-              H�? th�'ng trực tuyến
+              Hệ thống trực tuyến
             </span>
           </div>
         </div>
@@ -830,7 +881,7 @@ function DashboardOverview({
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Dự án �'ang chạy</p>
+          <p className="col-header mb-2">Dự án đang chạy</p>
           <p className="data-value text-3xl font-bold text-[var(--ink)]">{activeProjects}</p>
           <p className="mt-2 text-xs text-[var(--ink-soft)]">Dự án chưa kết thúc</p>
         </div>
@@ -838,7 +889,7 @@ function DashboardOverview({
         <div className="panel-card rounded-[24px] p-6">
           <p className="col-header mb-2">Dự án hoàn thành</p>
           <p className="data-value text-3xl font-bold text-[var(--ink)]">{completedProjects}</p>
-          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dự án �'ã �'óng</p>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dự án đã đóng</p>
         </div>
       </div>
 
@@ -868,10 +919,10 @@ function DashboardOverview({
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Bi�fu �'�" tiếp nhận dữ li�?u</h3>
-              <p className="page-subtitle mt-2 text-sm">Tỷ l�? �'ơn v�< �'ã n�Tp dữ li�?u so v�>i t�.ng s�' �'ơn v�< trong n�fm {dashboardYear}.</p>
+              <h3 className="section-title">Biểu đồ tiếp nhận dữ liệu</h3>
+              <p className="page-subtitle mt-2 text-sm">Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm {dashboardYear}.</p>
             </div>
-            <div className="status-pill status-pill-submitted">{submittedCount} �'ơn v�< �'ã n�Tp</div>
+            <div className="status-pill status-pill-submitted">{submittedCount} đơn vị đã nộp</div>
           </div>
 
           <div className="mt-8 h-[300px] w-full">
@@ -898,17 +949,17 @@ function DashboardOverview({
 
           <div className="mt-2 text-center">
             <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Mức �'�T hoàn thành tiếp nhận</p>
+            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Mức độ hoàn thành tiếp nhận</p>
           </div>
         </div>
 
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Trạng thái tiếp nhận �'ơn v�<</h3>
-              <p className="page-subtitle mt-2 text-sm">Danh sách �'ược lấy từ dữ li�?u thật �'ã lưu.</p>
+              <h3 className="section-title">Trạng thái tiếp nhận đơn vị</h3>
+              <p className="page-subtitle mt-2 text-sm">Danh sách được lấy từ dữ liệu thật đã lưu.</p>
             </div>
-            <div className="status-pill status-pill-pending">{totalUnits - submittedCount} �'ơn v�< chưa n�Tp</div>
+            <div className="status-pill status-pill-pending">{totalUnits - submittedCount} đơn vị chưa nộp</div>
           </div>
 
           <div className="mt-6 space-y-3">
@@ -921,14 +972,14 @@ function DashboardOverview({
                   <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
                   <p className="mt-1 text-xs text-[var(--ink-soft)]">
                     {unit.isSubmitted
-                      ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} bi�fu`
-                      : 'Chưa tiếp nhận dữ li�?u'}
+                      ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} bi?fu`
+                      : 'Chưa tiếp nhận d? li??u'}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3 self-start md:self-auto">
                   <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                    {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'}
+                    {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                   </span>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
                 </div>
@@ -947,25 +998,46 @@ function DashboardOverview({
           <div className="panel-card flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[30px]">
             <div className="flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="surface-tag">132 �'ơn v�< toàn h�? th�'ng</div>
-                <h3 className="section-title mt-3">Nhật ký tiếp nhận dữ li�?u n�fm {dashboardYear}</h3>
+                <div className="surface-tag">132 đơn vị toàn hệ thống</div>
+                <h3 className="section-title mt-3">Nhật ký tiếp nhận dữ liệu năm {dashboardYear}</h3>
                 <p className="page-subtitle mt-2 text-sm">
-                  Hi�fn th�< �'ầy �'ủ trạng thái của từng �'ơn v�< cùng s�' bi�fu �'ã �'ược nhập vào h�? th�'ng tập trung.
+                  Hiển thị đầy đủ trạng thái của từng đơn vị cùng số biểu đã được nhập vào hệ thống tập trung.
                 </p>
               </div>
 
-              <button
-                onClick={() => setIsLogOpen(false)}
-                className="secondary-btn flex items-center justify-center gap-2 self-start px-4 py-3"
-              >
-                <X size={16} />
-                Đóng
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                {assignees.length > 0 && (
+                  <div className="panel-soft rounded-full px-3 py-2">
+                    <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--ink-soft)]">
+                      Lọc theo người theo dõi
+                    </label>
+                    <select
+                      value={selectedAssignee}
+                      onChange={(event) => setSelectedAssignee(event.target.value)}
+                      className="mt-1 w-full bg-transparent text-xs font-semibold text-[var(--ink)] focus:outline-none"
+                    >
+                      <option value="ALL">Tất cả người theo dõi</option>
+                      {assignees.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.displayName || user.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <button
+                  onClick={() => setIsLogOpen(false)}
+                  className="secondary-btn flex items-center justify-center gap-2 self-start px-4 py-3"
+                >
+                  <X size={16} />
+                  Đóng
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 border-b border-[var(--line)] bg-[var(--primary-soft)] px-6 py-4 md:grid-cols-3">
               <div className="rounded-2xl bg-white/70 px-4 py-3">
-                <p className="col-header mb-1">T�.ng �'ơn v�<</p>
+                <p className="col-header mb-1">Tổng đơn vị</p>
                 <p className="data-value text-2xl font-bold">{totalUnits}</p>
               </div>
               <div className="rounded-2xl bg-white/70 px-4 py-3">
@@ -996,22 +1068,26 @@ function DashboardOverview({
                       </div>
                       <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">
                         {unit.isSubmitted
-                          ? `Đã lưu ${unit.rowCount.toLocaleString('vi-VN')} dòng dữ li�?u.`
-                          : 'Hi�?n chưa có dữ li�?u nào �'ược tiếp nhận trong n�fm này.'}
+                          ? `Đã lưu ${unit.rowCount.toLocaleString('vi-VN')} dòng dữ liệu.`
+                          : 'Hiện chưa có dữ liệu nào được tiếp nhận trong năm này.'}
                       </p>
+                      <div className="mt-2 text-[11px] text-[var(--ink-soft)]">
+                        <p>Người theo dõi: {unit.assignedTo || 'Chưa phân công'}</p>
+                        <p>Cập nhật gần nhất: {unit.lastUpdatedBy || 'Chưa có'}</p>
+                      </div>
                     </div>
 
                     <div className="min-w-0">
-                      <p className="col-header mb-2">Bi�fu �'ã nhập</p>
+                      <p className="col-header mb-2">Biểu đã nhập</p>
                       <p className="truncate text-sm text-[var(--ink)]">
-                        {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'Chưa có bi�fu nào'}
+                        {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'Chưa có biểu nào'}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2 self-start md:self-auto">
                       {unit.isSubmitted && <CheckCircle2 size={16} className="text-[var(--success)]" />}
                       <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                        {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'}
+                        {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                       </span>
                     </div>
                   </div>
@@ -1024,4 +1100,8 @@ function DashboardOverview({
     </div>
   );
 }
+
+
+
+
 

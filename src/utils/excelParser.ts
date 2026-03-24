@@ -1,5 +1,5 @@
 ﻿import * as XLSX from 'xlsx';
-import { SHEET_CONFIGS, SHEET_LABELS } from '../constants';
+import { SHEET_CONFIGS } from '../constants';
 import { DataRow, FormTemplate } from '../types';
 
 export function normalizeCellValue(value: unknown): number {
@@ -29,9 +29,10 @@ export function normalizeCellValue(value: unknown): number {
   return Number.isFinite(parsedValue) ? parsedValue : 0;
 }
 
-function getLabelForRow(sheetName: string, sourceRow: number) {
-  const label = SHEET_LABELS[sheetName]?.find((entry) => entry.row === sourceRow)?.label;
-  return label || `Dòng ${sourceRow}`;
+function getLabelForRow(worksheet: XLSX.WorkSheet, sourceRow: number) {
+  const labelCell = worksheet[XLSX.utils.encode_cell({ r: sourceRow - 1, c: 0 })];
+  const label = labelCell?.v ?? labelCell?.w;
+  return label ? String(label).trim() : `Dòng ${sourceRow}`;
 }
 
 export async function parseLegacySheet(
@@ -68,7 +69,7 @@ export function parseLegacyFromWorkbook(
 ): DataRow[] {
   const config = SHEET_CONFIGS.find((cfg) => cfg.name === sheetName);
   if (!config) {
-    throw new Error(`Không tìm thấy cấu hình bi�fu ${sheetName}.`);
+    throw new Error(`Không tìm thấy cấu hình biểu ${sheetName}.`);
   }
 
   const worksheet = workbook.Sheets[sheetName];
@@ -90,7 +91,7 @@ export function parseLegacyFromWorkbook(
       unitCode,
       year,
       sourceRow,
-      label: getLabelForRow(sheetName, sourceRow),
+      label: getLabelForRow(worksheet, sourceRow),
       values,
     });
   }
@@ -135,9 +136,10 @@ export function parseTemplateFromWorkbook(
   }
 
   if (rows.length === 0) {
-    throw new Error('Không tìm thấy dữ li�?u phù hợp trong file.');
+    throw new Error('Không tìm thấy dữ liệu phù hợp trong file.');
   }
 
   return rows;
 }
+
 

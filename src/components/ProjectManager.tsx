@@ -53,7 +53,7 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
   };
 
   const deleteProject = async (id: string) => {
-    if (!confirm('Bạn có chắc chắn mu�'n xóa dự án này?')) return;
+    if (!confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
     try {
       await deleteDoc(doc(db, 'projects', id));
     } catch (error) {
@@ -67,17 +67,17 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
         <h2 className="page-title">Quản lý Dự án</h2>
         <button onClick={() => setIsAdding(true)} className="primary-btn flex items-center gap-2">
           <Plus size={16} />
-          Tạo dự án m�>i
+          Tạo dự án mới
         </button>
       </div>
 
       {isAdding && (
         <div className="panel-card rounded-[24px] p-6 mb-8">
-          <h3 className="section-title mb-4">Thông tin dự án m�>i</h3>
+          <h3 className="section-title mb-4">Thông tin dự án mới</h3>
           <div className="space-y-4">
             <input
               type="text"
-              placeholder="Tên dự án (ví dụ: T�.ng hợp quý 1/2026)"
+              placeholder="Tên dự án (ví dụ: Tổng hợp quý 1/2026)"
               value={newProject.name}
               onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
               className="field-input"
@@ -102,10 +102,10 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
           <div key={project.id} className="panel-card rounded-[24px] p-6 flex flex-col">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div className={`status-pill ${project.status === 'ACTIVE' ? 'status-pill-submitted' : 'status-pill-pending'}`}>
-                {project.status === 'ACTIVE' ? 'Đang tri�fn khai' : 'Đã hoàn thành'}
+                {project.status === 'ACTIVE' ? 'Đang triển khai' : 'Đã hoàn thành'}
               </div>
               <div className="flex gap-2">
-                <button onClick={() => toggleStatus(project)} title="Đ�.i trạng thái">
+                <button onClick={() => toggleStatus(project)} title="Đổi trạng thái">
                   {project.status === 'ACTIVE' ? <CheckCircle size={16} /> : <Clock size={16} />}
                 </button>
                 <button onClick={() => deleteProject(project.id)} className="text-[var(--primary)]">
@@ -128,4 +128,6 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
     </div>
   );
 }
+
+
 

@@ -91,7 +91,7 @@ export function ImportFiles({
   const processFiles = async () => {
     setManagementMessage(null);
     if (!selectedTemplate && !autoDetectSheets) {
-      setManagementMessage('Vui l�ng ch?n bi?u m?u tru?c khi t?ng h?p.');
+      setManagementMessage('Vui lòng chọn biểu mẫu trước khi tổng hợp.');
       return;
     }
 
@@ -104,7 +104,7 @@ export function ImportFiles({
         nextFiles[index] = {
           ...fileItem,
           status: 'error',
-          message: 'Chua ch?n don v? cho file n�y.',
+          message: 'Chưa chọn đơn vị cho file này.',
         };
         continue;
       }
@@ -112,7 +112,7 @@ export function ImportFiles({
       nextFiles[index] = {
         ...fileItem,
         status: 'processing',
-        message: 'Dang d?c d? li?u Excel v� chu?n h�a bi?u...',
+        message: 'Đang đọc dữ liệu Excel và chuẩn hóa biểu...',
       };
       setFiles([...nextFiles]);
 
@@ -138,7 +138,7 @@ export function ImportFiles({
           });
 
           if (rows.length === 0) {
-            throw new Error('Kh�ng t�m th?y bi?u ph� h?p trong file. H�y ki?m tra t�n sheet.');
+            throw new Error('Không tìm thấy biểu phù hợp trong file. Hãy kiểm tra tên sheet.');
           }
         } else {
           rows =
@@ -154,14 +154,14 @@ export function ImportFiles({
           status: 'success',
           importedRows: rows.length,
           message: autoDetectSheets
-            ? `D� luu ${rows.length} d�ng d? li?u cho c�c bi?u tr�ng sheet.`
-            : `D� luu ${rows.length} d�ng d? li?u cho bi?u ${selectedTemplate!.name}.`,
+            ? `Đã lưu ${rows.length} dòng dữ liệu cho các biểu trong sheet.`
+            : `Đã lưu ${rows.length} dòng dữ liệu cho biểu ${selectedTemplate!.name}.`,
         };
       } catch (error) {
         nextFiles[index] = {
           ...fileItem,
           status: 'error',
-          message: error instanceof Error ? error.message : 'Kh�ng th? d?c file Excel n�y.',
+          message: error instanceof Error ? error.message : 'Không thể đọc file Excel này.',
         };
       }
 
@@ -171,12 +171,12 @@ export function ImportFiles({
 
   const handleDeleteUnit = async () => {
     if (!selectedUnitToDelete) {
-      setManagementMessage('H�y ch?n don v? c?n x�a d? li?u tru?c.');
+      setManagementMessage('Hãy chọn đơn vị cần xóa dữ liệu trước.');
       return;
     }
 
     const unitName = UNITS.find((unit) => unit.code === selectedUnitToDelete)?.name || selectedUnitToDelete;
-    const confirmed = window.confirm(`X�a to�n b? d? li?u c?a don v? "${unitName}" trong nam ${selectedYear}?`);
+    const confirmed = window.confirm(`Xóa toàn bộ dữ liệu của đơn vị "${unitName}" trong nam ${selectedYear}?`);
 
     if (!confirmed) {
       return;
@@ -189,18 +189,18 @@ export function ImportFiles({
       const deletedCount = await onDeleteUnitData(selectedYear, selectedUnitToDelete);
       setManagementMessage(
         deletedCount > 0
-          ? `D� x�a ${deletedCount} d�ng d? li?u c?a ${unitName} trong nam ${selectedYear}.`
-          : `Kh�ng t�m th?y d? li?u c?a ${unitName} trong nam ${selectedYear}.`,
+          ? `Đã xóa ${deletedCount} dòng dữ liệu của ${unitName} trong năm ${selectedYear}.`
+          : `Không tìm thấy dữ liệu của ${unitName} trong năm ${selectedYear}.`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'Kh�ng th? x�a d? li?u don v?.');
+      setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu đơn vị.');
     } finally {
       setIsManagingData(false);
     }
   };
 
   const handleDeleteYear = async () => {
-    const confirmed = window.confirm(`X�a to�n b? d? li?u d� luu c?a nam ${selectedYear}?`);
+    const confirmed = window.confirm(`Xóa toàn bộ dữ liệu đã lưu của năm ${selectedYear}?`);
 
     if (!confirmed) {
       return;
@@ -213,11 +213,11 @@ export function ImportFiles({
       const deletedCount = await onDeleteYearData(selectedYear);
       setManagementMessage(
         deletedCount > 0
-          ? `D� x�a s?ch ${deletedCount} d�ng d? li?u c?a nam ${selectedYear}.`
-          : `Kh�ng c� d? li?u n�o c?a nam ${selectedYear} d? x�a.`,
+          ? `Đã xóa sạch ${deletedCount} dòng dữ liệu của năm ${selectedYear}.`
+          : `Không có dữ liệu nào của năm ${selectedYear} để xóa.`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'Kh�ng th? x�a d? li?u theo nam.');
+      setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu theo năm.');
     } finally {
       setIsManagingData(false);
     }
@@ -228,15 +228,15 @@ export function ImportFiles({
   return (
     <div className="max-w-5xl p-6 md:p-8">
       <header className="mb-10">
-        <h2 className="page-title">Ti?p nh?n d? li?u</h2>
+        <h2 className="page-title">Tiếp nhận dữ liệu</h2>
         <p className="page-subtitle mt-2 text-sm">
-          D? �n: <span className="font-semibold">{projectName}</span>. Ch?n nam t?ng h?p v� t?i l�n c�c file b�o c�o t? don v? co s?.
+          Dự án: <span className="font-semibold">{projectName}</span>. Chọn năm tổng hợp và tải lên các file báo cáo từ đơn vị cơ sở.
         </p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
         <div className="panel-soft rounded-[24px] p-6">
-          <label className="col-header block mb-2">Bi?u m?u</label>
+          <label className="col-header block mb-2">Biểu mẫu</label>
           <select
             value={selectedTemplateId}
             onChange={(e) => setSelectedTemplateId(e.target.value)}
@@ -254,7 +254,7 @@ export function ImportFiles({
               onChange={(e) => setAutoDetectSheets(e.target.checked)}
               className="theme-checkbox h-3.5 w-3.5"
             />
-            T? nh?n nhi?u sheet theo template
+            Tự nhận nhiều sheet theo template
           </label>
           {autoDetectSheets && (
             <label className="mt-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">
@@ -264,14 +264,14 @@ export function ImportFiles({
                 onChange={(e) => setIncludeExtraSheets(e.target.checked)}
                 className="theme-checkbox h-3.5 w-3.5"
               />
-              Ch? nh?n template dang ch?n + sheet ph?
+              Chỉ nhận template đang chọn + sheet phụ
             </label>
           )}
-          <p className="mt-3 text-xs text-[var(--ink-soft)]">Ch?n bi?u m?u d� du?c h?c ho?c thi?t l?p.</p>
+          <p className="mt-3 text-xs text-[var(--ink-soft)]">Chọn biểu mẫu đã được học hoặc thiết lập.</p>
         </div>
 
         <div className="panel-soft rounded-[24px] p-6">
-          <label className="col-header block mb-2">Nam t?ng h?p</label>
+          <label className="col-header block mb-2">Năm tổng hợp</label>
           <select
             value={selectedYear}
             onChange={(e) => handleYearChange(e.target.value)}
@@ -286,20 +286,20 @@ export function ImportFiles({
               onChange={(e) => togglePinnedYear(e.target.checked)}
               className="theme-checkbox h-3.5 w-3.5"
             />
-            Ghim nam n�y cho l?n nh?p sau
+            Ghim năm này cho lần nhập sau
           </label>
         </div>
 
         {canManageData && (
           <div className="panel-card rounded-[24px] p-6">
-            <label className="col-header block mb-2">Qu?n tr? d? li?u theo nam</label>
+            <label className="col-header block mb-2">Quản trị dữ liệu theo năm</label>
             <div className="space-y-4">
               <select
                 value={selectedUnitToDelete}
                 onChange={(e) => setSelectedUnitToDelete(e.target.value)}
                 className="field-select text-sm"
               >
-                <option value="">-- Ch?n don v? --</option>
+                <option value="">-- Chọn đơn vị --</option>
                 {UNITS.map((unit) => <option key={unit.code} value={unit.code}>{unit.name}</option>)}
               </select>
 
@@ -308,7 +308,7 @@ export function ImportFiles({
                 disabled={isManagingData || !selectedUnitToDelete}
                 className="secondary-btn w-full disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {isManagingData ? 'Dang x�a...' : 'X�a d? li?u don v?'}
+                {isManagingData ? 'Đang xóa...' : 'Xóa dữ liệu đơn vị?'}
               </button>
 
               <button
@@ -316,7 +316,7 @@ export function ImportFiles({
                 disabled={isManagingData}
                 className="primary-btn w-full disabled:cursor-not-allowed disabled:opacity-40"
               >
-                X�a to�n b? nam
+                X?a to?n b? nam
               </button>
             </div>
 
@@ -336,7 +336,7 @@ export function ImportFiles({
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         />
         <Upload className="mx-auto mb-4 text-[var(--primary)] opacity-35" size={48} />
-        <p className="text-sm font-medium text-[var(--ink)]">K�o th? ho?c click d? ch?n file Excel (.xlsx, .xlsm, .xls)</p>
+        <p className="text-sm font-medium text-[var(--ink)]">K?o th? ho?c click d? ch?n file Excel (.xlsx, .xlsm, .xls)</p>
       </div>
 
       {files.length > 0 && (
@@ -356,7 +356,7 @@ export function ImportFiles({
                 onChange={(e) => updateUnit(i, e.target.value)}
                 className="field-select w-48 py-1 text-xs"
               >
-                <option value="">-- Ch?n don v? --</option>
+                <option value="">-- Chọn đơn vị --</option>
                 {UNITS.map((u) => <option key={u.code} value={u.code}>{u.name}</option>)}
               </select>
 
@@ -382,4 +382,6 @@ export function ImportFiles({
     </div>
   );
 }
+
+
 

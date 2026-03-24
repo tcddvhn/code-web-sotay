@@ -70,16 +70,16 @@ export function FormLearner({ project }: { project: Project }) {
             const rowsJson = JSON.stringify(rows, null, 2);
 
             const prompt = `
-              Phân tích cấu trúc bi�fu mẫu báo cáo Excel từ 15 hàng �'ầu của sheet "${sheetName}":
+              Phân tích cấu trúc biểu mẫu báo cáo Excel từ 15 hàng đầu của sheet "${sheetName}":
               ${rowsJson}
 
               Trả về JSON chính xác:
-              1. labelColumn: C�Tt chứa tiêu chí (thường là "B" hoặc "A").
-              2. dataColumns: Danh sách c�Tt chứa s�' li�?u (ví dụ: ["C", "D", "E"]).
-              3. columnHeaders: Tên tiêu �'ề tương ứng của dataColumns.
-              4. startRow: Hàng bắt �'ầu có dữ li�?u s�' (1-indexed).
-              5. endRow: Hàng kết thúc (mặc �'�<nh 1000).
-              6. name: Tên bi�fu mẫu (ví dụ: "Bi�fu mẫu 1B").
+              1. labelColumn: Cột chứa tiêu chí (thường là "B" hoặc "A").
+              2. dataColumns: Danh sách cột chứa số liệu (ví dụ: ["C", "D", "E"]).
+              3. columnHeaders: Tên tiêu đề tương ứng của dataColumns.
+              4. startRow: Hàng bắt đầu có dữ liệu số (1-indexed).
+              5. endRow: Hàng kết thúc (mặc định 1000).
+              6. name: Tên biểu mẫu (ví dụ: "Biểu mẫu 1B").
 
               Yêu cầu JSON:
               {
@@ -90,9 +90,7 @@ export function FormLearner({ project }: { project: Project }) {
                 "endRow": number,
                 "name": "string"
               }
-            `;
-
-            const response = await ai.models.generateContent({
+            ;\n\n            const response = await ai.models.generateContent({
               model: 'gemini-3-flash-preview',
               contents: prompt,
               config: {
@@ -133,7 +131,7 @@ export function FormLearner({ project }: { project: Project }) {
           const results = await Promise.all(analysisPromises);
           const validTemplates = results.filter((t) => t !== null);
           if (validTemplates.length === 0) {
-            throw new Error('AI không th�f nhận di�?n �'ược cấu trúc nào từ các sheet.');
+            throw new Error('AI không thể nhận diện được cấu trúc nào từ các sheet.');
           }
 
           setLearnedTemplates(validTemplates);
@@ -145,13 +143,13 @@ export function FormLearner({ project }: { project: Project }) {
           setConfirmAll(false);
           setIsLearning(false);
         } catch (innerErr) {
-          setError(innerErr instanceof Error ? innerErr.message : 'L�-i xử lý file.');
+          setError(innerErr instanceof Error ? innerErr.message : 'Lỗi xử lý file.');
           setIsLearning(false);
         }
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
-      setError('Không th�f �'ọc file Excel này.');
+      setError('Không thể đọc file Excel này.');
       setIsLearning(false);
     }
   };
@@ -192,19 +190,19 @@ export function FormLearner({ project }: { project: Project }) {
 
   const handleManualCreate = async () => {
     if (!manualForm.name || !manualForm.sheetName || !manualForm.dataColumns) {
-      setError('Vui lòng nhập �'ầy �'ủ thông tin template.');
+      setError('Vui lòng nhập đầy đủ thông tin template.');
       return;
     }
 
     if (existingNames.has(manualForm.name)) {
-      setError('Tên template �'ã t�"n tại trong dự án này.');
+      setError('Tên template đã tồn tại trong dự án này.');
       return;
     }
 
     const dataColumns = manualForm.dataColumns.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
     const columnHeaders = manualForm.columnHeaders
       ? manualForm.columnHeaders.split(',').map((c) => c.trim()).filter(Boolean)
-      : dataColumns.map((_, i) => `C�Tt ${i + 1}`);
+      : dataColumns.map((_, i) => `Cột ${i + 1}`);
 
     const newTemplate: FormTemplate = {
       id: `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -230,13 +228,13 @@ export function FormLearner({ project }: { project: Project }) {
   return (
     <div className="p-6 md:p-8">
       <div className="mb-8">
-        <h2 className="page-title">Quản lý bi�fu mẫu</h2>
+        <h2 className="page-title">Quản lý biểu mẫu</h2>
         <p className="page-subtitle mt-2 text-sm">Dự án: <span className="font-bold">{project.name}</span></p>
       </div>
 
       <div className="flex gap-3 mb-6">
         <button onClick={() => setMode('AI')} className={mode === 'AI' ? 'primary-btn' : 'secondary-btn'}>
-          Học bi�fu mẫu bằng AI
+          Học biểu mẫu bằng AI
         </button>
         <button onClick={() => setMode('MANUAL')} className={mode === 'MANUAL' ? 'primary-btn' : 'secondary-btn'}>
           Thiết lập thủ công
@@ -248,7 +246,7 @@ export function FormLearner({ project }: { project: Project }) {
           <div className="panel-card rounded-[24px] p-8 text-center">
             <FileSpreadsheet className="mx-auto mb-4 text-[var(--primary)] opacity-40" size={52} />
             <h3 className="section-title mb-3">Tải lên File Mẫu (Template)</h3>
-            <p className="page-subtitle text-xs">H�? th�'ng sẽ dùng AI �'�f học cấu trúc của file này.</p>
+            <p className="page-subtitle text-xs">Hệ thống sẽ dùng AI để học cấu trúc của file này.</p>
 
             <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} className="hidden" id="template-upload" />
             <label htmlFor="template-upload" className="primary-btn mt-6 inline-flex items-center gap-2">
@@ -259,14 +257,14 @@ export function FormLearner({ project }: { project: Project }) {
           {file && learnedTemplates.length === 0 && !isLearning && (
             <button onClick={learnForm} className="primary-btn w-full flex items-center justify-center gap-3">
               <Brain size={18} />
-              Bắt �'ầu phân tích bằng AI
+              Bắt đầu phân tích bằng AI
             </button>
           )}
 
           {isLearning && (
             <div className="panel-card rounded-[24px] p-8 text-center">
               <Loader2 className="mx-auto mb-4 animate-spin" size={40} />
-              <h3 className="section-title">AI �'ang học bi�fu mẫu...</h3>
+              <h3 className="section-title">AI đang học biểu mẫu...</h3>
             </div>
           )}
 
@@ -281,7 +279,7 @@ export function FormLearner({ project }: { project: Project }) {
             <div className="panel-card rounded-[24px] p-6">
               <div className="flex items-center gap-3 mb-4 text-[var(--success)]">
                 <CheckCircle size={20} />
-                <h3 className="section-title">AI �'ã tìm thấy {learnedTemplates.length} bi�fu mẫu</h3>
+                <h3 className="section-title">AI đã tìm thấy {learnedTemplates.length} biểu mẫu</h3>
               </div>
 
               <label className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">
@@ -291,7 +289,7 @@ export function FormLearner({ project }: { project: Project }) {
                   onChange={(e) => toggleConfirmAll(e.target.checked)}
                   className="theme-checkbox h-3.5 w-3.5"
                 />
-                Tôi �'ã ki�fm tra và xác nhận tất cả bi�fu
+                Tôi đã kiểm tra và xác nhận tất cả biểu mẫu
               </label>
 
               <div className="space-y-3">
@@ -311,7 +309,7 @@ export function FormLearner({ project }: { project: Project }) {
                     </div>
                     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        Tên bi�fu mẫu
+                        Tên biểu mẫu
                         <input
                           className="field-input mt-2"
                           value={tpl.name}
@@ -327,7 +325,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        C�Tt tiêu chí
+                        Cột tiêu chí
                         <input
                           className="field-input mt-2"
                           value={tpl.columnMapping.labelColumn}
@@ -335,7 +333,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        C�Tt dữ li�?u (C,D,E)
+                        Cột dữ liệu (C,D,E)
                         <input
                           className="field-input mt-2"
                           value={tpl.columnMapping.dataColumns.join(', ')}
@@ -347,7 +345,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        Hàng bắt �'ầu
+                        Hàng bắt đầu
                         <input
                           type="number"
                           className="field-input mt-2"
@@ -365,7 +363,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
-                        Tiêu �'ề c�Tt (phân cách bằng dâấu phẩy)
+                        Tiêu đề cột (phân cách bằng dấu phẩy)
                         <input
                           className="field-input mt-2"
                           value={tpl.columnHeaders.join(', ')}
@@ -383,7 +381,7 @@ export function FormLearner({ project }: { project: Project }) {
 
               <div className="mt-6 flex gap-3">
                 <button onClick={() => saveTemplates(learnedTemplates)} className="primary-btn flex-1" disabled={!allConfirmed}>
-                  Lưu tất cả bi�fu mẫu
+                  Lưu tất cả biểu mẫu
                 </button>
                 <button onClick={() => setLearnedTemplates([])} className="secondary-btn">
                   Hủy
@@ -397,11 +395,11 @@ export function FormLearner({ project }: { project: Project }) {
       {mode === 'MANUAL' && (
         <div className="max-w-4xl space-y-6">
           <div className="panel-card rounded-[24px] p-6">
-            <h3 className="section-title mb-4">Tạo bi�fu mẫu thủ công</h3>
+            <h3 className="section-title mb-4">Tạo biểu mẫu thủ công</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 className="field-input"
-                placeholder="Tên bi�fu mẫu"
+                placeholder="Tên biểu mẫu"
                 value={manualForm.name}
                 onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })}
               />
@@ -413,19 +411,19 @@ export function FormLearner({ project }: { project: Project }) {
               />
               <input
                 className="field-input"
-                placeholder="C�Tt tiêu chí (VD: B)"
+                placeholder="Cột tiêu chí (VD: B)"
                 value={manualForm.labelColumn}
                 onChange={(e) => setManualForm({ ...manualForm, labelColumn: e.target.value })}
               />
               <input
                 className="field-input"
-                placeholder="C�Tt dữ li�?u (VD: C,D,E)"
+                placeholder="Cột dữ liệu (VD: C,D,E)"
                 value={manualForm.dataColumns}
                 onChange={(e) => setManualForm({ ...manualForm, dataColumns: e.target.value })}
               />
               <input
                 className="field-input"
-                placeholder="Tiêu �'ề c�Tt (VD: T�.ng s�', Thành lập)"
+                placeholder="Tiêu đề cột (VD: Tổng số, Thành lập)"
                 value={manualForm.columnHeaders}
                 onChange={(e) => setManualForm({ ...manualForm, columnHeaders: e.target.value })}
               />
@@ -433,7 +431,7 @@ export function FormLearner({ project }: { project: Project }) {
                 <input
                   className="field-input"
                   type="number"
-                  placeholder="Hàng bắt �'ầu"
+                  placeholder="Hàng bắt đầu"
                   value={manualForm.startRow}
                   onChange={(e) => setManualForm({ ...manualForm, startRow: Number(e.target.value) })}
                 />
@@ -449,7 +447,7 @@ export function FormLearner({ project }: { project: Project }) {
 
             <button onClick={handleManualCreate} className="primary-btn mt-6 flex items-center gap-2">
               <Plus size={16} />
-              Tạo bi�fu mẫu
+              Tạo biểu mẫu
             </button>
 
             {error && (
@@ -461,18 +459,18 @@ export function FormLearner({ project }: { project: Project }) {
           </div>
 
           <div className="panel-card rounded-[24px] p-6">
-            <h3 className="section-title mb-4">Danh sách bi�fu mẫu �'ã tạo</h3>
+            <h3 className="section-title mb-4">Danh sách biểu mẫu đã tạo</h3>
             <div className="space-y-3">
               {manualTemplates.map((tpl) => (
                 <div key={tpl.id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
                   <p className="text-sm font-semibold text-[var(--ink)]">{tpl.name}</p>
                   <p className="text-xs text-[var(--ink-soft)] mt-1">
-                    Sheet: {tpl.sheetName} | C�Tt tiêu chí: {tpl.columnMapping.labelColumn} | Dữ li�?u: {tpl.columnMapping.dataColumns.join(', ')}
+                    Sheet: {tpl.sheetName} | Cột tiêu chí: {tpl.columnMapping.labelColumn} | Dữ liệu: {tpl.columnMapping.dataColumns.join(', ')}
                   </p>
                 </div>
               ))}
               {manualTemplates.length === 0 && (
-                <p className="text-xs text-[var(--ink-soft)]">Chưa có bi�fu mẫu nào.</p>
+                <p className="text-xs text-[var(--ink-soft)]">Chưa có biểu mẫu nào.</p>
               )}
             </div>
           </div>
@@ -481,4 +479,7 @@ export function FormLearner({ project }: { project: Project }) {
     </div>
   );
 }
+
+
+
 

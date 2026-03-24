@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { LayoutDashboard, FileUp, FileText, Settings, LogOut, LogIn, User as UserIcon, FolderPlus, BrainCircuit } from 'lucide-react';
 import { ViewMode } from '../types';
 import { clsx } from 'clsx';
@@ -100,10 +100,11 @@ export function Sidebar({ currentView, onViewChange, isAuthenticated, isAdmin, o
             )}
           >
             <LogIn size={14} />
-            Đăng nhập Admin
+            Đăng nhập
           </button>
         )}
       </div>
     </div>
   );
 }
+

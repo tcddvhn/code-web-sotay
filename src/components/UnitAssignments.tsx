@@ -56,15 +56,15 @@ export function UnitAssignments({ projectId, users, assignments }: UnitAssignmen
     <div className="panel-card rounded-[24px] p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="section-title">Ph�n c�ng theo d�i don v?</h3>
-          <p className="page-subtitle mt-2 text-sm">Admin g�n don v? cho t?ng ngu?i theo d�i trong d? �n hi?n t?i.</p>
+          <h3 className="section-title">Phân công theo dõi đơn vị</h3>
+          <p className="page-subtitle mt-2 text-sm">Admin gán đơn vị cho từng người theo dõi trong dự án hiện tại.</p>
         </div>
-        <button onClick={saveAssignments} className="primary-btn">Luu ph�n c�ng</button>
+        <button onClick={saveAssignments} className="primary-btn">Lưu phân công</button>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
         <div className="panel-soft rounded-[20px] p-4">
-          <label className="col-header block mb-2">Ch?n ngu?i theo d�i</label>
+          <label className="col-header block mb-2">Chọn người theo dõi</label>
           <select
             value={selectedUserId}
             onChange={(e) => setSelectedUserId(e.target.value)}
@@ -75,12 +75,12 @@ export function UnitAssignments({ projectId, users, assignments }: UnitAssignmen
             ))}
           </select>
 
-          <label className="col-header block mt-4 mb-2">T�m don v?</label>
+          <label className="col-header block mt-4 mb-2">Tìm đơn vị</label>
           <input
             value={unitFilter}
             onChange={(e) => setUnitFilter(e.target.value)}
             className="field-input"
-            placeholder="Nh?p m� ho?c t�n don v?"
+            placeholder="Nhập mã hoặc tên đơn vị"
           />
         </div>
 
@@ -109,4 +109,6 @@ export function UnitAssignments({ projectId, users, assignments }: UnitAssignmen
     </div>
   );
 }
+
+
 
