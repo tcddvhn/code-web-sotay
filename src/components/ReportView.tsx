@@ -6,6 +6,7 @@ import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, Project } from '
 import { auth, db, storage } from '../firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getPreferredReportingYear } from '../utils/reportingYear';
 
 interface ReportViewProps {
   data: ConsolidatedData;
@@ -17,7 +18,7 @@ interface ReportViewProps {
 
 export function ReportView({ data, projects, templates, selectedProjectId, onSelectProject }: ReportViewProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState(YEARS[0]);
+  const [selectedYear, setSelectedYear] = useState(() => getPreferredReportingYear());
   const [searchTerm, setSearchTerm] = useState('');
 
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
@@ -336,7 +337,6 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     </div>
   );
 }
-
 
 
 

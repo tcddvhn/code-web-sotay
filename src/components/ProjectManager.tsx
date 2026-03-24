@@ -1,13 +1,20 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { collection, doc, onSnapshot, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Plus, Trash2, CheckCircle, Clock, FolderOpen } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Project } from '../types';
 
-export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Project) => void }) {
+export function ProjectManager({
+  onSelectProject,
+  onDeleteProject,
+}: {
+  onSelectProject: (p: Project) => void;
+  onDeleteProject: (project: Project) => Promise<boolean>;
+}) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newProject, setNewProject] = useState({ name: '', description: '' });
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -52,12 +59,16 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
     }
   };
 
-  const deleteProject = async (id: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
+  const deleteProject = async (project: Project) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ dữ liệu của dự án "${project.name}"?`)) return;
+    setDeletingProjectId(project.id);
     try {
-      await deleteDoc(doc(db, 'projects', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, 'projects');
+      const deleted = await onDeleteProject(project);
+      if (!deleted) {
+        alert('Không thể xóa dự án này. Hãy kiểm tra quyền và dữ liệu liên quan.');
+      }
+    } finally {
+      setDeletingProjectId(null);
     }
   };
 
@@ -108,7 +119,11 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
                 <button onClick={() => toggleStatus(project)} title="Đổi trạng thái">
                   {project.status === 'ACTIVE' ? <CheckCircle size={16} /> : <Clock size={16} />}
                 </button>
-                <button onClick={() => deleteProject(project.id)} className="text-[var(--primary)]">
+                <button
+                  onClick={() => deleteProject(project)}
+                  className="text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={deletingProjectId === project.id}
+                >
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -128,6 +143,4 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
     </div>
   );
 }
-
-
 

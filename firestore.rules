@@ -110,30 +110,33 @@ service cloud.firestore {
     // ===============================================================
 
     match /consolidated_data/{rowId} {
-      allow read: if true;
+      allow read: if isContributor();
       allow create, update: if isAdmin() && isValidDataRow(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /consolidated_data_v2/{rowId} {
-      allow read: if true;
+      allow read: if isContributor();
       allow create, update: if isContributor() && isValidDataRow(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /projects/{projectId} {
-      allow read: if true;
-      allow write: if isAdmin() && isValidProject(request.resource.data);
+      allow read: if isContributor();
+      allow create, update: if isAdmin() && isValidProject(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /templates/{templateId} {
-      allow read: if true;
-      allow write: if isAdmin() && isValidTemplate(request.resource.data);
+      allow read: if isContributor();
+      allow create, update: if isAdmin() && isValidTemplate(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /settings/global {
-      allow read: if true;
-      allow write: if isAdmin() && isValidSettings(request.resource.data);
+      allow read: if isContributor();
+      allow create, update: if isAdmin() && isValidSettings(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /settings/migrations {
@@ -154,7 +157,7 @@ service cloud.firestore {
     }
 
     match /assignments/{assignmentId} {
-      allow read: if isAuthenticated();
+      allow read: if isContributor();
       allow write: if isAdmin();
     }
   }

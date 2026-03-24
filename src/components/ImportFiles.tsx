@@ -289,7 +289,7 @@ export function ImportFiles({
                 onChange={(e) => setIncludeExtraSheets(e.target.checked)}
                 className="theme-checkbox h-3.5 w-3.5"
               />
-              Chỉ nhận template đang chọn + sheet phụ
+              Quét toàn bộ template của dự án
             </label>
           )}
           <p className="mt-3 text-xs text-[var(--ink-soft)]">Chọn biểu mẫu đã được học hoặc thiết lập.</p>
@@ -349,7 +349,7 @@ export function ImportFiles({
                 disabled={isManagingData}
                 className="secondary-btn w-full disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Xóa toàn bộ dữ liệu dự án
+                Xóa toàn bộ dữ liệu và dự án
               </button>
             </div>
 
@@ -415,7 +415,6 @@ export function ImportFiles({
     </div>
   );
 }
-
 
 
 

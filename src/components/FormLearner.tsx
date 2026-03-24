@@ -120,8 +120,13 @@ export function FormLearner({ project }: { project: Project }) {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           const sheetNames = workbook.SheetNames.slice(0, 10);
+          const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+          if (!geminiApiKey) {
+            throw new Error('Thiếu VITE_GEMINI_API_KEY. Hãy thêm khóa Gemini vào file .env trước khi dùng chức năng AI.');
+          }
+
+          const ai = new GoogleGenAI({ apiKey: geminiApiKey });
           const analysisPromises = sheetNames.map(async (sheetName) => {
             const sheet = workbook.Sheets[sheetName];
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 'A', range: 0, defval: '' }).slice(0, 15);
@@ -741,7 +746,6 @@ export function FormLearner({ project }: { project: Project }) {
     </div>
   );
 }
-
 
 
 

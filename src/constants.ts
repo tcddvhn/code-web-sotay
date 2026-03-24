@@ -150,9 +150,12 @@ export const UNITS: Unit[] = [
   { code: "DV132", name: "Đảng bộ Xã Yên Xuân" },
 ];
 
-export const YEARS = ["2024", "2025", "2026", "2027", "2028"];
+const CURRENT_YEAR = new Date().getFullYear();
+const START_YEAR = Math.max(2024, CURRENT_YEAR - 2);
 
-export const DEFAULT_REPORTING_YEAR = "2026";
+export const YEARS = Array.from({ length: 5 }, (_, index) => String(START_YEAR + index));
+
+export const DEFAULT_REPORTING_YEAR = String(CURRENT_YEAR);
 
 export const DEFAULT_PROJECT_ID = "proj_nq22";
 export const DEFAULT_PROJECT_NAME = "Tổng hợp NQ22";

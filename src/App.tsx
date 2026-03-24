@@ -9,7 +9,6 @@ import {
   limit,
   onSnapshot,
   query,
-  startAfter,
   serverTimestamp,
   setDoc,
   where,
@@ -40,6 +39,7 @@ import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout
 import { AppSettings, ConsolidatedData, DataRow, FormTemplate, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { ensureNQ22Setup, resetNQ22Migration } from './utils/migrateNQ22';
+import { buildAssignmentUsers, getAllowedAccount, getAssignmentKey, isAdminEmail, isAllowedEmail } from './access';
 
 const DEFAULT_SETTINGS: AppSettings = {
   oneDriveLink: 'https://onedrive.live.com/...',
@@ -78,25 +78,10 @@ export default function App() {
   const [migrationHistory, setMigrationHistory] = useState<any[]>([]);
 
   const isAuthenticated = useMemo(() => !!user, [user]);
-  const allowedUsers = useMemo(
-    () =>
-      new Map<string, string>([
-        ['admin@sotay.com', 'Admin'],
-        ['trieuthingoc@sotay.com', 'Triệu Thị Ngọc'],
-        ['tranthikieuanh@sotay.com', 'Trần Thị Kiều Anh'],
-        ['tranphuongha@sotay.com', 'Trần Phương Hà'],
-        ['phamthithuhanh@sotay.com', 'Phạm Thị Thu Hạnh'],
-        ['nguyenthugiang@sotay.com', 'Nguyễn Thu Giang'],
-        ['nguyensinghiem@sotay.com', 'Nguyễn Sĩ Nghiêm'],
-        ['nguyenhuuhung@sotay.com', 'Nguyễn Hữu Hùng'],
-      ]),
-    [],
-  );
-  const adminEmails = useMemo(() => new Set(['admin@sotay.com']), []);
-  const isAllowedEmail = (email?: string | null) => !!email && allowedUsers.has(email.toLowerCase());
+  const assignmentUsers = useMemo(() => buildAssignmentUsers(users), [users]);
   const isAdmin = useMemo(
-    () => userProfile?.role === 'admin' || (user?.email ? adminEmails.has(user.email) : false),
-    [userProfile, user, adminEmails],
+    () => userProfile?.role === 'admin' || isAdminEmail(user?.email),
+    [userProfile, user],
   );
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
@@ -147,23 +132,21 @@ export default function App() {
     getDoc(userRef).then((snap) => {
       if (cancelled) return;
       if (!snap.exists()) {
-        const email = user.email ? user.email.toLowerCase() : '';
-        const role = email && adminEmails.has(email) ? 'admin' : 'contributor';
+        const account = getAllowedAccount(user.email);
         const profile: UserProfile = {
           id: user.uid,
           email: user.email,
-          displayName: allowedUsers.get(email) || user.displayName,
-          role,
+          displayName: account?.displayName || user.displayName,
+          role: account?.role || 'contributor',
         };
         setDoc(userRef, profile, { merge: true });
       } else {
         const existing = snap.data() as UserProfile;
-        const email = user.email ? user.email.toLowerCase() : '';
-        const expectedName = allowedUsers.get(email);
-        if (expectedName && existing.displayName !== expectedName) {
-          setDoc(userRef, { displayName: expectedName }, { merge: true });
+        const account = getAllowedAccount(user.email);
+        if (account?.displayName && existing.displayName !== account.displayName) {
+          setDoc(userRef, { displayName: account.displayName }, { merge: true });
         }
-        if (email && adminEmails.has(email) && existing.role !== 'admin') {
+        if (account?.role === 'admin' && existing.role !== 'admin') {
           setDoc(userRef, { role: 'admin' }, { merge: true });
         }
       }
@@ -183,9 +166,14 @@ export default function App() {
       cancelled = true;
       unsubscribe();
     };
-  }, [user, adminEmails, allowedUsers]);
+  }, [user]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setProjects([]);
+      return;
+    }
+
     const unsubscribe = onSnapshot(
       collection(db, 'projects'),
       (snapshot) => {
@@ -198,7 +186,7 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -230,8 +218,9 @@ export default function App() {
         const map: Record<string, string[]> = {};
         snapshot.docs.forEach((docSnap) => {
           const data = docSnap.data() as any;
-          if (data.userId && Array.isArray(data.unitCodes)) {
-            map[data.userId] = data.unitCodes;
+          const assigneeKey = data.assigneeKey || getAssignmentKey(data.email) || data.userId;
+          if (assigneeKey && Array.isArray(data.unitCodes)) {
+            map[assigneeKey] = data.unitCodes;
           }
         });
         setAssignments(map);
@@ -243,8 +232,13 @@ export default function App() {
   }, [isAuthenticated, selectedProjectId]);
 
   useEffect(() => {
+    if (!isAuthenticated || !selectedProjectId) {
+      setTemplates([]);
+      return;
+    }
+
     const unsubscribe = onSnapshot(
-      collection(db, 'templates'),
+      query(collection(db, 'templates'), where('projectId', '==', selectedProjectId)),
       (snapshot) => {
         const list = snapshot.docs.map((snapshotDoc) => ({ id: snapshotDoc.id, ...snapshotDoc.data() } as FormTemplate));
         setTemplates(list);
@@ -255,11 +249,16 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated, selectedProjectId]);
 
   useEffect(() => {
+    if (!isAuthenticated || !selectedProjectId) {
+      setData({});
+      return;
+    }
+
     const unsubscribe = onSnapshot(
-      collection(db, 'consolidated_data_v2'),
+      query(collection(db, 'consolidated_data_v2'), where('projectId', '==', selectedProjectId)),
       (snapshot) => {
         const organized: ConsolidatedData = {};
         snapshot.docs.forEach((snapshotDoc) => {
@@ -277,9 +276,14 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated, selectedProjectId]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setSettings(DEFAULT_SETTINGS);
+      return;
+    }
+
     const unsubscribe = onSnapshot(
       doc(db, 'settings', 'global'),
       (snapshot) => {
@@ -296,9 +300,14 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAdmin) {
+      setMigrationHistory([]);
+      return;
+    }
+
     const unsubscribe = onSnapshot(
       doc(db, 'settings', 'migrations'),
       (snapshot) => {
@@ -313,7 +322,7 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -385,12 +394,9 @@ export default function App() {
 
   const deleteReportExports = async (projectId: string) => {
     let total = 0;
-    let lastDoc: any = null;
 
     while (true) {
-      const q = lastDoc
-        ? query(collection(db, 'report_exports'), where('projectId', '==', projectId), startAfter(lastDoc), limit(FIRESTORE_BATCH_LIMIT))
-        : query(collection(db, 'report_exports'), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
+      const q = query(collection(db, 'report_exports'), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
       const snapshot = await getDocs(q);
       if (snapshot.empty) break;
 
@@ -408,7 +414,6 @@ export default function App() {
       }
       await batch.commit();
       total += snapshot.size;
-      lastDoc = snapshot.docs[snapshot.docs.length - 1];
     }
 
     return total;
@@ -416,12 +421,9 @@ export default function App() {
 
   const deleteByProjectQuery = async (collectionName: string, projectId: string) => {
     let totalDeleted = 0;
-    let lastDoc: any = null;
 
     while (true) {
-      const q = lastDoc
-        ? query(collection(db, collectionName), where('projectId', '==', projectId), startAfter(lastDoc), limit(FIRESTORE_BATCH_LIMIT))
-        : query(collection(db, collectionName), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
+      const q = query(collection(db, collectionName), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
       const snapshot = await getDocs(q);
       if (snapshot.empty) break;
 
@@ -429,7 +431,6 @@ export default function App() {
       snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
       await batch.commit();
       totalDeleted += snapshot.size;
-      lastDoc = snapshot.docs[snapshot.docs.length - 1];
     }
 
     return totalDeleted;
@@ -447,11 +448,20 @@ export default function App() {
       const deletedExports = await deleteReportExports(projectId);
       await deleteDoc(doc(db, 'projects', projectId));
 
+      if (selectedProjectId === projectId) {
+        setCurrentView('DASHBOARD');
+      }
+
       return deletedDataRows + deletedTemplates + deletedAssignments + deletedExports + 1;
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `consolidated_data_v2/${projectId}`);
       return 0;
     }
+  };
+
+  const handleDeleteProject = async (project: Project) => {
+    const deletedCount = await handleDeleteProjectData(project.id);
+    return deletedCount > 0;
   };
 
   const handleDataImported = async (newData: DataRow[]) => {
@@ -477,12 +487,10 @@ export default function App() {
           collection(db, 'consolidated_data_v2'),
           where('year', '==', year),
           where('projectId', '==', currentProject.id),
+          where('unitCode', '==', unitCode),
         ),
       );
-      const rowIds = snapshot.docs
-        .map((snapshotDoc) => ({ id: snapshotDoc.id, data: snapshotDoc.data() as DataRow }))
-        .filter((rowDoc) => rowDoc.data.unitCode === unitCode)
-        .map((rowDoc) => rowDoc.id);
+      const rowIds = snapshot.docs.map((snapshotDoc) => snapshotDoc.id);
 
       if (rowIds.length === 0) {
         return 0;
@@ -521,6 +529,79 @@ export default function App() {
       handleFirestoreError(error, OperationType.DELETE, `consolidated_data_v2/${year}`);
       return 0;
     }
+  };
+
+  const handleSaveAssignments = async (assigneeKey: string, unitCodes: string[]) => {
+    if (!isAdmin || !selectedProjectId) {
+      return;
+    }
+
+    const normalizedAssigneeKey = getAssignmentKey(assigneeKey);
+    const assignmentUser = assignmentUsers.find((item) => item.id === normalizedAssigneeKey);
+    if (!assignmentUser) {
+      throw new Error('Không tìm thấy người theo dõi để lưu phân công.');
+    }
+
+    const orderedUnitCodes = UNITS.filter((unit) => unitCodes.includes(unit.code)).map((unit) => unit.code);
+    const selectedUnitSet = new Set(orderedUnitCodes);
+    const snapshot = await getDocs(
+      query(collection(db, 'assignments'), where('projectId', '==', selectedProjectId)),
+    );
+
+    const nextAssignments = new Map<
+      string,
+      { userId?: string; email: string; displayName: string; unitCodes: string[] }
+    >();
+
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data() as any;
+      const key = data.assigneeKey || getAssignmentKey(data.email) || data.userId;
+      if (!key) {
+        return;
+      }
+
+      nextAssignments.set(key, {
+        userId: data.userId || undefined,
+        email: data.email || key,
+        displayName: data.displayName || data.email || key,
+        unitCodes: Array.isArray(data.unitCodes) ? data.unitCodes : [],
+      });
+    });
+
+    nextAssignments.forEach((entry, key) => {
+      nextAssignments.set(key, {
+        ...entry,
+        unitCodes: entry.unitCodes.filter((unitCode) => !selectedUnitSet.has(unitCode)),
+      });
+    });
+
+    nextAssignments.set(normalizedAssigneeKey, {
+      userId: assignmentUser.userId,
+      email: assignmentUser.email,
+      displayName: assignmentUser.displayName,
+      unitCodes: orderedUnitCodes,
+    });
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+
+    nextAssignments.forEach((entry, key) => {
+      if (entry.unitCodes.length === 0) {
+        return;
+      }
+
+      batch.set(doc(db, 'assignments', `${selectedProjectId}_${key}`), {
+        projectId: selectedProjectId,
+        assigneeKey: key,
+        userId: entry.userId || null,
+        email: entry.email,
+        displayName: entry.displayName,
+        unitCodes: entry.unitCodes,
+        updatedAt: serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
   };
 
   const handleSaveSettings = async () => {
@@ -630,17 +711,21 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             isAdmin={isAdmin}
-            users={users}
+            assignmentUsers={assignmentUsers}
             assignments={assignments}
             currentUser={userProfile}
+            onSaveAssignments={handleSaveAssignments}
           />
         );
       case 'PROJECTS':
         return isAdmin ? (
-          <ProjectManager onSelectProject={(project) => {
-            setSelectedProjectId(project.id);
-            setCurrentView('LEARN_FORM');
-          }} />
+          <ProjectManager
+            onSelectProject={(project) => {
+              setSelectedProjectId(project.id);
+              setCurrentView('LEARN_FORM');
+            }}
+            onDeleteProject={handleDeleteProject}
+          />
         ) : (
           <DashboardOverview
             data={data}
@@ -649,9 +734,10 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             isAdmin={isAdmin}
-            users={users}
+            assignmentUsers={assignmentUsers}
             assignments={assignments}
             currentUser={userProfile}
+            onSaveAssignments={handleSaveAssignments}
           />
         );
       case 'LEARN_FORM':
@@ -665,9 +751,10 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             isAdmin={isAdmin}
-            users={users}
+            assignmentUsers={assignmentUsers}
             assignments={assignments}
             currentUser={userProfile}
+            onSaveAssignments={handleSaveAssignments}
           />
         );
       case 'IMPORT':
@@ -689,6 +776,11 @@ export default function App() {
             projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            isAdmin={isAdmin}
+            assignmentUsers={assignmentUsers}
+            assignments={assignments}
+            currentUser={userProfile}
+            onSaveAssignments={handleSaveAssignments}
           />
         );
       case 'REPORTS':
@@ -899,9 +991,10 @@ function DashboardOverview({
   selectedProjectId,
   onSelectProject,
   isAdmin,
-  users,
+  assignmentUsers,
   assignments,
   currentUser,
+  onSaveAssignments,
 }: {
   data: ConsolidatedData;
   templates: FormTemplate[];
@@ -909,9 +1002,10 @@ function DashboardOverview({
   selectedProjectId: string;
   onSelectProject: (id: string) => void;
   isAdmin: boolean;
-  users: UserProfile[];
+  assignmentUsers: ReturnType<typeof buildAssignmentUsers>;
   assignments: Record<string, string[]>;
   currentUser: UserProfile | null;
+  onSaveAssignments: (assigneeKey: string, unitCodes: string[]) => Promise<void>;
 }) {
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL');
@@ -945,14 +1039,14 @@ function DashboardOverview({
   const assignmentMap = useMemo(() => {
     const map = new Map<string, string>();
     Object.entries(assignments).forEach(([userId, unitCodes]) => {
-      const user = users.find((u) => u.id === userId);
+      const user = assignmentUsers.find((u) => u.id === userId);
       const name = user?.displayName || user?.email || 'Chưa rõ';
       unitCodes.forEach((code) => {
         map.set(code, name);
       });
     });
     return map;
-  }, [assignments, users]);
+  }, [assignments, assignmentUsers]);
 
   const unitLogs = useMemo<UnitLog[]>(() => {
     const sheetOrder = new Map(SHEET_CONFIGS.map((sheet, index) => [sheet.name, index]));
@@ -999,7 +1093,7 @@ function DashboardOverview({
 
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
   const completedProjects = projects.filter((p) => p.status === 'COMPLETED').length;
-  const assignees = useMemo(() => users.filter((u) => u.role === 'contributor'), [users]);
+  const assignees = useMemo(() => assignmentUsers, [assignmentUsers]);
 
   const stats = [
     { label: 'Tổng đơn vị', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
@@ -1102,7 +1196,12 @@ function DashboardOverview({
 
       {isAdmin && assignees.length > 0 && (
         <div className="mt-8">
-          <UnitAssignments projectId={selectedProjectId} users={assignees} assignments={assignments} />
+          <UnitAssignments
+            projectId={selectedProjectId}
+            users={assignees}
+            assignments={assignments}
+            onSaveAssignments={onSaveAssignments}
+          />
         </div>
       )}
 
@@ -1291,11 +1390,3 @@ function DashboardOverview({
     </div>
   );
 }
-
-
-
-
-
-
-
-

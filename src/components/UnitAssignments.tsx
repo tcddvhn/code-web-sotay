@@ -1,28 +1,47 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
 import { UNITS } from '../constants';
-import { UserProfile } from '../types';
+import { AssignmentUser } from '../types';
 
 interface UnitAssignmentsProps {
   projectId: string;
-  users: UserProfile[];
+  users: AssignmentUser[];
   assignments: Record<string, string[]>;
+  onSaveAssignments: (assigneeKey: string, unitCodes: string[]) => Promise<void>;
 }
 
-export function UnitAssignments({ projectId, users, assignments }: UnitAssignmentsProps) {
+export function UnitAssignments({ projectId, users, assignments, onSaveAssignments }: UnitAssignmentsProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>(users[0]?.id || '');
   const [unitFilter, setUnitFilter] = useState('');
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (users.length > 0 && !users.find((user) => user.id === selectedUserId)) {
+      setSelectedUserId(users[0].id);
+    }
+  }, [users, selectedUserId]);
 
   useEffect(() => {
     setSelectedUnits(assignments[selectedUserId] || []);
   }, [assignments, selectedUserId]);
+
+  const assignedElsewhere = useMemo(() => {
+    const hidden = new Set<string>();
+    Object.entries(assignments).forEach(([assigneeKey, unitCodes]) => {
+      if (assigneeKey === selectedUserId) return;
+      unitCodes.forEach((unitCode) => hidden.add(unitCode));
+    });
+    return hidden;
+  }, [assignments, selectedUserId]);
+
   const filteredUnits = useMemo(() => {
     const lower = unitFilter.trim().toLowerCase();
-    if (!lower) return UNITS;
-    return UNITS.filter((u) => u.name.toLowerCase().includes(lower) || u.code.toLowerCase().includes(lower));
-  }, [unitFilter]);
+    const source = UNITS.filter(
+      (unit) => selectedUnits.includes(unit.code) || !assignedElsewhere.has(unit.code),
+    );
+    if (!lower) return source;
+    return source.filter((u) => u.name.toLowerCase().includes(lower) || u.code.toLowerCase().includes(lower));
+  }, [assignedElsewhere, selectedUnits, unitFilter]);
 
   const toggleUnit = (code: string) => {
     const next = new Set(selectedUnits);
@@ -37,18 +56,11 @@ export function UnitAssignments({ projectId, users, assignments }: UnitAssignmen
 
   const saveAssignments = async () => {
     if (!selectedUserId) return;
-    const user = users.find((u) => u.id === selectedUserId);
+    setIsSaving(true);
     try {
-      await setDoc(doc(db, 'assignments', `${projectId}_${selectedUserId}`), {
-        projectId,
-        userId: selectedUserId,
-        email: user?.email || null,
-        displayName: user?.displayName || null,
-        unitCodes: selectedUnits,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'assignments');
+      await onSaveAssignments(selectedUserId, selectedUnits);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -57,9 +69,17 @@ export function UnitAssignments({ projectId, users, assignments }: UnitAssignmen
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h3 className="section-title">Phân công theo dõi đơn vị</h3>
-          <p className="page-subtitle mt-2 text-sm">Admin gán đơn vị cho từng người theo dõi trong dự án hiện tại.</p>
+          <p className="page-subtitle mt-2 text-sm">
+            Admin gán đơn vị cho 8 tài khoản đã cấp quyền. Đơn vị đã giao cho người khác sẽ tự ẩn khỏi danh sách chọn.
+          </p>
         </div>
-        <button onClick={saveAssignments} className="primary-btn">Lưu phân công</button>
+        <button
+          onClick={saveAssignments}
+          className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+          disabled={!selectedUserId || isSaving}
+        >
+          {isSaving ? 'Đang lưu...' : 'Lưu phân công'}
+        </button>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
@@ -82,6 +102,12 @@ export function UnitAssignments({ projectId, users, assignments }: UnitAssignmen
             className="field-input"
             placeholder="Nhập mã hoặc tên đơn vị"
           />
+          <p className="mt-3 text-xs text-[var(--ink-soft)]">
+            Dự án: <span className="font-semibold">{projectId}</span>
+          </p>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">
+            Đang hiện {filteredUnits.length}/{UNITS.length} đơn vị khả dụng.
+          </p>
         </div>
 
         <div className="max-h-[320px] overflow-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
@@ -109,6 +135,5 @@ export function UnitAssignments({ projectId, users, assignments }: UnitAssignmen
     </div>
   );
 }
-
 
 

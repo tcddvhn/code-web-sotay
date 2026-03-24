@@ -46,6 +46,14 @@ export interface UserProfile {
   role: 'admin' | 'contributor';
 }
 
+export interface AssignmentUser {
+  id: string;
+  email: string;
+  displayName: string;
+  role: 'admin' | 'contributor';
+  userId?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
