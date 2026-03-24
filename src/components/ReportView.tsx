@@ -19,6 +19,14 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
 
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
   const selectedTemplate = projectTemplates.find((tpl) => tpl.id === selectedTemplateId) || null;
+  const columnHeaders = useMemo(() => {
+    if (!selectedTemplate) return [];
+    if (Array.isArray(selectedTemplate.columnHeaders) && selectedTemplate.columnHeaders.length > 0) {
+      return selectedTemplate.columnHeaders;
+    }
+    const fallbackCount = selectedTemplate.columnMapping?.dataColumns?.length || 0;
+    return Array.from({ length: fallbackCount }, (_, i) => `Cột ${i + 1}`);
+  }, [selectedTemplate]);
 
   useEffect(() => {
     if (projectTemplates.length > 0 && !projectTemplates.find((tpl) => tpl.id === selectedTemplateId)) {
@@ -77,7 +85,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         'Tiêu chí': row.label,
       };
       row.values.forEach((val, i) => {
-        rowData[selectedTemplate.columnHeaders[i] || `Giá trị ${i + 1}`] = val;
+        rowData[columnHeaders[i] || `Giá trị ${i + 1}`] = val;
       });
       return rowData;
     });
@@ -171,7 +179,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                 <tr>
                   <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10">Đơn vị</th>
                   <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white">Tiêu chí</th>
-                  {selectedTemplate.columnHeaders.map((header, i) => (
+                  {columnHeaders.map((header, i) => (
                     <th key={i} className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[120px]">
                       {header}
                     </th>
@@ -198,7 +206,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                   })
                 ) : (
                   <tr>
-                    <td colSpan={2 + selectedTemplate.columnHeaders.length} className="p-12 text-center opacity-40 italic">
+                    <td colSpan={2 + columnHeaders.length} className="p-12 text-center opacity-40 italic">
                       Không tìm thấy dữ liệu cho tiêu chí này.
                     </td>
                   </tr>
