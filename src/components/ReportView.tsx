@@ -550,8 +550,10 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                           key={`hdr-${rowIndex}-${cellIndex}`}
                           colSpan={cell.colSpan}
                           rowSpan={cell.rowSpan}
-                          className={`border-r border-white/20 bg-[var(--primary-dark)] px-2 py-2 text-center align-middle text-[10px] leading-snug tracking-[0.08em] text-white whitespace-normal ${
-                            cellIndex === 0 ? 'sticky left-0 z-10 min-w-[220px] max-w-[280px]' : 'min-w-[72px] max-w-[132px]'
+                          className={`border-r border-b border-white/70 bg-[var(--primary-dark)] px-2 py-2 text-center align-middle text-[15px] leading-snug tracking-[0.02em] text-white whitespace-normal ${
+                            cellIndex === 0
+                              ? 'sticky left-0 z-10 min-w-[220px] max-w-[280px] text-[16px] font-bold'
+                              : 'min-w-[72px] max-w-[132px] font-semibold'
                           }`}
                         >
                           {cell.text || '\u00A0'}
@@ -561,13 +563,13 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                   ))
                 ) : (
                   <tr>
-                    <th className="sticky left-0 z-10 min-w-[220px] max-w-[280px] border-r border-white/20 bg-[var(--primary-dark)] px-3 py-2 text-[10px] leading-snug tracking-[0.08em] text-white whitespace-normal">
+                    <th className="sticky left-0 z-10 min-w-[220px] max-w-[280px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-3 py-2 text-[15px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal">
                       Tiêu chí
                     </th>
                     {columnHeaders.map((header, index) => (
                       <th
                         key={header || index}
-                        className="min-w-[72px] max-w-[132px] border-r border-white/20 bg-[var(--primary-dark)] px-2 py-2 text-center text-[10px] leading-snug tracking-[0.08em] text-white whitespace-normal"
+                        className="min-w-[72px] max-w-[132px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-2 py-2 text-center text-[15px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal"
                       >
                         {header}
                       </th>
