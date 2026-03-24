@@ -1,14 +1,8 @@
 import * as XLSX from 'xlsx';
 import { SHEET_CONFIGS, SHEET_LABELS } from '../constants';
-import { DataRow } from '../types';
+import { DataRow, FormTemplate } from '../types';
 
-export interface ParsedWorkbookResult {
-  rows: DataRow[];
-  importedSheets: string[];
-  missingSheets: string[];
-}
-
-function normalizeCellValue(value: unknown): number {
+export function normalizeCellValue(value: unknown): number {
   if (value === null || value === undefined || value === '') {
     return 0;
   }
@@ -37,63 +31,112 @@ function normalizeCellValue(value: unknown): number {
 
 function getLabelForRow(sheetName: string, sourceRow: number) {
   const label = SHEET_LABELS[sheetName]?.find((entry) => entry.row === sourceRow)?.label;
-  return label || `Dòng ${sourceRow}`;
+  return label || `DÃ²ng ${sourceRow}`;
 }
 
-export async function parseExcelReportFile(
+export async function parseLegacySheet(
   file: File,
   unitCode: string,
   year: string,
-): Promise<ParsedWorkbookResult> {
+  sheetName: string,
+  projectId: string,
+  templateId: string,
+): Promise<DataRow[]> {
   const data = await file.arrayBuffer();
-  const workbook = XLSX.read(data, {
-    type: 'array',
-    cellFormula: true,
-    cellHTML: false,
-    cellText: false,
-  });
+  const workbook = XLSX.read(data, { type: 'array', cellFormula: true, cellHTML: false, cellText: false });
+  return parseLegacyFromWorkbook(workbook, unitCode, year, sheetName, projectId, templateId);
+}
+
+export async function parseTemplateSheet(
+  file: File,
+  template: FormTemplate,
+  unitCode: string,
+  year: string,
+): Promise<DataRow[]> {
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data, { type: 'array' });
+  return parseTemplateFromWorkbook(workbook, template, unitCode, year);
+}
+
+export function parseLegacyFromWorkbook(
+  workbook: XLSX.WorkBook,
+  unitCode: string,
+  year: string,
+  sheetName: string,
+  projectId: string,
+  templateId: string,
+): DataRow[] {
+  const config = SHEET_CONFIGS.find((cfg) => cfg.name === sheetName);
+  if (!config) {
+    throw new Error(`KhÃ´ng tÃ¬m tháº¥y cáº¥u hÃ¬nh biá»ƒu ${sheetName}.`);
+  }
+
+  const worksheet = workbook.Sheets[sheetName];
+  if (!worksheet) {
+    throw new Error(`KhÃ´ng tÃ¬m tháº¥y sheet ${sheetName} trong file Excel.`);
+  }
 
   const rows: DataRow[] = [];
-  const importedSheets: string[] = [];
-  const missingSheets: string[] = [];
+  for (let sourceRow = config.startRow; sourceRow <= config.endRow; sourceRow++) {
+    const values: number[] = [];
+    for (let sourceCol = config.startCol; sourceCol <= config.endCol; sourceCol++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: sourceRow - 1, c: sourceCol - 1 });
+      const cell = worksheet[cellAddress];
+      values.push(normalizeCellValue(cell?.v ?? cell?.w));
+    }
+    rows.push({
+      projectId,
+      templateId,
+      unitCode,
+      year,
+      sourceRow,
+      label: getLabelForRow(sheetName, sourceRow),
+      values,
+    });
+  }
 
-  for (const config of SHEET_CONFIGS) {
-    const worksheet = workbook.Sheets[config.name];
+  return rows;
+}
 
-    if (!worksheet) {
-      missingSheets.push(config.name);
+export function parseTemplateFromWorkbook(
+  workbook: XLSX.WorkBook,
+  template: FormTemplate,
+  unitCode: string,
+  year: string,
+): DataRow[] {
+  const worksheet = workbook.Sheets[template.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+  if (!worksheet) {
+    throw new Error('KhÃ´ng tÃ¬m tháº¥y sheet phÃ¹ há»£p trong file Excel.');
+  }
+
+  const { labelColumn, dataColumns, startRow, endRow } = template.columnMapping;
+  const rows: DataRow[] = [];
+
+  for (let r = startRow; r <= endRow; r += 1) {
+    const labelCell = worksheet[`${labelColumn}${r}`];
+    if (!labelCell || !labelCell.v) {
       continue;
     }
 
-    importedSheets.push(config.name);
+    const values = dataColumns.map((col) => {
+      const cell = worksheet[`${col}${r}`];
+      return normalizeCellValue(cell?.v ?? cell?.w);
+    });
 
-    for (let sourceRow = config.startRow; sourceRow <= config.endRow; sourceRow++) {
-      const values: number[] = [];
-
-      for (let sourceCol = config.startCol; sourceCol <= config.endCol; sourceCol++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: sourceRow - 1, c: sourceCol - 1 });
-        const cell = worksheet[cellAddress];
-        values.push(normalizeCellValue(cell?.v ?? cell?.w));
-      }
-
-      rows.push({
-        unitCode,
-        year,
-        sheetName: config.name,
-        sourceRow,
-        label: getLabelForRow(config.name, sourceRow),
-        values,
-      });
-    }
+    rows.push({
+      projectId: template.projectId,
+      templateId: template.id,
+      unitCode,
+      year,
+      sourceRow: r,
+      label: String(labelCell.v),
+      values,
+    });
   }
 
-  if (importedSheets.length === 0) {
-    throw new Error('Không tìm thấy biểu hợp lệ trong file Excel.');
+  if (rows.length === 0) {
+    throw new Error('KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u phÃ¹ há»£p trong file.');
   }
 
-  return {
-    rows,
-    importedSheets,
-    missingSheets,
-  };
+  return rows;
 }

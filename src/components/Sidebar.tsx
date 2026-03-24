@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileUp, FileText, Settings, LogOut, LogIn, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, FileUp, FileText, Settings, LogOut, LogIn, User as UserIcon, FolderPlus, BrainCircuit } from 'lucide-react';
 import { ViewMode } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -16,16 +16,22 @@ interface SidebarProps {
 export function Sidebar({ currentView, onViewChange, isAuthenticated, onLogout, user }: SidebarProps) {
   const menuItems = [
     { id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: LayoutDashboard },
-    ...(isAuthenticated ? [{ id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: FileUp }] : []),
-    { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText },
-    { id: 'SETTINGS' as ViewMode, label: 'Cài đặt', icon: Settings },
+    ...(isAuthenticated
+      ? [
+          { id: 'PROJECTS' as ViewMode, label: 'Dá»± Ã¡n', icon: FolderPlus },
+          { id: 'LEARN_FORM' as ViewMode, label: 'Biá»ƒu máº«u', icon: BrainCircuit },
+          { id: 'IMPORT' as ViewMode, label: 'Tiáº¿p nháº­n dá»¯ liá»‡u', icon: FileUp },
+        ]
+      : []),
+    { id: 'REPORTS' as ViewMode, label: 'BÃ¡o cÃ¡o', icon: FileText },
+    { id: 'SETTINGS' as ViewMode, label: 'CÃ i Ä‘áº·t', icon: Settings },
   ];
 
   return (
     <div className="sidebar-shell flex h-screen w-72 flex-col">
       <div className="border-b border-[var(--sidebar-border)] p-8">
         <h1 className="sidebar-title">
-          Hệ thống quản trị <br /> dữ liệu tập trung
+          HÄ† THá»NG QUáº¢N TRá» <br /> Dá»® LIá»†U TCÄ, ÄV Táº¬P TRUNG
         </h1>
         <p className="sidebar-meta mt-3 text-[10px] uppercase tracking-[0.24em]">v2.0.0 / Enterprise</p>
       </div>
@@ -38,10 +44,8 @@ export function Sidebar({ currentView, onViewChange, isAuthenticated, onLogout, 
             className={twMerge(
               clsx(
                 'sidebar-item w-full flex items-center gap-3 px-8 py-4 text-sm font-medium transition-all duration-200',
-                currentView === item.id 
-                  ? 'sidebar-item-active'
-                  : ''
-              )
+                currentView === item.id ? 'sidebar-item-active' : '',
+              ),
             )}
           >
             <item.icon size={18} strokeWidth={currentView === item.id ? 2.5 : 2} />
@@ -71,27 +75,27 @@ export function Sidebar({ currentView, onViewChange, isAuthenticated, onLogout, 
             </div>
           </div>
         )}
-        
+
         {user ? (
-          <button 
+          <button
             onClick={onLogout}
             className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 transition-opacity hover:opacity-70"
           >
             <LogOut size={14} />
-            Đăng xuất
+            ÄÄƒng xuáº¥t
           </button>
         ) : (
-          <button 
+          <button
             onClick={() => onViewChange('LOGIN')}
             className={twMerge(
               clsx(
                 'flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 transition-opacity hover:opacity-70',
-                currentView === 'LOGIN' && 'text-[var(--gold)]'
-              )
+                currentView === 'LOGIN' && 'text-[var(--gold)]',
+              ),
             )}
           >
             <LogIn size={14} />
-            Đăng nhập Admin
+            ÄÄƒng nháº­p Admin
           </button>
         )}
       </div>

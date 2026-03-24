@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Dự án",
+      "description": "Thông tin về một dự án tổng hợp dữ liệu",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "COMPLETED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "FormTemplate": {
+      "title": "Biểu mẫu động",
+      "description": "Cấu trúc biểu mẫu được AI học từ file Excel mẫu",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "name": { "type": "string" },
+        "columnMapping": {
+          "type": "object",
+          "properties": {
+            "labelColumn": { "type": "string" },
+            "dataColumns": { "type": "array", "items": { "type": "string" } },
+            "startRow": { "type": "number" },
+            "endRow": { "type": "number" }
+          }
+        }
+      },
+      "required": ["id", "projectId", "name", "columnMapping"]
+    },
+    "DataRow": {
+      "title": "Dữ liệu tổng hợp",
+      "description": "Dữ liệu từ file Excel đã được parse theo Template",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "templateId": { "type": "string" },
+        "unitCode": { "type": "string" },
+        "year": { "type": "string" },
+        "sourceRow": { "type": "number" },
+        "label": { "type": "string" },
+        "values": { "type": "array", "items": { "type": "number" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "templateId", "unitCode", "year", "sourceRow", "label", "values"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Danh sách các dự án"
+    },
+    "/templates/{templateId}": {
+      "schema": "FormTemplate",
+      "description": "Danh sách các biểu mẫu đã được học"
+    },
+    "/consolidated_data/{rowId}": {
+      "schema": "DataRow",
+      "description": "Dữ liệu tổng hợp của tất cả dự án"
+    },
+    "/settings/global": {
+      "schema": "AppSettings",
+      "description": "Cấu hình hệ thống"
+    }
+  }
+}

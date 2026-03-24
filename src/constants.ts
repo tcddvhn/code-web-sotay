@@ -318,6 +318,7 @@ export const SHEET_COLUMN_HEADERS: { [key: string]: string[] } = {
 };
 
 export const UNITS: Unit[] = [
+  { code: "TOTAL_HN", name: "Äáº£ng bá»™ ThÃ nh phá»‘ HÃ  Ná»™i (Tá»•NG Há»£P)" },
   { code: "DV001", name: "Đảng bộ các cơ quan Đảng Thành phố" },
   { code: "DV002", name: "Đảng bộ UBND Thành phố" },
   { code: "DV003", name: "Đảng bộ Công an Thành phố" },
@@ -455,3 +456,6 @@ export const UNITS: Unit[] = [
 export const YEARS = ["2024", "2025", "2026", "2027", "2028"];
 
 export const DEFAULT_REPORTING_YEAR = "2026";
+
+export const DEFAULT_PROJECT_ID = "proj_nq22";
+export const DEFAULT_PROJECT_NAME = "Tổng hợp NQ22";

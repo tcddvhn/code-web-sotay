@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "ldkien116@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidProject(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.status in ['ACTIVE', 'COMPLETED'];
+    }
+
+    function isValidTemplate(data) {
+      return data.projectId is string && data.name is string &&
+             data.columnMapping is map &&
+             data.columnMapping.labelColumn is string &&
+             data.columnMapping.dataColumns is list;
+    }
+
+    function isValidDataRow(data) {
+      return data.projectId is string && data.templateId is string &&
+             data.unitCode is string && data.year is string &&
+             data.sourceRow is number && data.label is string &&
+             data.values is list;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidProject(request.resource.data);
+    }
+
+    match /templates/{templateId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidTemplate(request.resource.data);
+    }
+
+    match /consolidated_data/{rowId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidDataRow(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /settings/global {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAdmin();
+    }
+  }
+}

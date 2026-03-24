@@ -12,22 +12,52 @@ export interface Unit {
 }
 
 export interface DataRow {
+  projectId: string;
+  templateId: string;
   unitCode: string;
   year: string;
-  sheetName: string;
   sourceRow: number;
   label: string;
   values: number[];
+  updatedAt?: any;
 }
 
 export interface ConsolidatedData {
-  [sheetName: string]: DataRow[];
+  [templateId: string]: DataRow[];
 }
 
-export type ViewMode = 'IMPORT' | 'REPORTS' | 'SETTINGS' | 'DASHBOARD' | 'LOGIN';
+export type ViewMode = 'IMPORT' | 'REPORTS' | 'SETTINGS' | 'DASHBOARD' | 'LOGIN' | 'PROJECTS' | 'LEARN_FORM';
 
 export interface AppSettings {
   oneDriveLink: string;
   storagePath: string;
   receivedPath: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  status: 'ACTIVE' | 'COMPLETED';
+  createdAt: any;
+  updatedAt: any;
+}
+
+export type TemplateMode = 'AI' | 'MANUAL' | 'LEGACY';
+
+export interface FormTemplate {
+  id: string;
+  projectId: string;
+  name: string;
+  sheetName: string;
+  columnHeaders: string[];
+  columnMapping: {
+    labelColumn: string;
+    dataColumns: string[];
+    startRow: number;
+    endRow: number;
+  };
+  mode: TemplateMode;
+  legacyConfigName?: string;
+  createdAt: any;
 }
