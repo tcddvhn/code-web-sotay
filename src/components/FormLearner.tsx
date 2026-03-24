@@ -69,28 +69,30 @@ export function FormLearner({ project }: { project: Project }) {
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 'A', range: 0, defval: '' }).slice(0, 15);
             const rowsJson = JSON.stringify(rows, null, 2);
 
-            const prompt = `
-              Phân tích cấu trúc biểu mẫu báo cáo Excel từ 15 hàng đầu của sheet "${sheetName}":
-              ${rowsJson}
+            const prompt = [
+              `Phân tích cấu trúc biểu mẫu báo cáo Excel từ 15 hàng đầu của sheet "${sheetName}":`,
+              rowsJson,
+              '',
+              'Trả về JSON chính xác:',
+              '1. labelColumn: Cột chứa tiêu chí (thường là "B" hoặc "A").',
+              '2. dataColumns: Danh sách cột chứa số liệu (ví dụ: ["C", "D", "E"]).',
+              '3. columnHeaders: Tên tiêu đề tương ứng của dataColumns.',
+              '4. startRow: Hàng bắt đầu có dữ liệu số (1-indexed).',
+              '5. endRow: Hàng kết thúc (mặc định 1000).',
+              '6. name: Tên biểu mẫu (ví dụ: "Biểu mẫu 1B").',
+              '',
+              'Yêu cầu JSON:',
+              '{',
+              '  "labelColumn": "string",',
+              '  "dataColumns": ["string"],',
+              '  "columnHeaders": ["string"],',
+              '  "startRow": number,',
+              '  "endRow": number,',
+              '  "name": "string"',
+              '}',
+            ].join('\n');
 
-              Trả về JSON chính xác:
-              1. labelColumn: Cột chứa tiêu chí (thường là "B" hoặc "A").
-              2. dataColumns: Danh sách cột chứa số liệu (ví dụ: ["C", "D", "E"]).
-              3. columnHeaders: Tên tiêu đề tương ứng của dataColumns.
-              4. startRow: Hàng bắt đầu có dữ liệu số (1-indexed).
-              5. endRow: Hàng kết thúc (mặc định 1000).
-              6. name: Tên biểu mẫu (ví dụ: "Biểu mẫu 1B").
-
-              Yêu cầu JSON:
-              {
-                "labelColumn": "string",
-                "dataColumns": ["string"],
-                "columnHeaders": ["string"],
-                "startRow": number,
-                "endRow": number,
-                "name": "string"
-              }
-            ;\n\n            const response = await ai.models.generateContent({
+            const response = await ai.models.generateContent({
               model: 'gemini-3-flash-preview',
               contents: prompt,
               config: {
@@ -479,6 +481,8 @@ export function FormLearner({ project }: { project: Project }) {
     </div>
   );
 }
+
+
 
 
 
