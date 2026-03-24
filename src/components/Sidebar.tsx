@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { LayoutDashboard, FileUp, FileText, Settings, LogOut, LogIn, User as UserIcon, FolderPlus, BrainCircuit } from 'lucide-react';
-import { ViewMode } from '../types';
+import { UserProfile, ViewMode } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { User } from 'firebase/auth';
@@ -12,9 +12,10 @@ interface SidebarProps {
   isAdmin: boolean;
   onLogout: () => void;
   user: User | null;
+  userProfile?: UserProfile | null;
 }
 
-export function Sidebar({ currentView, onViewChange, isAuthenticated, isAdmin, onLogout, user }: SidebarProps) {
+export function Sidebar({ currentView, onViewChange, isAuthenticated, isAdmin, onLogout, user, userProfile }: SidebarProps) {
   const menuItems = [
     { id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: LayoutDashboard },
     ...(isAuthenticated
@@ -75,7 +76,7 @@ export function Sidebar({ currentView, onViewChange, isAuthenticated, isAdmin, o
               </div>
             )}
             <div className="overflow-hidden">
-              <p className="truncate text-[11px] font-bold text-white">{user.displayName || 'User'}</p>
+              <p className="truncate text-[11px] font-bold text-white">{userProfile?.displayName || user.displayName || 'User'}</p>
               <p className="truncate text-[10px] text-white/65">{user.email}</p>
             </div>
           </div>

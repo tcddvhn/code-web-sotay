@@ -42,16 +42,29 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAllowedEmail() {
+      return request.auth.token.email in [
+        "admin@sotay.com",
+        "trieuthingoc@sotay.com",
+        "tranthikieuanh@sotay.com",
+        "tranphuongha@sotay.com",
+        "phamthithuhanh@sotay.com",
+        "nguyenthugiang@sotay.com",
+        "nguyensinghiem@sotay.com",
+        "nguyenhuuhung@sotay.com"
+      ];
+    }
+
     function isAdmin() {
-      return isAuthenticated() &&
+      return isAuthenticated() && isAllowedEmail() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          request.auth.token.email in ["ldkien116@gmail.com", "admin@sotay.com"]);
+          request.auth.token.email == "admin@sotay.com");
     }
 
     function isContributor() {
-      return isAuthenticated() &&
+      return isAuthenticated() && isAllowedEmail() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'contributor'] ||
-          request.auth.token.email in ["ldkien116@gmail.com", "admin@sotay.com"]);
+          request.auth.token.email == "admin@sotay.com");
     }
 
     function isValidDataRow(data) {

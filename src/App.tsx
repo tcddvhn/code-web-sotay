@@ -32,7 +32,7 @@ import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
-import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout, OperationType } from './firebase';
+import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout, OperationType, signUpWithEmail } from './firebase';
 import { AppSettings, ConsolidatedData, DataRow, FormTemplate, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { ensureNQ22Setup, resetNQ22Migration } from './utils/migrateNQ22';
@@ -63,6 +63,7 @@ export default function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -71,7 +72,22 @@ export default function App() {
   const [migrationHistory, setMigrationHistory] = useState<any[]>([]);
 
   const isAuthenticated = useMemo(() => !!user, [user]);
-  const adminEmails = useMemo(() => new Set(['ldkien116@gmail.com', 'admin@sotay.com']), []);
+  const allowedUsers = useMemo(
+    () =>
+      new Map<string, string>([
+        ['admin@sotay.com', 'Admin'],
+        ['trieuthingoc@sotay.com', 'Triệu Thị Ngọc'],
+        ['tranthikieuanh@sotay.com', 'Trần Thị Kiều Anh'],
+        ['tranphuongha@sotay.com', 'Trần Phương Hà'],
+        ['phamthithuhanh@sotay.com', 'Phạm Thị Thu Hạnh'],
+        ['nguyenthugiang@sotay.com', 'Nguyễn Thu Giang'],
+        ['nguyensinghiem@sotay.com', 'Nguyễn Sĩ Nghiêm'],
+        ['nguyenhuuhung@sotay.com', 'Nguyễn Hữu Hùng'],
+      ]),
+    [],
+  );
+  const adminEmails = useMemo(() => new Set(['admin@sotay.com']), []);
+  const isAllowedEmail = (email?: string | null) => !!email && allowedUsers.has(email.toLowerCase());
   const isAdmin = useMemo(
     () => userProfile?.role === 'admin' || (user?.email ? adminEmails.has(user.email) : false),
     [userProfile, user, adminEmails],
@@ -83,6 +99,15 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+      if (nextUser?.email && !isAllowedEmail(nextUser.email)) {
+        setAuthError('Tài khoản này chưa được cấp quyền truy cập hệ thống.');
+        logout();
+        setUser(null);
+        setUserProfile(null);
+        setIsAuthReady(true);
+        return;
+      }
+      setAuthError(null);
       setUser(nextUser);
       setIsAuthReady(true);
     });
@@ -102,14 +127,25 @@ export default function App() {
     getDoc(userRef).then((snap) => {
       if (cancelled) return;
       if (!snap.exists()) {
-        const role = user.email && adminEmails.has(user.email) ? 'admin' : 'contributor';
+        const email = user.email ? user.email.toLowerCase() : '';
+        const role = email && adminEmails.has(email) ? 'admin' : 'contributor';
         const profile: UserProfile = {
           id: user.uid,
           email: user.email,
-          displayName: user.displayName,
+          displayName: allowedUsers.get(email) || user.displayName,
           role,
         };
         setDoc(userRef, profile, { merge: true });
+      } else {
+        const existing = snap.data() as UserProfile;
+        const email = user.email ? user.email.toLowerCase() : '';
+        const expectedName = allowedUsers.get(email);
+        if (expectedName && existing.displayName !== expectedName) {
+          setDoc(userRef, { displayName: expectedName }, { merge: true });
+        }
+        if (email && adminEmails.has(email) && existing.role !== 'admin') {
+          setDoc(userRef, { role: 'admin' }, { merge: true });
+        }
       }
     });
 
@@ -127,7 +163,7 @@ export default function App() {
       cancelled = true;
       unsubscribe();
     };
-  }, [user, adminEmails]);
+  }, [user, adminEmails, allowedUsers]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -434,10 +470,26 @@ export default function App() {
 
   const handleEmailLogin = async (email: string, password: string) => {
     try {
+      if (!isAllowedEmail(email)) {
+        throw new Error('Email chưa được cấp quyền.');
+      }
       await loginWithEmail(email, password);
       setCurrentView('DASHBOARD');
     } catch (error) {
       console.error('Email login error:', error);
+      throw error;
+    }
+  };
+
+  const handleEmailSignup = async (email: string, password: string) => {
+    try {
+      if (!isAllowedEmail(email)) {
+        throw new Error('Email chưa được cấp quyền.');
+      }
+      await signUpWithEmail(email, password);
+      setCurrentView('DASHBOARD');
+    } catch (error) {
+      console.error('Email signup error:', error);
       throw error;
     }
   };
@@ -461,7 +513,7 @@ export default function App() {
 
   const renderContent = () => {
     if (currentView === 'LOGIN') {
-      return <LoginView onLogin={handleLogin} onLoginWithEmail={handleEmailLogin} />;
+      return <LoginView onLogin={handleLogin} onLoginWithEmail={handleEmailLogin} onSignUpWithEmail={handleEmailSignup} authError={authError} />;
     }
 
     switch (currentView) {
@@ -631,13 +683,24 @@ export default function App() {
         isAdmin={isAdmin}
         onLogout={handleLogout}
         user={user}
+        userProfile={userProfile}
       />
       <main className="app-main flex-1 overflow-auto">{renderContent()}</main>
     </div>
   );
 }
 
-function LoginView({ onLogin, onLoginWithEmail }: { onLogin: () => void; onLoginWithEmail: (email: string, password: string) => Promise<void> }) {
+function LoginView({
+  onLogin,
+  onLoginWithEmail,
+  onSignUpWithEmail,
+  authError,
+}: {
+  onLogin: () => void;
+  onLoginWithEmail: (email: string, password: string) => Promise<void>;
+  onSignUpWithEmail: (email: string, password: string) => Promise<void>;
+  authError: string | null;
+}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -652,6 +715,19 @@ function LoginView({ onLogin, onLoginWithEmail }: { onLogin: () => void; onLogin
       await onLoginWithEmail(email.trim(), password);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể đăng nhập bằng tài khoản này.');
+    }
+  };
+
+  const submitEmailSignup = async () => {
+    setError(null);
+    if (!email || !password) {
+      setError('Vui lòng nhập email và mật khẩu.');
+      return;
+    }
+    try {
+      await onSignUpWithEmail(email.trim(), password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể tạo tài khoản.');
     }
   };
 
@@ -685,6 +761,9 @@ function LoginView({ onLogin, onLoginWithEmail }: { onLogin: () => void; onLogin
             <button onClick={submitEmailLogin} className="primary-btn mt-4 w-full">
               Đăng nhập bằng tài khoản
             </button>
+            <button onClick={submitEmailSignup} className="secondary-btn mt-3 w-full">
+              Tạo tài khoản
+            </button>
           </div>
 
           <button onClick={onLogin} className="primary-btn flex w-full items-center justify-center gap-3">
@@ -694,6 +773,7 @@ function LoginView({ onLogin, onLoginWithEmail }: { onLogin: () => void; onLogin
           <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--ink-soft)]">
             Chỉ tài khoản được cấp quyền mới có thể tiếp nhận dữ liệu
           </p>
+          {authError && <p className="text-xs text-red-600">{authError}</p>}
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       </div>
