@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+﻿import * as XLSX from 'xlsx';
 import { SHEET_CONFIGS, SHEET_LABELS } from '../constants';
 import { DataRow, FormTemplate } from '../types';
 
@@ -31,7 +31,7 @@ export function normalizeCellValue(value: unknown): number {
 
 function getLabelForRow(sheetName: string, sourceRow: number) {
   const label = SHEET_LABELS[sheetName]?.find((entry) => entry.row === sourceRow)?.label;
-  return label || `DÃ²ng ${sourceRow}`;
+  return label || `Dòng ${sourceRow}`;
 }
 
 export async function parseLegacySheet(
@@ -68,12 +68,12 @@ export function parseLegacyFromWorkbook(
 ): DataRow[] {
   const config = SHEET_CONFIGS.find((cfg) => cfg.name === sheetName);
   if (!config) {
-    throw new Error(`KhÃ´ng tÃ¬m tháº¥y cáº¥u hÃ¬nh biá»ƒu ${sheetName}.`);
+    throw new Error(`Không tìm thấy cấu hình bi�fu ${sheetName}.`);
   }
 
   const worksheet = workbook.Sheets[sheetName];
   if (!worksheet) {
-    throw new Error(`KhÃ´ng tÃ¬m tháº¥y sheet ${sheetName} trong file Excel.`);
+    throw new Error(`Không tìm thấy sheet ${sheetName} trong file Excel.`);
   }
 
   const rows: DataRow[] = [];
@@ -106,7 +106,7 @@ export function parseTemplateFromWorkbook(
 ): DataRow[] {
   const worksheet = workbook.Sheets[template.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
   if (!worksheet) {
-    throw new Error('KhÃ´ng tÃ¬m tháº¥y sheet phÃ¹ há»£p trong file Excel.');
+    throw new Error('Không tìm thấy sheet phù hợp trong file Excel.');
   }
 
   const { labelColumn, dataColumns, startRow, endRow } = template.columnMapping;
@@ -135,8 +135,9 @@ export function parseTemplateFromWorkbook(
   }
 
   if (rows.length === 0) {
-    throw new Error('KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u phÃ¹ há»£p trong file.');
+    throw new Error('Không tìm thấy dữ li�?u phù hợp trong file.');
   }
 
   return rows;
 }
+

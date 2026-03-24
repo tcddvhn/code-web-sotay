@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Search } from 'lucide-react';
 import { UNITS, YEARS } from '../constants';
@@ -71,19 +71,19 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     const exportRows = aggregatedData.map((row) => {
       const unit = UNITS.find((u) => u.code === row.unitCode);
       const rowData: any = {
-        'ÄÆ¡n vá»‹': unit?.name || row.unitCode,
-        'NÄƒm': row.year,
-        'TiÃªu chÃ­': row.label,
+        'Đơn v�<': unit?.name || row.unitCode,
+        'N�fm': row.year,
+        'Tiêu chí': row.label,
       };
       row.values.forEach((val, i) => {
-        rowData[selectedTemplate.columnHeaders[i] || `GiÃ¡ trá»‹ ${i + 1}`] = val;
+        rowData[selectedTemplate.columnHeaders[i] || `Giá tr�< ${i + 1}`] = val;
       });
       return rowData;
     });
 
     const ws = XLSX.utils.json_to_sheet(exportRows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'BÃ¡o cÃ¡o');
+    XLSX.utils.book_append_sheet(wb, ws, 'Báo cáo');
     XLSX.writeFile(wb, `BaoCao_${selectedTemplate.name}_${selectedYear}.xlsx`);
   };
 
@@ -91,8 +91,8 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     <div className="p-6 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-8">
         <div>
-          <h2 className="page-title">BÃ¡o cÃ¡o tá»•ng há»£p</h2>
-          <p className="page-subtitle mt-2 text-sm">Truy xuáº¥t dá»¯ liá»‡u Ä‘Ã£ Ä‘Æ°á»£c tá»•ng há»£p theo dá»± Ã¡n vÃ  biá»ƒu máº«u.</p>
+          <h2 className="page-title">Báo cáo t�.ng hợp</h2>
+          <p className="page-subtitle mt-2 text-sm">Truy xuất dữ li�?u �'ã �'ược t�.ng hợp theo dự án và bi�fu mẫu.</p>
         </div>
         <button
           onClick={exportToExcel}
@@ -100,13 +100,13 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
           className="primary-btn flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Download size={16} />
-          Xuáº¥t file Excel
+          Xuất file Excel
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header block mb-2">1. Chá»n Dá»± Ã¡n</label>
+          <label className="col-header block mb-2">1. Chọn Dự án</label>
           <select
             value={selectedProjectId}
             onChange={(e) => onSelectProject(e.target.value)}
@@ -119,7 +119,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         </div>
 
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header block mb-2">2. Chá»n NÄƒm</label>
+          <label className="col-header block mb-2">2. Chọn N�fm</label>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
@@ -130,12 +130,12 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         </div>
 
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header block mb-2">3. TÃ¬m kiáº¿m tiÃªu chÃ­</label>
+          <label className="col-header block mb-2">3. Tìm kiếm tiêu chí</label>
           <div className="flex items-center gap-2 border-b border-[var(--line-strong)] py-2">
             <Search size={16} className="text-[var(--ink-soft)]" />
             <input
               type="text"
-              placeholder="TÃªn tiÃªu chÃ­..."
+              placeholder="Tên tiêu chí..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-transparent focus:outline-none text-sm font-medium"
@@ -160,7 +160,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
 
       {!selectedTemplate ? (
         <div className="panel-card rounded-[24px] p-10 text-center opacity-60">
-          ChÆ°a chá»n biá»ƒu máº«u. Vui lÃ²ng chá»n dá»± Ã¡n vÃ  biá»ƒu máº«u Ä‘á»ƒ hiá»ƒn thá»‹ báº¡o cÃ¡o.
+          Chưa chọn bi�fu mẫu. Vui lòng chọn dự án và bi�fu mẫu �'�f hi�fn th�< bạo cáo.
         </div>
       ) : (
         <div className="table-shell rounded-[24px] overflow-hidden">
@@ -168,8 +168,8 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10">ÄÆ¡n vá»‹</th>
-                  <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white">TiÃªu chÃ­</th>
+                  <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10">Đơn v�<</th>
+                  <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white">Tiêu chí</th>
                   {selectedTemplate.columnHeaders.map((header, i) => (
                     <th key={i} className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[120px]">
                       {header}
@@ -197,7 +197,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                 ) : (
                   <tr>
                     <td colSpan={2 + selectedTemplate.columnHeaders.length} className="p-12 text-center opacity-40 italic">
-                      KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u cho tiÃªu chÃ­ nÃ y.
+                      Không tìm thấy dữ li�?u cho tiêu chí này.
                     </td>
                   </tr>
                 )}
@@ -209,3 +209,4 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     </div>
   );
 }
+

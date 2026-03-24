@@ -1,4 +1,4 @@
-import {
+﻿import {
   collection,
   doc,
   getDoc,
@@ -27,12 +27,12 @@ function buildLegacyTemplates(): FormTemplate[] {
       dataColumns.push(columnIndexToLetter(col));
     }
 
-    const columnHeaders = SHEET_COLUMN_HEADERS[config.name] || dataColumns.map((_, i) => `Cá»™t ${i + 1}`);
+    const columnHeaders = SHEET_COLUMN_HEADERS[config.name] || dataColumns.map((_, i) => `C�Tt ${i + 1}`);
 
     return {
       id: `${LEGACY_TEMPLATES_PREFIX}${config.name}`,
       projectId: LEGACY_PROJECT_ID,
-      name: `Biá»ƒu ${config.name}`,
+      name: `Bi�fu ${config.name}`,
       sheetName: config.name,
       columnHeaders,
       columnMapping: {
@@ -56,7 +56,7 @@ async function ensureProjectAndTemplates(): Promise<void> {
     const project: Project = {
       id: LEGACY_PROJECT_ID,
       name: DEFAULT_PROJECT_NAME,
-      description: 'Dá»¯ liá»‡u chuyá»ƒn Ä‘á»•i tá»« há»‡ thá»‘ng cá»§.',
+      description: 'Dữ li�?u chuy�fn �'�.i từ h�? th�'ng củ.',
       status: 'ACTIVE',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -173,3 +173,4 @@ async function appendMigrationLog(entry: { action: string; total?: number }) {
     { merge: true },
   );
 }
+

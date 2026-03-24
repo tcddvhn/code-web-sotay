@@ -9,29 +9,34 @@ interface SidebarProps {
   currentView: ViewMode;
   onViewChange: (view: ViewMode) => void;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   onLogout: () => void;
   user: User | null;
 }
 
-export function Sidebar({ currentView, onViewChange, isAuthenticated, onLogout, user }: SidebarProps) {
+export function Sidebar({ currentView, onViewChange, isAuthenticated, isAdmin, onLogout, user }: SidebarProps) {
   const menuItems = [
     { id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: LayoutDashboard },
     ...(isAuthenticated
       ? [
-          { id: 'PROJECTS' as ViewMode, label: 'Dá»± Ã¡n', icon: FolderPlus },
-          { id: 'LEARN_FORM' as ViewMode, label: 'Biá»ƒu máº«u', icon: BrainCircuit },
-          { id: 'IMPORT' as ViewMode, label: 'Tiáº¿p nháº­n dá»¯ liá»‡u', icon: FileUp },
+          ...(isAdmin
+            ? [
+                { id: 'PROJECTS' as ViewMode, label: 'Dự án', icon: FolderPlus },
+                { id: 'LEARN_FORM' as ViewMode, label: 'Biểu mẫu', icon: BrainCircuit },
+              ]
+            : []),
+          { id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: FileUp },
         ]
       : []),
-    { id: 'REPORTS' as ViewMode, label: 'BÃ¡o cÃ¡o', icon: FileText },
-    { id: 'SETTINGS' as ViewMode, label: 'CÃ i Ä‘áº·t', icon: Settings },
+    { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText },
+    ...(isAdmin ? [{ id: 'SETTINGS' as ViewMode, label: 'Cài đặt', icon: Settings }] : []),
   ];
 
   return (
     <div className="sidebar-shell flex h-screen w-72 flex-col">
       <div className="border-b border-[var(--sidebar-border)] p-8">
         <h1 className="sidebar-title">
-          HÄ† THá»NG QUáº¢N TRá» <br /> Dá»® LIá»†U TCÄ, ÄV Táº¬P TRUNG
+          HỆ THỐNG QUẢN TRỊ <br /> DỮ LIỆU TCĐ, ĐV TẬP TRUNG
         </h1>
         <p className="sidebar-meta mt-3 text-[10px] uppercase tracking-[0.24em]">v2.0.0 / Enterprise</p>
       </div>
@@ -82,7 +87,7 @@ export function Sidebar({ currentView, onViewChange, isAuthenticated, onLogout, 
             className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 transition-opacity hover:opacity-70"
           >
             <LogOut size={14} />
-            ÄÄƒng xuáº¥t
+            Đăng xuất
           </button>
         ) : (
           <button
@@ -95,7 +100,7 @@ export function Sidebar({ currentView, onViewChange, isAuthenticated, onLogout, 
             )}
           >
             <LogIn size={14} />
-            ÄÄƒng nháº­p Admin
+            Đăng nhập Admin
           </button>
         )}
       </div>

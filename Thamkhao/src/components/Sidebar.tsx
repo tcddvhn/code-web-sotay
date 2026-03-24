@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { LayoutDashboard, FileUp, FileText, Settings, LogOut, LogIn, User as UserIcon, FolderPlus } from 'lucide-react';
 import { ViewMode } from '../types';
 import { clsx } from 'clsx';

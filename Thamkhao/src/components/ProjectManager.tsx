@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { Project } from '../types';
@@ -51,7 +51,7 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
   };
 
   const deleteProject = async (id: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
+    if (!confirm('B?n c� ch?c ch?n mu?n x�a d? �n n�y?')) return;
     try {
       await deleteDoc(doc(db, 'projects', id));
     } catch (error) {
@@ -62,37 +62,37 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-12">
-        <h2 className="text-4xl font-bold tracking-tighter uppercase italic font-serif">Quản lý Dự án</h2>
+        <h2 className="text-4xl font-bold tracking-tighter uppercase italic font-serif">Qu?n l� D? �n</h2>
         <button 
           onClick={() => setIsAdding(true)}
           className="flex items-center gap-2 px-6 py-3 bg-[#141414] text-[#E4E3E0] text-xs font-bold uppercase tracking-widest hover:scale-105 transition-transform"
         >
           <Plus size={16} />
-          Tạo dự án mới
+          T?o d? �n m?i
         </button>
       </div>
 
       {isAdding && (
         <div className="mb-12 p-8 border border-black bg-white shadow-xl">
-          <h3 className="col-header mb-6">Thông tin dự án mới</h3>
+          <h3 className="col-header mb-6">Th�ng tin d? �n m?i</h3>
           <div className="space-y-4">
             <input 
               type="text" 
-              placeholder="Tên dự án (ví dụ: Tổng hợp quý 1/2026)" 
+              placeholder="T�n d? �n (v� d?: T?ng h?p qu� 1/2026)" 
               value={newProject.name}
               onChange={e => setNewProject({...newProject, name: e.target.value})}
               className="w-full bg-transparent border-b border-black py-3 font-serif text-xl focus:outline-none"
             />
             <textarea 
-              placeholder="Mô tả chi tiết dự án..." 
+              placeholder="M� t? chi ti?t d? �n..." 
               value={newProject.description}
               onChange={e => setNewProject({...newProject, description: e.target.value})}
               className="w-full bg-transparent border-b border-black py-3 font-sans text-sm focus:outline-none"
               rows={3}
             />
             <div className="flex gap-4 mt-6">
-              <button onClick={handleAddProject} className="px-8 py-3 bg-black text-white text-xs font-bold uppercase tracking-widest">Lưu dự án</button>
-              <button onClick={() => setIsAdding(false)} className="px-8 py-3 border border-black text-xs font-bold uppercase tracking-widest">Hủy</button>
+              <button onClick={handleAddProject} className="px-8 py-3 bg-black text-white text-xs font-bold uppercase tracking-widest">Luu d? �n</button>
+              <button onClick={() => setIsAdding(false)} className="px-8 py-3 border border-black text-xs font-bold uppercase tracking-widest">H?y</button>
             </div>
           </div>
         </div>
@@ -103,10 +103,10 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
           <div key={project.id} className="border border-black bg-white p-8 flex flex-col group hover:shadow-2xl transition-all">
             <div className="flex justify-between items-start mb-4">
               <div className={`px-3 py-1 text-[8px] font-bold uppercase tracking-widest ${project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                {project.status === 'ACTIVE' ? 'Đang triển khai' : 'Đã hoàn thành'}
+                {project.status === 'ACTIVE' ? 'Dang tri?n khai' : 'D� ho�n th�nh'}
               </div>
               <div className="flex gap-2">
-                <button onClick={() => toggleStatus(project)} title="Đổi trạng thái">
+                <button onClick={() => toggleStatus(project)} title="D?i tr?ng th�i">
                   {project.status === 'ACTIVE' ? <CheckCircle size={16} /> : <Clock size={16} />}
                 </button>
                 <button onClick={() => deleteProject(project.id)} className="text-red-600">
@@ -115,13 +115,13 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
               </div>
             </div>
             <h3 className="text-2xl font-bold tracking-tight mb-2 font-serif italic">{project.name}</h3>
-            <p className="text-xs opacity-60 mb-8 flex-1">{project.description || 'Không có mô tả.'}</p>
+            <p className="text-xs opacity-60 mb-8 flex-1">{project.description || 'Kh�ng c� m� t?.'}</p>
             <button 
               onClick={() => onSelectProject(project)}
               className="w-full py-4 border border-black flex items-center justify-center gap-3 text-[10px] font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-all"
             >
               <FolderOpen size={16} />
-              Truy cập dự án
+              Truy c?p d? �n
             </button>
           </div>
         ))}
@@ -129,3 +129,4 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc, query, where } from 'firebase/firestore';
@@ -70,18 +70,18 @@ export function FormLearner({ project }: { project: Project }) {
             const rowsJson = JSON.stringify(rows, null, 2);
 
             const prompt = `
-              PhÃ¢n tÃ­ch cáº¥u trÃºc biá»ƒu máº«u bÃ¡o cÃ¡o Excel tá»« 15 hÃ ng Ä‘áº§u cá»§a sheet "${sheetName}":
+              Phân tích cấu trúc bi�fu mẫu báo cáo Excel từ 15 hàng �'ầu của sheet "${sheetName}":
               ${rowsJson}
 
-              Tráº£ vá» JSON chÃ­nh xÃ¡c:
-              1. labelColumn: Cá»™t chá»©a tiÃªu chÃ­ (thÆ°á»ng lÃ  "B" hoáº·c "A").
-              2. dataColumns: Danh sÃ¡ch cá»™t chá»©a sá»‘ liá»‡u (vÃ­ dá»¥: ["C", "D", "E"]).
-              3. columnHeaders: TÃªn tiÃªu Ä‘á» tÆ°Æ¡ng á»©ng cá»§a dataColumns.
-              4. startRow: HÃ ng báº¯t Ä‘áº§u cÃ³ dá»¯ liá»‡u sá»‘ (1-indexed).
-              5. endRow: HÃ ng káº¿t thÃºc (máº·c Ä‘á»‹nh 1000).
-              6. name: TÃªn biá»ƒu máº«u (vÃ­ dá»¥: "Biá»ƒu máº«u 1B").
+              Trả về JSON chính xác:
+              1. labelColumn: C�Tt chứa tiêu chí (thường là "B" hoặc "A").
+              2. dataColumns: Danh sách c�Tt chứa s�' li�?u (ví dụ: ["C", "D", "E"]).
+              3. columnHeaders: Tên tiêu �'ề tương ứng của dataColumns.
+              4. startRow: Hàng bắt �'ầu có dữ li�?u s�' (1-indexed).
+              5. endRow: Hàng kết thúc (mặc �'�<nh 1000).
+              6. name: Tên bi�fu mẫu (ví dụ: "Bi�fu mẫu 1B").
 
-              YÃªu cáº§u JSON:
+              Yêu cầu JSON:
               {
                 "labelColumn": "string",
                 "dataColumns": ["string"],
@@ -133,7 +133,7 @@ export function FormLearner({ project }: { project: Project }) {
           const results = await Promise.all(analysisPromises);
           const validTemplates = results.filter((t) => t !== null);
           if (validTemplates.length === 0) {
-            throw new Error('AI khÃ´ng thá»ƒ nháº­n diá»‡n Ä‘Æ°á»£c cáº¥u trÃºc nÃ o tá»« cÃ¡c sheet.');
+            throw new Error('AI không th�f nhận di�?n �'ược cấu trúc nào từ các sheet.');
           }
 
           setLearnedTemplates(validTemplates);
@@ -145,13 +145,13 @@ export function FormLearner({ project }: { project: Project }) {
           setConfirmAll(false);
           setIsLearning(false);
         } catch (innerErr) {
-          setError(innerErr instanceof Error ? innerErr.message : 'Lá»—i xá»­ lÃ½ file.');
+          setError(innerErr instanceof Error ? innerErr.message : 'L�-i xử lý file.');
           setIsLearning(false);
         }
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
-      setError('KhÃ´ng thá»ƒ Ä‘á»c file Excel nÃ y.');
+      setError('Không th�f �'ọc file Excel này.');
       setIsLearning(false);
     }
   };
@@ -192,19 +192,19 @@ export function FormLearner({ project }: { project: Project }) {
 
   const handleManualCreate = async () => {
     if (!manualForm.name || !manualForm.sheetName || !manualForm.dataColumns) {
-      setError('Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ thÃ´ng tin template.');
+      setError('Vui lòng nhập �'ầy �'ủ thông tin template.');
       return;
     }
 
     if (existingNames.has(manualForm.name)) {
-      setError('TÃªn template Ä‘Ã£ tá»“n táº¡i trong dá»± Ã¡n nÃ y.');
+      setError('Tên template �'ã t�"n tại trong dự án này.');
       return;
     }
 
     const dataColumns = manualForm.dataColumns.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
     const columnHeaders = manualForm.columnHeaders
       ? manualForm.columnHeaders.split(',').map((c) => c.trim()).filter(Boolean)
-      : dataColumns.map((_, i) => `Cá»™t ${i + 1}`);
+      : dataColumns.map((_, i) => `C�Tt ${i + 1}`);
 
     const newTemplate: FormTemplate = {
       id: `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -230,16 +230,16 @@ export function FormLearner({ project }: { project: Project }) {
   return (
     <div className="p-6 md:p-8">
       <div className="mb-8">
-        <h2 className="page-title">Quáº£n lÃ½ biá»ƒu máº«u</h2>
-        <p className="page-subtitle mt-2 text-sm">Dá»± Ã¡n: <span className="font-bold">{project.name}</span></p>
+        <h2 className="page-title">Quản lý bi�fu mẫu</h2>
+        <p className="page-subtitle mt-2 text-sm">Dự án: <span className="font-bold">{project.name}</span></p>
       </div>
 
       <div className="flex gap-3 mb-6">
         <button onClick={() => setMode('AI')} className={mode === 'AI' ? 'primary-btn' : 'secondary-btn'}>
-          Há»c biá»ƒu máº«u báº±ng AI
+          Học bi�fu mẫu bằng AI
         </button>
         <button onClick={() => setMode('MANUAL')} className={mode === 'MANUAL' ? 'primary-btn' : 'secondary-btn'}>
-          Thiáº¿t láº­p thá»§ cÃ´ng
+          Thiết lập thủ công
         </button>
       </div>
 
@@ -247,26 +247,26 @@ export function FormLearner({ project }: { project: Project }) {
         <div className="max-w-3xl space-y-6">
           <div className="panel-card rounded-[24px] p-8 text-center">
             <FileSpreadsheet className="mx-auto mb-4 text-[var(--primary)] opacity-40" size={52} />
-            <h3 className="section-title mb-3">Táº£i lÃªn File Máº«u (Template)</h3>
-            <p className="page-subtitle text-xs">Há»‡ thá»‘ng sáº½ dÃ¹ng AI Ä‘á»ƒ há»c cáº¥u trÃºc cá»§a file nÃ y.</p>
+            <h3 className="section-title mb-3">Tải lên File Mẫu (Template)</h3>
+            <p className="page-subtitle text-xs">H�? th�'ng sẽ dùng AI �'�f học cấu trúc của file này.</p>
 
             <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} className="hidden" id="template-upload" />
             <label htmlFor="template-upload" className="primary-btn mt-6 inline-flex items-center gap-2">
-              {file ? file.name : 'Chá»n file máº«u'}
+              {file ? file.name : 'Chọn file mẫu'}
             </label>
           </div>
 
           {file && learnedTemplates.length === 0 && !isLearning && (
             <button onClick={learnForm} className="primary-btn w-full flex items-center justify-center gap-3">
               <Brain size={18} />
-              Báº¯t Ä‘áº§u phÃ¢n tÃ­ch báº±ng AI
+              Bắt �'ầu phân tích bằng AI
             </button>
           )}
 
           {isLearning && (
             <div className="panel-card rounded-[24px] p-8 text-center">
               <Loader2 className="mx-auto mb-4 animate-spin" size={40} />
-              <h3 className="section-title">AI Ä‘ang há»c biá»ƒu máº«u...</h3>
+              <h3 className="section-title">AI �'ang học bi�fu mẫu...</h3>
             </div>
           )}
 
@@ -281,7 +281,7 @@ export function FormLearner({ project }: { project: Project }) {
             <div className="panel-card rounded-[24px] p-6">
               <div className="flex items-center gap-3 mb-4 text-[var(--success)]">
                 <CheckCircle size={20} />
-                <h3 className="section-title">AI Ä‘Ã£ tÃ¬m tháº¥y {learnedTemplates.length} biá»ƒu máº«u</h3>
+                <h3 className="section-title">AI �'ã tìm thấy {learnedTemplates.length} bi�fu mẫu</h3>
               </div>
 
               <label className="mb-4 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">
@@ -291,7 +291,7 @@ export function FormLearner({ project }: { project: Project }) {
                   onChange={(e) => toggleConfirmAll(e.target.checked)}
                   className="theme-checkbox h-3.5 w-3.5"
                 />
-                TÃ´i Ä‘Ã£ kiá»ƒm tra vÃ  xÃ¡c nháº­n táº¥t cáº£ biá»ƒu
+                Tôi �'ã ki�fm tra và xác nhận tất cả bi�fu
               </label>
 
               <div className="space-y-3">
@@ -306,12 +306,12 @@ export function FormLearner({ project }: { project: Project }) {
                           onChange={(e) => setConfirmedTemplates({ ...confirmedTemplates, [tpl.id]: e.target.checked })}
                           className="theme-checkbox h-3.5 w-3.5"
                         />
-                        ÄÃ£ xÃ¡c nháº­n
+                        Đã xác nhận
                       </label>
                     </div>
                     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        TÃªn biá»ƒu máº«u
+                        Tên bi�fu mẫu
                         <input
                           className="field-input mt-2"
                           value={tpl.name}
@@ -327,7 +327,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        Cá»™t tiÃªu chÃ­
+                        C�Tt tiêu chí
                         <input
                           className="field-input mt-2"
                           value={tpl.columnMapping.labelColumn}
@@ -335,7 +335,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        Cá»™t dá»¯ liá»‡u (C,D,E)
+                        C�Tt dữ li�?u (C,D,E)
                         <input
                           className="field-input mt-2"
                           value={tpl.columnMapping.dataColumns.join(', ')}
@@ -347,7 +347,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        HÃ ng báº¯t Ä‘áº§u
+                        Hàng bắt �'ầu
                         <input
                           type="number"
                           className="field-input mt-2"
@@ -356,7 +356,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        HÃ ng káº¿t thÃºc
+                        Hàng kết thúc
                         <input
                           type="number"
                           className="field-input mt-2"
@@ -365,7 +365,7 @@ export function FormLearner({ project }: { project: Project }) {
                         />
                       </label>
                       <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
-                        TiÃªu Ä‘á» cá»™t (phÃ¢n cÃ¡ch báº±ng dÃ¢áº¥u pháº©y)
+                        Tiêu �'ề c�Tt (phân cách bằng dâấu phẩy)
                         <input
                           className="field-input mt-2"
                           value={tpl.columnHeaders.join(', ')}
@@ -383,10 +383,10 @@ export function FormLearner({ project }: { project: Project }) {
 
               <div className="mt-6 flex gap-3">
                 <button onClick={() => saveTemplates(learnedTemplates)} className="primary-btn flex-1" disabled={!allConfirmed}>
-                  LÆ°u táº¥t cáº£ biá»ƒu máº«u
+                  Lưu tất cả bi�fu mẫu
                 </button>
                 <button onClick={() => setLearnedTemplates([])} className="secondary-btn">
-                  Há»§y
+                  Hủy
                 </button>
               </div>
             </div>
@@ -397,35 +397,35 @@ export function FormLearner({ project }: { project: Project }) {
       {mode === 'MANUAL' && (
         <div className="max-w-4xl space-y-6">
           <div className="panel-card rounded-[24px] p-6">
-            <h3 className="section-title mb-4">Táº¡o biá»ƒu máº«u thá»§ cÃ´ng</h3>
+            <h3 className="section-title mb-4">Tạo bi�fu mẫu thủ công</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 className="field-input"
-                placeholder="TÃªn biá»ƒu máº«u"
+                placeholder="Tên bi�fu mẫu"
                 value={manualForm.name}
                 onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })}
               />
               <input
                 className="field-input"
-                placeholder="TÃªn sheet (VD: 1B)"
+                placeholder="Tên sheet (VD: 1B)"
                 value={manualForm.sheetName}
                 onChange={(e) => setManualForm({ ...manualForm, sheetName: e.target.value })}
               />
               <input
                 className="field-input"
-                placeholder="Cá»™t tiÃªu chÃ­ (VD: B)"
+                placeholder="C�Tt tiêu chí (VD: B)"
                 value={manualForm.labelColumn}
                 onChange={(e) => setManualForm({ ...manualForm, labelColumn: e.target.value })}
               />
               <input
                 className="field-input"
-                placeholder="Cá»™t dá»¯ liá»‡u (VD: C,D,E)"
+                placeholder="C�Tt dữ li�?u (VD: C,D,E)"
                 value={manualForm.dataColumns}
                 onChange={(e) => setManualForm({ ...manualForm, dataColumns: e.target.value })}
               />
               <input
                 className="field-input"
-                placeholder="TiÃªu Ä‘á» cá»™t (VD: Tá»•ng sá»‘, ThÃ nh láº­p)"
+                placeholder="Tiêu �'ề c�Tt (VD: T�.ng s�', Thành lập)"
                 value={manualForm.columnHeaders}
                 onChange={(e) => setManualForm({ ...manualForm, columnHeaders: e.target.value })}
               />
@@ -433,14 +433,14 @@ export function FormLearner({ project }: { project: Project }) {
                 <input
                   className="field-input"
                   type="number"
-                  placeholder="HÃ ng báº¯t Ä‘áº§u"
+                  placeholder="Hàng bắt �'ầu"
                   value={manualForm.startRow}
                   onChange={(e) => setManualForm({ ...manualForm, startRow: Number(e.target.value) })}
                 />
                 <input
                   className="field-input"
                   type="number"
-                  placeholder="HÃ ng káº¿t thÃºc"
+                  placeholder="Hàng kết thúc"
                   value={manualForm.endRow}
                   onChange={(e) => setManualForm({ ...manualForm, endRow: Number(e.target.value) })}
                 />
@@ -449,7 +449,7 @@ export function FormLearner({ project }: { project: Project }) {
 
             <button onClick={handleManualCreate} className="primary-btn mt-6 flex items-center gap-2">
               <Plus size={16} />
-              Táº¡o biá»ƒu máº«u
+              Tạo bi�fu mẫu
             </button>
 
             {error && (
@@ -461,18 +461,18 @@ export function FormLearner({ project }: { project: Project }) {
           </div>
 
           <div className="panel-card rounded-[24px] p-6">
-            <h3 className="section-title mb-4">Danh sÃ¡ch biá»ƒu máº«u Ä‘Ã£ táº¡o</h3>
+            <h3 className="section-title mb-4">Danh sách bi�fu mẫu �'ã tạo</h3>
             <div className="space-y-3">
               {manualTemplates.map((tpl) => (
                 <div key={tpl.id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
                   <p className="text-sm font-semibold text-[var(--ink)]">{tpl.name}</p>
                   <p className="text-xs text-[var(--ink-soft)] mt-1">
-                    Sheet: {tpl.sheetName} | Cá»™t tiÃªu chÃ­: {tpl.columnMapping.labelColumn} | Dá»¯ liá»‡u: {tpl.columnMapping.dataColumns.join(', ')}
+                    Sheet: {tpl.sheetName} | C�Tt tiêu chí: {tpl.columnMapping.labelColumn} | Dữ li�?u: {tpl.columnMapping.dataColumns.join(', ')}
                   </p>
                 </div>
               ))}
               {manualTemplates.length === 0 && (
-                <p className="text-xs text-[var(--ink-soft)]">ChÆ°a cÃ³ biá»ƒu máº«u nÃ o.</p>
+                <p className="text-xs text-[var(--ink-soft)]">Chưa có bi�fu mẫu nào.</p>
               )}
             </div>
           </div>
@@ -481,3 +481,4 @@ export function FormLearner({ project }: { project: Project }) {
     </div>
   );
 }
+

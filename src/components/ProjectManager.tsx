@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import { Plus, Trash2, CheckCircle, Clock, FolderOpen } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -53,7 +53,7 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
   };
 
   const deleteProject = async (id: string) => {
-    if (!confirm('Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a dá»± Ã¡n nÃ y?')) return;
+    if (!confirm('Bạn có chắc chắn mu�'n xóa dự án này?')) return;
     try {
       await deleteDoc(doc(db, 'projects', id));
     } catch (error) {
@@ -64,34 +64,34 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
   return (
     <div className="p-6 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
-        <h2 className="page-title">Quáº£n lÃ½ Dá»± Ã¡n</h2>
+        <h2 className="page-title">Quản lý Dự án</h2>
         <button onClick={() => setIsAdding(true)} className="primary-btn flex items-center gap-2">
           <Plus size={16} />
-          Táº¡o dá»± Ã¡n má»›i
+          Tạo dự án m�>i
         </button>
       </div>
 
       {isAdding && (
         <div className="panel-card rounded-[24px] p-6 mb-8">
-          <h3 className="section-title mb-4">ThÃ´ng tin dá»± Ã¡n má»›i</h3>
+          <h3 className="section-title mb-4">Thông tin dự án m�>i</h3>
           <div className="space-y-4">
             <input
               type="text"
-              placeholder="TÃªn dá»± Ã¡n (vÃ­ dá»¥: Tá»•ng há»£p quÃ½ 1/2026)"
+              placeholder="Tên dự án (ví dụ: T�.ng hợp quý 1/2026)"
               value={newProject.name}
               onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
               className="field-input"
             />
             <textarea
-              placeholder="MÃ´ táº£ chi tiáº¿t dá»± Ã¡n..."
+              placeholder="Mô tả chi tiết dự án..."
               value={newProject.description}
               onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
               className="field-input"
               rows={3}
             />
             <div className="flex gap-3">
-              <button onClick={handleAddProject} className="primary-btn">LÆ°u dá»± Ã¡n</button>
-              <button onClick={() => setIsAdding(false)} className="secondary-btn">Há»§y</button>
+              <button onClick={handleAddProject} className="primary-btn">Lưu dự án</button>
+              <button onClick={() => setIsAdding(false)} className="secondary-btn">Hủy</button>
             </div>
           </div>
         </div>
@@ -102,10 +102,10 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
           <div key={project.id} className="panel-card rounded-[24px] p-6 flex flex-col">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div className={`status-pill ${project.status === 'ACTIVE' ? 'status-pill-submitted' : 'status-pill-pending'}`}>
-                {project.status === 'ACTIVE' ? 'Äang triá»ƒn khai' : 'ÄÃ£ hoÃ n thÃ nh'}
+                {project.status === 'ACTIVE' ? 'Đang tri�fn khai' : 'Đã hoàn thành'}
               </div>
               <div className="flex gap-2">
-                <button onClick={() => toggleStatus(project)} title="Äá»•i tráº¡ng thÃ¡i">
+                <button onClick={() => toggleStatus(project)} title="Đ�.i trạng thái">
                   {project.status === 'ACTIVE' ? <CheckCircle size={16} /> : <Clock size={16} />}
                 </button>
                 <button onClick={() => deleteProject(project.id)} className="text-[var(--primary)]">
@@ -114,13 +114,13 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
               </div>
             </div>
             <h3 className="text-xl font-semibold text-[var(--ink)] mb-2">{project.name}</h3>
-            <p className="text-xs text-[var(--ink-soft)] flex-1">{project.description || 'KhÃ´ng cÃ³ mÃ´ táº£.'}</p>
+            <p className="text-xs text-[var(--ink-soft)] flex-1">{project.description || 'Không có mô tả.'}</p>
             <button
               onClick={() => onSelectProject(project)}
               className="secondary-btn mt-6 flex items-center justify-center gap-2"
             >
               <FolderOpen size={16} />
-              Truy cáº­p dá»± Ã¡n
+              Truy cập dự án
             </button>
           </div>
         ))}
@@ -128,3 +128,4 @@ export function ProjectManager({ onSelectProject }: { onSelectProject: (p: Proje
     </div>
   );
 }
+

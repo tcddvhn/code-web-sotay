@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿?import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -29,9 +30,10 @@ import { ReportView } from './components/ReportView';
 import { Sidebar } from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
+import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
 import { auth, db, handleFirestoreError, loginWithGoogle, logout, OperationType } from './firebase';
-import { AppSettings, ConsolidatedData, DataRow, FormTemplate, Project, ViewMode } from './types';
+import { AppSettings, ConsolidatedData, DataRow, FormTemplate, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { ensureNQ22Setup, resetNQ22Migration } from './utils/migrateNQ22';
 
@@ -49,6 +51,8 @@ type UnitLog = {
   importedSheets: string[];
   rowCount: number;
   isSubmitted: boolean;
+  lastUpdatedBy?: string;
+  assignedTo?: string;
 };
 
 export default function App() {
@@ -58,12 +62,19 @@ export default function App() {
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [migrationStatus, setMigrationStatus] = useState<{ running: boolean; message?: string }>({ running: false });
   const [migrationHistory, setMigrationHistory] = useState<any[]>([]);
 
-  const isAuthenticated = useMemo(() => user?.email === 'ldkien116@gmail.com', [user]);
+  const isAuthenticated = useMemo(() => !!user, [user]);
+  const isAdmin = useMemo(
+    () => userProfile?.role === 'admin' || user?.email === 'ldkien116@gmail.com',
+    [userProfile, user],
+  );
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
     [projects, selectedProjectId],
@@ -79,6 +90,45 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!user) {
+      setUserProfile(null);
+      return;
+    }
+
+    const userRef = doc(db, 'users', user.uid);
+    let cancelled = false;
+
+    getDoc(userRef).then((snap) => {
+      if (cancelled) return;
+      if (!snap.exists()) {
+        const role = user.email === 'ldkien116@gmail.com' ? 'admin' : 'contributor';
+        const profile: UserProfile = {
+          id: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          role,
+        };
+        setDoc(userRef, profile, { merge: true });
+      }
+    });
+
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          setUserProfile(snapshot.data() as UserProfile);
+        }
+      },
+      () => setUserProfile(null),
+    );
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [user]);
+
+  useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'projects'),
       (snapshot) => {
@@ -92,6 +142,48 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setUsers([]);
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        const list = snapshot.docs.map((snapshotDoc) => ({ id: snapshotDoc.id, ...snapshotDoc.data() } as UserProfile));
+        setUsers(list);
+      },
+      () => setUsers([]),
+    );
+
+    return () => unsubscribe();
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setAssignments({});
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      query(collection(db, 'assignments'), where('projectId', '==', selectedProjectId)),
+      (snapshot) => {
+        const map: Record<string, string[]> = {};
+        snapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data() as any;
+          if (data.userId && Array.isArray(data.unitCodes)) {
+            map[data.userId] = data.unitCodes;
+          }
+        });
+        setAssignments(map);
+      },
+      () => setAssignments({}),
+    );
+
+    return () => unsubscribe();
+  }, [isAuthenticated, selectedProjectId]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -167,18 +259,18 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAdmin) {
       return;
     }
 
     let isMounted = true;
-    setMigrationStatus({ running: true, message: 'Äang táº¡o dá»± Ã¡n vÃ  chuyá»ƒn Ä‘á»•i dá»¯ liá»‡u...' });
+    setMigrationStatus({ running: true, message: 'Đang tạo dự án và chuy�fn �'�.i dữ li�?u...' });
 
     ensureNQ22Setup()
       .then((result) => {
         if (!isMounted) return;
         if (result.migrated) {
-          setMigrationStatus({ running: false, message: `ÄÃ£ chuyá»ƒn Ä‘á»•i ${result.total} dÃ²ng dá»¯ liá»‡u.` });
+          setMigrationStatus({ running: false, message: `Đã chuy�fn �'�.i ${result.total} dòng dữ li�?u.` });
         } else {
           setMigrationStatus({ running: false });
         }
@@ -191,7 +283,7 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [isAuthenticated]);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (projects.length > 0 && !projects.find((p) => p.id === selectedProjectId)) {
@@ -209,6 +301,11 @@ export default function App() {
         batch.set(doc(db, 'consolidated_data_v2', rowId), {
           ...row,
           updatedAt: serverTimestamp(),
+          updatedBy: {
+            uid: user?.uid,
+            email: user?.email,
+            displayName: user?.displayName,
+          },
         });
       });
 
@@ -230,7 +327,7 @@ export default function App() {
   };
 
   const handleDataImported = async (newData: DataRow[]) => {
-    if (!isAuthenticated) {
+    if (!isAdmin) {
       return;
     }
 
@@ -242,7 +339,7 @@ export default function App() {
   };
 
   const handleDeleteUnitData = async (year: string, unitCode: string) => {
-    if (!isAuthenticated || !currentProject) {
+    if (!isAdmin || !currentProject) {
       return 0;
     }
 
@@ -272,7 +369,7 @@ export default function App() {
   };
 
   const handleDeleteYearData = async (year: string) => {
-    if (!isAuthenticated || !currentProject) {
+    if (!isAdmin || !currentProject) {
       return 0;
     }
 
@@ -299,29 +396,29 @@ export default function App() {
   };
 
   const handleSaveSettings = async () => {
-    if (!isAuthenticated) {
+    if (!isAdmin) {
       return;
     }
 
     try {
       await setDoc(doc(db, 'settings', 'global'), settings);
-      alert('ÄÃ£ lÆ°u cÃ i Ä‘áº·t!');
+      alert('Đã lưu cài �'ặt!');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
     }
   };
 
   const handleRerunMigration = async () => {
-    if (!isAuthenticated) return;
-    const confirmed = window.confirm('Cháº¡y láº¡i chuyá»ƒn Ä‘á»•i dá»¯ liá»‡u NQ22? Dá»¯ liá»‡u Ä‘Ã£ chuyá»ƒn sáº½ Ä‘Æ°á»£c táº¡o láº¡i.');
+    if (!isAdmin) return;
+    const confirmed = window.confirm('Chạy lại chuy�fn �'�.i dữ li�?u NQ22? Dữ li�?u �'ã chuy�fn sẽ �'ược tạo lại.');
     if (!confirmed) return;
 
-    setMigrationStatus({ running: true, message: 'Äang cháº¡y láº¡i chuyá»ƒn Ä‘á»•i dá»¯ liá»‡u...' });
+    setMigrationStatus({ running: true, message: 'Đang chạy lại chuy�fn �'�.i dữ li�?u...' });
     await resetNQ22Migration();
     const result = await ensureNQ22Setup();
     setMigrationStatus({
       running: false,
-      message: result.migrated ? `ÄÃ£ chuyá»ƒn Ä‘á»•i ${result.total} dÃ²ng dá»¯ liá»‡u.` : 'ÄÃ£ táº¡o dá»± Ã¡n NQ22.',
+      message: result.migrated ? `Đã chuy�fn �'�.i ${result.total} dòng dữ li�?u.` : 'Đã tạo dự án NQ22.',
     });
   };
 
@@ -365,10 +462,14 @@ export default function App() {
             projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            isAdmin={isAdmin}
+            users={users}
+            assignments={assignments}
+            currentUser={userProfile}
           />
         );
       case 'PROJECTS':
-        return isAuthenticated ? (
+        return isAdmin ? (
           <ProjectManager onSelectProject={(project) => {
             setSelectedProjectId(project.id);
             setCurrentView('LEARN_FORM');
@@ -380,10 +481,14 @@ export default function App() {
             projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            isAdmin={isAdmin}
+            users={users}
+            assignments={assignments}
+            currentUser={userProfile}
           />
         );
       case 'LEARN_FORM':
-        return currentProject ? (
+        return isAdmin && currentProject ? (
           <FormLearner project={currentProject} />
         ) : (
           <DashboardOverview
@@ -392,6 +497,10 @@ export default function App() {
             projects={projects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            isAdmin={isAdmin}
+            users={users}
+            assignments={assignments}
+            currentUser={userProfile}
           />
         );
       case 'IMPORT':
@@ -403,6 +512,7 @@ export default function App() {
             projectId={selectedProjectId}
             templates={templates.filter((tpl) => tpl.projectId === selectedProjectId)}
             projectName={currentProject?.name || DEFAULT_PROJECT_NAME}
+            canManageData={isAdmin}
           />
         ) : (
           <DashboardOverview
@@ -418,14 +528,14 @@ export default function App() {
       case 'SETTINGS':
         return (
           <div className="p-6 md:p-8">
-            <h2 className="page-title">CÃ i Ä‘áº·t há»‡ thá»‘ng</h2>
+            <h2 className="page-title">Cài �'ặt h�? th�'ng</h2>
             <p className="page-subtitle mt-2 max-w-3xl text-sm">
-              Cáº¥u hÃ¬nh nguá»“n lÆ°u trá»¯ vÃ  Ä‘Æ°á»ng dáº«n tiáº¿p nháº­n dá»¯ liá»‡u táº­p trung cho toÃ n há»‡ thá»‘ng.
+              Cấu hình ngu�"n lưu trữ và �'ường dẫn tiếp nhận dữ li�?u tập trung cho toàn h�? th�'ng.
             </p>
 
             <div className="mt-8 max-w-3xl space-y-6">
               <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Link OneDrive (LÆ°u trá»¯ trá»±c tuyáº¿n)</label>
+                <label className="col-header block mb-3">Link OneDrive (Lưu trữ trực tuyến)</label>
                 <div className="flex gap-3">
                   <LinkIcon size={18} className="mt-3 text-[var(--primary)]" />
                   <input
@@ -433,40 +543,40 @@ export default function App() {
                     value={settings.oneDriveLink}
                     onChange={(event) => setSettings({ ...settings, oneDriveLink: event.target.value })}
                     className="field-input field-link"
-                    disabled={!isAuthenticated}
+                    disabled={!isAdmin}
                   />
                 </div>
               </div>
 
               <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">ThÆ° má»¥c lÆ°u trá»¯ file gá»‘c</label>
+                <label className="col-header block mb-3">Thư mục lưu trữ file g�'c</label>
                 <input
                   type="text"
                   value={settings.storagePath}
                   onChange={(event) => setSettings({ ...settings, storagePath: event.target.value })}
                   className="field-input"
-                  disabled={!isAuthenticated}
+                    disabled={!isAdmin}
                 />
               </div>
 
               <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">ThÆ° má»¥c lÆ°u trá»¯ file Ä‘Ã£ tiáº¿p nháº­n</label>
+                <label className="col-header block mb-3">Thư mục lưu trữ file �'ã tiếp nhận</label>
                 <input
                   type="text"
                   value={settings.receivedPath}
                   onChange={(event) => setSettings({ ...settings, receivedPath: event.target.value })}
                   className="field-input"
-                  disabled={!isAuthenticated}
+                    disabled={!isAdmin}
                 />
               </div>
 
-              {isAuthenticated && (
+              {isAdmin && (
                 <div className="flex flex-wrap gap-3">
                   <button onClick={handleSaveSettings} className="primary-btn">
-                    LÆ°u cáº¥u hÃ¬nh
+                    Lưu cấu hình
                   </button>
                   <button onClick={handleRerunMigration} className="secondary-btn">
-                    Cháº¡y láº¡i chuyá»ƒn Ä‘á»•i NQ22
+                    Chạy lại chuy�fn �'�.i NQ22
                   </button>
                 </div>
               )}
@@ -475,18 +585,18 @@ export default function App() {
                 <p className="text-xs text-[var(--ink-soft)]">{migrationStatus.message}</p>
               )}
 
-              {migrationHistory.length > 0 && (
+              {isAdmin && migrationHistory.length > 0 && (
                 <div className="panel-card rounded-[20px] p-4">
-                  <p className="col-header mb-3">Lá»‹ch sá»­ chuyá»ƒn Ä‘á»•i</p>
+                  <p className="col-header mb-3">L�<ch sử chuy�fn �'�.i</p>
                   <div className="space-y-2 text-xs text-[var(--ink-soft)]">
                     {migrationHistory.map((entry, index) => (
                       <div key={index} className="flex items-center justify-between gap-3">
                         <span className="font-semibold uppercase tracking-[0.12em]">
-                          {entry.action === 'migrate' ? 'Chuyá»ƒn Ä‘á»•i' : 'Reset'}
+                          {entry.action === 'migrate' ? 'Chuy�fn �'�.i' : 'Reset'}
                         </span>
-                        <span>{entry.total ? `${entry.total} dÃ²ng` : '-'}</span>
+                        <span>{entry.total ? `${entry.total} dòng` : '-'}</span>
                         <span>
-                          {entry.at?.toDate ? entry.at.toDate().toLocaleString('vi-VN') : 'Äang cáº­p nháº­t...'}
+                          {entry.at?.toDate ? entry.at.toDate().toLocaleString('vi-VN') : 'Đang cập nhật...'}
                         </span>
                       </div>
                     ))}
@@ -507,6 +617,7 @@ export default function App() {
         currentView={currentView}
         onViewChange={setCurrentView}
         isAuthenticated={isAuthenticated}
+        isAdmin={isAdmin}
         onLogout={handleLogout}
         user={user}
       />
@@ -522,16 +633,16 @@ function LoginView({ onLogin }: { onLogin: () => void }) {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
           <Lock size={30} />
         </div>
-        <h2 className="section-title">ÄÄƒng nháº­p há»‡ thá»‘ng</h2>
-        <p className="page-subtitle mt-3 text-sm">DÃ nh cho quáº£n trá»‹ viÃªn tiáº¿p nháº­n vÃ  há»£p nháº¥t dá»¯ liá»‡u bÃ¡o cÃ¡o.</p>
+        <h2 className="section-title">Đ�fng nhập h�? th�'ng</h2>
+        <p className="page-subtitle mt-3 text-sm">Dành cho quản tr�< viên tiếp nhận và hợp nhất dữ li�?u báo cáo.</p>
 
         <div className="mt-8 space-y-4">
           <button onClick={onLogin} className="primary-btn flex w-full items-center justify-center gap-3">
             <LogIn size={18} />
-            ÄÄƒng nháº­p vá»›i Google
+            Đ�fng nhập v�>i Google
           </button>
           <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--ink-soft)]">
-            Chá»‰ tÃ i khoáº£n admin Ä‘Æ°á»£c cáº¥p quyá»n tiáº¿p nháº­n dá»¯ liá»‡u
+            Ch�? tài khoản admin �'ược cấp quyền tiếp nhận dữ li�?u
           </p>
         </div>
       </div>
@@ -545,14 +656,23 @@ function DashboardOverview({
   projects,
   selectedProjectId,
   onSelectProject,
+  isAdmin,
+  users,
+  assignments,
+  currentUser,
 }: {
   data: ConsolidatedData;
   templates: FormTemplate[];
   projects: Project[];
   selectedProjectId: string;
   onSelectProject: (id: string) => void;
+  isAdmin: boolean;
+  users: UserProfile[];
+  assignments: Record<string, string[]>;
+  currentUser: UserProfile | null;
 }) {
   const [isLogOpen, setIsLogOpen] = useState(false);
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL');
   const dashboardYear = getPreferredReportingYear();
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
@@ -564,10 +684,38 @@ function DashboardOverview({
     return rows.filter((row) => row.projectId === selectedProjectId && row.year === dashboardYear);
   }, [data, dashboardYear, selectedProjectId]);
 
+  const lastUpdatedBy = useMemo(() => {
+    const map = new Map<string, { name: string; at: number }>();
+    rowsForYear.forEach((row) => {
+      if (!row.updatedAt || !row.updatedBy) {
+        return;
+      }
+      const time = row.updatedAt?.toDate ? row.updatedAt.toDate().getTime() : 0;
+      const label = row.updatedBy.displayName || row.updatedBy.email || 'H? th?ng';
+      const existing = map.get(row.unitCode);
+      if (!existing || time > existing.at) {
+        map.set(row.unitCode, { name: label || 'H? th?ng', at: time });
+      }
+    });
+    return map;
+  }, [rowsForYear]);
+
+  const assignmentMap = useMemo(() => {
+    const map = new Map<string, string>();
+    Object.entries(assignments).forEach(([userId, unitCodes]) => {
+      const user = users.find((u) => u.id === userId);
+      const name = user?.displayName || user?.email || 'Chua r�';
+      unitCodes.forEach((code) => {
+        map.set(code, name);
+      });
+    });
+    return map;
+  }, [assignments, users]);
+
   const unitLogs = useMemo<UnitLog[]>(() => {
     const sheetOrder = new Map(SHEET_CONFIGS.map((sheet, index) => [sheet.name, index]));
 
-    return UNITS.map((unit) => {
+    const logs = UNITS.map((unit) => {
       const unitRows = rowsForYear.filter((row) => row.unitCode === unit.code);
       const importedSheets = Array.from(
         new Set(
@@ -582,6 +730,8 @@ function DashboardOverview({
         importedSheets,
         rowCount: unitRows.length,
         isSubmitted: importedSheets.length > 0,
+        lastUpdatedBy: lastUpdatedBy.get(unit.code)?.name,
+        assignedTo: assignmentMap.get(unit.code),
       };
     }).sort((left, right) => {
       if (left.isSubmitted !== right.isSubmitted) {
@@ -594,7 +744,11 @@ function DashboardOverview({
 
       return left.name.localeCompare(right.name, 'vi');
     });
-  }, [rowsForYear, templateMap]);
+    if (selectedAssignee === 'ALL') {
+      return logs;
+    }
+    return logs.filter((unit) => assignments[selectedAssignee]?.includes(unit.code));
+  }, [rowsForYear, templateMap, lastUpdatedBy, assignmentMap, selectedAssignee, assignments]);
 
   const submittedCount = unitLogs.filter((unit) => unit.isSubmitted).length;
   const totalRows = rowsForYear.length;
@@ -603,25 +757,26 @@ function DashboardOverview({
 
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
   const completedProjects = projects.filter((p) => p.status === 'COMPLETED').length;
+  const assignees = useMemo(() => users.filter((u) => u.role === 'contributor'), [users]);
 
   const stats = [
-    { label: 'Tá»•ng Ä‘Æ¡n vá»‹', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
+    { label: 'T�.ng �'ơn v�<', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
     {
-      label: 'ÄÆ¡n vá»‹ Ä‘Ã£ tiáº¿p nháº­n',
+      label: 'Đơn v�< �'ã tiếp nhận',
       value: `${submittedCount}/${totalUnits}`,
       icon: FileBarChart,
       iconColor: 'text-[var(--success)]',
       tone: 'bg-[rgba(47,110,73,0.12)]',
     },
     {
-      label: 'DÃ²ng dá»¯ liá»‡u Ä‘Ã£ lÆ°u',
+      label: 'Dòng dữ li�?u �'ã lưu',
       value: totalRows.toLocaleString('vi-VN'),
       icon: Layers3,
       iconColor: 'text-[var(--gold)]',
       tone: 'bg-[var(--gold-soft)]',
     },
     {
-      label: 'Tá»· lá»‡ hoÃ n thÃ nh',
+      label: 'Tỷ l�? hoàn thành',
       value: `${completionRate}%`,
       icon: Activity,
       iconColor: 'text-[var(--primary-dark)]',
@@ -630,8 +785,8 @@ function DashboardOverview({
   ];
 
   const pieData = [
-    { name: 'ÄÃ£ tiáº¿p nháº­n', value: submittedCount },
-    { name: 'ChÆ°a tiáº¿p nháº­n', value: totalUnits - submittedCount },
+    { name: 'Đã tiếp nhận', value: submittedCount },
+    { name: 'Chưa tiếp nhận', value: totalUnits - submittedCount },
   ];
 
   const previewLogs = unitLogs.slice(0, 8);
@@ -640,10 +795,10 @@ function DashboardOverview({
     <div className="p-6 md:p-8">
       <header className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="surface-tag">NÄƒm tá»•ng há»£p {dashboardYear}</div>
-          <h2 className="page-title mt-4">HÄ† THá»NG QUáº¢N TRá» Dá»® LIá»†U TCÄ, ÄV Táº¬P TRUNG</h2>
+          <div className="surface-tag">N�fm t�.ng hợp {dashboardYear}</div>
+          <h2 className="page-title mt-4">H�? THỐNG QUẢN TRỊ DỮ LI�?U TCĐ, ĐV TẬP TRUNG</h2>
           <p className="page-subtitle mt-3 max-w-3xl text-sm">
-            Theo dÃµi nhanh tÃ¬nh hÃ¬nh tiáº¿p nháº­n dá»¯ liá»‡u cá»§a 132 Ä‘Æ¡n vá»‹, sá»‘ biá»ƒu Ä‘Ã£ nháº­p vÃ  má»©c Ä‘á»™ hoÃ n thÃ nh tá»•ng há»£p trÃªn toÃ n há»‡ thá»‘ng.
+            Theo dõi nhanh tình hình tiếp nhận dữ li�?u của 132 �'ơn v�<, s�' bi�fu �'ã nhập và mức �'�T hoàn thành t�.ng hợp trên toàn h�? th�'ng.
           </p>
         </div>
 
@@ -651,7 +806,7 @@ function DashboardOverview({
           <div className="flex items-center gap-2">
             <Globe size={15} className="text-[var(--success)]" />
             <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--primary-dark)]">
-              Há»‡ thá»‘ng trá»±c tuyáº¿n
+              H�? th�'ng trực tuyến
             </span>
           </div>
         </div>
@@ -659,7 +814,7 @@ function DashboardOverview({
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Chá»n dá»± Ã¡n</p>
+          <p className="col-header mb-2">Chọn dự án</p>
           <select
             value={selectedProjectId}
             onChange={(event) => onSelectProject(event.target.value)}
@@ -675,15 +830,15 @@ function DashboardOverview({
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Dá»± Ã¡n Ä‘ang cháº¡y</p>
+          <p className="col-header mb-2">Dự án �'ang chạy</p>
           <p className="data-value text-3xl font-bold text-[var(--ink)]">{activeProjects}</p>
-          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dá»± Ã¡n chÆ°a káº¿t thÃºc</p>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dự án chưa kết thúc</p>
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Dá»± Ã¡n hoÃ n thÃ nh</p>
+          <p className="col-header mb-2">Dự án hoàn thành</p>
           <p className="data-value text-3xl font-bold text-[var(--ink)]">{completedProjects}</p>
-          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dá»± Ã¡n Ä‘Ã£ Ä‘Ã³ng</p>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dự án �'ã �'óng</p>
         </div>
       </div>
 
@@ -703,14 +858,20 @@ function DashboardOverview({
         ))}
       </div>
 
+      {isAdmin && assignees.length > 0 && (
+        <div className="mt-8">
+          <UnitAssignments projectId={selectedProjectId} users={assignees} assignments={assignments} />
+        </div>
+      )}
+
       <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Biá»ƒu Ä‘á»“ tiáº¿p nháº­n dá»¯ liá»‡u</h3>
-              <p className="page-subtitle mt-2 text-sm">Tá»· lá»‡ Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p dá»¯ liá»‡u so vá»›i tá»•ng sá»‘ Ä‘Æ¡n vá»‹ trong nÄƒm {dashboardYear}.</p>
+              <h3 className="section-title">Bi�fu �'�" tiếp nhận dữ li�?u</h3>
+              <p className="page-subtitle mt-2 text-sm">Tỷ l�? �'ơn v�< �'ã n�Tp dữ li�?u so v�>i t�.ng s�' �'ơn v�< trong n�fm {dashboardYear}.</p>
             </div>
-            <div className="status-pill status-pill-submitted">{submittedCount} Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p</div>
+            <div className="status-pill status-pill-submitted">{submittedCount} �'ơn v�< �'ã n�Tp</div>
           </div>
 
           <div className="mt-8 h-[300px] w-full">
@@ -737,17 +898,17 @@ function DashboardOverview({
 
           <div className="mt-2 text-center">
             <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Má»©c Ä‘á»™ hoÃ n thÃ nh tiáº¿p nháº­n</p>
+            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Mức �'�T hoàn thành tiếp nhận</p>
           </div>
         </div>
 
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Tráº¡ng thÃ¡i tiáº¿p nháº­n Ä‘Æ¡n vá»‹</h3>
-              <p className="page-subtitle mt-2 text-sm">Danh sÃ¡ch Ä‘Æ°á»£c láº¥y tá»« dá»¯ liá»‡u tháº­t Ä‘Ã£ lÆ°u.</p>
+              <h3 className="section-title">Trạng thái tiếp nhận �'ơn v�<</h3>
+              <p className="page-subtitle mt-2 text-sm">Danh sách �'ược lấy từ dữ li�?u thật �'ã lưu.</p>
             </div>
-            <div className="status-pill status-pill-pending">{totalUnits - submittedCount} Ä‘Æ¡n vá»‹ chÆ°a ná»™p</div>
+            <div className="status-pill status-pill-pending">{totalUnits - submittedCount} �'ơn v�< chưa n�Tp</div>
           </div>
 
           <div className="mt-6 space-y-3">
@@ -760,14 +921,14 @@ function DashboardOverview({
                   <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
                   <p className="mt-1 text-xs text-[var(--ink-soft)]">
                     {unit.isSubmitted
-                      ? `ÄÃ£ nháº­p ${unit.importedSheets.length}/${projectTemplates.length} biá»ƒu`
-                      : 'ChÆ°a tiáº¿p nháº­n dá»¯ liá»‡u'}
+                      ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} bi�fu`
+                      : 'Chưa tiếp nhận dữ li�?u'}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3 self-start md:self-auto">
                   <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                    {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'Chá» tiáº¿p nháº­n'}
+                    {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'}
                   </span>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
                 </div>
@@ -776,7 +937,7 @@ function DashboardOverview({
           </div>
 
           <button onClick={() => setIsLogOpen(true)} className="primary-btn mt-6 w-full">
-            Xem táº¥t cáº£ nháº­t kÃ½
+            Xem tất cả nhật ký
           </button>
         </div>
       </div>
@@ -786,10 +947,10 @@ function DashboardOverview({
           <div className="panel-card flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[30px]">
             <div className="flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="surface-tag">132 Ä‘Æ¡n vá»‹ toÃ n há»‡ thá»‘ng</div>
-                <h3 className="section-title mt-3">Nháº­t kÃ½ tiáº¿p nháº­n dá»¯ liá»‡u nÄƒm {dashboardYear}</h3>
+                <div className="surface-tag">132 �'ơn v�< toàn h�? th�'ng</div>
+                <h3 className="section-title mt-3">Nhật ký tiếp nhận dữ li�?u n�fm {dashboardYear}</h3>
                 <p className="page-subtitle mt-2 text-sm">
-                  Hiá»ƒn thá»‹ Ä‘áº§y Ä‘á»§ tráº¡ng thÃ¡i cá»§a tá»«ng Ä‘Æ¡n vá»‹ cÃ¹ng sá»‘ biá»ƒu Ä‘Ã£ Ä‘Æ°á»£c nháº­p vÃ o há»‡ thá»‘ng táº­p trung.
+                  Hi�fn th�< �'ầy �'ủ trạng thái của từng �'ơn v�< cùng s�' bi�fu �'ã �'ược nhập vào h�? th�'ng tập trung.
                 </p>
               </div>
 
@@ -798,21 +959,21 @@ function DashboardOverview({
                 className="secondary-btn flex items-center justify-center gap-2 self-start px-4 py-3"
               >
                 <X size={16} />
-                ÄÃ³ng
+                Đóng
               </button>
             </div>
 
             <div className="grid grid-cols-1 gap-4 border-b border-[var(--line)] bg-[var(--primary-soft)] px-6 py-4 md:grid-cols-3">
               <div className="rounded-2xl bg-white/70 px-4 py-3">
-                <p className="col-header mb-1">Tá»•ng Ä‘Æ¡n vá»‹</p>
+                <p className="col-header mb-1">T�.ng �'ơn v�<</p>
                 <p className="data-value text-2xl font-bold">{totalUnits}</p>
               </div>
               <div className="rounded-2xl bg-white/70 px-4 py-3">
-                <p className="col-header mb-1">ÄÃ£ tiáº¿p nháº­n</p>
+                <p className="col-header mb-1">Đã tiếp nhận</p>
                 <p className="data-value text-2xl font-bold text-[var(--success)]">{submittedCount}</p>
               </div>
               <div className="rounded-2xl bg-white/70 px-4 py-3">
-                <p className="col-header mb-1">ChÆ°a tiáº¿p nháº­n</p>
+                <p className="col-header mb-1">Chưa tiếp nhận</p>
                 <p className="data-value text-2xl font-bold text-[var(--warning)]">{totalUnits - submittedCount}</p>
               </div>
             </div>
@@ -835,22 +996,22 @@ function DashboardOverview({
                       </div>
                       <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">
                         {unit.isSubmitted
-                          ? `ÄÃ£ lÆ°u ${unit.rowCount.toLocaleString('vi-VN')} dÃ²ng dá»¯ liá»‡u.`
-                          : 'Hiá»‡n chÆ°a cÃ³ dá»¯ liá»‡u nÃ o Ä‘Æ°á»£c tiáº¿p nháº­n trong nÄƒm nÃ y.'}
+                          ? `Đã lưu ${unit.rowCount.toLocaleString('vi-VN')} dòng dữ li�?u.`
+                          : 'Hi�?n chưa có dữ li�?u nào �'ược tiếp nhận trong n�fm này.'}
                       </p>
                     </div>
 
                     <div className="min-w-0">
-                      <p className="col-header mb-2">Biá»ƒu Ä‘Ã£ nháº­p</p>
+                      <p className="col-header mb-2">Bi�fu �'ã nhập</p>
                       <p className="truncate text-sm text-[var(--ink)]">
-                        {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'ChÆ°a cÃ³ biá»ƒu nÃ o'}
+                        {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'Chưa có bi�fu nào'}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2 self-start md:self-auto">
                       {unit.isSubmitted && <CheckCircle2 size={16} className="text-[var(--success)]" />}
                       <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                        {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'Chá» tiáº¿p nháº­n'}
+                        {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chờ tiếp nhận'}
                       </span>
                     </div>
                   </div>
@@ -863,3 +1024,4 @@ function DashboardOverview({
     </div>
   );
 }
+

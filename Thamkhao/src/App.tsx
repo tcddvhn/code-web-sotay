@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ImportFiles } from './components/ImportFiles';
 import { ReportView } from './components/ReportView';
@@ -111,7 +111,7 @@ export default function App() {
     if (!isAuthenticated) return;
     try {
       await setDoc(doc(db, 'settings', 'global'), settings);
-      alert('Đã lưu cài đặt!');
+      alert('D� luu c�i d?t!');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings/global');
     }
@@ -166,10 +166,10 @@ export default function App() {
       case 'SETTINGS':
         return (
           <div className="p-8">
-            <h2 className="text-4xl font-bold tracking-tighter uppercase italic font-serif mb-8">Cài đặt hệ thống</h2>
+            <h2 className="text-4xl font-bold tracking-tighter uppercase italic font-serif mb-8">C�i d?t h? th?ng</h2>
             <div className="max-w-2xl space-y-8">
               <div className="p-6 border border-black bg-white">
-                <label className="col-header block mb-2">Link OneDrive (Lưu trữ trực tuyến)</label>
+                <label className="col-header block mb-2">Link OneDrive (Luu tr? tr?c tuy?n)</label>
                 <div className="flex gap-2">
                   <LinkIcon size={18} className="mt-2 opacity-40" />
                   <input 
@@ -182,7 +182,7 @@ export default function App() {
                 </div>
               </div>
               <div className="p-6 border border-black bg-white">
-                <label className="col-header block mb-2">Thư mục lưu trữ file gốc</label>
+                <label className="col-header block mb-2">Thu m?c luu tr? file g?c</label>
                 <input 
                   type="text" 
                   value={settings.storagePath} 
@@ -192,7 +192,7 @@ export default function App() {
                 />
               </div>
               <div className="p-6 border border-black bg-white">
-                <label className="col-header block mb-2">Thư mục lưu trữ file đã tiếp nhận</label>
+                <label className="col-header block mb-2">Thu m?c luu tr? file d� ti?p nh?n</label>
                 <input 
                   type="text" 
                   value={settings.receivedPath} 
@@ -206,7 +206,7 @@ export default function App() {
                   onClick={handleSaveSettings}
                   className="px-8 py-4 bg-[#141414] text-[#E4E3E0] text-sm font-bold uppercase tracking-widest hover:scale-105 transition-transform"
                 >
-                  Lưu cấu hình
+                  Luu c?u h�nh
                 </button>
               )}
             </div>
@@ -239,8 +239,8 @@ function LoginView({ onLogin }: { onLogin: () => void }) {
       <div className="w-full max-w-md p-12 border border-black bg-white shadow-2xl">
         <div className="text-center mb-8">
           <Lock className="mx-auto mb-4" size={48} />
-          <h2 className="text-2xl font-bold tracking-tighter uppercase italic font-serif">Đăng nhập hệ thống</h2>
-          <p className="text-[10px] uppercase tracking-widest opacity-50 mt-2">Dành cho quản trị viên tiếp nhận file</p>
+          <h2 className="text-2xl font-bold tracking-tighter uppercase italic font-serif">Dang nh?p h? th?ng</h2>
+          <p className="text-[10px] uppercase tracking-widest opacity-50 mt-2">D�nh cho qu?n tr? vi�n ti?p nh?n file</p>
         </div>
         <div className="space-y-6">
           <button 
@@ -248,9 +248,9 @@ function LoginView({ onLogin }: { onLogin: () => void }) {
             className="w-full py-4 bg-[#141414] text-[#E4E3E0] text-sm font-bold uppercase tracking-widest hover:bg-black/90 transition-colors flex items-center justify-center gap-3"
           >
             <LogIn size={18} />
-            Đăng nhập với Google
+            Dang nh?p v?i Google
           </button>
-          <p className="text-[9px] text-center opacity-40 uppercase tracking-widest">Chỉ tài khoản admin được cấp quyền tiếp nhận dữ liệu</p>
+          <p className="text-[9px] text-center opacity-40 uppercase tracking-widest">Ch? t�i kho?n admin du?c c?p quy?n ti?p nh?n d? li?u</p>
         </div>
       </div>
     </div>
@@ -271,14 +271,14 @@ function DashboardOverview({ data, projects, templates }: { data: ConsolidatedDa
   }, [data]);
 
   const stats = [
-    { label: 'Dự án đang chạy', value: activeProjects, icon: FolderPlus, color: 'text-blue-600' },
-    { label: 'Dự án hoàn thành', value: completedProjects, icon: Activity, color: 'text-green-600' },
-    { label: 'Biểu mẫu đã học', value: templates.length, icon: BrainCircuit, color: 'text-orange-600' },
+    { label: 'D? �n dang ch?y', value: activeProjects, icon: FolderPlus, color: 'text-blue-600' },
+    { label: 'D? �n ho�n th�nh', value: completedProjects, icon: Activity, color: 'text-green-600' },
+    { label: 'Bi?u m?u d� h?c', value: templates.length, icon: BrainCircuit, color: 'text-orange-600' },
   ];
 
   const pieData = [
-    { name: 'Đang chạy', value: activeProjects },
-    { name: 'Hoàn thành', value: completedProjects },
+    { name: 'Dang ch?y', value: activeProjects },
+    { name: 'Ho�n th�nh', value: completedProjects },
   ];
 
   const COLORS = ['#141414', '#D1D1D1'];
@@ -287,12 +287,12 @@ function DashboardOverview({ data, projects, templates }: { data: ConsolidatedDa
     <div className="p-8">
       <header className="mb-12 flex justify-between items-start">
         <div>
-          <h2 className="text-4xl font-bold tracking-tighter uppercase italic font-serif">Hệ thống Tổng hợp Đa Dự án</h2>
-          <p className="text-sm opacity-60 mt-2">Quản lý linh hoạt nhiều dự án và biểu mẫu động bằng AI.</p>
+          <h2 className="text-4xl font-bold tracking-tighter uppercase italic font-serif">H? th?ng T?ng h?p Da D? �n</h2>
+          <p className="text-sm opacity-60 mt-2">Qu?n l� linh ho?t nhi?u d? �n v� bi?u m?u d?ng b?ng AI.</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 border border-black bg-white/50">
           <Globe size={14} className="animate-pulse text-green-600" />
-          <span className="text-[10px] font-bold uppercase tracking-widest">Hệ thống trực tuyến</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest">H? th?ng tr?c tuy?n</span>
         </div>
       </header>
 
@@ -310,7 +310,7 @@ function DashboardOverview({ data, projects, templates }: { data: ConsolidatedDa
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="p-8 border border-black bg-white flex flex-col items-center">
-          <h3 className="col-header mb-8 self-start">Tỷ lệ hoàn thành dự án</h3>
+          <h3 className="col-header mb-8 self-start">T? l? ho�n th�nh d? �n</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -335,7 +335,7 @@ function DashboardOverview({ data, projects, templates }: { data: ConsolidatedDa
         </div>
 
         <div className="p-8 border border-black bg-white">
-          <h3 className="col-header mb-8">Danh sách dự án mới nhất</h3>
+          <h3 className="col-header mb-8">Danh s�ch d? �n m?i nh?t</h3>
           <div className="space-y-4">
             {projects.slice(0, 5).map((project, i) => (
               <div key={i} className="flex items-center justify-between py-3 border-b border-black/5">
@@ -344,7 +344,7 @@ function DashboardOverview({ data, projects, templates }: { data: ConsolidatedDa
                   <span className="text-sm font-medium">{project.name}</span>
                 </div>
                 <span className="text-[10px] font-mono opacity-50 uppercase">
-                  {project.status === 'ACTIVE' ? 'Đang chạy' : 'Hoàn thành'}
+                  {project.status === 'ACTIVE' ? 'Dang ch?y' : 'Ho�n th�nh'}
                 </span>
               </div>
             ))}
@@ -354,3 +354,4 @@ function DashboardOverview({ data, projects, templates }: { data: ConsolidatedDa
     </div>
   );
 }
+

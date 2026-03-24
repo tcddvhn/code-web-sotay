@@ -48,6 +48,12 @@ service cloud.firestore {
           (request.auth.token.email == "ldkien116@gmail.com" && request.auth.token.email_verified == true));
     }
 
+    function isContributor() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'contributor'] ||
+          (request.auth.token.email == "ldkien116@gmail.com" && request.auth.token.email_verified == true));
+    }
+
     function isValidDataRow(data) {
       return data.unitCode is string && data.unitCode.size() > 0 &&
              data.year is string && data.year.size() == 4 &&
@@ -90,7 +96,7 @@ service cloud.firestore {
 
     match /consolidated_data_v2/{rowId} {
       allow read: if true;
-      allow create, update: if isAdmin() && isValidDataRow(request.resource.data);
+      allow create, update: if isContributor() && isValidDataRow(request.resource.data);
       allow delete: if isAdmin();
     }
 
@@ -110,7 +116,13 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update, delete: if isAdmin();
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
   }

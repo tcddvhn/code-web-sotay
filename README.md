@@ -1,47 +1,48 @@
-# Hệ thống Tổng hợp Dữ liệu Excel (Consolidation System v2.0)
+﻿# H? th?ng T?ng h?p D? li?u Excel (Consolidation System v2.0)
 
-Ứng dụng web chuyên dụng để tiếp nhận, xử lý và tổng hợp dữ liệu từ các file Excel báo cáo của các đơn vị thành viên. Tích hợp Firebase để lưu trữ dữ liệu trực tuyến và quản lý quyền truy cập Admin.
+?ng d?ng web chuy�n d?ng d? ti?p nh?n, x? l� v� t?ng h?p d? li?u t? c�c file Excel b�o c�o c?a c�c don v? th�nh vi�n. T�ch h?p Firebase d? luu tr? d? li?u tr?c tuy?n v� qu?n l� quy?n truy c?p Admin.
 
-## 🚀 Tính năng chính
-- **Tiếp nhận File:** Tự động đọc dữ liệu từ các biểu mẫu Excel (1B, 5A, 5B...) bằng thư viện `xlsx`.
-- **Dashboard:** Biểu đồ trực quan về tỷ lệ nộp báo cáo và thống kê tổng quát.
-- **Báo cáo:** Xem dữ liệu tổng hợp theo từng biểu mẫu, hỗ trợ lọc theo năm.
+## ?? T�nh nang ch�nh
+- **Ti?p nh?n File:** T? d?ng d?c d? li?u t? c�c bi?u m?u Excel (1B, 5A, 5B...) b?ng thu vi?n `xlsx`.
+- **Dashboard:** Bi?u d? tr?c quan v? t? l? n?p b�o c�o v� th?ng k� t?ng qu�t.
+- **B�o c�o:** Xem d? li?u t?ng h?p theo t?ng bi?u m?u, h? tr? l?c theo nam.
 - **Firebase Integration:** 
-  - Lưu trữ dữ liệu thời gian thực trên Firestore.
-  - Đăng nhập Admin bằng tài khoản Google.
-  - Bảo mật dữ liệu bằng Security Rules.
-- **Giao diện:** Thiết kế hiện đại, tối giản (Brutalist Style) sử dụng Tailwind CSS.
+  - Luu tr? d? li?u th?i gian th?c tr�n Firestore.
+  - Dang nh?p Admin b?ng t�i kho?n Google.
+  - B?o m?t d? li?u b?ng Security Rules.
+- **Giao di?n:** Thi?t k? hi?n d?i, t?i gi?n (Brutalist Style) s? d?ng Tailwind CSS.
 
-## 🛠 Công nghệ sử dụng
+## ?? C�ng ngh? s? d?ng
 - **Frontend:** React 18, TypeScript, Vite.
 - **Styling:** Tailwind CSS, Lucide Icons.
 - **Charts:** Recharts.
 - **Database & Auth:** Firebase (Firestore, Auth).
 - **Excel Processing:** XLSX (SheetJS).
 
-## 📦 Hướng dẫn cài đặt (Local)
+## ?? Hu?ng d?n c�i d?t (Local)
 
-1. **Tải mã nguồn:**
+1. **T?i m� ngu?n:**
    ```bash
    git clone <your-github-url>
    cd <folder-name>
    ```
 
-2. **Cài đặt thư viện:**
+2. **C�i d?t thu vi?n:**
    ```bash
    npm install
    ```
 
-3. **Chạy ứng dụng:**
+3. **Ch?y ?ng d?ng:**
    ```bash
    npm run dev
    ```
-   Ứng dụng sẽ chạy tại: `http://localhost:3000`
+   ?ng d?ng s? ch?y t?i: `http://localhost:3000`
 
-## 🔐 Cấu hình Firebase
-Ứng dụng yêu cầu một dự án Firebase để hoạt động. Các thông số cấu hình nằm trong file `firebase-applet-config.json`.
-- Đảm bảo đã bật **Google Authentication** trong Firebase Console.
-- Nạp quy tắc bảo mật từ file `firestore.rules` vào phần **Firestore -> Rules**.
+## ?? C?u h�nh Firebase
+?ng d?ng y�u c?u m?t d? �n Firebase d? ho?t d?ng. C�c th�ng s? c?u h�nh n?m trong file `firebase-applet-config.json`.
+- D?m b?o d� b?t **Google Authentication** trong Firebase Console.
+- N?p quy t?c b?o m?t t? file `firestore.rules` v�o ph?n **Firestore -> Rules**.
 
-## 📝 Giấy phép
-Bản quyền thuộc về ldkien116@gmail.com.
+## ?? Gi?y ph�p
+B?n quy?n thu?c v? ldkien116@gmail.com.
+

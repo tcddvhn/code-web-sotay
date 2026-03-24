@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Project, FormTemplate, DataRow } from '../types';
 import { db, handleFirestoreError, OperationType } from '../firebase';
@@ -81,14 +81,14 @@ export function ImportFiles({ onDataImported }: ImportFilesProps) {
         }
 
         if (rows.length === 0) {
-          throw new Error('Không tìm thấy dữ liệu phù hợp trong file.');
+          throw new Error('Kh�ng t�m th?y d? li?u ph� h?p trong file.');
         }
 
         onDataImported(rows);
-        setStatus({ type: 'success', message: `Đã tiếp nhận ${rows.length} hàng dữ liệu thành công!` });
+        setStatus({ type: 'success', message: `D� ti?p nh?n ${rows.length} h�ng d? li?u th�nh c�ng!` });
       } catch (err) {
         console.error(err);
-        setStatus({ type: 'error', message: err instanceof Error ? err.message : 'Lỗi khi xử lý file Excel.' });
+        setStatus({ type: 'error', message: err instanceof Error ? err.message : 'L?i khi x? l� file Excel.' });
       } finally {
         setIsProcessing(false);
       }
@@ -100,35 +100,35 @@ export function ImportFiles({ onDataImported }: ImportFilesProps) {
   return (
     <div className="p-8">
       <div className="mb-12">
-        <h2 className="text-4xl font-bold tracking-tighter uppercase italic font-serif">Tiếp nhận Dữ liệu</h2>
-        <p className="text-sm opacity-60 mt-2">Chọn dự án và biểu mẫu tương ứng để bắt đầu nạp dữ liệu.</p>
+        <h2 className="text-4xl font-bold tracking-tighter uppercase italic font-serif">Ti?p nh?n D? li?u</h2>
+        <p className="text-sm opacity-60 mt-2">Ch?n d? �n v� bi?u m?u tuong ?ng d? b?t d?u n?p d? li?u.</p>
       </div>
 
       <div className="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
         <div className="p-8 border border-black bg-white">
-          <h3 className="col-header mb-6">1. Chọn Dự án & Biểu mẫu</h3>
+          <h3 className="col-header mb-6">1. Ch?n D? �n & Bi?u m?u</h3>
           <div className="space-y-6">
             <div>
-              <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Dự án triển khai</label>
+              <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">D? �n tri?n khai</label>
               <select 
                 value={selectedProject?.id || ''} 
                 onChange={(e) => setSelectedProject(projects.find(p => p.id === e.target.value) || null)}
                 className="w-full bg-transparent border-b border-black py-2 font-bold focus:outline-none"
               >
-                <option value="">-- Chọn dự án --</option>
+                <option value="">-- Ch?n d? �n --</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
 
             <div>
-              <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Biểu mẫu (Template)</label>
+              <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Bi?u m?u (Template)</label>
               <select 
                 value={selectedTemplate?.id || ''} 
                 onChange={(e) => setSelectedTemplate(templates.find(t => t.id === e.target.value) || null)}
                 className="w-full bg-transparent border-b border-black py-2 font-bold focus:outline-none"
                 disabled={!selectedProject}
               >
-                <option value="">-- Chọn biểu mẫu --</option>
+                <option value="">-- Ch?n bi?u m?u --</option>
                 {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
@@ -136,10 +136,10 @@ export function ImportFiles({ onDataImported }: ImportFilesProps) {
         </div>
 
         <div className="p-8 border border-black bg-white">
-          <h3 className="col-header mb-6">2. Thông tin Đơn vị & Năm</h3>
+          <h3 className="col-header mb-6">2. Th�ng tin Don v? & Nam</h3>
           <div className="space-y-6">
             <div>
-              <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Đơn vị báo cáo</label>
+              <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Don v? b�o c�o</label>
               <select 
                 value={selectedUnit} 
                 onChange={(e) => setSelectedUnit(e.target.value)}
@@ -150,7 +150,7 @@ export function ImportFiles({ onDataImported }: ImportFilesProps) {
             </div>
 
             <div>
-              <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Năm báo cáo</label>
+              <label className="text-[10px] uppercase tracking-widest opacity-50 block mb-2">Nam b�o c�o</label>
               <select 
                 value={selectedYear} 
                 onChange={(e) => setSelectedYear(e.target.value)}
@@ -168,13 +168,13 @@ export function ImportFiles({ onDataImported }: ImportFilesProps) {
           {isProcessing ? (
             <div className="flex flex-col items-center">
               <Loader2 className="animate-spin mb-4" size={48} />
-              <p className="text-sm font-bold uppercase tracking-widest">Đang xử lý dữ liệu...</p>
+              <p className="text-sm font-bold uppercase tracking-widest">Dang x? l� d? li?u...</p>
             </div>
           ) : (
             <>
               <FileUp className="mx-auto mb-4 opacity-20" size={64} />
-              <h3 className="text-xl font-bold mb-4">Tải lên file báo cáo</h3>
-              <p className="text-xs opacity-50 mb-8 uppercase tracking-widest">Hệ thống sẽ tự động parse theo Template đã chọn</p>
+              <h3 className="text-xl font-bold mb-4">T?i l�n file b�o c�o</h3>
+              <p className="text-xs opacity-50 mb-8 uppercase tracking-widest">H? th?ng s? t? d?ng parse theo Template d� ch?n</p>
               
               <input 
                 type="file" 
@@ -187,7 +187,7 @@ export function ImportFiles({ onDataImported }: ImportFilesProps) {
                 htmlFor="file-upload"
                 className="px-12 py-5 bg-[#141414] text-[#E4E3E0] text-xs font-bold uppercase tracking-widest cursor-pointer hover:scale-105 transition-transform inline-block"
               >
-                Chọn file từ máy tính
+                Ch?n file t? m�y t�nh
               </label>
             </>
           )}
@@ -203,3 +203,4 @@ export function ImportFiles({ onDataImported }: ImportFilesProps) {
     </div>
   );
 }
+

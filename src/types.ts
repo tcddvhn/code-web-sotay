@@ -20,6 +20,11 @@ export interface DataRow {
   label: string;
   values: number[];
   updatedAt?: any;
+  updatedBy?: {
+    uid?: string;
+    email?: string | null;
+    displayName?: string | null;
+  };
 }
 
 export interface ConsolidatedData {
@@ -32,6 +37,13 @@ export interface AppSettings {
   oneDriveLink: string;
   storagePath: string;
   receivedPath: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  role: 'admin' | 'contributor';
 }
 
 export interface Project {
