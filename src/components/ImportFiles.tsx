@@ -316,7 +316,7 @@ export function ImportFiles({
                 disabled={isManagingData}
                 className="primary-btn w-full disabled:cursor-not-allowed disabled:opacity-40"
               >
-                X?a to?n b? nam
+                Xóa toàn bộ năm
               </button>
             </div>
 
@@ -336,7 +336,7 @@ export function ImportFiles({
           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         />
         <Upload className="mx-auto mb-4 text-[var(--primary)] opacity-35" size={48} />
-        <p className="text-sm font-medium text-[var(--ink)]">K?o th? ho?c click d? ch?n file Excel (.xlsx, .xlsm, .xls)</p>
+        <p className="text-sm font-medium text-[var(--ink)]">Kéo thả hoặc click để chọn file Excel (.xlsx, .xlsm, .xls)</p>
       </div>
 
       {files.length > 0 && (
@@ -377,11 +377,12 @@ export function ImportFiles({
         disabled={files.length === 0 || files.some((f) => !f.unitCode) || files.some((file) => file.status === 'processing') || isManagingData}
         className="primary-btn px-8 py-4 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        B?t d?u t?ng h?p
+        Bắt đầu tổng hợp
       </button>
     </div>
   );
 }
+
 
 
 

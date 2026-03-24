@@ -822,10 +822,10 @@ function DashboardOverview({
         return;
       }
       const time = row.updatedAt?.toDate ? row.updatedAt.toDate().getTime() : 0;
-      const label = row.updatedBy.displayName || row.updatedBy.email || 'H? th?ng';
+      const label = row.updatedBy.displayName || row.updatedBy.email || 'Hệ thống';
       const existing = map.get(row.unitCode);
       if (!existing || time > existing.at) {
-        map.set(row.unitCode, { name: label || 'H? th?ng', at: time });
+        map.set(row.unitCode, { name: label || 'Hệ thống', at: time });
       }
     });
     return map;
@@ -835,7 +835,7 @@ function DashboardOverview({
     const map = new Map<string, string>();
     Object.entries(assignments).forEach(([userId, unitCodes]) => {
       const user = users.find((u) => u.id === userId);
-      const name = user?.displayName || user?.email || 'Chua r?';
+      const name = user?.displayName || user?.email || 'Chưa rõ';
       unitCodes.forEach((code) => {
         map.set(code, name);
       });
@@ -1052,8 +1052,8 @@ function DashboardOverview({
                   <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
                   <p className="mt-1 text-xs text-[var(--ink-soft)]">
                     {unit.isSubmitted
-                      ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} bi?fu`
-                      : 'Chưa tiếp nhận d? li??u'}
+                      ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} biểu`
+                      : 'Chưa tiếp nhận dữ liệu'}
                   </p>
                 </div>
 
