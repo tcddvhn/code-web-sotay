@@ -207,6 +207,7 @@ textarea {
   background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-alt) 100%);
   color: #fff;
   border-right: 1px solid var(--sidebar-border);
+  transition: width 0.2s ease, min-width 0.2s ease;
 }
 
 .sidebar-title {
@@ -233,6 +234,47 @@ textarea {
   color: #fff;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
   box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.sidebar-collapsed {
+  width: 88px !important;
+  min-width: 88px !important;
+}
+
+.sidebar-collapsed .sidebar-title,
+.sidebar-collapsed .sidebar-meta,
+.sidebar-collapsed .sidebar-label,
+.sidebar-collapsed .sidebar-user-info {
+  display: none;
+}
+
+.sidebar-collapsed .sidebar-item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar-toggle-btn {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  transform: translateY(-1px);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .sidebar-shell {
+    display: none;
+  }
+
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .app-main {
+    width: 100%;
+  }
 }
 
 .table-shell {

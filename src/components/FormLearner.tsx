@@ -4,16 +4,19 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc, query, where } from 'firebase/firestore';
 import { AlertCircle, Brain, CheckCircle, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { FormTemplate, Project } from '../types';
+import { FormTemplate, HeaderLayout, Project } from '../types';
+import { columnLetterToIndex } from '../utils/columnUtils';
 
 type Mode = 'AI' | 'MANUAL';
 
 export function FormLearner({ project }: { project: Project }) {
   const [mode, setMode] = useState<Mode>('AI');
   const [file, setFile] = useState<File | null>(null);
+  const [manualFile, setManualFile] = useState<File | null>(null);
   const [isLearning, setIsLearning] = useState(false);
   const [learnedTemplates, setLearnedTemplates] = useState<FormTemplate[]>([]);
   const [confirmedTemplates, setConfirmedTemplates] = useState<Record<string, boolean>>({});
+  const [headerRanges, setHeaderRanges] = useState<Record<string, { startRow: number; endRow: number; startCol: string; endCol: string }>>({});
   const [confirmAll, setConfirmAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualTemplates, setManualTemplates] = useState<FormTemplate[]>([]);
@@ -25,6 +28,10 @@ export function FormLearner({ project }: { project: Project }) {
     columnHeaders: '',
     startRow: 1,
     endRow: 200,
+    headerStartRow: 1,
+    headerEndRow: 1,
+    headerStartCol: 'A',
+    headerEndCol: 'A',
   });
 
   useEffect(() => {
@@ -47,6 +54,57 @@ export function FormLearner({ project }: { project: Project }) {
       setFile(e.target.files[0]);
       setError(null);
     }
+  };
+
+  const handleManualFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setManualFile(e.target.files[0]);
+    }
+  };
+
+  const buildHeaderLayout = (
+    worksheet: XLSX.WorkSheet,
+    startRow: number,
+    endRow: number,
+    startColLetter: string,
+    endColLetter: string,
+  ): HeaderLayout => {
+    const startCol = columnLetterToIndex(startColLetter);
+    const endCol = columnLetterToIndex(endColLetter);
+    const cells: HeaderLayout['cells'] = [];
+    for (let r = startRow; r <= endRow; r += 1) {
+      for (let c = startCol; c <= endCol; c += 1) {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: r - 1, c: c - 1 })];
+        const value = cell?.v ?? cell?.w;
+        if (value !== undefined && value !== null && String(value).trim() !== '') {
+          cells.push({ row: r, col: c, value: String(value).trim() });
+        }
+      }
+    }
+
+    const merges = (worksheet['!merges'] || [])
+      .map((merge: any) => ({
+        startRow: merge.s.r + 1,
+        startCol: merge.s.c + 1,
+        endRow: merge.e.r + 1,
+        endCol: merge.e.c + 1,
+      }))
+      .filter(
+        (merge: any) =>
+          merge.endRow >= startRow &&
+          merge.startRow <= endRow &&
+          merge.endCol >= startCol &&
+          merge.startCol <= endCol,
+      );
+
+    return {
+      startRow,
+      endRow,
+      startCol,
+      endCol,
+      cells,
+      merges,
+    };
   };
 
   const learnForm = async () => {
@@ -138,10 +196,18 @@ export function FormLearner({ project }: { project: Project }) {
 
           setLearnedTemplates(validTemplates);
           const nextConfirm: Record<string, boolean> = {};
+          const nextHeaderRanges: Record<string, { startRow: number; endRow: number; startCol: string; endCol: string }> = {};
           validTemplates.forEach((tpl) => {
             nextConfirm[tpl.id] = false;
+            nextHeaderRanges[tpl.id] = {
+              startRow: tpl.columnMapping.startRow,
+              endRow: tpl.columnMapping.startRow + 4,
+              startCol: tpl.columnMapping.labelColumn,
+              endCol: tpl.columnMapping.dataColumns[tpl.columnMapping.dataColumns.length - 1] || tpl.columnMapping.labelColumn,
+            };
           });
           setConfirmedTemplates(nextConfirm);
+          setHeaderRanges(nextHeaderRanges);
           setConfirmAll(false);
           setIsLearning(false);
         } catch (innerErr) {
@@ -156,10 +222,29 @@ export function FormLearner({ project }: { project: Project }) {
     }
   };
 
-  const saveTemplates = async (templatesToSave: FormTemplate[]) => {
+  const saveTemplates = async (templatesToSave: FormTemplate[], sourceFile?: File) => {
     if (templatesToSave.length === 0) return;
     try {
-      const promises = templatesToSave.map((tpl) => setDoc(doc(db, 'templates', tpl.id), tpl));
+      let templatesWithLayout = templatesToSave;
+      if (sourceFile) {
+        const data = await sourceFile.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        templatesWithLayout = templatesToSave.map((tpl) => {
+          const range = headerRanges[tpl.id];
+          if (!range) return tpl;
+          const worksheet = workbook.Sheets[tpl.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+          if (!worksheet) return tpl;
+          const headerLayout = buildHeaderLayout(
+            worksheet,
+            range.startRow,
+            range.endRow,
+            range.startCol,
+            range.endCol,
+          );
+          return { ...tpl, headerLayout };
+        });
+      }
+      const promises = templatesWithLayout.map((tpl) => setDoc(doc(db, 'templates', tpl.id), tpl));
       await Promise.all(promises);
       setLearnedTemplates([]);
     } catch (err) {
@@ -201,6 +286,17 @@ export function FormLearner({ project }: { project: Project }) {
       return;
     }
 
+    if (manualFile) {
+      if (!manualForm.headerStartCol || !manualForm.headerEndCol) {
+        setError('Vui lòng nhập vùng tiêu đề để hệ thống vẽ đúng biểu mẫu.');
+        return;
+      }
+      if (Number(manualForm.headerEndRow) < Number(manualForm.headerStartRow)) {
+        setError('Hàng kết thúc của vùng tiêu đề phải lớn hơn hoặc bằng hàng bắt đầu.');
+        return;
+      }
+    }
+
     const dataColumns = manualForm.dataColumns.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
     const columnHeaders = manualForm.columnHeaders
       ? manualForm.columnHeaders.split(',').map((c) => c.trim()).filter(Boolean)
@@ -222,8 +318,40 @@ export function FormLearner({ project }: { project: Project }) {
       createdAt: serverTimestamp(),
     };
 
-    await saveTemplates([newTemplate]);
-    setManualForm({ name: '', sheetName: '', labelColumn: 'A', dataColumns: '', columnHeaders: '', startRow: 1, endRow: 200 });
+    let templateToSave = newTemplate;
+    if (manualFile) {
+      const data = await manualFile.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const worksheet = workbook.Sheets[newTemplate.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+      if (worksheet) {
+        templateToSave = {
+          ...newTemplate,
+          headerLayout: buildHeaderLayout(
+            worksheet,
+            Number(manualForm.headerStartRow),
+            Number(manualForm.headerEndRow),
+            manualForm.headerStartCol,
+            manualForm.headerEndCol,
+          ),
+        };
+      }
+    }
+
+    await saveTemplates([templateToSave]);
+    setManualForm({
+      name: '',
+      sheetName: '',
+      labelColumn: 'A',
+      dataColumns: '',
+      columnHeaders: '',
+      startRow: 1,
+      endRow: 200,
+      headerStartRow: 1,
+      headerEndRow: 1,
+      headerStartCol: 'A',
+      headerEndCol: 'A',
+    });
+    setManualFile(null);
     setError(null);
   };
 
@@ -297,6 +425,15 @@ export function FormLearner({ project }: { project: Project }) {
               <div className="space-y-3">
                 {learnedTemplates.map((tpl) => (
                   <div key={tpl.id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+                    {(() => {
+                      const range = headerRanges[tpl.id] || {
+                        startRow: tpl.columnMapping.startRow,
+                        endRow: tpl.columnMapping.startRow,
+                        startCol: tpl.columnMapping.labelColumn,
+                        endCol: tpl.columnMapping.dataColumns[tpl.columnMapping.dataColumns.length - 1] || tpl.columnMapping.labelColumn,
+                      };
+                      return (
+                        <>
                     <div className="flex items-start justify-between gap-3">
                       <p className="font-semibold text-sm text-[var(--ink)]">{tpl.name} (Sheet: {tpl.sheetName})</p>
                       <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
@@ -376,13 +513,91 @@ export function FormLearner({ project }: { project: Project }) {
                           }
                         />
                       </label>
+                      <div className="md:col-span-2">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Vùng tiêu đề (bao gồm cột tiêu chí + cột số liệu)
+                        </p>
+                        <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <input
+                            type="number"
+                            className="field-input"
+                            placeholder="Hàng bắt đầu"
+                            value={range.startRow}
+                            onChange={(e) =>
+                              setHeaderRanges((prev) => ({
+                                ...prev,
+                                [tpl.id]: { ...range, startRow: Number(e.target.value) },
+                              }))
+                            }
+                          />
+                          <input
+                            type="number"
+                            className="field-input"
+                            placeholder="Hàng kết thúc"
+                            value={range.endRow}
+                            onChange={(e) =>
+                              setHeaderRanges((prev) => ({
+                                ...prev,
+                                [tpl.id]: { ...range, endRow: Number(e.target.value) },
+                              }))
+                            }
+                          />
+                          <input
+                            className="field-input"
+                            placeholder="Cột bắt đầu (VD: A)"
+                            value={range.startCol}
+                            onChange={(e) =>
+                              setHeaderRanges((prev) => ({
+                                ...prev,
+                                [tpl.id]: { ...range, startCol: e.target.value.toUpperCase() },
+                              }))
+                            }
+                          />
+                          <input
+                            className="field-input"
+                            placeholder="Cột kết thúc (VD: S)"
+                            value={range.endCol}
+                            onChange={(e) =>
+                              setHeaderRanges((prev) => ({
+                                ...prev,
+                                [tpl.id]: { ...range, endCol: e.target.value.toUpperCase() },
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
                     </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
 
               <div className="mt-6 flex gap-3">
-                <button onClick={() => saveTemplates(learnedTemplates)} className="primary-btn flex-1" disabled={!allConfirmed}>
+                <button
+                  onClick={() => {
+                    if (!file) {
+                      setError('Vui lòng tải lên file mẫu để lấy tiêu đề.');
+                      return;
+                    }
+                    const invalidRange = learnedTemplates.find((tpl) => {
+                      const range = headerRanges[tpl.id];
+                      if (!range) return true;
+                      if (!range.startCol || !range.endCol) return true;
+                      if (range.startRow <= 0 || range.endRow <= 0) return true;
+                      if (range.endRow < range.startRow) return true;
+                      return false;
+                    });
+                    if (invalidRange) {
+                      setError('Vui lòng nhập đúng vùng tiêu đề cho tất cả biểu mẫu.');
+                      return;
+                    }
+                    saveTemplates(learnedTemplates, file);
+                  }}
+                  className="primary-btn flex-1"
+                  disabled={!allConfirmed}
+                >
                   Lưu tất cả biểu mẫu
                 </button>
                 <button onClick={() => setLearnedTemplates([])} className="secondary-btn">
@@ -444,6 +659,51 @@ export function FormLearner({ project }: { project: Project }) {
                   value={manualForm.endRow}
                   onChange={(e) => setManualForm({ ...manualForm, endRow: Number(e.target.value) })}
                 />
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="panel-soft rounded-[18px] p-4">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] mb-2">
+                  File mẫu để lấy tiêu đề (khuyến nghị)
+                </p>
+                <input type="file" accept=".xlsx,.xls" onChange={handleManualFileChange} className="field-input" />
+                {manualFile && (
+                  <p className="mt-2 text-xs text-[var(--ink-soft)]">Đang dùng: {manualFile.name}</p>
+                )}
+              </div>
+              <div className="panel-soft rounded-[18px] p-4">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] mb-2">
+                  Vùng tiêu đề (bao gồm cột tiêu chí + cột số liệu)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    className="field-input"
+                    type="number"
+                    placeholder="Hàng bắt đầu"
+                    value={manualForm.headerStartRow}
+                    onChange={(e) => setManualForm({ ...manualForm, headerStartRow: Number(e.target.value) })}
+                  />
+                  <input
+                    className="field-input"
+                    type="number"
+                    placeholder="Hàng kết thúc"
+                    value={manualForm.headerEndRow}
+                    onChange={(e) => setManualForm({ ...manualForm, headerEndRow: Number(e.target.value) })}
+                  />
+                  <input
+                    className="field-input"
+                    placeholder="Cột bắt đầu (VD: A)"
+                    value={manualForm.headerStartCol}
+                    onChange={(e) => setManualForm({ ...manualForm, headerStartCol: e.target.value.toUpperCase() })}
+                  />
+                  <input
+                    className="field-input"
+                    placeholder="Cột kết thúc (VD: S)"
+                    value={manualForm.headerEndCol}
+                    onChange={(e) => setManualForm({ ...manualForm, headerEndCol: e.target.value.toUpperCase() })}
+                  />
+                </div>
               </div>
             </div>
 

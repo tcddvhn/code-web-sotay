@@ -57,6 +57,28 @@ export interface Project {
 
 export type TemplateMode = 'AI' | 'MANUAL' | 'LEGACY';
 
+export interface HeaderCell {
+  row: number;
+  col: number;
+  value: string;
+}
+
+export interface HeaderMerge {
+  startRow: number;
+  startCol: number;
+  endRow: number;
+  endCol: number;
+}
+
+export interface HeaderLayout {
+  startRow: number;
+  endRow: number;
+  startCol: number;
+  endCol: number;
+  cells: HeaderCell[];
+  merges: HeaderMerge[];
+}
+
 export interface FormTemplate {
   id: string;
   projectId: string;
@@ -69,6 +91,7 @@ export interface FormTemplate {
     startRow: number;
     endRow: number;
   };
+  headerLayout?: HeaderLayout;
   mode: TemplateMode;
   legacyConfigName?: string;
   createdAt: any;

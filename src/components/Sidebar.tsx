@@ -1,5 +1,17 @@
 ﻿import React from 'react';
-import { LayoutDashboard, FileUp, FileText, Settings, LogOut, LogIn, User as UserIcon, FolderPlus, BrainCircuit } from 'lucide-react';
+import {
+  LayoutDashboard,
+  FileUp,
+  FileText,
+  Settings,
+  LogOut,
+  LogIn,
+  User as UserIcon,
+  FolderPlus,
+  BrainCircuit,
+  ChevronsLeft,
+  ChevronsRight,
+} from 'lucide-react';
 import { UserProfile, ViewMode } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -13,29 +25,57 @@ interface SidebarProps {
   onLogout: () => void;
   user: User | null;
   userProfile?: UserProfile | null;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  isMobile?: boolean;
 }
 
-export function Sidebar({ currentView, onViewChange, isAuthenticated, isAdmin, onLogout, user, userProfile }: SidebarProps) {
-  const menuItems = [
+export function Sidebar({
+  currentView,
+  onViewChange,
+  isAuthenticated,
+  isAdmin,
+  onLogout,
+  user,
+  userProfile,
+  isCollapsed = false,
+  onToggleCollapse,
+  isMobile = false,
+}: SidebarProps) {
+  const baseMenu = [
     { id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: LayoutDashboard },
-    ...(isAuthenticated
-      ? [
-          ...(isAdmin
-            ? [
-                { id: 'PROJECTS' as ViewMode, label: 'Dự án', icon: FolderPlus },
-                { id: 'LEARN_FORM' as ViewMode, label: 'Biểu mẫu', icon: BrainCircuit },
-              ]
-            : []),
-          { id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: FileUp },
-        ]
-      : []),
-    { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText },
-    ...(isAdmin ? [{ id: 'SETTINGS' as ViewMode, label: 'Cài đặt', icon: Settings }] : []),
   ];
+  const menuItems = isMobile
+    ? baseMenu
+    : [
+        ...baseMenu,
+        ...(isAuthenticated
+          ? [
+              ...(isAdmin
+                ? [
+                    { id: 'PROJECTS' as ViewMode, label: 'Dự án', icon: FolderPlus },
+                    { id: 'LEARN_FORM' as ViewMode, label: 'Biểu mẫu', icon: BrainCircuit },
+                  ]
+                : []),
+              { id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: FileUp },
+            ]
+          : []),
+        { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText },
+        ...(isAdmin ? [{ id: 'SETTINGS' as ViewMode, label: 'Cài đặt', icon: Settings }] : []),
+      ];
 
   return (
-    <div className="sidebar-shell flex h-screen w-72 flex-col">
-      <div className="border-b border-[var(--sidebar-border)] p-8">
+    <div className={`sidebar-shell flex h-screen w-72 flex-col ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <div className="border-b border-[var(--sidebar-border)] p-8 relative">
+        {onToggleCollapse && !isMobile && (
+          <button
+            onClick={onToggleCollapse}
+            className="sidebar-toggle-btn absolute right-4 top-6 flex items-center justify-center rounded-full border border-[rgba(255,255,255,0.25)] bg-white/10 p-2 text-white/80"
+            title={isCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+          >
+            {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+          </button>
+        )}
         <h1 className="sidebar-title">
           HỆ THỐNG QUẢN TRỊ <br /> DỮ LIỆU TCĐ, ĐV TẬP TRUNG
         </h1>
@@ -55,7 +95,7 @@ export function Sidebar({ currentView, onViewChange, isAuthenticated, isAdmin, o
             )}
           >
             <item.icon size={18} strokeWidth={currentView === item.id ? 2.5 : 2} />
-            {item.label}
+            <span className="sidebar-label">{item.label}</span>
           </button>
         ))}
       </nav>
@@ -75,7 +115,7 @@ export function Sidebar({ currentView, onViewChange, isAuthenticated, isAdmin, o
                 <UserIcon size={14} />
               </div>
             )}
-            <div className="overflow-hidden">
+            <div className="overflow-hidden sidebar-user-info">
               <p className="truncate text-[11px] font-bold text-white">{userProfile?.displayName || user.displayName || 'User'}</p>
               <p className="truncate text-[10px] text-white/65">{user.email}</p>
             </div>

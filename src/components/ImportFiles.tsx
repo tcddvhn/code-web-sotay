@@ -10,6 +10,7 @@ interface ImportFilesProps {
   onDataImported: (newData: DataRow[]) => Promise<void>;
   onDeleteUnitData: (year: string, unitCode: string) => Promise<number>;
   onDeleteYearData: (year: string) => Promise<number>;
+  onDeleteProjectData: (projectId: string) => Promise<number>;
   projectId: string;
   projectName: string;
   templates: FormTemplate[];
@@ -30,6 +31,7 @@ export function ImportFiles({
   onDataImported,
   onDeleteUnitData,
   onDeleteYearData,
+  onDeleteProjectData,
   projectId,
   projectName,
   templates,
@@ -223,6 +225,29 @@ export function ImportFiles({
     }
   };
 
+  const handleDeleteProject = async () => {
+    const confirmed = window.confirm(
+      `Xóa toàn bộ dữ liệu, biểu mẫu và dự án "${projectName}"? Hành động này không thể hoàn tác.`,
+    );
+    if (!confirmed) return;
+
+    setIsManagingData(true);
+    setManagementMessage(null);
+
+    try {
+      const deletedCount = await onDeleteProjectData(projectId);
+      setManagementMessage(
+        deletedCount > 0
+          ? `Đã xóa toàn bộ dữ liệu, biểu mẫu và dự án ${projectName}.`
+          : `Không có dữ liệu nào của dự án ${projectName} để xóa.`,
+      );
+    } catch (error) {
+      setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu dự án.');
+    } finally {
+      setIsManagingData(false);
+    }
+  };
+
   const isPinnedYear = pinnedYear === selectedYear;
 
   return (
@@ -317,6 +342,14 @@ export function ImportFiles({
                 className="primary-btn w-full disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Xóa toàn bộ năm
+              </button>
+
+              <button
+                onClick={handleDeleteProject}
+                disabled={isManagingData}
+                className="secondary-btn w-full disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Xóa toàn bộ dữ liệu dự án
               </button>
             </div>
 

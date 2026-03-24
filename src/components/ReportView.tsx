@@ -2,7 +2,10 @@
 import * as XLSX from 'xlsx';
 import { Download, Search } from 'lucide-react';
 import { UNITS, YEARS } from '../constants';
-import { ConsolidatedData, DataRow, FormTemplate, Project } from '../types';
+import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, Project } from '../types';
+import { auth, db, storage } from '../firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 interface ReportViewProps {
   data: ConsolidatedData;
@@ -73,7 +76,62 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
       .sort((a, b) => a.sourceRow - b.sourceRow);
   }, [data, selectedTemplate, selectedYear, searchTerm]);
 
-  const exportToExcel = () => {
+  const headerRows = useMemo(() => {
+    if (!selectedTemplate?.headerLayout) return null;
+    const layout: HeaderLayout = selectedTemplate.headerLayout;
+    const rowCount = layout.endRow - layout.startRow + 1;
+    const colCount = layout.endCol - layout.startCol + 1;
+    const expectedCols = 1 + (selectedTemplate.columnMapping?.dataColumns?.length || 0);
+    if (colCount !== expectedCols || rowCount <= 0 || colCount <= 0) {
+      return null;
+    }
+
+    const cellMap = new Map(layout.cells.map((cell) => [`${cell.row}:${cell.col}`, cell.value]));
+    const merges = layout.merges || [];
+    const occupied = Array.from({ length: rowCount }, () => Array(colCount).fill(false));
+    const rows: { text: string; rowSpan: number; colSpan: number }[][] = [];
+
+    for (let r = 0; r < rowCount; r += 1) {
+      const rowCells: { text: string; rowSpan: number; colSpan: number }[] = [];
+      for (let c = 0; c < colCount; c += 1) {
+        if (occupied[r][c]) continue;
+        const rowNum = layout.startRow + r;
+        const colNum = layout.startCol + c;
+        const merge = merges.find((m) => m.startRow === rowNum && m.startCol === colNum);
+        let rowSpan = 1;
+        let colSpan = 1;
+        if (merge) {
+          rowSpan = merge.endRow - merge.startRow + 1;
+          colSpan = merge.endCol - merge.startCol + 1;
+          for (let rr = r; rr < r + rowSpan; rr += 1) {
+            for (let cc = c; cc < c + colSpan; cc += 1) {
+              if (occupied[rr] && typeof occupied[rr][cc] !== 'undefined') {
+                occupied[rr][cc] = true;
+              }
+            }
+          }
+        } else {
+          occupied[r][c] = true;
+        }
+        const text = cellMap.get(`${rowNum}:${colNum}`) || '';
+        rowCells.push({ text, rowSpan, colSpan });
+      }
+      rows.push(rowCells);
+    }
+
+    return rows;
+  }, [selectedTemplate]);
+
+  const tableColSpan = useMemo(() => {
+    if (!selectedTemplate) return 0;
+    const dataCols = selectedTemplate.columnMapping?.dataColumns?.length || 0;
+    if (headerRows) {
+      return 1 + (1 + dataCols);
+    }
+    return 2 + columnHeaders.length;
+  }, [selectedTemplate, headerRows, columnHeaders]);
+
+  const exportToExcel = async () => {
     if (!selectedTemplate || aggregatedData.length === 0) return;
 
     const exportRows = aggregatedData.map((row) => {
@@ -93,7 +151,41 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     const ws = XLSX.utils.json_to_sheet(exportRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Báo cáo');
-    XLSX.writeFile(wb, `BaoCao_${selectedTemplate.name}_${selectedYear}.xlsx`);
+
+    const fileName = `BaoCao_${selectedTemplate.name}_${selectedYear}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    try {
+      const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const storagePath = `report_exports/${selectedTemplate.projectId}/${Date.now()}_${selectedTemplate.id}.xlsx`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      const user = auth.currentUser;
+      await addDoc(collection(db, 'report_exports'), {
+        projectId: selectedTemplate.projectId,
+        templateId: selectedTemplate.id,
+        templateName: selectedTemplate.name,
+        year: selectedYear,
+        fileName,
+        storagePath,
+        downloadURL,
+        createdAt: serverTimestamp(),
+        createdBy: user
+          ? {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+            }
+          : null,
+      });
+    } catch (error) {
+      console.error('Export upload error:', error);
+      alert('Xuất file thành công nhưng chưa lưu được báo cáo trên hệ thống. Vui lòng kiểm tra quyền Storage.');
+    }
   };
 
   return (
@@ -176,15 +268,40 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr>
-                  <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10">Đơn vị</th>
-                  <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white">Tiêu chí</th>
-                  {columnHeaders.map((header, i) => (
-                    <th key={i} className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[120px]">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
+                {headerRows ? (
+                  headerRows.map((row, rowIndex) => (
+                    <tr key={`hdr-${rowIndex}`}>
+                      {rowIndex === 0 && (
+                        <th
+                          rowSpan={headerRows.length}
+                          className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10 min-w-[120px]"
+                        >
+                          Đơn vị
+                        </th>
+                      )}
+                      {row.map((cell, cellIndex) => (
+                        <th
+                          key={`hdr-${rowIndex}-${cellIndex}`}
+                          colSpan={cell.colSpan}
+                          rowSpan={cell.rowSpan}
+                          className="p-3 text-[10px] uppercase tracking-[0.16em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[90px]"
+                        >
+                          {cell.text || '\u00A0'}
+                        </th>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 sticky left-0 bg-[var(--primary-dark)] text-white z-10">Đơn vị</th>
+                    <th className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white">Tiêu chí</th>
+                    {columnHeaders.map((header, i) => (
+                      <th key={i} className="p-4 text-[10px] uppercase tracking-[0.18em] border-r border-white/20 bg-[var(--primary-dark)] text-white text-center min-w-[120px]">
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {aggregatedData.length > 0 ? (
@@ -206,7 +323,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                   })
                 ) : (
                   <tr>
-                    <td colSpan={2 + columnHeaders.length} className="p-12 text-center opacity-40 italic">
+                    <td colSpan={tableColSpan} className="p-12 text-center opacity-40 italic">
                       Không tìm thấy dữ liệu cho tiêu chí này.
                     </td>
                   </tr>
@@ -219,6 +336,8 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     </div>
   );
 }
+
+
 
 
 

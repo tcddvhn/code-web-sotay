@@ -3,15 +3,19 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   collection,
   doc,
+  deleteDoc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   query,
+  startAfter,
   serverTimestamp,
   setDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { deleteObject, ref } from 'firebase/storage';
 import {
   Activity,
   CheckCircle2,
@@ -32,7 +36,7 @@ import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
-import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout, OperationType, signUpWithEmail } from './firebase';
+import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout, OperationType, signUpWithEmail, storage } from './firebase';
 import { AppSettings, ConsolidatedData, DataRow, FormTemplate, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { ensureNQ22Setup, resetNQ22Migration } from './utils/migrateNQ22';
@@ -64,6 +68,8 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -113,6 +119,20 @@ export default function App() {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => {
+      const nextIsMobile = mq.matches;
+      setIsMobile(nextIsMobile);
+      if (nextIsMobile) {
+        setCurrentView('DASHBOARD');
+      }
+    };
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
   }, []);
 
   useEffect(() => {
@@ -363,6 +383,77 @@ export default function App() {
     }
   };
 
+  const deleteReportExports = async (projectId: string) => {
+    let total = 0;
+    let lastDoc: any = null;
+
+    while (true) {
+      const q = lastDoc
+        ? query(collection(db, 'report_exports'), where('projectId', '==', projectId), startAfter(lastDoc), limit(FIRESTORE_BATCH_LIMIT))
+        : query(collection(db, 'report_exports'), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) break;
+
+      const batch = writeBatch(db);
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data() as any;
+        if (data?.storagePath) {
+          try {
+            await deleteObject(ref(storage, data.storagePath));
+          } catch (err) {
+            // ignore
+          }
+        }
+        batch.delete(docSnap.ref);
+      }
+      await batch.commit();
+      total += snapshot.size;
+      lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    }
+
+    return total;
+  };
+
+  const deleteByProjectQuery = async (collectionName: string, projectId: string) => {
+    let totalDeleted = 0;
+    let lastDoc: any = null;
+
+    while (true) {
+      const q = lastDoc
+        ? query(collection(db, collectionName), where('projectId', '==', projectId), startAfter(lastDoc), limit(FIRESTORE_BATCH_LIMIT))
+        : query(collection(db, collectionName), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) break;
+
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+      await batch.commit();
+      totalDeleted += snapshot.size;
+      lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    }
+
+    return totalDeleted;
+  };
+
+  const handleDeleteProjectData = async (projectId: string) => {
+    if (!isAdmin) {
+      return 0;
+    }
+
+    try {
+      const deletedDataRows = await deleteByProjectQuery('consolidated_data_v2', projectId);
+      const deletedTemplates = await deleteByProjectQuery('templates', projectId);
+      const deletedAssignments = await deleteByProjectQuery('assignments', projectId);
+      const deletedExports = await deleteReportExports(projectId);
+      await deleteDoc(doc(db, 'projects', projectId));
+
+      return deletedDataRows + deletedTemplates + deletedAssignments + deletedExports + 1;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `consolidated_data_v2/${projectId}`);
+      return 0;
+    }
+  };
+
   const handleDataImported = async (newData: DataRow[]) => {
     if (!user) {
       return;
@@ -457,6 +548,19 @@ export default function App() {
       running: false,
       message: result.migrated ? `Đã chuyển đổi ${result.total} dòng dữ liệu.` : 'Đã tạo dự án NQ22.',
     });
+  };
+
+  const handleClearMigrationHistory = async () => {
+    if (!isAdmin) return;
+    const confirmed = window.confirm('Xóa toàn bộ lịch sử chuyển đổi dữ liệu?');
+    if (!confirmed) return;
+
+    try {
+      await setDoc(doc(db, 'settings', 'migrations'), { history: [] });
+      setMigrationHistory([]);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'settings/migrations');
+    }
   };
 
   const handleLogin = async () => {
@@ -572,6 +676,7 @@ export default function App() {
             onDataImported={handleDataImported}
             onDeleteUnitData={handleDeleteUnitData}
             onDeleteYearData={handleDeleteYearData}
+            onDeleteProjectData={handleDeleteProjectData}
             projectId={selectedProjectId}
             templates={templates.filter((tpl) => tpl.projectId === selectedProjectId)}
             projectName={currentProject?.name || DEFAULT_PROJECT_NAME}
@@ -641,6 +746,9 @@ export default function App() {
                   <button onClick={handleRerunMigration} className="secondary-btn">
                     Chạy lại chuyển đổi NQ22
                   </button>
+                  <button onClick={handleClearMigrationHistory} className="secondary-btn">
+                    Xóa lịch sử chuyển đổi
+                  </button>
                 </div>
               )}
 
@@ -684,6 +792,9 @@ export default function App() {
         onLogout={handleLogout}
         user={user}
         userProfile={userProfile}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+        isMobile={isMobile}
       />
       <main className="app-main flex-1 overflow-auto">{renderContent()}</main>
     </div>
@@ -1180,6 +1291,9 @@ function DashboardOverview({
     </div>
   );
 }
+
+
+
 
 
 
