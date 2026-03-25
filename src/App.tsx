@@ -38,7 +38,6 @@ import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from '
 import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout, OperationType, signUpWithEmail, storage } from './firebase';
 import { AppSettings, ConsolidatedData, DataRow, FormTemplate, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
-import { ensureNQ22Setup, resetNQ22Migration } from './utils/migrateNQ22';
 import { buildAssignmentUsers, getAllowedAccount, getAssignmentKey, isAdminEmail, isAllowedEmail } from './access';
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -74,8 +73,6 @@ export default function App() {
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-  const [migrationStatus, setMigrationStatus] = useState<{ running: boolean; message?: string }>({ running: false });
-  const [migrationHistory, setMigrationHistory] = useState<any[]>([]);
 
   const isAuthenticated = useMemo(() => !!user, [user]);
   const assignmentUsers = useMemo(() => buildAssignmentUsers(users), [users]);
@@ -303,57 +300,13 @@ export default function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isAdmin) {
-      setMigrationHistory([]);
-      return;
-    }
-
-    const unsubscribe = onSnapshot(
-      doc(db, 'settings', 'migrations'),
-      (snapshot) => {
-        const data = snapshot.data();
-        if (data?.history) {
-          setMigrationHistory([...data.history].reverse());
-        } else {
-          setMigrationHistory([]);
-        }
-      },
-      () => setMigrationHistory([]),
-    );
-
-    return () => unsubscribe();
-  }, [isAdmin]);
-
-  useEffect(() => {
-    if (!isAdmin) {
-      return;
-    }
-
-    let isMounted = true;
-    setMigrationStatus({ running: true, message: 'Đang tạo dự án và chuyển đổi dữ liệu...' });
-
-    ensureNQ22Setup()
-      .then((result) => {
-        if (!isMounted) return;
-        if (result.migrated) {
-          setMigrationStatus({ running: false, message: `Đã chuyển đổi ${result.total} dòng dữ liệu.` });
-        } else {
-          setMigrationStatus({ running: false });
-        }
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setMigrationStatus({ running: false });
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isAdmin]);
-
-  useEffect(() => {
     if (projects.length > 0 && !projects.find((p) => p.id === selectedProjectId)) {
       setSelectedProjectId(projects[0].id);
+      return;
+    }
+
+    if (projects.length === 0 && selectedProjectId) {
+      setSelectedProjectId('');
     }
   }, [projects, selectedProjectId]);
 
@@ -617,30 +570,31 @@ export default function App() {
     }
   };
 
-  const handleRerunMigration = async () => {
-    if (!isAdmin) return;
-    const confirmed = window.confirm('Chạy lại chuyển đổi dữ liệu NQ22? Dữ liệu đã chuyển sẽ được tạo lại.');
-    if (!confirmed) return;
+  const handleDeleteAllSystemData = async () => {
+    if (!isAdmin) {
+      return;
+    }
 
-    setMigrationStatus({ running: true, message: 'Đang chạy lại chuyển đổi dữ liệu...' });
-    await resetNQ22Migration();
-    const result = await ensureNQ22Setup();
-    setMigrationStatus({
-      running: false,
-      message: result.migrated ? `Đã chuyển đổi ${result.total} dòng dữ liệu.` : 'Đã tạo dự án NQ22.',
-    });
-  };
-
-  const handleClearMigrationHistory = async () => {
-    if (!isAdmin) return;
-    const confirmed = window.confirm('Xóa toàn bộ lịch sử chuyển đổi dữ liệu?');
-    if (!confirmed) return;
+    const confirmed = window.confirm(
+      'Xóa toàn bộ dự án, biểu mẫu, dữ liệu tiếp nhận, phân công và lịch sử xuất báo cáo trên hệ thống? Hành động này không thể hoàn tác.',
+    );
+    if (!confirmed) {
+      return;
+    }
 
     try {
+      const projectIds = Array.from(new Set(projects.map((project) => project.id)));
+
+      for (const projectId of projectIds) {
+        await handleDeleteProjectData(projectId);
+      }
+
       await setDoc(doc(db, 'settings', 'migrations'), { history: [] });
-      setMigrationHistory([]);
+      setSelectedProjectId('');
+      setCurrentView('DASHBOARD');
+      alert('Đã xóa sạch toàn bộ dữ liệu hệ thống.');
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'settings/migrations');
+      handleFirestoreError(error, OperationType.DELETE, 'system/reset-all');
     }
   };
 
@@ -836,35 +790,9 @@ export default function App() {
                   <button onClick={handleSaveSettings} className="primary-btn">
                     Lưu cấu hình
                   </button>
-                  <button onClick={handleRerunMigration} className="secondary-btn">
-                    Chạy lại chuyển đổi NQ22
+                  <button onClick={handleDeleteAllSystemData} className="secondary-btn">
+                    Xóa sạch dữ liệu hệ thống
                   </button>
-                  <button onClick={handleClearMigrationHistory} className="secondary-btn">
-                    Xóa lịch sử chuyển đổi
-                  </button>
-                </div>
-              )}
-
-              {migrationStatus.message && (
-                <p className="text-xs text-[var(--ink-soft)]">{migrationStatus.message}</p>
-              )}
-
-              {isAdmin && migrationHistory.length > 0 && (
-                <div className="panel-card rounded-[20px] p-4">
-                  <p className="col-header mb-3">Lịch sử chuyển đổi</p>
-                  <div className="space-y-2 text-xs text-[var(--ink-soft)]">
-                    {migrationHistory.map((entry, index) => (
-                      <div key={index} className="flex items-center justify-between gap-3">
-                        <span className="font-semibold uppercase tracking-[0.12em]">
-                          {entry.action === 'migrate' ? 'Chuyển đổi' : 'Reset'}
-                        </span>
-                        <span>{entry.total ? `${entry.total} dòng` : '-'}</span>
-                        <span>
-                          {entry.at?.toDate ? entry.at.toDate().toLocaleString('vi-VN') : 'Đang cập nhật...'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>

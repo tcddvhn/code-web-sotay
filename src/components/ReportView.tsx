@@ -660,12 +660,12 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
                 <button
                   key={template.id}
                   onClick={() => setSelectedTemplateId(template.id)}
-                  className={`relative h-12 min-w-[122px] rounded-t-[18px] rounded-b-[12px] border px-5 text-sm font-bold uppercase tracking-[0.08em] transition-all ${
-                    index === 0 ? 'ml-0' : '-ml-3'
+                  className={`relative h-10 min-w-[92px] rounded-t-[14px] rounded-b-[10px] border px-3 text-[12px] font-bold uppercase tracking-[0.04em] transition-all ${
+                    index === 0 ? 'ml-0' : '-ml-2'
                   } ${
                     isActive
-                      ? 'z-20 border-[rgba(67,122,87,0.35)] bg-[linear-gradient(180deg,rgba(232,241,233,1)_0%,rgba(210,226,214,1)_100%)] text-[var(--success)] shadow-[0_10px_22px_rgba(47,110,73,0.14)]'
-                      : 'z-10 border-[rgba(214,171,96,0.45)] bg-[linear-gradient(180deg,rgba(255,249,236,1)_0%,rgba(252,240,215,1)_100%)] text-[rgba(145,94,15,0.95)] hover:z-20 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(184,133,37,0.14)]'
+                      ? 'z-20 border-[rgba(67,122,87,0.35)] bg-[linear-gradient(180deg,rgba(232,241,233,1)_0%,rgba(210,226,214,1)_100%)] text-[var(--success)] shadow-[0_7px_16px_rgba(47,110,73,0.12)]'
+                      : 'z-10 border-[rgba(214,171,96,0.45)] bg-[linear-gradient(180deg,rgba(255,249,236,1)_0%,rgba(252,240,215,1)_100%)] text-[rgba(145,94,15,0.95)] hover:z-20 hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(184,133,37,0.12)]'
                   }`}
                 >
                   <span className="whitespace-nowrap">{template.name}</span>

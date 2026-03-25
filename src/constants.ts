@@ -157,5 +157,5 @@ export const YEARS = Array.from({ length: 5 }, (_, index) => String(START_YEAR +
 
 export const DEFAULT_REPORTING_YEAR = String(CURRENT_YEAR);
 
-export const DEFAULT_PROJECT_ID = "proj_nq22";
-export const DEFAULT_PROJECT_NAME = "Tổng hợp NQ22";
+export const DEFAULT_PROJECT_ID = "";
+export const DEFAULT_PROJECT_NAME = "Chưa chọn dự án";
