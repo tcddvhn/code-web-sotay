@@ -372,11 +372,55 @@ export default function App() {
     return total;
   };
 
+  const deleteReportExportsByTemplate = async (templateId: string) => {
+    let total = 0;
+
+    while (true) {
+      const q = query(collection(db, 'report_exports'), where('templateId', '==', templateId), limit(FIRESTORE_BATCH_LIMIT));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) break;
+
+      const batch = writeBatch(db);
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data() as any;
+        if (data?.storagePath) {
+          try {
+            await deleteObject(ref(storage, data.storagePath));
+          } catch (err) {
+            // ignore
+          }
+        }
+        batch.delete(docSnap.ref);
+      }
+      await batch.commit();
+      total += snapshot.size;
+    }
+
+    return total;
+  };
+
   const deleteByProjectQuery = async (collectionName: string, projectId: string) => {
     let totalDeleted = 0;
 
     while (true) {
       const q = query(collection(db, collectionName), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) break;
+
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+      await batch.commit();
+      totalDeleted += snapshot.size;
+    }
+
+    return totalDeleted;
+  };
+
+  const deleteByFieldQuery = async (collectionName: string, fieldName: string, fieldValue: string) => {
+    let totalDeleted = 0;
+
+    while (true) {
+      const q = query(collection(db, collectionName), where(fieldName, '==', fieldValue), limit(FIRESTORE_BATCH_LIMIT));
       const snapshot = await getDocs(q);
       if (snapshot.empty) break;
 
@@ -415,6 +459,37 @@ export default function App() {
   const handleDeleteProject = async (project: Project) => {
     const deletedCount = await handleDeleteProjectData(project.id);
     return deletedCount > 0;
+  };
+
+  const handleDeleteTemplate = async (template: FormTemplate) => {
+    if (!isAdmin) {
+      return false;
+    }
+
+    try {
+      const deletedDataRows = await deleteByFieldQuery('consolidated_data_v2', 'templateId', template.id);
+      const deletedExports = await deleteReportExportsByTemplate(template.id);
+      await deleteDoc(doc(db, 'templates', template.id));
+
+      if (template.sourceWorkbookPath) {
+        const otherTemplatesUsingWorkbook = templates.filter(
+          (item) => item.id !== template.id && item.sourceWorkbookPath === template.sourceWorkbookPath,
+        );
+
+        if (otherTemplatesUsingWorkbook.length === 0) {
+          try {
+            await deleteObject(ref(storage, template.sourceWorkbookPath));
+          } catch (error) {
+            // ignore workbook cleanup errors
+          }
+        }
+      }
+
+      return deletedDataRows + deletedExports + 1 > 0;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `templates/${template.id}`);
+      return false;
+    }
   };
 
   const handleDataImported = async (newData: DataRow[]) => {
@@ -695,8 +770,13 @@ export default function App() {
           />
         );
       case 'LEARN_FORM':
-        return isAdmin && currentProject ? (
-          <FormLearner project={currentProject} />
+        return isAdmin ? (
+          <FormLearner
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+            onDeleteTemplate={handleDeleteTemplate}
+          />
         ) : (
           <DashboardOverview
             data={data}

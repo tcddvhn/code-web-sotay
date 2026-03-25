@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { AlertCircle, Brain, CheckCircle, FileSpreadsheet, Loader2, Lock, Plus, Save, Unlock } from 'lucide-react';
+import { AlertCircle, Brain, CheckCircle, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, storage } from '../firebase';
 import { FormTemplate, HeaderLayout, Project } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
@@ -35,7 +35,21 @@ function sanitizeStorageFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]+/g, '_');
 }
 
-export function FormLearner({ project }: { project: Project }) {
+export function FormLearner({
+  projects,
+  selectedProjectId,
+  onSelectProject,
+  onDeleteTemplate,
+}: {
+  projects: Project[];
+  selectedProjectId: string;
+  onSelectProject: (projectId: string) => void;
+  onDeleteTemplate: (template: FormTemplate) => Promise<boolean>;
+}) {
+  const project = useMemo(
+    () => projects.find((item) => item.id === selectedProjectId) || null,
+    [projects, selectedProjectId],
+  );
   const [mode, setMode] = useState<Mode>('AI');
   const [file, setFile] = useState<File | null>(null);
   const [manualFile, setManualFile] = useState<File | null>(null);
@@ -48,6 +62,7 @@ export function FormLearner({ project }: { project: Project }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [manualTemplates, setManualTemplates] = useState<FormTemplate[]>([]);
   const [manualSheetNames, setManualSheetNames] = useState<string[]>([]);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -57,6 +72,11 @@ export function FormLearner({ project }: { project: Project }) {
   const [manualForm, setManualForm] = useState(DEFAULT_MANUAL_FORM);
 
   useEffect(() => {
+    if (!project?.id) {
+      setManualTemplates([]);
+      return undefined;
+    }
+
     const q = query(collection(db, 'templates'), where('projectId', '==', project.id));
     const unsubscribe = onSnapshot(
       q,
@@ -67,7 +87,7 @@ export function FormLearner({ project }: { project: Project }) {
       (err) => handleFirestoreError(err, OperationType.LIST, 'templates'),
     );
     return () => unsubscribe();
-  }, [project.id]);
+  }, [project?.id]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -81,6 +101,18 @@ export function FormLearner({ project }: { project: Project }) {
 
     window.localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
   }, [geminiApiKey]);
+
+  useEffect(() => {
+    setFile(null);
+    setManualFile(null);
+    setLearnedTemplates([]);
+    setConfirmedTemplates({});
+    setHeaderRanges({});
+    setConfirmAll(false);
+    setError(null);
+    setNotice(null);
+    setManualForm(DEFAULT_MANUAL_FORM);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -227,6 +259,10 @@ export function FormLearner({ project }: { project: Project }) {
   };
 
   const uploadSourceWorkbook = async (sourceFile: File) => {
+    if (!project?.id) {
+      throw new Error('Vui lòng chọn dự án trước khi lưu biểu mẫu.');
+    }
+
     const storagePath = `${TEMPLATE_STORAGE_FOLDER}/${project.id}/${Date.now()}_${sanitizeStorageFileName(sourceFile.name)}`;
     const storageRef = ref(storage, storagePath);
 
@@ -420,8 +456,35 @@ export function FormLearner({ project }: { project: Project }) {
     }
   };
 
+  const handleDeleteStoredTemplate = async (template: FormTemplate) => {
+    const warningMessage = [
+      `Bạn có chắc chắn xóa biểu mẫu "${template.name}" không?`,
+      '',
+      'Cảnh báo: thao tác này sẽ xóa luôn toàn bộ dữ liệu đã tiếp nhận, các bản xuất liên quan đến sheet này và không thể hoàn tác.',
+    ].join('\n');
+
+    const confirmed = window.confirm(warningMessage);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingTemplateId(template.id);
+    try {
+      const deleted = await onDeleteTemplate(template);
+      if (!deleted) {
+        alert('Không thể xóa biểu mẫu này. Vui lòng kiểm tra quyền và dữ liệu liên quan.');
+        return;
+      }
+
+      setError(null);
+      setNotice(`Đã xóa biểu mẫu "${template.name}" và toàn bộ dữ liệu liên quan của sheet này.`);
+    } finally {
+      setDeletingTemplateId(null);
+    }
+  };
+
   const learnForm = async () => {
-    if (!file) return;
+    if (!project?.id || !file) return;
     setIsLearning(true);
     setError(null);
     setNotice(null);
@@ -492,7 +555,7 @@ export function FormLearner({ project }: { project: Project }) {
             const result = JSON.parse(response.text);
             return {
               id: buildTemplateId(),
-              projectId: project.id,
+              projectId: selectedProjectId,
               name: result.name,
               sheetName: sheetName,
               isPublished: false,
@@ -609,6 +672,12 @@ export function FormLearner({ project }: { project: Project }) {
   const allConfirmed = learnedTemplates.length > 0 && learnedTemplates.every((tpl) => confirmedTemplates[tpl.id]);
 
   const handleManualCreate = async () => {
+    if (!project?.id) {
+      setError('Vui lòng chọn dự án trước khi tạo biểu mẫu.');
+      setNotice(null);
+      return;
+    }
+
     if (!manualFile) {
       setError('Vui lòng tải file mẫu để phần mềm đọc danh sách sheet trước.');
       setNotice(null);
@@ -658,7 +727,7 @@ export function FormLearner({ project }: { project: Project }) {
 
     const newTemplate: FormTemplate = {
       id: buildTemplateId(),
-      projectId: project.id,
+      projectId: selectedProjectId,
       name: manualForm.name,
       sheetName: manualForm.sheetName,
       isPublished: false,
@@ -717,7 +786,28 @@ export function FormLearner({ project }: { project: Project }) {
     <div className="p-6 md:p-8">
       <div className="mb-8">
         <h2 className="page-title">Quản lý biểu mẫu</h2>
-        <p className="page-subtitle mt-2 text-sm">Dự án: <span className="font-bold">{project.name}</span></p>
+        <p className="page-subtitle mt-2 text-sm">
+          Chọn dự án, tải file mẫu, chọn sheet và thiết lập thông số cho từng biểu trước khi chốt.
+        </p>
+      </div>
+
+      <div className="mb-6 panel-card rounded-[24px] p-5">
+        <label className="col-header mb-2 block">Dự án đang thiết lập</label>
+        <select
+          value={selectedProjectId}
+          onChange={(event) => onSelectProject(event.target.value)}
+          className="field-select"
+        >
+          {projects.length === 0 && <option value="">-- Chưa có dự án --</option>}
+          {projects.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+        <p className="mt-3 text-xs text-[var(--ink-soft)]">
+          {project ? project.description || project.name : 'Hãy chọn dự án trước khi thao tác với biểu mẫu.'}
+        </p>
       </div>
 
       <div className="flex gap-3 mb-6">
@@ -753,8 +843,18 @@ export function FormLearner({ project }: { project: Project }) {
               </p>
             </div>
 
-            <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} className="hidden" id="template-upload" />
-            <label htmlFor="template-upload" className="primary-btn mt-6 inline-flex items-center gap-2">
+            <input
+              type="file"
+              accept=".xlsx, .xls"
+              onChange={handleFileChange}
+              className="hidden"
+              id="template-upload"
+              disabled={!project}
+            />
+            <label
+              htmlFor="template-upload"
+              className={`primary-btn mt-6 inline-flex items-center gap-2 ${!project ? 'pointer-events-none opacity-40' : ''}`}
+            >
               {file ? file.name : 'Chọn file mẫu'}
             </label>
           </div>
@@ -1006,7 +1106,13 @@ export function FormLearner({ project }: { project: Project }) {
                 <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                   File mẫu để đọc sheet
                 </p>
-                <input type="file" accept=".xlsx,.xls" onChange={handleManualFileChange} className="field-input" />
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleManualFileChange}
+                  className="field-input"
+                  disabled={!project}
+                />
                 {manualFile && (
                   <p className="mt-2 text-xs text-[var(--ink-soft)]">Đang dùng: {manualFile.name}</p>
                 )}
@@ -1141,7 +1247,11 @@ export function FormLearner({ project }: { project: Project }) {
               </div>
             </div>
 
-            <button onClick={handleManualCreate} className="primary-btn mt-6 flex items-center gap-2">
+            <button
+              onClick={handleManualCreate}
+              disabled={!project}
+              className="primary-btn mt-6 flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+            >
               <Plus size={16} />
               Tạo biểu mẫu
             </button>
@@ -1212,6 +1322,14 @@ export function FormLearner({ project }: { project: Project }) {
                       >
                         {tpl.isPublished ? <Unlock size={14} /> : <Lock size={14} />}
                         {tpl.isPublished ? 'Mở chốt' : 'Chốt biểu'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteStoredTemplate(tpl)}
+                        disabled={deletingTemplateId === tpl.id}
+                        className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Trash2 size={14} />
+                        {deletingTemplateId === tpl.id ? 'Đang xóa...' : 'Xóa biểu'}
                       </button>
                     </div>
                   </div>
