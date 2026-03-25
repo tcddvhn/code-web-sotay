@@ -92,6 +92,7 @@ export interface FormTemplate {
   projectId: string;
   name: string;
   sheetName: string;
+  isPublished?: boolean;
   columnHeaders: string[];
   columnMapping: {
     labelColumn: string;
@@ -102,5 +103,9 @@ export interface FormTemplate {
   headerLayout?: HeaderLayout;
   mode: TemplateMode;
   legacyConfigName?: string;
+  sourceWorkbookName?: string;
+  sourceWorkbookPath?: string;
+  sourceWorkbookUrl?: string;
   createdAt: any;
+  updatedAt?: any;
 }

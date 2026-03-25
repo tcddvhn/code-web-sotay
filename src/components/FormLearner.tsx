@@ -1,9 +1,10 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
-import { collection, doc, onSnapshot, serverTimestamp, setDoc, query, where } from 'firebase/firestore';
-import { AlertCircle, Brain, CheckCircle, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { AlertCircle, Brain, CheckCircle, FileSpreadsheet, Loader2, Lock, Plus, Save, Unlock } from 'lucide-react';
+import { db, handleFirestoreError, OperationType, storage } from '../firebase';
 import { FormTemplate, HeaderLayout, Project } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
 import { expandColumnSelection } from '../utils/workbookUtils';
@@ -11,6 +12,28 @@ import { expandColumnSelection } from '../utils/workbookUtils';
 type Mode = 'AI' | 'MANUAL';
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
+const TEMPLATE_STORAGE_FOLDER = 'project_templates';
+const DEFAULT_MANUAL_FORM = {
+  name: '',
+  sheetName: '',
+  labelColumn: 'A',
+  dataColumns: '',
+  columnHeaders: '',
+  startRow: 1,
+  endRow: 200,
+  verticalHeaderStartRow: 1,
+  verticalHeaderEndRow: 1,
+  horizontalHeaderStartRow: 1,
+  horizontalHeaderEndRow: 1,
+};
+
+function buildTemplateId() {
+  return `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function sanitizeStorageFileName(fileName: string) {
+  return fileName.replace(/[^a-zA-Z0-9._-]+/g, '_');
+}
 
 export function FormLearner({ project }: { project: Project }) {
   const [mode, setMode] = useState<Mode>('AI');
@@ -22,6 +45,7 @@ export function FormLearner({ project }: { project: Project }) {
   const [headerRanges, setHeaderRanges] = useState<Record<string, { startRow: number; endRow: number; startCol: string; endCol: string }>>({});
   const [confirmAll, setConfirmAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [manualTemplates, setManualTemplates] = useState<FormTemplate[]>([]);
   const [manualSheetNames, setManualSheetNames] = useState<string[]>([]);
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
@@ -30,19 +54,7 @@ export function FormLearner({ project }: { project: Project }) {
     }
     return window.localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '';
   });
-  const [manualForm, setManualForm] = useState({
-    name: '',
-    sheetName: '',
-    labelColumn: 'A',
-    dataColumns: '',
-    columnHeaders: '',
-    startRow: 1,
-    endRow: 200,
-    verticalHeaderStartRow: 1,
-    verticalHeaderEndRow: 1,
-    horizontalHeaderStartRow: 1,
-    horizontalHeaderEndRow: 1,
-  });
+  const [manualForm, setManualForm] = useState(DEFAULT_MANUAL_FORM);
 
   useEffect(() => {
     const q = query(collection(db, 'templates'), where('projectId', '==', project.id));
@@ -106,12 +118,16 @@ export function FormLearner({ project }: { project: Project }) {
     };
   }, [manualFile]);
 
-  const existingNames = useMemo(() => new Set(manualTemplates.map((tpl) => tpl.name)), [manualTemplates]);
+  const existingNames = useMemo(
+    () => new Set(manualTemplates.map((tpl) => tpl.name.trim().toLowerCase()).filter(Boolean)),
+    [manualTemplates],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFile(e.target.files[0]);
       setError(null);
+      setNotice(null);
     }
   };
 
@@ -119,6 +135,7 @@ export function FormLearner({ project }: { project: Project }) {
     if (e.target.files) {
       setManualFile(e.target.files[0]);
       setError(null);
+      setNotice(null);
     }
   };
 
@@ -167,10 +184,247 @@ export function FormLearner({ project }: { project: Project }) {
     };
   };
 
+  const resolveHeaderRange = (template: FormTemplate) => {
+    const range = headerRanges[template.id];
+    if (range) {
+      return range;
+    }
+
+    if (template.headerLayout) {
+      return {
+        startRow: template.headerLayout.startRow,
+        endRow: template.headerLayout.endRow,
+        startCol: XLSX.utils.encode_col(template.headerLayout.startCol - 1),
+        endCol: XLSX.utils.encode_col(template.headerLayout.endCol - 1),
+      };
+    }
+
+    return {
+      startRow: template.columnMapping.startRow,
+      endRow: Math.max(template.columnMapping.startRow, template.columnMapping.startRow + 4),
+      startCol: template.columnMapping.labelColumn,
+      endCol: template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] || template.columnMapping.labelColumn,
+    };
+  };
+
+  const buildTemplateWithHeaderLayout = (template: FormTemplate, workbook: XLSX.WorkBook) => {
+    const worksheet = workbook.Sheets[template.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+    if (!worksheet) {
+      return template;
+    }
+
+    const range = resolveHeaderRange(template);
+    return {
+      ...template,
+      headerLayout: buildHeaderLayout(
+        worksheet,
+        range.startRow,
+        range.endRow,
+        range.startCol.toUpperCase(),
+        range.endCol.toUpperCase(),
+      ),
+    };
+  };
+
+  const uploadSourceWorkbook = async (sourceFile: File) => {
+    const storagePath = `${TEMPLATE_STORAGE_FOLDER}/${project.id}/${Date.now()}_${sanitizeStorageFileName(sourceFile.name)}`;
+    const storageRef = ref(storage, storagePath);
+
+    await uploadBytes(storageRef, sourceFile, {
+      contentType: sourceFile.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+    return {
+      sourceWorkbookName: sourceFile.name,
+      sourceWorkbookPath: storagePath,
+      sourceWorkbookUrl: await getDownloadURL(storageRef),
+    };
+  };
+
+  const getNextManualSheetName = (currentSheetName: string, nextTemplate?: FormTemplate) => {
+    const takenSheetNames = new Set(
+      [...manualTemplates, ...(nextTemplate ? [nextTemplate] : [])].map((template) => template.sheetName).filter(Boolean),
+    );
+    const currentIndex = manualSheetNames.findIndex((sheetName) => sheetName === currentSheetName);
+    const remainingAfterCurrent = manualSheetNames.slice(currentIndex + 1).find((sheetName) => !takenSheetNames.has(sheetName));
+
+    if (remainingAfterCurrent) {
+      return remainingAfterCurrent;
+    }
+
+    return manualSheetNames.find((sheetName) => !takenSheetNames.has(sheetName)) || currentSheetName;
+  };
+
+  const updateStoredTemplate = (id: string, updates: Partial<FormTemplate>) => {
+    setManualTemplates((prev) => prev.map((template) => (template.id === id ? { ...template, ...updates } : template)));
+  };
+
+  const updateStoredTemplateMapping = (id: string, updates: Partial<FormTemplate['columnMapping']>) => {
+    setManualTemplates((prev) =>
+      prev.map((template) =>
+        template.id === id
+          ? {
+              ...template,
+              columnMapping: {
+                ...template.columnMapping,
+                ...updates,
+              },
+            }
+          : template,
+      ),
+    );
+  };
+
+  const updateStoredTemplateHeader = (
+    id: string,
+    updates: Partial<Pick<HeaderLayout, 'startRow' | 'endRow' | 'startCol' | 'endCol'>>,
+  ) => {
+    setManualTemplates((prev) =>
+      prev.map((template) => {
+        if (template.id !== id) {
+          return template;
+        }
+
+        const currentHeaderLayout =
+          template.headerLayout ||
+          ({
+            startRow: template.columnMapping.startRow,
+            endRow: Math.max(template.columnMapping.startRow, template.columnMapping.startRow + 4),
+            startCol: columnLetterToIndex(template.columnMapping.labelColumn),
+            endCol: columnLetterToIndex(
+              template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] ||
+                template.columnMapping.labelColumn,
+            ),
+            cells: [],
+            merges: [],
+          } satisfies HeaderLayout);
+
+        return {
+          ...template,
+          headerLayout: {
+            ...currentHeaderLayout,
+            ...updates,
+          },
+        };
+      }),
+    );
+  };
+
+  const validateTemplateDraft = (template: FormTemplate, excludeTemplateId?: string) => {
+    if (!template.name.trim() || !template.sheetName.trim()) {
+      return 'Tên biểu mẫu và tên sheet không được để trống.';
+    }
+
+    const duplicateName = manualTemplates.find(
+      (item) => item.id !== excludeTemplateId && item.name.trim().toLowerCase() === template.name.trim().toLowerCase(),
+    );
+    if (duplicateName) {
+      return 'Tên biểu mẫu đã tồn tại trong dự án này.';
+    }
+
+    if (template.columnMapping.endRow < template.columnMapping.startRow) {
+      return 'Vùng dữ liệu phải có hàng kết thúc lớn hơn hoặc bằng hàng bắt đầu.';
+    }
+
+    if (!template.columnMapping.labelColumn.trim()) {
+      return 'Cột tiêu chí dọc không được để trống.';
+    }
+
+    if (!template.columnMapping.dataColumns || template.columnMapping.dataColumns.length === 0) {
+      return 'Vui lòng khai báo ít nhất một cột dữ liệu.';
+    }
+
+    if (template.headerLayout && template.headerLayout.endRow < template.headerLayout.startRow) {
+      return 'Vùng tiêu đề phải có dòng kết thúc lớn hơn hoặc bằng dòng bắt đầu.';
+    }
+
+    if (
+      template.headerLayout &&
+      (template.headerLayout.startCol <= 0 || template.headerLayout.endCol <= 0 || template.headerLayout.endCol < template.headerLayout.startCol)
+    ) {
+      return 'Cột bắt đầu và cột kết thúc của vùng tiêu đề không hợp lệ.';
+    }
+
+    return null;
+  };
+
+  const saveStoredTemplate = async (template: FormTemplate) => {
+    const normalizedTemplate: FormTemplate = {
+      ...template,
+      name: template.name.trim(),
+      sheetName: template.sheetName.trim(),
+      columnHeaders: template.columnHeaders.map((value) => value.trim()).filter(Boolean),
+      columnMapping: {
+        ...template.columnMapping,
+        labelColumn: template.columnMapping.labelColumn.trim().toUpperCase(),
+        dataColumns: expandColumnSelection(template.columnMapping.dataColumns.join(',')),
+      },
+    };
+
+    const validationError = validateTemplateDraft(normalizedTemplate, template.id);
+    if (validationError) {
+      setError(validationError);
+      setNotice(null);
+      return;
+    }
+
+    try {
+      let templateToSave = normalizedTemplate;
+      if (normalizedTemplate.sourceWorkbookUrl) {
+        try {
+          const response = await fetch(normalizedTemplate.sourceWorkbookUrl);
+          if (response.ok) {
+            const workbook = XLSX.read(await response.arrayBuffer(), { type: 'array' });
+            templateToSave = buildTemplateWithHeaderLayout(normalizedTemplate, workbook);
+          }
+        } catch (workbookError) {
+          console.warn('Không thể đọc lại workbook mẫu khi lưu chỉnh sửa biểu mẫu:', workbookError);
+        }
+      }
+
+      await setDoc(
+        doc(db, 'templates', template.id),
+        {
+          ...templateToSave,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      setError(null);
+      setNotice(`Đã cập nhật biểu mẫu "${templateToSave.name}".`);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `templates/${template.id}`);
+    }
+  };
+
+  const toggleTemplatePublished = async (template: FormTemplate) => {
+    try {
+      const nextPublished = !template.isPublished;
+      await setDoc(
+        doc(db, 'templates', template.id),
+        {
+          isPublished: nextPublished,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      setError(null);
+      setNotice(
+        nextPublished
+          ? `Đã chốt biểu mẫu "${template.name}". Biểu này có thể dùng để tiếp nhận dữ liệu.`
+          : `Đã mở lại biểu mẫu "${template.name}" để tiếp tục chỉnh sửa.`,
+      );
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `templates/${template.id}`);
+    }
+  };
+
   const learnForm = async () => {
     if (!file) return;
     setIsLearning(true);
     setError(null);
+    setNotice(null);
     setLearnedTemplates([]);
 
     try {
@@ -237,10 +491,11 @@ export function FormLearner({ project }: { project: Project }) {
 
             const result = JSON.parse(response.text);
             return {
-              id: `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+              id: buildTemplateId(),
               projectId: project.id,
               name: result.name,
               sheetName: sheetName,
+              isPublished: false,
               columnHeaders: result.columnHeaders,
               columnMapping: {
                 labelColumn: result.labelColumn,
@@ -250,6 +505,7 @@ export function FormLearner({ project }: { project: Project }) {
               },
               mode: 'AI',
               createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
             } as FormTemplate;
           });
 
@@ -291,27 +547,39 @@ export function FormLearner({ project }: { project: Project }) {
     if (templatesToSave.length === 0) return;
     try {
       let templatesWithLayout = templatesToSave;
+      let workbookMetadata:
+        | {
+            sourceWorkbookName: string;
+            sourceWorkbookPath: string;
+            sourceWorkbookUrl: string;
+          }
+        | null = null;
+
       if (sourceFile) {
         const data = await sourceFile.arrayBuffer();
         const workbook = XLSX.read(data, { type: 'array' });
-        templatesWithLayout = templatesToSave.map((tpl) => {
-          const range = headerRanges[tpl.id];
-          if (!range) return tpl;
-          const worksheet = workbook.Sheets[tpl.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
-          if (!worksheet) return tpl;
-          const headerLayout = buildHeaderLayout(
-            worksheet,
-            range.startRow,
-            range.endRow,
-            range.startCol,
-            range.endCol,
-          );
-          return { ...tpl, headerLayout };
-        });
+        workbookMetadata = await uploadSourceWorkbook(sourceFile);
+        templatesWithLayout = templatesToSave.map((tpl) => buildTemplateWithHeaderLayout(tpl, workbook));
       }
-      const promises = templatesWithLayout.map((tpl) => setDoc(doc(db, 'templates', tpl.id), tpl));
+
+      const promises = templatesWithLayout.map((tpl) =>
+        setDoc(
+          doc(db, 'templates', tpl.id),
+          {
+            ...tpl,
+            ...(workbookMetadata || {}),
+            isPublished: tpl.isPublished ?? false,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        ),
+      );
       await Promise.all(promises);
       setLearnedTemplates([]);
+      setError(null);
+      setNotice(
+        `Đã lưu ${templatesWithLayout.length} biểu mẫu ở trạng thái nháp. Bạn có thể xem trước trong Báo cáo và chốt từng biểu khi sẵn sàng tiếp nhận dữ liệu.`,
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'templates');
     }
@@ -343,37 +611,44 @@ export function FormLearner({ project }: { project: Project }) {
   const handleManualCreate = async () => {
     if (!manualFile) {
       setError('Vui lòng tải file mẫu để phần mềm đọc danh sách sheet trước.');
+      setNotice(null);
       return;
     }
 
     if (!manualForm.name || !manualForm.sheetName || !manualForm.dataColumns) {
       setError('Vui lòng nhập đầy đủ thông tin template.');
+      setNotice(null);
       return;
     }
 
-    if (existingNames.has(manualForm.name)) {
+    if (existingNames.has(manualForm.name.trim().toLowerCase())) {
       setError('Tên template đã tồn tại trong dự án này.');
+      setNotice(null);
       return;
     }
 
     if (Number(manualForm.endRow) < Number(manualForm.startRow)) {
       setError('Vùng dữ liệu phải có hàng kết thúc lớn hơn hoặc bằng hàng bắt đầu.');
+      setNotice(null);
       return;
     }
 
     if (Number(manualForm.verticalHeaderEndRow) < Number(manualForm.verticalHeaderStartRow)) {
       setError('Tiêu chí dọc phải có dòng kết thúc lớn hơn hoặc bằng dòng bắt đầu.');
+      setNotice(null);
       return;
     }
 
     if (Number(manualForm.horizontalHeaderEndRow) < Number(manualForm.horizontalHeaderStartRow)) {
       setError('Tiêu chí ngang phải có dòng kết thúc lớn hơn hoặc bằng dòng bắt đầu.');
+      setNotice(null);
       return;
     }
 
     const dataColumns = expandColumnSelection(manualForm.dataColumns);
     if (dataColumns.length === 0) {
       setError('Vùng cột dữ liệu không hợp lệ. Ví dụ đúng: A-C, F hoặc B,D,G.');
+      setNotice(null);
       return;
     }
 
@@ -382,10 +657,11 @@ export function FormLearner({ project }: { project: Project }) {
       : dataColumns.map((_, i) => `Cột ${i + 1}`);
 
     const newTemplate: FormTemplate = {
-      id: `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      id: buildTemplateId(),
       projectId: project.id,
       name: manualForm.name,
       sheetName: manualForm.sheetName,
+      isPublished: false,
       columnHeaders,
       columnMapping: {
         labelColumn: manualForm.labelColumn.toUpperCase(),
@@ -395,6 +671,7 @@ export function FormLearner({ project }: { project: Project }) {
       },
       mode: 'MANUAL',
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
 
     let templateToSave = newTemplate;
@@ -414,22 +691,26 @@ export function FormLearner({ project }: { project: Project }) {
       };
     }
 
-    await saveTemplates([templateToSave]);
-    setManualForm({
-      name: '',
-      sheetName: '',
-      labelColumn: 'A',
-      dataColumns: '',
-      columnHeaders: '',
-      startRow: 1,
-      endRow: 200,
-      verticalHeaderStartRow: 1,
-      verticalHeaderEndRow: 1,
-      horizontalHeaderStartRow: 1,
-      horizontalHeaderEndRow: 1,
-    });
-    setManualFile(null);
+    await saveTemplates([templateToSave], manualFile);
+    const nextSheetName = getNextManualSheetName(manualForm.sheetName, templateToSave);
+    setManualForm((prev) => ({
+      ...DEFAULT_MANUAL_FORM,
+      labelColumn: prev.labelColumn,
+      dataColumns: prev.dataColumns,
+      startRow: prev.startRow,
+      endRow: prev.endRow,
+      verticalHeaderStartRow: prev.verticalHeaderStartRow,
+      verticalHeaderEndRow: prev.verticalHeaderEndRow,
+      horizontalHeaderStartRow: prev.horizontalHeaderStartRow,
+      horizontalHeaderEndRow: prev.horizontalHeaderEndRow,
+      sheetName: nextSheetName,
+    }));
     setError(null);
+    setNotice(
+      nextSheetName && nextSheetName !== manualForm.sheetName
+        ? `Đã lưu biểu "${templateToSave.name}". Hệ thống đã chuyển sang sheet tiếp theo: ${nextSheetName}.`
+        : `Đã lưu biểu "${templateToSave.name}". Bạn có thể tiếp tục chỉnh hoặc chốt biểu ngay bên dưới.`,
+    );
   };
 
   return (
@@ -496,6 +777,13 @@ export function FormLearner({ project }: { project: Project }) {
             <div className="panel-card rounded-[20px] p-4 border border-red-200 bg-red-50 text-red-700 flex items-center gap-2">
               <AlertCircle size={18} />
               <p className="text-xs font-medium">{error}</p>
+            </div>
+          )}
+
+          {notice && (
+            <div className="panel-card rounded-[20px] border border-emerald-200 bg-emerald-50 p-4 text-emerald-700 flex items-center gap-2">
+              <CheckCircle size={18} />
+              <p className="text-xs font-medium">{notice}</p>
             </div>
           )}
 
@@ -864,17 +1152,184 @@ export function FormLearner({ project }: { project: Project }) {
                 <p className="text-xs font-medium">{error}</p>
               </div>
             )}
+
+            {notice && (
+              <div className="mt-4 panel-card rounded-[18px] border border-emerald-200 bg-emerald-50 p-3 text-emerald-700 flex items-center gap-2">
+                <CheckCircle size={16} />
+                <p className="text-xs font-medium">{notice}</p>
+              </div>
+            )}
           </div>
 
           <div className="panel-card rounded-[24px] p-6">
-            <h3 className="section-title mb-4">Danh sách biểu mẫu đã tạo</h3>
+            <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="section-title">Danh sách biểu mẫu đã tạo</h3>
+                <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                  Có thể sửa trực tiếp sau khi lưu. Chỉ khi bấm chốt biểu thì biểu đó mới được dùng ở mục Tiếp nhận dữ liệu.
+                </p>
+              </div>
+              <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                Đã lưu {manualTemplates.length} biểu
+              </div>
+            </div>
             <div className="space-y-3">
               {manualTemplates.map((tpl) => (
                 <div key={tpl.id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                  <p className="text-sm font-semibold text-[var(--ink)]">{tpl.name}</p>
-                  <p className="text-xs text-[var(--ink-soft)] mt-1">
-                    Sheet: {tpl.sheetName} | Cột tiêu chí: {tpl.columnMapping.labelColumn} | Dữ liệu: {tpl.columnMapping.dataColumns.join(', ')}
-                  </p>
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-[var(--ink)]">{tpl.name || 'Biểu chưa đặt tên'}</p>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+                            tpl.isPublished
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {tpl.isPublished ? 'Đã chốt mẫu' : 'Đang là nháp'}
+                        </span>
+                        <span className="rounded-full bg-[var(--surface-alt)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                          {tpl.mode}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                        Sheet: {tpl.sheetName} | File mẫu: {tpl.sourceWorkbookName || 'Chưa lưu file mẫu'}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => saveStoredTemplate(tpl)}
+                        className="secondary-btn inline-flex items-center gap-2"
+                      >
+                        <Save size={14} />
+                        Lưu chỉnh sửa
+                      </button>
+                      <button
+                        onClick={() => toggleTemplatePublished(tpl)}
+                        className="primary-btn inline-flex items-center gap-2"
+                      >
+                        {tpl.isPublished ? <Unlock size={14} /> : <Lock size={14} />}
+                        {tpl.isPublished ? 'Mở chốt' : 'Chốt biểu'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Tên biểu mẫu
+                      <input
+                        className="field-input mt-2"
+                        value={tpl.name}
+                        onChange={(e) => updateStoredTemplate(tpl.id, { name: e.target.value })}
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Tên sheet
+                      <input
+                        className="field-input mt-2"
+                        value={tpl.sheetName}
+                        onChange={(e) => updateStoredTemplate(tpl.id, { sheetName: e.target.value })}
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Cột tiêu chí dọc
+                      <input
+                        className="field-input mt-2"
+                        value={tpl.columnMapping.labelColumn}
+                        onChange={(e) => updateStoredTemplateMapping(tpl.id, { labelColumn: e.target.value.toUpperCase() })}
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Cột dữ liệu
+                      <input
+                        className="field-input mt-2"
+                        value={tpl.columnMapping.dataColumns.join(', ')}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, {
+                            dataColumns: expandColumnSelection(e.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Dòng bắt đầu dữ liệu
+                      <input
+                        type="number"
+                        className="field-input mt-2"
+                        value={tpl.columnMapping.startRow}
+                        onChange={(e) => updateStoredTemplateMapping(tpl.id, { startRow: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Dòng kết thúc dữ liệu
+                      <input
+                        type="number"
+                        className="field-input mt-2"
+                        value={tpl.columnMapping.endRow}
+                        onChange={(e) => updateStoredTemplateMapping(tpl.id, { endRow: Number(e.target.value) })}
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
+                      Tiêu đề cột ngang (phân cách bằng dấu phẩy)
+                      <input
+                        className="field-input mt-2"
+                        value={tpl.columnHeaders.join(', ')}
+                        onChange={(e) =>
+                          updateStoredTemplate(tpl.id, {
+                            columnHeaders: e.target.value.split(',').map((value) => value.trim()).filter(Boolean),
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-4 rounded-[18px] border border-[var(--line)] bg-white/70 p-4">
+                    <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Vùng header đang dùng để xem trước và xuất đúng mẫu
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <input
+                        type="number"
+                        className="field-input"
+                        placeholder="Dòng đầu"
+                        value={tpl.headerLayout?.startRow || tpl.columnMapping.startRow}
+                        onChange={(e) => updateStoredTemplateHeader(tpl.id, { startRow: Number(e.target.value) })}
+                      />
+                      <input
+                        type="number"
+                        className="field-input"
+                        placeholder="Dòng cuối"
+                        value={tpl.headerLayout?.endRow || tpl.columnMapping.startRow}
+                        onChange={(e) => updateStoredTemplateHeader(tpl.id, { endRow: Number(e.target.value) })}
+                      />
+                      <input
+                        className="field-input"
+                        placeholder="Cột đầu"
+                        value={tpl.headerLayout ? XLSX.utils.encode_col(tpl.headerLayout.startCol - 1) : tpl.columnMapping.labelColumn}
+                        onChange={(e) =>
+                          updateStoredTemplateHeader(tpl.id, {
+                            startCol: Math.max(1, columnLetterToIndex(e.target.value.toUpperCase())),
+                          })
+                        }
+                      />
+                      <input
+                        className="field-input"
+                        placeholder="Cột cuối"
+                        value={
+                          tpl.headerLayout
+                            ? XLSX.utils.encode_col(tpl.headerLayout.endCol - 1)
+                            : tpl.columnMapping.dataColumns[tpl.columnMapping.dataColumns.length - 1] || tpl.columnMapping.labelColumn
+                        }
+                        onChange={(e) =>
+                          updateStoredTemplateHeader(tpl.id, {
+                            endCol: Math.max(1, columnLetterToIndex(e.target.value.toUpperCase())),
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
               {manualTemplates.length === 0 && (
@@ -887,4 +1342,3 @@ export function FormLearner({ project }: { project: Project }) {
     </div>
   );
 }
-

@@ -398,38 +398,25 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     let usedTemplateWorkbook = false;
 
     try {
-      const templateWorkbook = await loadTemplateWorkbook();
-      const allowedSheetNames = new Set(templatesToExport.map((template) => template.sheetName));
+      const templateWorkbook = XLSX.utils.book_new();
 
-      templateWorkbook.SheetNames = templateWorkbook.SheetNames.filter((sheetName) => allowedSheetNames.has(sheetName));
-      Object.keys(templateWorkbook.Sheets).forEach((sheetName) => {
-        if (!allowedSheetNames.has(sheetName)) {
-          delete templateWorkbook.Sheets[sheetName];
-        }
-      });
+      for (const template of templatesToExport) {
+        try {
+          const sourceWorkbook = await loadTemplateWorkbook(template);
+          const worksheet = sourceWorkbook.Sheets[template.sheetName];
 
-      if (templateWorkbook.Workbook?.Sheets) {
-        templateWorkbook.Workbook.Sheets = templateWorkbook.Workbook.Sheets.filter((sheet) =>
-          allowedSheetNames.has(sheet.name),
-        );
-      }
-
-      if (templateWorkbook.Workbook?.Names) {
-        templateWorkbook.Workbook.Names = templateWorkbook.Workbook.Names.filter((entry: any) => {
-          if (typeof entry.Ref !== 'string') {
-            return true;
+          if (worksheet) {
+            populateTemplateWorksheet(worksheet, template, data, selectedYear, selectedUnitCode);
+            XLSX.utils.book_append_sheet(
+              templateWorkbook,
+              worksheet,
+              template.sheetName.slice(0, 31) || template.name.slice(0, 31) || 'BaoCao',
+            );
+            usedTemplateWorkbook = true;
+            continue;
           }
-
-          return templatesToExport.some((template) => entry.Ref.includes(`${template.sheetName}!`));
-        });
-      }
-
-      templatesToExport.forEach((template) => {
-        const worksheet = templateWorkbook.Sheets[template.sheetName];
-        if (worksheet) {
-          populateTemplateWorksheet(worksheet, template, data, selectedYear, selectedUnitCode);
-          usedTemplateWorkbook = true;
-          return;
+        } catch (error) {
+          console.error(`Không thể đọc workbook mẫu của biểu ${template.name}:`, error);
         }
 
         const fallbackWorksheet = buildFlatWorksheetForTemplate(data, template, selectedYear, selectedUnitCode);
@@ -438,7 +425,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
           fallbackWorksheet,
           template.sheetName.slice(0, 31) || template.name.slice(0, 31) || 'BaoCao',
         );
-      });
+      }
 
       workbook = templateWorkbook.SheetNames.length > 0 ? templateWorkbook : null;
     } catch (error) {

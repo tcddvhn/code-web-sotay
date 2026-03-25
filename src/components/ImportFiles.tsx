@@ -24,6 +24,7 @@ type FileItemStatus = 'pending' | 'processing' | 'success' | 'error';
 interface FileItem {
   file: File;
   unitCode: string;
+  unitInput: string;
   status: FileItemStatus;
   message?: string;
   importedRows?: number;
@@ -58,24 +59,29 @@ export function ImportFiles({
     () => templates.filter((template) => template.projectId === selectedProjectId),
     [selectedProjectId, templates],
   );
-  const selectedTemplate = projectTemplates.find((template) => template.id === selectedTemplateId) || null;
+  const publishedTemplates = useMemo(
+    () => projectTemplates.filter((template) => template.isPublished),
+    [projectTemplates],
+  );
+  const selectedTemplate = publishedTemplates.find((template) => template.id === selectedTemplateId) || null;
 
   useEffect(() => {
-    if (projectTemplates.length > 0 && !projectTemplates.find((template) => template.id === selectedTemplateId)) {
-      setSelectedTemplateId(projectTemplates[0].id);
+    if (publishedTemplates.length > 0 && !publishedTemplates.find((template) => template.id === selectedTemplateId)) {
+      setSelectedTemplateId(publishedTemplates[0].id);
       return;
     }
 
-    if (projectTemplates.length === 0) {
+    if (publishedTemplates.length === 0) {
       setSelectedTemplateId('');
     }
-  }, [projectTemplates, selectedTemplateId]);
+  }, [publishedTemplates, selectedTemplateId]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const nextFiles = Array.from(event.target.files).map((file) => ({
         file,
         unitCode: '',
+        unitInput: '',
         status: 'pending' as const,
       }));
       setFiles((previous) => [...previous, ...nextFiles]);
@@ -87,7 +93,37 @@ export function ImportFiles({
   };
 
   const updateUnit = (index: number, code: string) => {
-    setFiles((previous) => previous.map((file, fileIndex) => (fileIndex === index ? { ...file, unitCode: code } : file)));
+    const matchedUnit = UNITS.find((unit) => unit.code === code);
+    setFiles((previous) =>
+      previous.map((file, fileIndex) =>
+        fileIndex === index
+          ? {
+              ...file,
+              unitCode: code,
+              unitInput: matchedUnit?.name || file.unitInput,
+            }
+          : file,
+      ),
+    );
+  };
+
+  const updateUnitInput = (index: number, value: string) => {
+    const normalizedValue = value.trim().toLowerCase();
+    const matchedUnit =
+      UNITS.find((unit) => unit.name.trim().toLowerCase() === normalizedValue) ||
+      UNITS.find((unit) => unit.code.trim().toLowerCase() === normalizedValue);
+
+    setFiles((previous) =>
+      previous.map((file, fileIndex) =>
+        fileIndex === index
+          ? {
+              ...file,
+              unitInput: value,
+              unitCode: matchedUnit?.code || '',
+            }
+          : file,
+      ),
+    );
   };
 
   const handleYearChange = (nextYear: string) => {
@@ -114,8 +150,12 @@ export function ImportFiles({
       return;
     }
 
-    if (projectTemplates.length === 0) {
-      setManagementMessage('Dự án này chưa có biểu mẫu để tiếp nhận dữ liệu.');
+    if (publishedTemplates.length === 0) {
+      setManagementMessage(
+        projectTemplates.length === 0
+          ? 'Dự án này chưa có biểu mẫu để tiếp nhận dữ liệu.'
+          : 'Dự án này đã có biểu mẫu nhưng chưa chốt mẫu nào. Hãy vào mục Biểu mẫu để chốt trước khi tiếp nhận dữ liệu.',
+      );
       return;
     }
 
@@ -148,7 +188,7 @@ export function ImportFiles({
       try {
         const buffer = await fileItem.file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: 'array', cellFormula: true, cellHTML: false, cellText: false });
-        const validation = validateWorkbookSheetNames(workbook.SheetNames, projectTemplates);
+        const validation = validateWorkbookSheetNames(workbook.SheetNames, publishedTemplates);
 
         if (!validation.isValid) {
           const validationMessage = buildSheetValidationMessage(currentProject.name, validation);
@@ -159,7 +199,7 @@ export function ImportFiles({
         let rows: DataRow[] = [];
 
         if (autoDetectSheets) {
-          const templatesToScan = includeExtraSheets ? projectTemplates : selectedTemplate ? [selectedTemplate] : projectTemplates;
+          const templatesToScan = includeExtraSheets ? publishedTemplates : selectedTemplate ? [selectedTemplate] : publishedTemplates;
 
           templatesToScan.forEach((template) => {
             if (!workbook.Sheets[template.sheetName]) {
@@ -288,6 +328,7 @@ export function ImportFiles({
   };
 
   const isPinnedYear = pinnedYear === selectedYear;
+  const unitSuggestionListId = 'import-unit-suggestions';
 
   return (
     <div className="max-w-5xl p-6 md:p-8">
@@ -323,10 +364,10 @@ export function ImportFiles({
             value={selectedTemplateId}
             onChange={(event) => setSelectedTemplateId(event.target.value)}
             className="field-select"
-            disabled={autoDetectSheets || projectTemplates.length === 0}
+            disabled={autoDetectSheets || publishedTemplates.length === 0}
           >
-            {projectTemplates.length === 0 && <option value="">-- Chưa có biểu mẫu --</option>}
-            {projectTemplates.map((template) => (
+            {publishedTemplates.length === 0 && <option value="">-- Chưa có biểu mẫu đã chốt --</option>}
+            {publishedTemplates.map((template) => (
               <option key={template.id} value={template.id}>
                 {template.name}
               </option>
@@ -352,7 +393,9 @@ export function ImportFiles({
               Quét toàn bộ template của dự án
             </label>
           )}
-          <p className="mt-3 text-xs text-[var(--ink-soft)]">Tên sheet của file nhập phải khớp 100% với danh sách biểu mẫu của dự án.</p>
+          <p className="mt-3 text-xs text-[var(--ink-soft)]">
+            Tên sheet của file nhập phải khớp 100% với các biểu mẫu đã chốt của dự án.
+          </p>
         </div>
 
         <div className="panel-soft rounded-[24px] p-6">
@@ -442,6 +485,11 @@ export function ImportFiles({
 
       {files.length > 0 && (
         <div className="mb-8 space-y-4">
+          <datalist id={unitSuggestionListId}>
+            {UNITS.map((unit) => (
+              <option key={unit.code} value={unit.name} />
+            ))}
+          </datalist>
           {files.map((fileItem, index) => (
             <div key={index} className="panel-card flex items-center gap-4 rounded-[22px] p-4">
               <div className="flex-1">
@@ -456,18 +504,27 @@ export function ImportFiles({
                 )}
               </div>
 
-              <select
-                value={fileItem.unitCode}
-                onChange={(event) => updateUnit(index, event.target.value)}
-                className="field-select w-48 py-1 text-xs"
-              >
-                <option value="">-- Chọn đơn vị --</option>
-                {UNITS.map((unit) => (
-                  <option key={unit.code} value={unit.code}>
-                    {unit.name}
-                  </option>
-                ))}
-              </select>
+              <div className="w-56">
+                <input
+                  list={unitSuggestionListId}
+                  value={fileItem.unitInput}
+                  onChange={(event) => updateUnitInput(index, event.target.value)}
+                  className="field-input py-2 text-xs"
+                  placeholder="Gõ tên đơn vị để gợi ý"
+                />
+                <select
+                  value={fileItem.unitCode}
+                  onChange={(event) => updateUnit(index, event.target.value)}
+                  className="field-select mt-2 py-1 text-[11px]"
+                >
+                  <option value="">-- Hoặc chọn nhanh đơn vị --</option>
+                  {UNITS.map((unit) => (
+                    <option key={unit.code} value={unit.code}>
+                      {unit.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {fileItem.status === 'processing' && <LoaderCircle className="animate-spin" size={18} />}
               {fileItem.status === 'success' && <FileCheck className="text-[var(--success)]" size={18} />}
@@ -489,7 +546,7 @@ export function ImportFiles({
           files.some((file) => file.status === 'processing') ||
           isManagingData ||
           !currentProject ||
-          projectTemplates.length === 0
+          publishedTemplates.length === 0
         }
         className="primary-btn px-8 py-4 disabled:cursor-not-allowed disabled:opacity-40"
       >

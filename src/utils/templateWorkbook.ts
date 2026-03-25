@@ -1,10 +1,10 @@
 import * as XLSX from 'xlsx';
 import { FormTemplate, HeaderLayout } from '../types';
-import { columnLetterToIndex } from './columnUtils';
+import { columnIndexToLetter, columnLetterToIndex } from './columnUtils';
 
 const NQ22_TEMPLATE_WORKBOOK_URL = '/templates/nq22-report-template.xlsx';
 
-let cachedTemplateBufferPromise: Promise<ArrayBuffer> | null = null;
+const cachedTemplateBufferPromises = new Map<string, Promise<ArrayBuffer>>();
 
 function buildHeaderLayoutFromWorksheet(
   worksheet: XLSX.WorkSheet,
@@ -63,20 +63,31 @@ function readWorksheetText(worksheet: XLSX.WorkSheet, row: number, col: string) 
 }
 
 export async function loadTemplateWorkbookBuffer() {
-  if (!cachedTemplateBufferPromise) {
-    cachedTemplateBufferPromise = fetch(NQ22_TEMPLATE_WORKBOOK_URL).then(async (response) => {
-      if (!response.ok) {
-        throw new Error('Không thể tải workbook mẫu NQ22.');
-      }
-      return response.arrayBuffer();
-    });
-  }
-
-  return cachedTemplateBufferPromise;
+  return loadTemplateWorkbookBufferFromUrl(NQ22_TEMPLATE_WORKBOOK_URL);
 }
 
-export async function loadTemplateWorkbook() {
-  const buffer = await loadTemplateWorkbookBuffer();
+function resolveTemplateWorkbookUrl(template?: FormTemplate | null) {
+  return template?.sourceWorkbookUrl?.trim() || NQ22_TEMPLATE_WORKBOOK_URL;
+}
+
+async function loadTemplateWorkbookBufferFromUrl(url: string) {
+  if (!cachedTemplateBufferPromises.has(url)) {
+    cachedTemplateBufferPromises.set(
+      url,
+      fetch(url).then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Không thể tải workbook mẫu từ ${url}.`);
+        }
+        return response.arrayBuffer();
+      }),
+    );
+  }
+
+  return cachedTemplateBufferPromises.get(url)!;
+}
+
+export async function loadTemplateWorkbook(template?: FormTemplate | null) {
+  const buffer = await loadTemplateWorkbookBufferFromUrl(resolveTemplateWorkbookUrl(template));
   return XLSX.read(buffer.slice(0), {
     type: 'array',
     cellStyles: true,
@@ -87,15 +98,18 @@ export async function loadTemplateWorkbook() {
 
 export async function resolveTemplateHeaderLayout(template: FormTemplate) {
   try {
-    const workbook = await loadTemplateWorkbook();
+    const workbook = await loadTemplateWorkbook(template);
     const worksheet = getWorksheetForTemplate(workbook, template);
     if (worksheet) {
-      const startRow = Math.max(5, template.columnMapping.startRow - 4);
-      const endRow = Math.max(startRow, template.columnMapping.startRow - 1);
-      const startCol = template.columnMapping.labelColumn;
-      const endCol =
-        template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] ||
-        template.columnMapping.labelColumn;
+      const startRow = template.headerLayout?.startRow ?? Math.max(5, template.columnMapping.startRow - 4);
+      const endRow = template.headerLayout?.endRow ?? Math.max(startRow, template.columnMapping.startRow - 1);
+      const startCol = template.headerLayout
+        ? columnIndexToLetter(template.headerLayout.startCol)
+        : template.columnMapping.labelColumn;
+      const endCol = template.headerLayout
+        ? columnIndexToLetter(template.headerLayout.endCol)
+        : template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] ||
+          template.columnMapping.labelColumn;
 
       return buildHeaderLayoutFromWorksheet(worksheet, startRow, endRow, startCol, endCol);
     }
@@ -108,7 +122,7 @@ export async function resolveTemplateHeaderLayout(template: FormTemplate) {
 
 export async function resolveTemplateRowLabels(template: FormTemplate) {
   try {
-    const workbook = await loadTemplateWorkbook();
+    const workbook = await loadTemplateWorkbook(template);
     const worksheet = getWorksheetForTemplate(workbook, template);
     if (!worksheet) {
       return [] as Array<{ sourceRow: number; label: string }>;
