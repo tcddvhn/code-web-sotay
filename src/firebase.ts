@@ -7,12 +7,40 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from 'firebase/auth';
+import type { FirebaseOptions } from 'firebase/app';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import firebaseConfig from '../firebase-applet-config.json';
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const defaultFirebaseConfig = {
+  projectId: 'gen-lang-client-0167602527',
+  appId: '1:884763283838:web:7ec28d3355e4c1be1d232f',
+  apiKey: 'AIzaSyBH68EBlVOiQo0kYWCceghZoUkhnKE9rjM',
+  authDomain: 'gen-lang-client-0167602527.firebaseapp.com',
+  firestoreDatabaseId: 'ai-studio-e4eac8ea-cbf9-4af3-a0ba-840494e3f78a',
+  storageBucket: 'gen-lang-client-0167602527.firebasestorage.app',
+  messagingSenderId: '884763283838',
+  measurementId: '',
+};
+
+const envFirebaseConfig = {
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+};
+
+const firebaseConfig = {
+  ...defaultFirebaseConfig,
+  ...Object.fromEntries(
+    Object.entries(envFirebaseConfig).filter(([, value]) => typeof value === 'string' && value.trim() !== ''),
+  ),
+};
+
+const app = initializeApp(firebaseConfig as FirebaseOptions);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const storage = getStorage(app);

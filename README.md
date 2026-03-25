@@ -32,6 +32,14 @@ npm install
 
 ```bash
 VITE_GEMINI_API_KEY=your_gemini_api_key_here
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_APP_ID=your_firebase_app_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_MEASUREMENT_ID=
+VITE_FIREBASE_FIRESTORE_DATABASE_ID=your_firestore_database_id
 ```
 
 3. Chạy ứng dụng:
@@ -44,7 +52,8 @@ npm run dev
 
 ## Firebase
 
-- Cấu hình Firebase nằm trong `firebase-applet-config.json`.
+- Ứng dụng hiện ưu tiên đọc cấu hình Firebase từ biến môi trường `.env`.
+- Nếu `.env` chưa được điền đầy đủ, hệ thống sẽ fallback về cấu hình mặc định đang lưu trong `firebase-applet-config.json`.
 - Cần bật Authentication cho các tài khoản được cấp quyền.
 - Cần publish `firestore.rules` sau mỗi lần cập nhật rules.
 - Hệ thống hiện chỉ cho phép các tài khoản đã khai báo trong mã nguồn đăng nhập.
@@ -53,4 +62,5 @@ npm run dev
 
 - Dự án hiện được tối ưu để làm việc trực tiếp trên Firebase từ client.
 - Chức năng AI yêu cầu `VITE_GEMINI_API_KEY` trước khi dùng.
+- File `firebase-blueprint.json` được giữ lại để mô tả schema/tham chiếu cấu trúc Firebase.
 - Khi deploy/publish, cần bảo đảm rules Firestore đã được cập nhật đồng bộ.
