@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Search, X } from 'lucide-react';
 import { UNITS, YEARS } from '../constants';
-import { ConsolidatedData, FormTemplate, HeaderLayout, Project } from '../types';
+import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, Project } from '../types';
 import { auth, db, storage } from '../firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
@@ -106,23 +106,98 @@ function buildHeaderRows(layout: HeaderLayout) {
   return rows;
 }
 
-function buildFlatWorkbook(rows: AggregatedReportRow[], columnHeaders: string[]) {
-  const exportRows = rows.map((row) => {
-    const rowData: Record<string, string | number> = {
-      'Tiêu chí': row.label,
-    };
+function buildValueMapForTemplate(
+  data: ConsolidatedData,
+  template: FormTemplate,
+  year: string,
+  selectedUnitCode: string,
+) {
+  const rows = (data[template.id] || []).filter((row) => row.year === year);
+  const relevantRows =
+    selectedUnitCode === TOTAL_REPORT_UNIT_CODE
+      ? rows
+      : rows.filter((row) => row.unitCode === selectedUnitCode);
+  const rowMap = new Map<number, number[]>();
 
+  relevantRows.forEach((row) => {
+    const currentValues = rowMap.get(row.sourceRow) || new Array(template.columnMapping.dataColumns.length).fill(0);
     row.values.forEach((value, index) => {
-      rowData[columnHeaders[index] || `Cột ${index + 1}`] = value;
+      currentValues[index] += value;
     });
-
-    return rowData;
+    rowMap.set(row.sourceRow, currentValues);
   });
 
-  const worksheet = XLSX.utils.json_to_sheet(exportRows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'BaoCao');
-  return workbook;
+  return rowMap;
+}
+
+function buildFlatWorksheetForTemplate(
+  data: ConsolidatedData,
+  template: FormTemplate,
+  year: string,
+  selectedUnitCode: string,
+) {
+  const rows = (data[template.id] || []).filter((row) => row.year === year);
+  const relevantRows =
+    selectedUnitCode === TOTAL_REPORT_UNIT_CODE
+      ? rows
+      : rows.filter((row) => row.unitCode === selectedUnitCode);
+  const rowMap = new Map<number, DataRow[]>();
+
+  relevantRows.forEach((row) => {
+    const existing = rowMap.get(row.sourceRow) || [];
+    existing.push(row);
+    rowMap.set(row.sourceRow, existing);
+  });
+
+  const exportRows = Array.from(rowMap.entries())
+    .sort((left, right) => left[0] - right[0])
+    .map(([sourceRow, sourceRows]) => {
+      const values = new Array(template.columnMapping.dataColumns.length).fill(0);
+      sourceRows.forEach((row) => {
+        row.values.forEach((value, index) => {
+          values[index] += value;
+        });
+      });
+
+      const rowData: Record<string, string | number> = {
+        'Tiêu chí': sourceRows[0]?.label || `Dòng ${sourceRow}`,
+      };
+      values.forEach((value, index) => {
+        rowData[template.columnHeaders[index] || `Cột ${index + 1}`] = value;
+      });
+
+      return rowData;
+    });
+
+  return XLSX.utils.json_to_sheet(exportRows);
+}
+
+function populateTemplateWorksheet(
+  worksheet: XLSX.WorkSheet,
+  template: FormTemplate,
+  data: ConsolidatedData,
+  year: string,
+  selectedUnitCode: string,
+) {
+  const valueMap = buildValueMapForTemplate(data, template, year, selectedUnitCode);
+  const { startRow, endRow, dataColumns } = template.columnMapping;
+
+  for (let sourceRow = startRow; sourceRow <= endRow; sourceRow += 1) {
+    const currentRowValues = valueMap.get(sourceRow);
+
+    dataColumns.forEach((columnLetter, index) => {
+      const address = `${columnLetter}${sourceRow}`;
+      const currentCell = worksheet[address] || {};
+      const value = currentRowValues?.[index] ?? 0;
+
+      worksheet[address] = {
+        ...currentCell,
+        t: 'n',
+        v: value,
+        w: String(value),
+      };
+    });
+  }
 }
 
 export function ReportView({ data, projects, templates, selectedProjectId, onSelectProject }: ReportViewProps) {
@@ -318,41 +393,24 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     return 1 + columnHeaders.length;
   }, [columnHeaders.length, headerRows, resolvedHeaderLayout, selectedTemplate]);
 
-  const exportToExcel = async () => {
-    if (!selectedTemplate || aggregatedRows.length === 0) {
-      return;
-    }
-
-    const fileName = [
-      'BaoCao',
-      sanitizeFileNamePart(selectedTemplate.name),
-      sanitizeFileNamePart(selectedUnitOption.name),
-      sanitizeFileNamePart(selectedYear),
-    ]
-      .filter(Boolean)
-      .join('_')
-      .concat('.xlsx');
-
-    let workbook: XLSX.WorkBook;
+  const buildWorkbookForTemplates = async (templatesToExport: FormTemplate[]) => {
+    let workbook: XLSX.WorkBook | null = null;
+    let usedTemplateWorkbook = false;
 
     try {
       const templateWorkbook = await loadTemplateWorkbook();
-      const worksheet = templateWorkbook.Sheets[selectedTemplate.sheetName];
+      const allowedSheetNames = new Set(templatesToExport.map((template) => template.sheetName));
 
-      if (!worksheet) {
-        throw new Error(`Không tìm thấy sheet ${selectedTemplate.sheetName} trong workbook mẫu.`);
-      }
-
-      templateWorkbook.SheetNames = templateWorkbook.SheetNames.filter((sheetName) => sheetName === selectedTemplate.sheetName);
+      templateWorkbook.SheetNames = templateWorkbook.SheetNames.filter((sheetName) => allowedSheetNames.has(sheetName));
       Object.keys(templateWorkbook.Sheets).forEach((sheetName) => {
-        if (sheetName !== selectedTemplate.sheetName) {
+        if (!allowedSheetNames.has(sheetName)) {
           delete templateWorkbook.Sheets[sheetName];
         }
       });
 
       if (templateWorkbook.Workbook?.Sheets) {
-        templateWorkbook.Workbook.Sheets = templateWorkbook.Workbook.Sheets.filter(
-          (sheet) => sheet.name === selectedTemplate.sheetName,
+        templateWorkbook.Workbook.Sheets = templateWorkbook.Workbook.Sheets.filter((sheet) =>
+          allowedSheetNames.has(sheet.name),
         );
       }
 
@@ -362,54 +420,68 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
             return true;
           }
 
-          return entry.Ref.includes(`${selectedTemplate.sheetName}!`);
+          return templatesToExport.some((template) => entry.Ref.includes(`${template.sheetName}!`));
         });
       }
 
-      const rowMap = new Map(aggregatedRows.map((row) => [row.sourceRow, row]));
-      const { startRow, endRow, dataColumns } = selectedTemplate.columnMapping;
+      templatesToExport.forEach((template) => {
+        const worksheet = templateWorkbook.Sheets[template.sheetName];
+        if (worksheet) {
+          populateTemplateWorksheet(worksheet, template, data, selectedYear, selectedUnitCode);
+          usedTemplateWorkbook = true;
+          return;
+        }
 
-      for (let sourceRow = startRow; sourceRow <= endRow; sourceRow += 1) {
-        const reportRow = rowMap.get(sourceRow);
+        const fallbackWorksheet = buildFlatWorksheetForTemplate(data, template, selectedYear, selectedUnitCode);
+        XLSX.utils.book_append_sheet(
+          templateWorkbook,
+          fallbackWorksheet,
+          template.sheetName.slice(0, 31) || template.name.slice(0, 31) || 'BaoCao',
+        );
+      });
 
-        dataColumns.forEach((columnLetter, index) => {
-          const address = `${columnLetter}${sourceRow}`;
-          const currentCell = worksheet[address] || {};
-          const value = reportRow?.values[index] ?? 0;
-
-          worksheet[address] = {
-            ...currentCell,
-            t: 'n',
-            v: value,
-            w: String(value),
-          };
-        });
-      }
-
-      workbook = templateWorkbook;
+      workbook = templateWorkbook.SheetNames.length > 0 ? templateWorkbook : null;
     } catch (error) {
       console.error('Template export error:', error);
-      workbook = buildFlatWorkbook(aggregatedRows, columnHeaders);
-      alert('Không đọc được workbook mẫu. Hệ thống sẽ xuất theo bảng tổng hợp hiện tại.');
     }
 
-    XLSX.writeFile(workbook, fileName);
+    if (!workbook) {
+      const fallbackWorkbook = XLSX.utils.book_new();
+      templatesToExport.forEach((template) => {
+        const fallbackWorksheet = buildFlatWorksheetForTemplate(data, template, selectedYear, selectedUnitCode);
+        XLSX.utils.book_append_sheet(
+          fallbackWorkbook,
+          fallbackWorksheet,
+          template.sheetName.slice(0, 31) || template.name.slice(0, 31) || 'BaoCao',
+        );
+      });
+      workbook = fallbackWorkbook;
+    }
 
+    return { workbook, usedTemplateWorkbook };
+  };
+
+  const persistExportRecord = async (
+    workbook: XLSX.WorkBook,
+    fileName: string,
+    templateId: string,
+    templateName: string,
+  ) => {
     try {
       const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
-      const storagePath = `report_exports/${selectedTemplate.projectId}/${Date.now()}_${selectedTemplate.id}_${selectedUnitOption.code}.xlsx`;
+      const storagePath = `report_exports/${selectedProjectId}/${Date.now()}_${templateId}_${selectedUnitOption.code}.xlsx`;
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, blob);
       const downloadURL = await getDownloadURL(storageRef);
       const user = auth.currentUser;
 
       await addDoc(collection(db, 'report_exports'), {
-        projectId: selectedTemplate.projectId,
-        templateId: selectedTemplate.id,
-        templateName: selectedTemplate.name,
+        projectId: selectedProjectId,
+        templateId,
+        templateName,
         unitCode: selectedUnitOption.code,
         unitName: selectedUnitOption.name,
         year: selectedYear,
@@ -431,6 +503,55 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
     }
   };
 
+  const exportToExcel = async () => {
+    if (!selectedTemplate || aggregatedRows.length === 0) {
+      return;
+    }
+
+    const fileName = [
+      'BaoCao',
+      sanitizeFileNamePart(selectedTemplate.name),
+      sanitizeFileNamePart(selectedUnitOption.name),
+      sanitizeFileNamePart(selectedYear),
+    ]
+      .filter(Boolean)
+      .join('_')
+      .concat('.xlsx');
+
+    const { workbook, usedTemplateWorkbook } = await buildWorkbookForTemplates([selectedTemplate]);
+    if (!usedTemplateWorkbook) {
+      alert('Không đọc được workbook mẫu cho biểu này. Hệ thống sẽ xuất theo bảng tổng hợp hiện tại.');
+    }
+
+    XLSX.writeFile(workbook, fileName);
+    await persistExportRecord(workbook, fileName, selectedTemplate.id, selectedTemplate.name);
+  };
+
+  const exportAllTemplates = async () => {
+    if (projectTemplates.length === 0) {
+      return;
+    }
+
+    const fileName = [
+      'BaoCao',
+      sanitizeFileNamePart(projects.find((project) => project.id === selectedProjectId)?.name || 'DuAn'),
+      sanitizeFileNamePart(selectedUnitOption.name),
+      sanitizeFileNamePart(selectedYear),
+      'TatCaBieu',
+    ]
+      .filter(Boolean)
+      .join('_')
+      .concat('.xlsx');
+
+    const { workbook, usedTemplateWorkbook } = await buildWorkbookForTemplates(projectTemplates);
+    if (!usedTemplateWorkbook) {
+      alert('Không đọc được workbook mẫu của dự án. Hệ thống sẽ xuất toàn bộ biểu theo bảng tổng hợp đơn giản.');
+    }
+
+    XLSX.writeFile(workbook, fileName);
+    await persistExportRecord(workbook, fileName, 'ALL', 'Tất cả biểu');
+  };
+
   const openCellDetail = (row: AggregatedReportRow, columnIndex: number) => {
     setDetailSortOrder('desc');
     setActiveCellDetail({
@@ -448,14 +569,24 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
           <h2 className="page-title">Báo cáo tổng hợp</h2>
           <p className="page-subtitle mt-2 text-sm">Truy xuất dữ liệu theo đúng biểu mẫu, dự án, năm và đơn vị.</p>
         </div>
-        <button
-          onClick={exportToExcel}
-          disabled={!selectedTemplate || aggregatedRows.length === 0}
-          className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <Download size={16} />
-          Xuất file Excel
-        </button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            onClick={exportAllTemplates}
+            disabled={projectTemplates.length === 0}
+            className="secondary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Download size={16} />
+            Xuất toàn bộ biểu
+          </button>
+          <button
+            onClick={exportToExcel}
+            disabled={!selectedTemplate || aggregatedRows.length === 0}
+            className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Download size={16} />
+            Xuất biểu đang chọn
+          </button>
+        </div>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
@@ -520,16 +651,28 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
       </div>
 
       {projectTemplates.length > 0 && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {projectTemplates.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => setSelectedTemplateId(template.id)}
-              className={`status-pill ${selectedTemplateId === template.id ? 'status-pill-submitted' : 'status-pill-pending'}`}
-            >
-              {template.name}
-            </button>
-          ))}
+        <div className="mb-6 overflow-x-auto pb-2">
+          <div className="flex w-max items-end pl-2">
+            {projectTemplates.map((template, index) => {
+              const isActive = selectedTemplateId === template.id;
+
+              return (
+                <button
+                  key={template.id}
+                  onClick={() => setSelectedTemplateId(template.id)}
+                  className={`relative h-12 min-w-[122px] rounded-t-[18px] rounded-b-[12px] border px-5 text-sm font-bold uppercase tracking-[0.08em] transition-all ${
+                    index === 0 ? 'ml-0' : '-ml-3'
+                  } ${
+                    isActive
+                      ? 'z-20 border-[rgba(67,122,87,0.35)] bg-[linear-gradient(180deg,rgba(232,241,233,1)_0%,rgba(210,226,214,1)_100%)] text-[var(--success)] shadow-[0_10px_22px_rgba(47,110,73,0.14)]'
+                      : 'z-10 border-[rgba(214,171,96,0.45)] bg-[linear-gradient(180deg,rgba(255,249,236,1)_0%,rgba(252,240,215,1)_100%)] text-[rgba(145,94,15,0.95)] hover:z-20 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(184,133,37,0.14)]'
+                  }`}
+                >
+                  <span className="whitespace-nowrap">{template.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

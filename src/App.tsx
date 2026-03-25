@@ -764,9 +764,10 @@ export default function App() {
             onDeleteUnitData={handleDeleteUnitData}
             onDeleteYearData={handleDeleteYearData}
             onDeleteProjectData={handleDeleteProjectData}
-            projectId={selectedProjectId}
-            templates={templates.filter((tpl) => tpl.projectId === selectedProjectId)}
-            projectName={currentProject?.name || DEFAULT_PROJECT_NAME}
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+            templates={templates}
             canManageData={isAdmin}
           />
         ) : (
