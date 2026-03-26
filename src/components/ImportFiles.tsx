@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { AlertCircle, FileCheck, LoaderCircle, Upload, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import { DataRow, FormTemplate, ManagedUnit, Project } from '../types';
 import { parseLegacyFromWorkbook, parseTemplateFromWorkbook } from '../utils/excelParser';
 import { getPinnedYearPreference, getPreferredReportingYear, setPinnedYearPreference } from '../utils/reportingYear';
-import { buildSheetValidationMessage, validateWorkbookSheetNames } from '../utils/workbookUtils';
+import { validateWorkbookSheetNames } from '../utils/workbookUtils';
 
 type PendingFile = {
   id: string;
@@ -46,8 +46,6 @@ export function ImportFiles({
   const [selectedUnitToDelete, setSelectedUnitToDelete] = useState('');
   const [managementMessage, setManagementMessage] = useState<string | null>(null);
   const [isManagingData, setIsManagingData] = useState(false);
-  const [autoDetectSheets, setAutoDetectSheets] = useState(true);
-  const [includeExtraSheets, setIncludeExtraSheets] = useState(true);
 
   const currentProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) || null,
@@ -193,14 +191,8 @@ export function ImportFiles({
     setPinnedYearPreference(selectedYear);
   };
 
-  const resolveTemplatesForWorkbook = (workbook: XLSX.WorkBook) => {
-    if (!autoDetectSheets) {
-      return selectedTemplate ? [selectedTemplate] : [];
-    }
-
-    const candidateTemplates = includeExtraSheets || !selectedTemplate ? publishedTemplates : [selectedTemplate];
-    return candidateTemplates.filter((template) => workbook.SheetNames.includes(template.sheetName));
-  };
+  const resolveTemplatesForWorkbook = (workbook: XLSX.WorkBook) =>
+    publishedTemplates.filter((template) => workbook.SheetNames.includes(template.sheetName));
 
   const parseRowsForTemplate = (
     workbook: XLSX.WorkBook,
@@ -223,32 +215,28 @@ export function ImportFiles({
 
   const processFiles = async () => {
     if (!currentProject) {
-      setManagementMessage('Vui lòng chọn dự án trước khi tiếp nhận dữ liệu.');
+      setManagementMessage('Vui lÃ²ng chá»n dá»± Ã¡n trÆ°á»›c khi tiáº¿p nháº­n dá»¯ liá»‡u.');
       return;
     }
 
     if (publishedTemplates.length === 0) {
       const message =
         projectTemplates.length === 0
-          ? 'Dự án này chưa có biểu mẫu để tiếp nhận dữ liệu.'
-          : 'Dự án này đã có biểu mẫu nhưng chưa chốt mẫu nào. Hãy vào mục Biểu mẫu để chốt trước khi tiếp nhận dữ liệu.';
+          ? 'Dá»± Ã¡n nÃ y chÆ°a cÃ³ biá»ƒu máº«u Ä‘á»ƒ tiáº¿p nháº­n dá»¯ liá»‡u.'
+          : 'Dá»± Ã¡n nÃ y Ä‘Ã£ cÃ³ biá»ƒu máº«u nhÆ°ng chÆ°a chá»‘t máº«u nÃ o. HÃ£y vÃ o má»¥c Biá»ƒu máº«u Ä‘á»ƒ chá»‘t trÆ°á»›c khi tiáº¿p nháº­n dá»¯ liá»‡u.';
       setManagementMessage(message);
       return;
     }
 
-    if (!autoDetectSheets && !selectedTemplate) {
-      setManagementMessage('Vui lòng chọn biểu mẫu trước khi tổng hợp.');
-      return;
-    }
 
     if (files.length === 0) {
-      setManagementMessage('Vui lòng chọn ít nhất một file Excel để tiếp nhận.');
+      setManagementMessage('Vui lÃ²ng chá»n Ã­t nháº¥t má»™t file Excel Ä‘á»ƒ tiáº¿p nháº­n.');
       return;
     }
 
     const unassignedFile = files.find((item) => !item.unitCode);
     if (unassignedFile) {
-      setManagementMessage(`Vui lòng chọn đơn vị cho file "${unassignedFile.file.name}".`);
+      setManagementMessage(`Vui lÃ²ng chá»n Ä‘Æ¡n vá»‹ cho file "${unassignedFile.file.name}".`);
       return;
     }
 
@@ -257,6 +245,8 @@ export function ImportFiles({
 
     try {
       const importedRows: DataRow[] = [];
+      const failedFiles: { unitName: string; fileName: string; missingSheets: string[]; reason?: string }[] = [];
+      let acceptedFiles = 0;
 
       for (const fileItem of files) {
         const buffer = await fileItem.file.arrayBuffer();
@@ -267,38 +257,74 @@ export function ImportFiles({
           cellText: false,
         });
 
+        const validation = validateWorkbookSheetNames(workbook.SheetNames, publishedTemplates);
+        if (validation.missingSheets.length > 0) {
+          failedFiles.push({
+            unitName: unitNameByCode[fileItem.unitCode] || fileItem.unitCode,
+            fileName: fileItem.file.name,
+            missingSheets: validation.missingSheets,
+          });
+          continue;
+        }
+
         const matchedTemplates = resolveTemplatesForWorkbook(workbook);
-
         if (matchedTemplates.length === 0) {
-          throw new Error(`Không tìm thấy sheet phù hợp trong file "${fileItem.file.name}".`);
+          failedFiles.push({
+            unitName: unitNameByCode[fileItem.unitCode] || fileItem.unitCode,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason: 'KhÃ´ng tÃ¬m tháº¥y sheet trÃ¹ng tÃªn biá»ƒu máº«u nÃ o trong dá»± Ã¡n.',
+          });
+          continue;
         }
 
-        if (autoDetectSheets && includeExtraSheets) {
-          const validation = validateWorkbookSheetNames(workbook.SheetNames, matchedTemplates);
-          if (!validation.isValid) {
-            throw new Error(buildSheetValidationMessage(currentProject.name, validation));
-          }
-        }
-
+        const fileRows: DataRow[] = [];
         matchedTemplates.forEach((template) => {
           const rows = parseRowsForTemplate(workbook, template, fileItem.unitCode);
-          importedRows.push(...rows);
+          fileRows.push(...rows);
+        });
+
+        if (fileRows.length === 0) {
+          failedFiles.push({
+            unitName: unitNameByCode[fileItem.unitCode] || fileItem.unitCode,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason: 'File Ä‘á»§ sheet nhÆ°ng khÃ´ng Ä‘á»c Ä‘Æ°á»£c dá»¯ liá»‡u há»£p lá»‡.',
+          });
+          continue;
+        }
+
+        importedRows.push(...fileRows);
+        acceptedFiles += 1;
+      }
+
+      if (importedRows.length > 0) {
+        await onDataImported(importedRows);
+      }
+
+      setFiles([]);
+      const summaryLines: string[] = [];
+      if (acceptedFiles > 0) {
+        summaryLines.push(
+          `ÄÃ£ tiáº¿p nháº­n ${acceptedFiles}/${files.length} file vÃ  lÆ°u ${importedRows.length} dÃ²ng dá»¯ liá»‡u cho dá»± Ã¡n ${currentProject.name}.`,
+        );
+      }
+      if (failedFiles.length > 0) {
+        summaryLines.push('CÃ¡c Ä‘Æ¡n vá»‹ khÃ´ng Ä‘Æ°á»£c tiáº¿p nháº­n trong Ä‘á»£t nÃ y:');
+        failedFiles.forEach((item) => {
+          if (item.missingSheets.length > 0) {
+            summaryLines.push(`- ${item.unitName} (${item.fileName}): thiáº¿u sheet ${item.missingSheets.join(', ')}`);
+            return;
+          }
+          summaryLines.push(`- ${item.unitName} (${item.fileName}): ${item.reason}`);
         });
       }
-
-      if (importedRows.length === 0) {
-        throw new Error('Không tìm thấy dữ liệu phù hợp trong các file đã chọn.');
+      if (summaryLines.length === 0) {
+        summaryLines.push('KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u phÃ¹ há»£p trong cÃ¡c file Ä‘Ã£ chá»n.');
       }
-
-      await onDataImported(importedRows);
-      setFiles([]);
-      setManagementMessage(
-        autoDetectSheets
-          ? `Đã lưu ${importedRows.length} dòng dữ liệu cho các biểu thuộc dự án ${currentProject.name}.`
-          : `Đã lưu ${importedRows.length} dòng dữ liệu cho biểu ${selectedTemplate!.name}.`,
-      );
+      setManagementMessage(summaryLines.join('\n'));
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'Không thể đọc file Excel này.');
+      setManagementMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ Ä‘á»c file Excel nÃ y.');
     } finally {
       setIsManagingData(false);
     }
@@ -306,13 +332,13 @@ export function ImportFiles({
 
   const handleDeleteUnit = async () => {
     if (!selectedUnitToDelete) {
-      setManagementMessage('Vui lòng chọn đơn vị cần xóa dữ liệu.');
+      setManagementMessage('Vui lÃ²ng chá»n Ä‘Æ¡n vá»‹ cáº§n xÃ³a dá»¯ liá»‡u.');
       return;
     }
 
     const unitName = unitNameByCode[selectedUnitToDelete] || selectedUnitToDelete;
     const confirmed = window.confirm(
-      `Xóa toàn bộ dữ liệu của đơn vị "${unitName}" trong năm ${selectedYear} thuộc dự án hiện tại?`,
+      `XÃ³a toÃ n bá»™ dá»¯ liá»‡u cá»§a Ä‘Æ¡n vá»‹ "${unitName}" trong nÄƒm ${selectedYear} thuá»™c dá»± Ã¡n hiá»‡n táº¡i?`,
     );
     if (!confirmed) {
       return;
@@ -325,11 +351,11 @@ export function ImportFiles({
       const deletedCount = await onDeleteUnitData(selectedYear, selectedUnitToDelete);
       setManagementMessage(
         deletedCount > 0
-          ? `Đã xóa ${deletedCount} dòng dữ liệu của đơn vị ${unitName} trong năm ${selectedYear}.`
-          : `Không tìm thấy dữ liệu của đơn vị ${unitName} trong năm ${selectedYear}.`,
+          ? `ÄÃ£ xÃ³a ${deletedCount} dÃ²ng dá»¯ liá»‡u cá»§a Ä‘Æ¡n vá»‹ ${unitName} trong nÄƒm ${selectedYear}.`
+          : `KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u cá»§a Ä‘Æ¡n vá»‹ ${unitName} trong nÄƒm ${selectedYear}.`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu của đơn vị.');
+      setManagementMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a dá»¯ liá»‡u cá»§a Ä‘Æ¡n vá»‹.');
     } finally {
       setIsManagingData(false);
     }
@@ -337,7 +363,7 @@ export function ImportFiles({
 
   const handleDeleteYear = async () => {
     const confirmed = window.confirm(
-      `Xóa toàn bộ dữ liệu đã lưu của năm ${selectedYear} trong dự án hiện tại?`,
+      `XÃ³a toÃ n bá»™ dá»¯ liá»‡u Ä‘Ã£ lÆ°u cá»§a nÄƒm ${selectedYear} trong dá»± Ã¡n hiá»‡n táº¡i?`,
     );
     if (!confirmed) {
       return;
@@ -350,11 +376,11 @@ export function ImportFiles({
       const deletedCount = await onDeleteYearData(selectedYear);
       setManagementMessage(
         deletedCount > 0
-          ? `Đã xóa ${deletedCount} dòng dữ liệu của năm ${selectedYear}.`
-          : `Không tìm thấy dữ liệu nào của năm ${selectedYear} để xóa.`,
+          ? `ÄÃ£ xÃ³a ${deletedCount} dÃ²ng dá»¯ liá»‡u cá»§a nÄƒm ${selectedYear}.`
+          : `KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u nÃ o cá»§a nÄƒm ${selectedYear} Ä‘á»ƒ xÃ³a.`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu theo năm.');
+      setManagementMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a dá»¯ liá»‡u theo nÄƒm.');
     } finally {
       setIsManagingData(false);
     }
@@ -362,12 +388,12 @@ export function ImportFiles({
 
   const handleDeleteProject = async () => {
     if (!currentProject) {
-      setManagementMessage('Vui lòng chọn dự án trước khi xóa dữ liệu.');
+      setManagementMessage('Vui lÃ²ng chá»n dá»± Ã¡n trÆ°á»›c khi xÃ³a dá»¯ liá»‡u.');
       return;
     }
 
     const confirmed = window.confirm(
-      `Xóa toàn bộ dữ liệu, biểu mẫu, phân công và lịch sử xuất báo cáo của dự án "${currentProject.name}"?`,
+      `XÃ³a toÃ n bá»™ dá»¯ liá»‡u, biá»ƒu máº«u, phÃ¢n cÃ´ng vÃ  lá»‹ch sá»­ xuáº¥t bÃ¡o cÃ¡o cá»§a dá»± Ã¡n "${currentProject.name}"?`,
     );
     if (!confirmed) {
       return;
@@ -380,11 +406,11 @@ export function ImportFiles({
       const deletedCount = await onDeleteProjectData(currentProject.id);
       setManagementMessage(
         deletedCount > 0
-          ? `Đã xóa dự án "${currentProject.name}" và ${deletedCount - 1} bản ghi liên quan.`
-          : `Không thể xóa dự án "${currentProject.name}".`,
+          ? `ÄÃ£ xÃ³a dá»± Ã¡n "${currentProject.name}" vÃ  ${deletedCount - 1} báº£n ghi liÃªn quan.`
+          : `KhÃ´ng thá»ƒ xÃ³a dá»± Ã¡n "${currentProject.name}".`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu của dự án.');
+      setManagementMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a dá»¯ liá»‡u cá»§a dá»± Ã¡n.');
     } finally {
       setIsManagingData(false);
     }
@@ -394,9 +420,9 @@ export function ImportFiles({
     <div className="space-y-6 p-6 md:p-8">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <h2 className="page-title">Tiếp nhận dữ liệu</h2>
+          <h2 className="page-title">Tiáº¿p nháº­n dá»¯ liá»‡u</h2>
           <p className="page-subtitle mt-2">
-            Chọn dự án, năm và biểu mẫu phù hợp để nhập dữ liệu Excel theo đúng cấu trúc đã phát hành.
+            Chá»n dá»± Ã¡n, nÄƒm vÃ  biá»ƒu máº«u phÃ¹ há»£p Ä‘á»ƒ nháº­p dá»¯ liá»‡u Excel theo Ä‘Ãºng cáº¥u trÃºc Ä‘Ã£ phÃ¡t hÃ nh.
           </p>
         </div>
         {managementMessage && (
@@ -409,60 +435,43 @@ export function ImportFiles({
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
         <div className="panel-card rounded-[24px] p-5">
-          <p className="col-header mb-3">1. Dự án</p>
+          <p className="col-header mb-3">1. Dá»± Ã¡n</p>
           <select
             value={selectedProjectId}
             onChange={(event) => onSelectProject(event.target.value)}
             className="field-input h-11 text-base font-semibold"
           >
-            <option value="">-- Chọn dự án --</option>
+            <option value="">-- Chá»n dá»± Ã¡n --</option>
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}
               </option>
             ))}
           </select>
-          {currentProject && <p className="page-subtitle mt-3 text-sm">{currentProject.description || 'Chưa có mô tả dự án.'}</p>}
+          {currentProject && <p className="page-subtitle mt-3 text-sm">{currentProject.description || 'ChÆ°a cÃ³ mÃ´ táº£ dá»± Ã¡n.'}</p>}
         </div>
 
         <div className="panel-card rounded-[24px] p-5">
-          <p className="col-header mb-3">2. Biểu mẫu</p>
+          <p className="col-header mb-3">2. Biá»ƒu máº«u</p>
           <select
             value={selectedTemplateId}
             onChange={(event) => setSelectedTemplateId(event.target.value)}
-            disabled={autoDetectSheets && includeExtraSheets}
             className="field-input h-11 text-base font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <option value="">-- Chọn biểu mẫu --</option>
+            <option value="">-- Chá»n biá»ƒu máº«u --</option>
             {publishedTemplates.map((template) => (
               <option key={template.id} value={template.id}>
                 {template.name}
               </option>
             ))}
           </select>
-          <div className="mt-4 space-y-2 text-sm text-[var(--ink-soft)]">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={autoDetectSheets}
-                onChange={(event) => setAutoDetectSheets(event.target.checked)}
-              />
-              <span>Tự nhận nhiều sheet theo template</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={includeExtraSheets}
-                disabled={!autoDetectSheets}
-                onChange={(event) => setIncludeExtraSheets(event.target.checked)}
-              />
-              <span>Quét toàn bộ template của dự án</span>
-            </label>
-          </div>
+          <p className="page-subtitle mt-3 text-sm">
+            Khi tiáº¿p nháº­n, há»‡ thá»‘ng sáº½ Ä‘á»‘i chiáº¿u toÃ n bá»™ biá»ƒu máº«u Ä‘Ã£ chá»‘t cá»§a dá»± Ã¡n. File chá»‰ Ä‘Æ°á»£c nháº­n khi Ä‘á»§ 100% sheet báº¯t buá»™c; cÃ¡c sheet thá»«a sáº½ tá»± bá» qua.
+          </p>
         </div>
 
         <div className="panel-card rounded-[24px] p-5">
-          <p className="col-header mb-3">3. Năm tổng hợp</p>
+          <p className="col-header mb-3">3. NÄƒm tá»•ng há»£p</p>
           <select
             value={selectedYear}
             onChange={(event) => handleYearChange(event.target.value)}
@@ -476,12 +485,12 @@ export function ImportFiles({
           </select>
           <label className="mt-4 flex items-center gap-2 text-sm text-[var(--ink-soft)]">
             <input type="checkbox" checked={pinnedYear === selectedYear} onChange={togglePinnedYear} />
-            <span>Ghim năm này cho lần nhập sau</span>
+            <span>Ghim nÄƒm nÃ y cho láº§n nháº­p sau</span>
           </label>
         </div>
 
         <div className="panel-card rounded-[24px] p-5">
-          <p className="col-header mb-3">4. Quản trị dữ liệu theo năm</p>
+          <p className="col-header mb-3">4. Quáº£n trá»‹ dá»¯ liá»‡u theo nÄƒm</p>
           {canManageData ? (
             <div className="space-y-3">
               <select
@@ -489,7 +498,7 @@ export function ImportFiles({
                 onChange={(event) => setSelectedUnitToDelete(event.target.value)}
                 className="field-input h-11 text-base font-semibold"
               >
-                <option value="">-- Chọn đơn vị --</option>
+                <option value="">-- Chá»n Ä‘Æ¡n vá»‹ --</option>
                 {sortedUnits.map((unit) => (
                   <option key={unit.code} value={unit.code}>
                     {unit.name} ({unit.code})
@@ -502,40 +511,40 @@ export function ImportFiles({
                   disabled={isManagingData || !selectedUnitToDelete}
                   className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Xóa dữ liệu theo đơn vị
+                  XÃ³a dá»¯ liá»‡u theo Ä‘Æ¡n vá»‹
                 </button>
                 <button
                   onClick={handleDeleteYear}
                   disabled={isManagingData}
                   className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Xóa dữ liệu theo năm
+                  XÃ³a dá»¯ liá»‡u theo nÄƒm
                 </button>
                 <button
                   onClick={handleDeleteProject}
                   disabled={isManagingData || !currentProject}
                   className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Xóa toàn bộ dự án hiện tại
+                  XÃ³a toÃ n bá»™ dá»± Ã¡n hiá»‡n táº¡i
                 </button>
               </div>
             </div>
           ) : (
-            <p className="page-subtitle text-sm">Chức năng này chỉ dành cho tài khoản quản trị.</p>
+            <p className="page-subtitle text-sm">Chá»©c nÄƒng nÃ y chá»‰ dÃ nh cho tÃ i khoáº£n quáº£n trá»‹.</p>
           )}
         </div>
       </div>
 
-      <div className="panel-card rounded-[28px] border border-dashed border-[var(--line)] p-6">
-        <label className="flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-6 py-10 text-center transition hover:border-[var(--brand)] hover:bg-white">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand)]">
-            <Upload size={28} />
+      <div className="panel-card rounded-[28px] border border-dashed border-[var(--line)] p-5">
+        <label className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-5 py-7 text-center transition hover:border-[var(--brand)] hover:bg-white">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand)]">
+            <Upload size={22} />
           </div>
-          <p className="mt-5 text-lg font-semibold text-[var(--ink)]">
-            Kéo thả hoặc click để chọn file Excel (.xlsx, .xlsm, .xls)
+          <p className="mt-4 text-base font-semibold text-[var(--ink)]">
+            KÃ©o tháº£ hoáº·c click Ä‘á»ƒ chá»n file Excel (.xlsx, .xlsm, .xls)
           </p>
           <p className="page-subtitle mt-2 max-w-2xl text-sm">
-            Mỗi file cần được gán đúng đơn vị trước khi tổng hợp. Bạn có thể nhập nhiều file cùng lúc để đẩy nhanh tiến độ.
+            Má»—i file cáº§n Ä‘Æ°á»£c gÃ¡n Ä‘Ãºng Ä‘Æ¡n vá»‹ trÆ°á»›c khi tá»•ng há»£p. Báº¡n cÃ³ thá»ƒ nháº­p nhiá»u file cÃ¹ng lÃºc Ä‘á»ƒ Ä‘áº©y nhanh tiáº¿n Ä‘á»™.
           </p>
           <input type="file" multiple accept=".xlsx,.xlsm,.xls" className="hidden" onChange={handleFileChange} />
         </label>
@@ -545,8 +554,8 @@ export function ImportFiles({
         <div className="panel-card rounded-[28px] p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h3 className="section-title">Danh sách file chờ tiếp nhận</h3>
-              <p className="page-subtitle mt-2 text-sm">Gán đúng đơn vị cho từng file rồi bấm bắt đầu tổng hợp.</p>
+              <h3 className="section-title">Danh sÃ¡ch file chá» tiáº¿p nháº­n</h3>
+              <p className="page-subtitle mt-2 text-sm">GÃ¡n Ä‘Ãºng Ä‘Æ¡n vá»‹ cho tá»«ng file rá»“i báº¥m báº¯t Ä‘áº§u tá»•ng há»£p.</p>
             </div>
             <button
               onClick={processFiles}
@@ -554,7 +563,7 @@ export function ImportFiles({
               className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isManagingData ? <LoaderCircle size={16} className="animate-spin" /> : <FileCheck size={16} />}
-              Bắt đầu tổng hợp
+              Báº¯t Ä‘áº§u tá»•ng há»£p
             </button>
           </div>
 
@@ -580,7 +589,7 @@ export function ImportFiles({
                       <p className="truncate text-base font-semibold text-[var(--ink)]">{item.file.name}</p>
                       <p className="page-subtitle mt-1 text-sm">
                         {(item.file.size / 1024).toFixed(1)} KB
-                        {item.unitCode ? ` - ${unitNameByCode[item.unitCode]} (${item.unitCode})` : ' - Chưa chọn đơn vị'}
+                        {item.unitCode ? ` - ${unitNameByCode[item.unitCode]} (${item.unitCode})` : ' - ChÆ°a chá»n Ä‘Æ¡n vá»‹'}
                       </p>
                     </div>
                     <button
@@ -588,7 +597,7 @@ export function ImportFiles({
                       className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--line)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)] transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
                     >
                       <X size={14} />
-                      Bỏ file
+                      Bá» file
                     </button>
                   </div>
 
@@ -599,7 +608,7 @@ export function ImportFiles({
                         onChange={(event) => updateUnitInput(item.id, event.target.value)}
                         list={`unit-suggestions-${item.id}`}
                         className="field-input h-11 text-base font-medium"
-                        placeholder="Gõ tên đơn vị để gợi ý"
+                        placeholder="GÃµ tÃªn Ä‘Æ¡n vá»‹ Ä‘á»ƒ gá»£i Ã½"
                       />
                       <datalist id={`unit-suggestions-${item.id}`}>
                         {suggestions.map((unit) => (
@@ -615,7 +624,7 @@ export function ImportFiles({
                       onChange={(event) => updateUnit(item.id, event.target.value)}
                       className="field-input h-11 text-base font-medium"
                     >
-                      <option value="">-- Hoặc chọn nhanh đơn vị --</option>
+                      <option value="">-- Hoáº·c chá»n nhanh Ä‘Æ¡n vá»‹ --</option>
                       {availableUnits.map((unit) => (
                         <option key={unit.code} value={unit.code}>
                           {unit.name} ({unit.code})
@@ -632,3 +641,4 @@ export function ImportFiles({
     </div>
   );
 }
+
