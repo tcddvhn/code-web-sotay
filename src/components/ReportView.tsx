@@ -659,20 +659,18 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
 
       {projectTemplates.length > 0 && (
         <div className="mb-6 overflow-x-auto pb-2">
-          <div className="flex w-max items-end pl-2">
-            {projectTemplates.map((template, index) => {
+          <div className="flex w-max gap-3 pl-1">
+            {projectTemplates.map((template) => {
               const isActive = selectedTemplateId === template.id;
 
               return (
                 <button
                   key={template.id}
                   onClick={() => setSelectedTemplateId(template.id)}
-                  className={`relative h-10 min-w-[92px] rounded-t-[14px] rounded-b-[10px] border px-3 text-[12px] font-bold uppercase tracking-[0.04em] transition-all ${
-                    index === 0 ? 'ml-0' : '-ml-2'
-                  } ${
+                  className={`h-11 min-w-[120px] rounded-[14px] border px-4 text-[12px] font-bold uppercase tracking-[0.04em] transition-colors ${
                     isActive
-                      ? 'z-20 border-[rgba(67,122,87,0.35)] bg-[linear-gradient(180deg,rgba(232,241,233,1)_0%,rgba(210,226,214,1)_100%)] text-[var(--success)] shadow-[0_7px_16px_rgba(47,110,73,0.12)]'
-                      : 'z-10 border-[rgba(214,171,96,0.45)] bg-[linear-gradient(180deg,rgba(255,249,236,1)_0%,rgba(252,240,215,1)_100%)] text-[rgba(145,94,15,0.95)] hover:z-20 hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(184,133,37,0.12)]'
+                      ? 'border-[rgba(67,122,87,0.35)] bg-[rgba(232,241,233,1)] text-[var(--success)]'
+                      : 'border-[rgba(214,171,96,0.45)] bg-[rgba(255,249,236,1)] text-[rgba(145,94,15,0.95)] hover:bg-[rgba(252,240,215,1)]'
                   }`}
                 >
                   <span className="whitespace-nowrap">{template.name}</span>

@@ -14,6 +14,13 @@ type PendingFile = {
   unitQuery: string;
 };
 
+type FileValidationState = {
+  status: 'pending' | 'valid' | 'invalid';
+  missingSheets: string[];
+  matchedSheets: string[];
+  reason?: string;
+};
+
 export function ImportFiles({
   onDataImported,
   onDeleteUnitData,
@@ -43,6 +50,7 @@ export function ImportFiles({
   const [pinnedYear, setPinnedYear] = useState<string | null>(getPinnedYearPreference());
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [files, setFiles] = useState<PendingFile[]>([]);
+  const [fileValidation, setFileValidation] = useState<Record<string, FileValidationState>>({});
   const [selectedUnitToDelete, setSelectedUnitToDelete] = useState('');
   const [managementMessage, setManagementMessage] = useState<string | null>(null);
   const [isManagingData, setIsManagingData] = useState(false);
@@ -59,10 +67,6 @@ export function ImportFiles({
     () => projectTemplates.filter((template) => template.isPublished),
     [projectTemplates],
   );
-  const selectedTemplate = useMemo(
-    () => publishedTemplates.find((template) => template.id === selectedTemplateId) || null,
-    [publishedTemplates, selectedTemplateId],
-  );
 
   useEffect(() => {
     if (!publishedTemplates.some((template) => template.id === selectedTemplateId)) {
@@ -77,6 +81,109 @@ export function ImportFiles({
       setSelectedYear(currentPinned);
     }
   }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (files.length === 0) {
+      setFileValidation({});
+      return undefined;
+    }
+
+    setFileValidation((current) => {
+      const next = { ...current };
+      files.forEach((item) => {
+        next[item.id] = next[item.id] || {
+          status: 'pending',
+          missingSheets: [],
+          matchedSheets: [],
+        };
+      });
+      Object.keys(next).forEach((id) => {
+        if (!files.some((item) => item.id === id)) {
+          delete next[id];
+        }
+      });
+      return next;
+    });
+
+    Promise.all(
+      files.map(async (item) => {
+        try {
+          const buffer = await item.file.arrayBuffer();
+          const workbook = XLSX.read(buffer, {
+            type: 'array',
+            cellFormula: true,
+            cellHTML: false,
+            cellText: false,
+          });
+          const validation = validateWorkbookSheetNames(workbook.SheetNames, publishedTemplates);
+          const matchedSheets = publishedTemplates
+            .filter((template) => workbook.SheetNames.includes(template.sheetName))
+            .map((template) => template.sheetName);
+
+          if (validation.missingSheets.length > 0) {
+            return [
+              item.id,
+              {
+                status: 'invalid',
+                missingSheets: validation.missingSheets,
+                matchedSheets,
+                reason: 'Thiếu biểu mẫu bắt buộc của dự án.',
+              } satisfies FileValidationState,
+            ] as const;
+          }
+
+          if (matchedSheets.length === 0) {
+            return [
+              item.id,
+              {
+                status: 'invalid',
+                missingSheets: [],
+                matchedSheets: [],
+                reason: 'Không có sheet nào trùng tên biểu mẫu đã chốt.',
+              } satisfies FileValidationState,
+            ] as const;
+          }
+
+          return [
+            item.id,
+            {
+              status: 'valid',
+              missingSheets: [],
+              matchedSheets,
+            } satisfies FileValidationState,
+          ] as const;
+        } catch (error) {
+          return [
+            item.id,
+            {
+              status: 'invalid',
+              missingSheets: [],
+              matchedSheets: [],
+              reason: error instanceof Error ? error.message : 'Không đọc được file Excel.',
+            } satisfies FileValidationState,
+          ] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (isCancelled) {
+        return;
+      }
+
+      setFileValidation((current) => {
+        const next = { ...current };
+        entries.forEach(([id, state]) => {
+          next[id] = state;
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [files, publishedTemplates]);
 
   const sortedUnits = useMemo(
     () => [...units].sort((left, right) => left.name.localeCompare(right.name, 'vi')),
@@ -129,6 +236,11 @@ export function ImportFiles({
 
   const removeFile = (id: string) => {
     setFiles((current) => current.filter((item) => item.id !== id));
+    setFileValidation((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
   };
 
   const updateUnit = (id: string, unitCode: string) => {
@@ -569,6 +681,7 @@ export function ImportFiles({
 
           <div className="space-y-4">
             {files.map((item) => {
+              const validation = fileValidation[item.id];
               const takenUnitCodes = new Set(
                 files.filter((fileItem) => fileItem.id !== item.id).map((fileItem) => fileItem.unitCode).filter(Boolean),
               );
@@ -631,6 +744,37 @@ export function ImportFiles({
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="mt-3 rounded-[18px] border border-[var(--line)] bg-white px-4 py-3">
+                    {validation?.status === 'valid' && (
+                      <div className="text-sm text-emerald-700">
+                        <p className="font-semibold">File hợp lệ để tiếp nhận.</p>
+                        <p className="mt-1 text-xs">
+                          Đã nhận đủ các sheet bắt buộc: {validation.matchedSheets.join(', ')}
+                        </p>
+                      </div>
+                    )}
+
+                    {validation?.status === 'invalid' && (
+                      <div className="text-sm text-red-700">
+                        <p className="font-semibold">File chưa hợp lệ, sẽ bị bỏ qua khi tổng hợp.</p>
+                        {validation.missingSheets.length > 0 && (
+                          <p className="mt-1 text-xs">
+                            Thiếu sheet: {validation.missingSheets.join(', ')}
+                          </p>
+                        )}
+                        {validation.reason && (
+                          <p className="mt-1 text-xs">{validation.reason}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {(!validation || validation.status === 'pending') && (
+                      <div className="text-sm text-[var(--ink-soft)]">
+                        <p className="font-semibold">Đang kiểm tra cấu trúc file...</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
