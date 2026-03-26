@@ -11,6 +11,18 @@ export interface Unit {
   name: string;
 }
 
+export interface ManagedUnit extends Unit {
+  isDeleted?: boolean;
+  deletedAt?: any;
+  deletedBy?: {
+    uid?: string;
+    email?: string | null;
+    displayName?: string | null;
+  };
+  createdAt?: any;
+  updatedAt?: any;
+}
+
 export interface DataRow {
   projectId: string;
   templateId: string;

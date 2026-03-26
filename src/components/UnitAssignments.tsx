@@ -1,15 +1,15 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { UNITS } from '../constants';
-import { AssignmentUser } from '../types';
+import { AssignmentUser, ManagedUnit } from '../types';
 
 interface UnitAssignmentsProps {
   projectId: string;
+  units: ManagedUnit[];
   users: AssignmentUser[];
   assignments: Record<string, string[]>;
   onSaveAssignments: (assigneeKey: string, unitCodes: string[]) => Promise<void>;
 }
 
-export function UnitAssignments({ projectId, users, assignments, onSaveAssignments }: UnitAssignmentsProps) {
+export function UnitAssignments({ projectId, units, users, assignments, onSaveAssignments }: UnitAssignmentsProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>(users[0]?.id || '');
   const [unitFilter, setUnitFilter] = useState('');
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
@@ -36,12 +36,12 @@ export function UnitAssignments({ projectId, users, assignments, onSaveAssignmen
 
   const filteredUnits = useMemo(() => {
     const lower = unitFilter.trim().toLowerCase();
-    const source = UNITS.filter(
+    const source = units.filter(
       (unit) => selectedUnits.includes(unit.code) || !assignedElsewhere.has(unit.code),
     );
     if (!lower) return source;
     return source.filter((u) => u.name.toLowerCase().includes(lower) || u.code.toLowerCase().includes(lower));
-  }, [assignedElsewhere, selectedUnits, unitFilter]);
+  }, [assignedElsewhere, selectedUnits, unitFilter, units]);
 
   const toggleUnit = (code: string) => {
     const next = new Set(selectedUnits);
@@ -106,7 +106,7 @@ export function UnitAssignments({ projectId, users, assignments, onSaveAssignmen
             Dự án: <span className="font-semibold">{projectId}</span>
           </p>
           <p className="mt-2 text-xs text-[var(--ink-soft)]">
-            Đang hiện {filteredUnits.length}/{UNITS.length} đơn vị khả dụng.
+            Đang hiện {filteredUnits.length}/{units.length} đơn vị khả dụng.
           </p>
         </div>
 
@@ -135,5 +135,3 @@ export function UnitAssignments({ projectId, users, assignments, onSaveAssignmen
     </div>
   );
 }
-
-

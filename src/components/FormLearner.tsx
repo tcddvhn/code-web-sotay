@@ -63,6 +63,7 @@ export function FormLearner({
   const [manualTemplates, setManualTemplates] = useState<FormTemplate[]>([]);
   const [manualSheetNames, setManualSheetNames] = useState<string[]>([]);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+  const [isCreatingManual, setIsCreatingManual] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -672,45 +673,53 @@ export function FormLearner({
   const allConfirmed = learnedTemplates.length > 0 && learnedTemplates.every((tpl) => confirmedTemplates[tpl.id]);
 
   const handleManualCreate = async () => {
+    setIsCreatingManual(true);
     if (!project?.id) {
       setError('Vui lòng chọn dự án trước khi tạo biểu mẫu.');
       setNotice(null);
+      setIsCreatingManual(false);
       return;
     }
 
     if (!manualFile) {
       setError('Vui lòng tải file mẫu để phần mềm đọc danh sách sheet trước.');
       setNotice(null);
+      setIsCreatingManual(false);
       return;
     }
 
     if (!manualForm.name || !manualForm.sheetName || !manualForm.dataColumns) {
       setError('Vui lòng nhập đầy đủ thông tin template.');
       setNotice(null);
+      setIsCreatingManual(false);
       return;
     }
 
     if (existingNames.has(manualForm.name.trim().toLowerCase())) {
       setError('Tên template đã tồn tại trong dự án này.');
       setNotice(null);
+      setIsCreatingManual(false);
       return;
     }
 
     if (Number(manualForm.endRow) < Number(manualForm.startRow)) {
       setError('Vùng dữ liệu phải có hàng kết thúc lớn hơn hoặc bằng hàng bắt đầu.');
       setNotice(null);
+      setIsCreatingManual(false);
       return;
     }
 
     if (Number(manualForm.verticalHeaderEndRow) < Number(manualForm.verticalHeaderStartRow)) {
       setError('Tiêu chí dọc phải có dòng kết thúc lớn hơn hoặc bằng dòng bắt đầu.');
       setNotice(null);
+      setIsCreatingManual(false);
       return;
     }
 
     if (Number(manualForm.horizontalHeaderEndRow) < Number(manualForm.horizontalHeaderStartRow)) {
       setError('Tiêu chí ngang phải có dòng kết thúc lớn hơn hoặc bằng dòng bắt đầu.');
       setNotice(null);
+      setIsCreatingManual(false);
       return;
     }
 
@@ -718,6 +727,7 @@ export function FormLearner({
     if (dataColumns.length === 0) {
       setError('Vùng cột dữ liệu không hợp lệ. Ví dụ đúng: A-C, F hoặc B,D,G.');
       setNotice(null);
+      setIsCreatingManual(false);
       return;
     }
 
@@ -743,43 +753,50 @@ export function FormLearner({
       updatedAt: serverTimestamp(),
     };
 
-    let templateToSave = newTemplate;
-    const data = await manualFile.arrayBuffer();
-    const workbook = XLSX.read(data, { type: 'array' });
-    const worksheet = workbook.Sheets[newTemplate.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
-    if (worksheet) {
-      templateToSave = {
-        ...newTemplate,
-        headerLayout: buildHeaderLayout(
-          worksheet,
-          Math.min(Number(manualForm.verticalHeaderStartRow), Number(manualForm.horizontalHeaderStartRow)),
-          Math.max(Number(manualForm.verticalHeaderEndRow), Number(manualForm.horizontalHeaderEndRow)),
-          manualForm.labelColumn.toUpperCase(),
-          dataColumns[dataColumns.length - 1] || manualForm.labelColumn.toUpperCase(),
-        ),
-      };
-    }
+    try {
+      let templateToSave = newTemplate;
+      const data = await manualFile.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const worksheet = workbook.Sheets[newTemplate.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+      if (worksheet) {
+        templateToSave = {
+          ...newTemplate,
+          headerLayout: buildHeaderLayout(
+            worksheet,
+            Math.min(Number(manualForm.verticalHeaderStartRow), Number(manualForm.horizontalHeaderStartRow)),
+            Math.max(Number(manualForm.verticalHeaderEndRow), Number(manualForm.horizontalHeaderEndRow)),
+            manualForm.labelColumn.toUpperCase(),
+            dataColumns[dataColumns.length - 1] || manualForm.labelColumn.toUpperCase(),
+          ),
+        };
+      }
 
-    await saveTemplates([templateToSave], manualFile);
-    const nextSheetName = getNextManualSheetName(manualForm.sheetName, templateToSave);
-    setManualForm((prev) => ({
-      ...DEFAULT_MANUAL_FORM,
-      labelColumn: prev.labelColumn,
-      dataColumns: prev.dataColumns,
-      startRow: prev.startRow,
-      endRow: prev.endRow,
-      verticalHeaderStartRow: prev.verticalHeaderStartRow,
-      verticalHeaderEndRow: prev.verticalHeaderEndRow,
-      horizontalHeaderStartRow: prev.horizontalHeaderStartRow,
-      horizontalHeaderEndRow: prev.horizontalHeaderEndRow,
-      sheetName: nextSheetName,
-    }));
-    setError(null);
-    setNotice(
-      nextSheetName && nextSheetName !== manualForm.sheetName
-        ? `Đã lưu biểu "${templateToSave.name}". Hệ thống đã chuyển sang sheet tiếp theo: ${nextSheetName}.`
-        : `Đã lưu biểu "${templateToSave.name}". Bạn có thể tiếp tục chỉnh hoặc chốt biểu ngay bên dưới.`,
-    );
+      await saveTemplates([templateToSave], manualFile);
+      const nextSheetName = getNextManualSheetName(manualForm.sheetName, templateToSave);
+      setManualForm((prev) => ({
+        ...DEFAULT_MANUAL_FORM,
+        labelColumn: prev.labelColumn,
+        dataColumns: prev.dataColumns,
+        startRow: prev.startRow,
+        endRow: prev.endRow,
+        verticalHeaderStartRow: prev.verticalHeaderStartRow,
+        verticalHeaderEndRow: prev.verticalHeaderEndRow,
+        horizontalHeaderStartRow: prev.horizontalHeaderStartRow,
+        horizontalHeaderEndRow: prev.horizontalHeaderEndRow,
+        sheetName: nextSheetName,
+      }));
+      setError(null);
+      setNotice(
+        nextSheetName && nextSheetName !== manualForm.sheetName
+          ? `Đã lưu biểu "${templateToSave.name}". Hệ thống đã chuyển sang sheet tiếp theo: ${nextSheetName}.`
+          : `Đã lưu biểu "${templateToSave.name}". Bạn có thể tiếp tục chỉnh hoặc chốt biểu ngay bên dưới.`,
+      );
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Không thể tạo biểu mẫu. Vui lòng kiểm tra lại file mẫu và quyền lưu trữ.');
+      setNotice(null);
+    } finally {
+      setIsCreatingManual(false);
+    }
   };
 
   return (
@@ -1092,7 +1109,8 @@ export function FormLearner({
       )}
 
       {mode === 'MANUAL' && (
-        <div className="max-w-4xl space-y-6">
+        <div className="grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="space-y-6">
           <div className="panel-card rounded-[24px] p-6">
             <h3 className="section-title mb-4">Tạo biểu mẫu thủ công</h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
@@ -1249,11 +1267,11 @@ export function FormLearner({
 
             <button
               onClick={handleManualCreate}
-              disabled={!project}
+              disabled={!project || isCreatingManual}
               className="primary-btn mt-6 flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus size={16} />
-              Tạo biểu mẫu
+              {isCreatingManual ? 'Đang tạo biểu mẫu...' : 'Tạo biểu mẫu'}
             </button>
 
             {error && (
@@ -1453,6 +1471,31 @@ export function FormLearner({
               {manualTemplates.length === 0 && (
                 <p className="text-xs text-[var(--ink-soft)]">Chưa có biểu mẫu nào.</p>
               )}
+            </div>
+          </div>
+          </div>
+
+          <div className="panel-card h-fit rounded-[24px] p-6 xl:sticky xl:top-6">
+            <h3 className="section-title">Hướng dẫn thiết lập</h3>
+            <div className="mt-4 space-y-4 text-sm leading-6 text-[var(--ink-soft)]">
+              <p>
+                <strong className="text-[var(--ink)]">1. Tải file mẫu</strong> để hệ thống đọc danh sách sheet thực tế trong workbook.
+              </p>
+              <p>
+                <strong className="text-[var(--ink)]">2. Chọn đúng sheet</strong> tương ứng với biểu bạn muốn cấu hình. Mỗi biểu nên gắn với một sheet riêng.
+              </p>
+              <p>
+                <strong className="text-[var(--ink)]">3. Tiêu chí dọc</strong> là cột chứa tên chỉ tiêu hoặc dòng mô tả, ví dụ `A` hoặc `B`.
+              </p>
+              <p>
+                <strong className="text-[var(--ink)]">4. Tiêu chí ngang</strong> là phần đầu bảng nhiều tầng. Hãy nhập đúng hàng bắt đầu và hàng kết thúc của vùng header để báo cáo dựng lại giống file Excel.
+              </p>
+              <p>
+                <strong className="text-[var(--ink)]">5. Vùng lấy dữ liệu</strong> là các cột số liệu thật sự cần tổng hợp, ví dụ `C-H` hoặc `B,D,G`.
+              </p>
+              <p>
+                <strong className="text-[var(--ink)]">6. Sau khi tạo xong</strong>, biểu sẽ lưu ở trạng thái nháp. Bạn nên rà lại, xem thử ở mục báo cáo, rồi mới bấm chốt biểu để đưa vào tiếp nhận dữ liệu.
+              </p>
             </div>
           </div>
         </div>

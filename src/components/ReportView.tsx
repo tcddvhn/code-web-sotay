@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Search, X } from 'lucide-react';
-import { UNITS, YEARS } from '../constants';
-import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, Project } from '../types';
+import { YEARS } from '../constants';
+import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project } from '../types';
 import { auth, db, storage } from '../firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
@@ -13,6 +13,7 @@ interface ReportViewProps {
   data: ConsolidatedData;
   projects: Project[];
   templates: FormTemplate[];
+  units: ManagedUnit[];
   selectedProjectId: string;
   onSelectProject: (id: string) => void;
 }
@@ -46,7 +47,6 @@ interface ActiveCellDetail {
 type DetailSortOrder = 'desc' | 'asc';
 
 const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
-const REPORT_UNIT_OPTIONS = [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...UNITS];
 
 function sanitizeFileNamePart(value: string) {
   return value
@@ -65,9 +65,7 @@ function buildHeaderRows(layout: HeaderLayout) {
   }
 
   const cellMap = new Map(layout.cells.map((cell) => [`${cell.row}:${cell.col}`, cell.value]));
-  const mergeMap = new Map(
-    (layout.merges || []).map((merge) => [`${merge.startRow}:${merge.startCol}`, merge]),
-  );
+  const mergeMap = new Map((layout.merges || []).map((merge) => [`${merge.startRow}:${merge.startCol}`, merge]));
   const occupied = Array.from({ length: rowCount }, () => Array(colCount).fill(false));
   const rows: { text: string; rowSpan: number; colSpan: number }[][] = [];
 
@@ -200,7 +198,7 @@ function populateTemplateWorksheet(
   }
 }
 
-export function ReportView({ data, projects, templates, selectedProjectId, onSelectProject }: ReportViewProps) {
+export function ReportView({ data, projects, templates, units, selectedProjectId, onSelectProject }: ReportViewProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState(() => getPreferredReportingYear());
   const [selectedUnitCode, setSelectedUnitCode] = useState(TOTAL_REPORT_UNIT_CODE);
@@ -210,10 +208,14 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
   const [resolvedHeaderLayout, setResolvedHeaderLayout] = useState<HeaderLayout | null>(null);
   const [templateRows, setTemplateRows] = useState<TemplateRowDefinition[]>([]);
 
+  const reportUnitOptions = useMemo(
+    () => [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...units],
+    [units],
+  );
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
   const selectedTemplate = projectTemplates.find((tpl) => tpl.id === selectedTemplateId) || null;
   const selectedUnitOption =
-    REPORT_UNIT_OPTIONS.find((unit) => unit.code === selectedUnitCode) || REPORT_UNIT_OPTIONS[0];
+    reportUnitOptions.find((unit) => unit.code === selectedUnitCode) || reportUnitOptions[0];
 
   const columnHeaders = useMemo(() => {
     if (!selectedTemplate) return [];
@@ -232,6 +234,12 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
   }, [projectTemplates, selectedTemplateId]);
 
   useEffect(() => {
+    if (!reportUnitOptions.find((unit) => unit.code === selectedUnitCode)) {
+      setSelectedUnitCode(TOTAL_REPORT_UNIT_CODE);
+    }
+  }, [reportUnitOptions, selectedUnitCode]);
+
+  useEffect(() => {
     let isCancelled = false;
 
     if (!selectedTemplate) {
@@ -240,10 +248,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
       return undefined;
     }
 
-    Promise.all([
-      resolveTemplateHeaderLayout(selectedTemplate),
-      resolveTemplateRowLabels(selectedTemplate),
-    ])
+    Promise.all([resolveTemplateHeaderLayout(selectedTemplate), resolveTemplateRowLabels(selectedTemplate)])
       .then(([nextHeaderLayout, nextTemplateRows]) => {
         if (isCancelled) {
           return;
@@ -336,7 +341,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         const label = labelsBySourceRow.get(definition.sourceRow) || definition.label || `Dòng ${definition.sourceRow}`;
 
         rowEntries.forEach((row) => {
-          const unitName = UNITS.find((unit) => unit.code === row.unitCode)?.name || row.unitCode;
+          const unitName = units.find((unit) => unit.code === row.unitCode)?.name || row.unitCode;
 
           row.values.forEach((value, index) => {
             values[index] += value;
@@ -371,7 +376,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         return matchesSearch && (hasMeaningfulLabel || hasData);
       })
       .sort((left, right) => left.sourceRow - right.sourceRow);
-  }, [data, searchTerm, selectedTemplate, selectedUnitCode, selectedYear, templateRows]);
+  }, [data, searchTerm, selectedTemplate, selectedUnitCode, selectedYear, templateRows, units]);
 
   const headerRows = useMemo(() => {
     if (!resolvedHeaderLayout) {
@@ -578,7 +583,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
 
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">1. Chọn Dự án</label>
+          <label className="col-header mb-2 block">1. Chọn dự án</label>
           <select
             value={selectedProjectId}
             onChange={(event) => onSelectProject(event.target.value)}
@@ -593,7 +598,7 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         </div>
 
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">2. Chọn Năm</label>
+          <label className="col-header mb-2 block">2. Chọn năm</label>
           <select
             value={selectedYear}
             onChange={(event) => setSelectedYear(event.target.value)}
@@ -608,13 +613,13 @@ export function ReportView({ data, projects, templates, selectedProjectId, onSel
         </div>
 
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">3. Chọn Đơn vị</label>
+          <label className="col-header mb-2 block">3. Chọn đơn vị</label>
           <select
             value={selectedUnitCode}
             onChange={(event) => setSelectedUnitCode(event.target.value)}
             className="field-select text-sm font-bold"
           >
-            {REPORT_UNIT_OPTIONS.map((unit) => (
+            {reportUnitOptions.map((unit) => (
               <option key={unit.code} value={unit.code}>
                 {unit.name}
               </option>

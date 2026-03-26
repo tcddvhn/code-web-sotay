@@ -65,9 +65,7 @@ export function buildSheetValidationMessage(
   projectName: string,
   validation: ReturnType<typeof validateWorkbookSheetNames>,
 ) {
-  const lines = [
-    `File không đúng mẫu đã phát hành cho dự án "${projectName}".`,
-  ];
+  const lines = [`File không đúng mẫu đã phát hành cho dự án "${projectName}".`];
 
   if (validation.missingSheets.length > 0) {
     lines.push(`Sheet còn thiếu: ${validation.missingSheets.join(', ')}`);

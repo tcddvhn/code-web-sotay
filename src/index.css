@@ -254,6 +254,27 @@ textarea {
   padding-right: 0;
 }
 
+.sidebar-collapsed .sidebar-footer {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.sidebar-collapsed .sidebar-account {
+  justify-content: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  overflow: visible;
+}
+
+.sidebar-collapsed .sidebar-auth-btn {
+  justify-content: center;
+  width: 100%;
+}
+
+.sidebar-collapsed .sidebar-auth-label {
+  display: none;
+}
+
 .sidebar-toggle-btn {
   transition: background-color 0.2s ease, transform 0.2s ease;
 }

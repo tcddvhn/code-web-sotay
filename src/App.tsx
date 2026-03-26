@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   FileBarChart,
   Globe,
-  Layers3,
   Link as LinkIcon,
   Lock,
   LogIn,
@@ -36,7 +35,7 @@ import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
 import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout, OperationType, signUpWithEmail, storage } from './firebase';
-import { AppSettings, ConsolidatedData, DataRow, FormTemplate, Project, UserProfile, ViewMode } from './types';
+import { AppSettings, ConsolidatedData, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAllowedAccount, getAssignmentKey, isAdminEmail, isAllowedEmail } from './access';
 
@@ -58,6 +57,47 @@ type UnitLog = {
   assignedTo?: string;
 };
 
+type UnitStatusFilter = 'ALL' | 'SUBMITTED' | 'PENDING';
+
+function getTimestampMs(value: any) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value?.toDate === 'function') {
+    return value.toDate().getTime();
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  return null;
+}
+
+function isUnitVisibleForProject(unit: ManagedUnit, project: Project | null) {
+  if (!unit.isDeleted) {
+    return true;
+  }
+
+  if (!project) {
+    return false;
+  }
+
+  const deletedAtMs = getTimestampMs(unit.deletedAt);
+  const projectCreatedAtMs = getTimestampMs(project.createdAt);
+
+  if (deletedAtMs === null || projectCreatedAtMs === null) {
+    return false;
+  }
+
+  return projectCreatedAtMs <= deletedAtMs;
+}
+
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('DASHBOARD');
   const [data, setData] = useState<ConsolidatedData>({});
@@ -70,6 +110,7 @@ export default function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [units, setUnits] = useState<ManagedUnit[]>([]);
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -83,6 +124,14 @@ export default function App() {
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
     [projects, selectedProjectId],
+  );
+  const allUnits = useMemo<ManagedUnit[]>(
+    () => (units.length > 0 ? units : UNITS.map((unit) => ({ ...unit, isDeleted: false }))),
+    [units],
+  );
+  const availableUnitsForProject = useMemo(
+    () => allUnits.filter((unit) => isUnitVisibleForProject(unit, currentProject)),
+    [allUnits, currentProject],
   );
 
   useEffect(() => {
@@ -202,6 +251,44 @@ export default function App() {
 
     return () => unsubscribe();
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setUnits([]);
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      collection(db, 'units'),
+      async (snapshot) => {
+        if (snapshot.empty) {
+          setUnits([]);
+
+          if (isAdmin) {
+            const batch = writeBatch(db);
+            UNITS.forEach((unit) => {
+              batch.set(doc(db, 'units', unit.code), {
+                ...unit,
+                isDeleted: false,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              });
+            });
+            await batch.commit();
+          }
+          return;
+        }
+
+        const list = snapshot.docs
+          .map((snapshotDoc) => ({ ...(snapshotDoc.data() as ManagedUnit), code: snapshotDoc.id }))
+          .sort((left, right) => left.code.localeCompare(right.code));
+        setUnits(list);
+      },
+      () => setUnits([]),
+    );
+
+    return () => unsubscribe();
+  }, [isAdmin, isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -645,6 +732,117 @@ export default function App() {
     }
   };
 
+  const handleAddUnit = async (name: string) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error('Tên đơn vị không được để trống.');
+    }
+
+    const duplicate = allUnits.find((unit) => unit.name.trim().toLowerCase() === trimmedName.toLowerCase());
+    if (duplicate) {
+      throw new Error('Tên đơn vị đã tồn tại trong danh mục.');
+    }
+
+    const maxUnitNumber = allUnits.reduce((maxValue, unit) => {
+      const matched = unit.code.match(/(\d+)$/);
+      const currentValue = matched ? Number(matched[1]) : 0;
+      return Math.max(maxValue, currentValue);
+    }, 0);
+
+    const nextCode = `DV${String(maxUnitNumber + 1).padStart(3, '0')}`;
+    await setDoc(doc(db, 'units', nextCode), {
+      code: nextCode,
+      name: trimmedName,
+      isDeleted: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  };
+
+  const handleSoftDeleteUnit = async (unitCode: string) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const targetUnit = allUnits.find((unit) => unit.code === unitCode);
+    if (!targetUnit) {
+      throw new Error('Không tìm thấy đơn vị cần xóa.');
+    }
+
+    await setDoc(
+      doc(db, 'units', unitCode),
+      {
+        isDeleted: true,
+        deletedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        deletedBy: {
+          uid: user?.uid,
+          email: user?.email,
+          displayName: userProfile?.displayName || user?.displayName,
+        },
+      },
+      { merge: true },
+    );
+  };
+
+  const handleRestoreUnit = async (unitCode: string) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const targetUnit = allUnits.find((unit) => unit.code === unitCode);
+    if (!targetUnit) {
+      throw new Error('Không tìm thấy đơn vị cần khôi phục.');
+    }
+
+    await setDoc(
+      doc(db, 'units', unitCode),
+      {
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  };
+
+  const handleRenameUnit = async (unitCode: string, name: string) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error('Tên đơn vị không được để trống.');
+    }
+
+    const targetUnit = allUnits.find((unit) => unit.code === unitCode);
+    if (!targetUnit) {
+      throw new Error('Không tìm thấy đơn vị cần cập nhật.');
+    }
+
+    const duplicate = allUnits.find(
+      (unit) => unit.code !== unitCode && unit.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+    );
+    if (duplicate) {
+      throw new Error('Tên đơn vị đã tồn tại trong danh mục.');
+    }
+
+    await setDoc(
+      doc(db, 'units', unitCode),
+      {
+        name: trimmedName,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  };
+
   const handleDeleteAllSystemData = async () => {
     if (!isAdmin) {
       return;
@@ -737,6 +935,7 @@ export default function App() {
             data={data}
             templates={templates}
             projects={projects}
+            units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             isAdmin={isAdmin}
@@ -760,6 +959,7 @@ export default function App() {
             data={data}
             templates={templates}
             projects={projects}
+            units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             isAdmin={isAdmin}
@@ -782,6 +982,7 @@ export default function App() {
             data={data}
             templates={templates}
             projects={projects}
+            units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             isAdmin={isAdmin}
@@ -799,6 +1000,7 @@ export default function App() {
             onDeleteYearData={handleDeleteYearData}
             onDeleteProjectData={handleDeleteProjectData}
             projects={projects}
+            units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             templates={templates}
@@ -809,6 +1011,7 @@ export default function App() {
             data={data}
             templates={templates}
             projects={projects}
+            units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             isAdmin={isAdmin}
@@ -819,8 +1022,34 @@ export default function App() {
           />
         );
       case 'REPORTS':
-        return <ReportView data={data} projects={projects} templates={templates} selectedProjectId={selectedProjectId} onSelectProject={setSelectedProjectId} />;
+        return (
+          <ReportView
+            data={data}
+            projects={projects}
+            templates={templates}
+            units={availableUnitsForProject}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+          />
+        );
       case 'SETTINGS':
+        if (!isAdmin) {
+          return (
+            <DashboardOverview
+              data={data}
+              templates={templates}
+              projects={projects}
+              units={availableUnitsForProject}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={setSelectedProjectId}
+              isAdmin={isAdmin}
+              assignmentUsers={assignmentUsers}
+              assignments={assignments}
+              currentUser={userProfile}
+              onSaveAssignments={handleSaveAssignments}
+            />
+          );
+        }
         return (
           <div className="p-6 md:p-8">
             <h2 className="page-title">Cài đặt hệ thống</h2>
@@ -828,9 +1057,10 @@ export default function App() {
               Cấu hình nguồn lưu trữ và đường dẫn tiếp nhận dữ liệu tập trung cho toàn hệ thống.
             </p>
 
-            <div className="mt-8 max-w-3xl space-y-6">
-              <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Link OneDrive (Luu tr? tr?c tuy?n)</label>
+            <div className="mt-8 grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+              <div className="space-y-6">
+                <div className="panel-card rounded-[24px] p-6">
+                <label className="col-header block mb-3">Link OneDrive (lưu trữ trực tuyến)</label>
                 <div className="flex gap-3">
                   <LinkIcon size={18} className="mt-3 text-[var(--primary)]" />
                   <input
@@ -841,9 +1071,9 @@ export default function App() {
                     disabled={!isAdmin}
                   />
                 </div>
-              </div>
+                </div>
 
-              <div className="panel-card rounded-[24px] p-6">
+                <div className="panel-card rounded-[24px] p-6">
                 <label className="col-header block mb-3">Thư mục lưu trữ file gốc</label>
                 <input
                   type="text"
@@ -852,9 +1082,9 @@ export default function App() {
                   className="field-input"
                     disabled={!isAdmin}
                 />
-              </div>
+                </div>
 
-              <div className="panel-card rounded-[24px] p-6">
+                <div className="panel-card rounded-[24px] p-6">
                 <label className="col-header block mb-3">Thư mục lưu trữ file đã tiếp nhận</label>
                 <input
                   type="text"
@@ -863,18 +1093,63 @@ export default function App() {
                   className="field-input"
                     disabled={!isAdmin}
                 />
+                </div>
+
+                {isAdmin && (
+                  <SystemSettingsUnitsPanel
+                    units={allUnits}
+                    onAddUnit={handleAddUnit}
+                    onSoftDeleteUnit={handleSoftDeleteUnit}
+                    onRestoreUnit={handleRestoreUnit}
+                    onRenameUnit={handleRenameUnit}
+                  />
+                )}
+
+                {isAdmin && (
+                  <div className="flex flex-wrap gap-3">
+                    <button onClick={handleSaveSettings} className="primary-btn">
+                      Lưu cấu hình
+                    </button>
+                    <button onClick={handleDeleteAllSystemData} className="secondary-btn">
+                      Xóa sạch dữ liệu hệ thống
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {isAdmin && (
-                <div className="flex flex-wrap gap-3">
-                  <button onClick={handleSaveSettings} className="primary-btn">
-                    Lưu cấu hình
-                  </button>
-                  <button onClick={handleDeleteAllSystemData} className="secondary-btn">
-                    Xóa sạch dữ liệu hệ thống
-                  </button>
+              <div className="space-y-6">
+                <div className="panel-card rounded-[24px] p-6">
+                  <h3 className="section-title">Các mục cài đặt dùng để làm gì?</h3>
+                  <div className="mt-4 space-y-4 text-sm leading-6 text-[var(--ink-soft)]">
+                    <p>
+                      <strong className="text-[var(--ink)]">Link OneDrive</strong> dùng để lưu đường dẫn truy cập kho tài liệu trực tuyến,
+                      giúp người vận hành mở nhanh nơi chứa file mẫu hoặc file gốc dùng chung.
+                    </p>
+                    <p>
+                      <strong className="text-[var(--ink)]">Thư mục lưu trữ file gốc</strong> là nơi quy ước chứa các file Excel ban đầu do
+                      đơn vị gửi lên trước khi chuẩn hóa hoặc nhập dữ liệu vào hệ thống.
+                    </p>
+                    <p>
+                      <strong className="text-[var(--ink)]">Thư mục lưu trữ file đã tiếp nhận</strong> là nơi quy ước lưu các file đã được kiểm tra,
+                      tiếp nhận và sẵn sàng đối chiếu với dữ liệu đã nhập.
+                    </p>
+                    <p>
+                      <strong className="text-[var(--ink)]">Quản lý danh sách đơn vị</strong> dùng để vận hành danh mục 132 đơn vị toàn hệ thống.
+                      Khi xóa mềm một đơn vị, dự án cũ vẫn giữ nguyên dữ liệu lịch sử, còn dự án tạo mới sau thời điểm xóa sẽ không còn nhìn thấy đơn vị đó.
+                    </p>
+                    <p>
+                      <strong className="text-[var(--ink)]">Xóa sạch dữ liệu hệ thống</strong> là thao tác quản trị cao nhất, dùng khi cần làm sạch
+                      toàn bộ dữ liệu dự án, biểu mẫu, tiếp nhận và lịch sử xuất báo cáo.
+                    </p>
+                  </div>
                 </div>
-              )}
+
+                {!isAdmin && (
+                  <div className="panel-card rounded-[24px] p-6 text-sm text-[var(--ink-soft)]">
+                    Chỉ tài khoản Admin mới được phép thay đổi cấu hình hệ thống và quản lý danh mục đơn vị.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -898,6 +1173,245 @@ export default function App() {
         isMobile={isMobile}
       />
       <main className="app-main flex-1 overflow-auto">{renderContent()}</main>
+    </div>
+  );
+}
+
+function SystemSettingsUnitsPanel({
+  units,
+  onAddUnit,
+  onSoftDeleteUnit,
+  onRestoreUnit,
+  onRenameUnit,
+}: {
+  units: ManagedUnit[];
+  onAddUnit: (name: string) => Promise<void>;
+  onSoftDeleteUnit: (unitCode: string) => Promise<void>;
+  onRestoreUnit: (unitCode: string) => Promise<void>;
+  onRenameUnit: (unitCode: string, name: string) => Promise<void>;
+}) {
+  const [newUnitName, setNewUnitName] = useState('');
+  const [editingUnitCode, setEditingUnitCode] = useState<string | null>(null);
+  const [editingUnitName, setEditingUnitName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const activeUnits = useMemo(
+    () => units.filter((unit) => !unit.isDeleted).sort((left, right) => left.code.localeCompare(right.code)),
+    [units],
+  );
+  const deletedUnits = useMemo(
+    () => units.filter((unit) => unit.isDeleted).sort((left, right) => left.code.localeCompare(right.code)),
+    [units],
+  );
+
+  const submitNewUnit = async () => {
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      await onAddUnit(newUnitName);
+      setNewUnitName('');
+      setMessage('Đã thêm đơn vị mới vào danh mục hệ thống.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể thêm đơn vị mới.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deleteUnit = async (unit: ManagedUnit) => {
+    const confirmed = window.confirm(
+      `Đánh dấu xóa mềm đơn vị "${unit.name}" (${unit.code})? Đơn vị sẽ bị ẩn ở các dự án tạo mới sau thời điểm xóa.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      await onSoftDeleteUnit(unit.code);
+      setMessage(`Đã đánh dấu xóa mềm đơn vị ${unit.name}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể xóa mềm đơn vị.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const restoreUnit = async (unit: ManagedUnit) => {
+    const confirmed = window.confirm(`Khôi phục đơn vị "${unit.name}" (${unit.code}) vào danh mục sử dụng?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      await onRestoreUnit(unit.code);
+      setMessage(`Đã khôi phục đơn vị ${unit.name}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể khôi phục đơn vị.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const beginEditUnit = (unit: ManagedUnit) => {
+    setEditingUnitCode(unit.code);
+    setEditingUnitName(unit.name);
+    setMessage(null);
+  };
+
+  const cancelEditUnit = () => {
+    setEditingUnitCode(null);
+    setEditingUnitName('');
+  };
+
+  const saveEditedUnit = async (unit: ManagedUnit) => {
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      await onRenameUnit(unit.code, editingUnitName);
+      setMessage(`Đã cập nhật tên đơn vị ${unit.code}.`);
+      cancelEditUnit();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật tên đơn vị.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="panel-card rounded-[24px] p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="section-title">Quản lý danh sách đơn vị</h3>
+          <p className="page-subtitle mt-2 text-sm">
+            Danh mục nền của toàn hệ thống. Mã đơn vị được tự sinh theo số lớn nhất hiện có.
+          </p>
+        </div>
+        <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+          Đang hoạt động {activeUnits.length} đơn vị
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+        <input
+          value={newUnitName}
+          onChange={(event) => setNewUnitName(event.target.value)}
+          className="field-input"
+          placeholder="Nhập tên đơn vị mới"
+        />
+        <button
+          onClick={submitNewUnit}
+          disabled={isSubmitting || !newUnitName.trim()}
+          className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Thêm đơn vị
+        </button>
+      </div>
+
+      {message && <p className="mt-4 text-sm font-medium text-[var(--ink-soft)]">{message}</p>}
+
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div>
+          <p className="col-header mb-3">Đơn vị đang sử dụng</p>
+          <div className="max-h-[360px] space-y-2 overflow-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+            {activeUnits.map((unit) => (
+              <div
+                key={unit.code}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3"
+              >
+                <div className="min-w-0">
+                  {editingUnitCode === unit.code ? (
+                    <input
+                      value={editingUnitName}
+                      onChange={(event) => setEditingUnitName(event.target.value)}
+                      className="field-input h-11 py-2 text-sm"
+                      placeholder="Nhập tên đơn vị"
+                    />
+                  ) : (
+                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                  )}
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {editingUnitCode === unit.code ? (
+                    <>
+                      <button
+                        onClick={() => saveEditedUnit(unit)}
+                        disabled={isSubmitting || !editingUnitName.trim()}
+                        className="primary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Lưu tên
+                      </button>
+                      <button
+                        onClick={cancelEditUnit}
+                        disabled={isSubmitting}
+                        className="secondary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Hủy
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => beginEditUnit(unit)}
+                        disabled={isSubmitting}
+                        className="secondary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Đổi tên
+                      </button>
+                      <button
+                        onClick={() => deleteUnit(unit)}
+                        disabled={isSubmitting}
+                        className="secondary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Xóa mềm
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="col-header mb-3">Đơn vị đã xóa mềm</p>
+          <div className="max-h-[360px] space-y-2 overflow-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+            {deletedUnits.length > 0 ? (
+              deletedUnits.map((unit) => (
+                <div
+                  key={unit.code}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                    <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
+                  </div>
+                  <button
+                    onClick={() => restoreUnit(unit)}
+                    disabled={isSubmitting}
+                    className="secondary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Khôi phục
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--ink-soft)]">
+                Chưa có đơn vị nào bị xóa mềm.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -997,6 +1511,7 @@ function DashboardOverview({
   data,
   templates,
   projects,
+  units,
   selectedProjectId,
   onSelectProject,
   isAdmin,
@@ -1008,6 +1523,7 @@ function DashboardOverview({
   data: ConsolidatedData;
   templates: FormTemplate[];
   projects: Project[];
+  units: ManagedUnit[];
   selectedProjectId: string;
   onSelectProject: (id: string) => void;
   isAdmin: boolean;
@@ -1018,6 +1534,7 @@ function DashboardOverview({
 }) {
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<UnitStatusFilter>('ALL');
   const dashboardYear = getPreferredReportingYear();
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
@@ -1057,10 +1574,10 @@ function DashboardOverview({
     return map;
   }, [assignments, assignmentUsers]);
 
-  const unitLogs = useMemo<UnitLog[]>(() => {
+  const allUnitLogs = useMemo<UnitLog[]>(() => {
     const sheetOrder = new Map(SHEET_CONFIGS.map((sheet, index) => [sheet.name, index]));
 
-    const logs = UNITS.map((unit) => {
+    return units.map((unit) => {
       const unitRows = rowsForYear.filter((row) => row.unitCode === unit.code);
       const importedSheets = Array.from(
         new Set(
@@ -1089,15 +1606,27 @@ function DashboardOverview({
 
       return left.name.localeCompare(right.name, 'vi');
     });
-    if (selectedAssignee === 'ALL') {
-      return logs;
-    }
-    return logs.filter((unit) => assignments[selectedAssignee]?.includes(unit.code));
-  }, [rowsForYear, templateMap, lastUpdatedBy, assignmentMap, selectedAssignee, assignments]);
+  }, [rowsForYear, templateMap, lastUpdatedBy, assignmentMap, units]);
 
-  const submittedCount = unitLogs.filter((unit) => unit.isSubmitted).length;
-  const totalRows = rowsForYear.length;
-  const totalUnits = UNITS.length;
+  const unitLogs = useMemo<UnitLog[]>(() => {
+    const assigneeFilteredLogs =
+      selectedAssignee === 'ALL'
+        ? allUnitLogs
+        : allUnitLogs.filter((unit) => assignments[selectedAssignee]?.includes(unit.code));
+
+    if (statusFilter === 'SUBMITTED') {
+      return assigneeFilteredLogs.filter((unit) => unit.isSubmitted);
+    }
+
+    if (statusFilter === 'PENDING') {
+      return assigneeFilteredLogs.filter((unit) => !unit.isSubmitted);
+    }
+
+    return assigneeFilteredLogs;
+  }, [allUnitLogs, assignments, selectedAssignee, statusFilter]);
+
+  const submittedCount = allUnitLogs.filter((unit) => unit.isSubmitted).length;
+  const totalUnits = units.length;
   const completionRate = totalUnits === 0 ? '0.0' : ((submittedCount / totalUnits) * 100).toFixed(1);
 
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
@@ -1112,13 +1641,6 @@ function DashboardOverview({
       icon: FileBarChart,
       iconColor: 'text-[var(--success)]',
       tone: 'bg-[rgba(47,110,73,0.12)]',
-    },
-    {
-      label: 'Dòng dữ liệu đã lưu',
-      value: totalRows.toLocaleString('vi-VN'),
-      icon: Layers3,
-      iconColor: 'text-[var(--gold)]',
-      tone: 'bg-[var(--gold-soft)]',
     },
     {
       label: 'Tỷ lệ hoàn thành',
@@ -1142,8 +1664,13 @@ function DashboardOverview({
         <div>
           <div className="surface-tag">Năm tổng hợp {dashboardYear}</div>
           <h2 className="page-title mt-4">HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG</h2>
+          {currentUser && (
+            <p className="mt-3 text-sm font-bold text-[var(--primary-dark)]">
+              Tài khoản đang đăng nhập: {currentUser.displayName || currentUser.email || 'Chưa xác định'}
+            </p>
+          )}
           <p className="page-subtitle mt-3 max-w-3xl text-sm">
-            Theo dõi nhanh tình hình tiếp nhận dữ liệu của 132 đơn vị, số biểu đã nhập và mức độ hoàn thành tổng hợp trên toàn hệ thống.
+            Theo dõi nhanh tình hình tiếp nhận dữ liệu của các đơn vị, số biểu đã nhập và mức độ hoàn thành tổng hợp trên toàn hệ thống.
           </p>
         </div>
 
@@ -1187,7 +1714,7 @@ function DashboardOverview({
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.label} className="panel-card rounded-[24px] p-6">
             <div className="flex items-start justify-between gap-4">
@@ -1207,6 +1734,7 @@ function DashboardOverview({
         <div className="mt-8">
           <UnitAssignments
             projectId={selectedProjectId}
+            units={units}
             users={assignees}
             assignments={assignments}
             onSaveAssignments={onSaveAssignments}
@@ -1214,7 +1742,7 @@ function DashboardOverview({
         </div>
       )}
 
-      <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      <div className={`mt-8 grid grid-cols-1 gap-8 ${selectedProject ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]' : ''}`}>
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -1252,13 +1780,29 @@ function DashboardOverview({
           </div>
         </div>
 
+        {selectedProject && (
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="section-title">Trạng thái tiếp nhận đơn vị</h3>
               <p className="page-subtitle mt-2 text-sm">Danh sách được lấy từ dữ liệu thật đã lưu.</p>
             </div>
-            <div className="status-pill status-pill-pending">{totalUnits - submittedCount} đơn vị chưa nộp</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setStatusFilter((prev) => (prev === 'SUBMITTED' ? 'ALL' : 'SUBMITTED'))}
+                className={statusFilter === 'SUBMITTED' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}
+              >
+                Đã tiếp nhận
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter((prev) => (prev === 'PENDING' ? 'ALL' : 'PENDING'))}
+                className={statusFilter === 'PENDING' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}
+              >
+                Chưa tiếp nhận
+              </button>
+            </div>
           </div>
 
           <div className="mt-6 space-y-3">
@@ -1290,14 +1834,15 @@ function DashboardOverview({
             Xem tất cả nhật ký
           </button>
         </div>
+        )}
       </div>
 
-      {isLogOpen && (
+      {isLogOpen && selectedProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(44,62,80,0.45)] p-4 backdrop-blur-sm md:p-8">
           <div className="panel-card flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[30px]">
             <div className="flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="surface-tag">132 đơn vị toàn hệ thống</div>
+                <div className="surface-tag">{totalUnits} đơn vị toàn hệ thống</div>
                 <h3 className="section-title mt-3">Nhật ký tiếp nhận dữ liệu năm {dashboardYear}</h3>
                 <p className="page-subtitle mt-2 text-sm">
                   Hiển thị đầy đủ trạng thái của từng đơn vị cùng số biểu đã được nhập vào hệ thống tập trung.

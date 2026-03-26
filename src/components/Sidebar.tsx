@@ -100,9 +100,9 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="space-y-4 border-t border-[var(--sidebar-border)] p-8">
+      <div className="sidebar-footer space-y-4 border-t border-[var(--sidebar-border)] p-8">
         {user && (
-          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] px-3 py-3">
+          <div className="sidebar-account mb-4 flex items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] px-3 py-3">
             {user.photoURL ? (
               <img
                 src={user.photoURL}
@@ -125,23 +125,23 @@ export function Sidebar({
         {user ? (
           <button
             onClick={onLogout}
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 transition-opacity hover:opacity-70"
+            className="sidebar-auth-btn flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 transition-opacity hover:opacity-70"
           >
             <LogOut size={14} />
-            Đăng xuất
+            <span className="sidebar-auth-label">Đăng xuất</span>
           </button>
         ) : (
           <button
             onClick={() => onViewChange('LOGIN')}
             className={twMerge(
               clsx(
-                'flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 transition-opacity hover:opacity-70',
+                'sidebar-auth-btn flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 transition-opacity hover:opacity-70',
                 currentView === 'LOGIN' && 'text-[var(--gold)]',
               ),
             )}
           >
             <LogIn size={14} />
-            Đăng nhập
+            <span className="sidebar-auth-label">Đăng nhập</span>
           </button>
         )}
       </div>

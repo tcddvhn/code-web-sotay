@@ -69,6 +69,12 @@ service cloud.firestore {
              data.storagePath is string;
     }
 
+    function isValidUnit(data) {
+      return data.code is string &&
+             data.name is string &&
+             (!('isDeleted' in data) || data.isDeleted is bool);
+    }
+
     match /consolidated_data/{rowId} {
       allow read: if isContributor();
       allow create, update: if isAdmin() && isValidDataRow(request.resource.data);
@@ -119,6 +125,12 @@ service cloud.firestore {
     match /assignments/{assignmentId} {
       allow read: if isContributor();
       allow write: if isAdmin();
+    }
+
+    match /units/{unitId} {
+      allow read: if isContributor();
+      allow create, update: if isAdmin() && isValidUnit(request.resource.data);
+      allow delete: if false;
     }
   }
 }
