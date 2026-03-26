@@ -49,6 +49,34 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: 
   });
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function parseRetryDelayMs(error: unknown) {
+  if (!(error instanceof Error)) {
+    return 40000;
+  }
+
+  const retryMatch = error.message.match(/retry in ([\d.]+)s/i);
+  if (retryMatch) {
+    return Math.ceil(Number(retryMatch[1]) * 1000);
+  }
+
+  const detailMatch = error.message.match(/"retryDelay":"(\d+)s"/i);
+  if (detailMatch) {
+    return Number(detailMatch[1]) * 1000;
+  }
+
+  return 40000;
+}
+
+function isQuotaExceededError(error: unknown) {
+  return error instanceof Error && (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED'));
+}
+
 export function FormLearner({
   projects,
   selectedProjectId,
@@ -572,6 +600,7 @@ export function FormLearner({
     setError(null);
     setNotice(null);
     setLearnedTemplates([]);
+    setSaveProgressLabel('Đang đọc file mẫu AI...');
 
     try {
       const reader = new FileReader();
@@ -585,7 +614,10 @@ export function FormLearner({
           }
 
           const ai = new GoogleGenAI({ apiKey: resolvedGeminiApiKey });
-          const analysisPromises = sheetNames.map(async (sheetName) => {
+          const results: FormTemplate[] = [];
+
+          for (let index = 0; index < sheetNames.length; index += 1) {
+            const sheetName = sheetNames[index];
             const sheet = workbook.Sheets[sheetName];
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 'A', range: 0, defval: '' }).slice(0, 15);
             const rowsJson = JSON.stringify(rows, null, 2);
@@ -613,28 +645,65 @@ export function FormLearner({
               '}',
             ].join('\n');
 
-            const response = await ai.models.generateContent({
-              model: 'gemini-3-flash-preview',
-              contents: prompt,
-              config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                  type: Type.OBJECT,
-                  properties: {
-                    labelColumn: { type: Type.STRING },
-                    dataColumns: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    columnHeaders: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    startRow: { type: Type.INTEGER },
-                    endRow: { type: Type.INTEGER },
-                    name: { type: Type.STRING },
+            setSaveProgressLabel(`Đang phân tích sheet ${index + 1}/${sheetNames.length}: ${sheetName}`);
+
+            let response;
+            let retriedAfterQuota = false;
+            try {
+              response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: prompt,
+                config: {
+                  responseMimeType: 'application/json',
+                  responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                      labelColumn: { type: Type.STRING },
+                      dataColumns: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      columnHeaders: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      startRow: { type: Type.INTEGER },
+                      endRow: { type: Type.INTEGER },
+                      name: { type: Type.STRING },
+                    },
+                    required: ['labelColumn', 'dataColumns', 'columnHeaders', 'startRow', 'endRow', 'name'],
                   },
-                  required: ['labelColumn', 'dataColumns', 'columnHeaders', 'startRow', 'endRow', 'name'],
                 },
-              },
-            });
+              });
+            } catch (generationError) {
+              if (!isQuotaExceededError(generationError)) {
+                throw generationError;
+              }
+
+              retriedAfterQuota = true;
+              const retryDelayMs = parseRetryDelayMs(generationError);
+              setSaveProgressLabel(
+                `Gemini đang quá hạn mức, chờ ${Math.ceil(retryDelayMs / 1000)} giây để thử lại sheet ${sheetName}...`,
+              );
+              await sleep(retryDelayMs);
+
+              response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: prompt,
+                config: {
+                  responseMimeType: 'application/json',
+                  responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                      labelColumn: { type: Type.STRING },
+                      dataColumns: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      columnHeaders: { type: Type.ARRAY, items: { type: Type.STRING } },
+                      startRow: { type: Type.INTEGER },
+                      endRow: { type: Type.INTEGER },
+                      name: { type: Type.STRING },
+                    },
+                    required: ['labelColumn', 'dataColumns', 'columnHeaders', 'startRow', 'endRow', 'name'],
+                  },
+                },
+              });
+            }
 
             const result = JSON.parse(response.text);
-            return {
+            results.push({
               id: buildTemplateId(),
               projectId: selectedProjectId,
               name: result.name,
@@ -650,10 +719,13 @@ export function FormLearner({
               mode: 'AI',
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
-            } as FormTemplate;
-          });
+            } as FormTemplate);
 
-          const results = await Promise.all(analysisPromises);
+            if (index < sheetNames.length - 1) {
+              await sleep(retriedAfterQuota ? 2500 : 1500);
+            }
+          }
+
           const validTemplates = results.filter((t) => t !== null);
           if (validTemplates.length === 0) {
             throw new Error('AI không thể nhận diện được cấu trúc nào từ các sheet.');
@@ -674,15 +746,18 @@ export function FormLearner({
           setConfirmedTemplates(nextConfirm);
           setHeaderRanges(nextHeaderRanges);
           setConfirmAll(false);
+          setSaveProgressLabel(null);
           setIsLearning(false);
         } catch (innerErr) {
           setError(innerErr instanceof Error ? innerErr.message : 'Lỗi xử lý file.');
+          setSaveProgressLabel(null);
           setIsLearning(false);
         }
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
       setError('Không thể đọc file Excel này.');
+      setSaveProgressLabel(null);
       setIsLearning(false);
     }
   };
