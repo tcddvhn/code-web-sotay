@@ -82,6 +82,7 @@ export function FormLearner({
   const [manualTemplates, setManualTemplates] = useState<FormTemplate[]>([]);
   const [manualSheetNames, setManualSheetNames] = useState<string[]>([]);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+  const [attachingTemplateId, setAttachingTemplateId] = useState<string | null>(null);
   const [isCreatingManual, setIsCreatingManual] = useState(false);
   const [isSavingTemplates, setIsSavingTemplates] = useState(false);
   const [saveProgressLabel, setSaveProgressLabel] = useState<string | null>(null);
@@ -513,6 +514,47 @@ export function FormLearner({
     }
   };
 
+  const attachWorkbookToTemplate = async (template: FormTemplate) => {
+    if (!manualFile) {
+      setError('Vui lòng chọn file mẫu trước khi gắn lại file gốc cho biểu.');
+      setNotice(null);
+      return;
+    }
+
+    setAttachingTemplateId(template.id);
+    setSaveProgressLabel('Đang gắn lại file mẫu gốc...');
+    setError(null);
+    setNotice(null);
+
+    try {
+      const data = await manualFile.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const workbookMetadata = await uploadSourceWorkbook(manualFile);
+      const templateWithLayout = buildTemplateWithHeaderLayout(template, workbook);
+
+      await setDoc(
+        doc(db, 'templates', template.id),
+        {
+          ...workbookMetadata,
+          headerLayout: templateWithLayout.headerLayout || template.headerLayout,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      setNotice(`Đã gắn lại file mẫu gốc cho biểu "${template.name}".`);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể gắn lại file mẫu gốc cho biểu. Hãy kiểm tra Firebase Storage.',
+      );
+    } finally {
+      setAttachingTemplateId(null);
+      setSaveProgressLabel(null);
+    }
+  };
+
   const learnForm = async () => {
     if (!project?.id || !file) return;
     setIsLearning(true);
@@ -648,15 +690,24 @@ export function FormLearner({
             sourceWorkbookPath: string;
             sourceWorkbookUrl: string;
           }
-        | null = null;
+          | null = null;
+      let storageWarning: string | null = null;
 
       if (sourceFile) {
         setSaveProgressLabel('Đang đọc file mẫu...');
         const data = await sourceFile.arrayBuffer();
         const workbook = XLSX.read(data, { type: 'array' });
-        setSaveProgressLabel('Đang tải file mẫu lên hệ thống...');
-        workbookMetadata = await uploadSourceWorkbook(sourceFile);
         templatesWithLayout = templatesToSave.map((tpl) => buildTemplateWithHeaderLayout(tpl, workbook));
+
+        try {
+          setSaveProgressLabel('Đang tải file mẫu lên hệ thống...');
+          workbookMetadata = await uploadSourceWorkbook(sourceFile);
+        } catch (storageError) {
+          storageWarning =
+            storageError instanceof Error
+              ? storageError.message
+              : 'Không thể tải file mẫu lên Firebase Storage.';
+        }
       }
 
       setSaveProgressLabel('Đang lưu cấu hình biểu mẫu...');
@@ -676,7 +727,9 @@ export function FormLearner({
       setLearnedTemplates([]);
       setError(null);
       setNotice(
-        `Đã lưu ${templatesWithLayout.length} biểu mẫu ở trạng thái nháp. Bạn có thể xem trước trong Báo cáo và chốt từng biểu khi sẵn sàng tiếp nhận dữ liệu.`,
+        storageWarning
+          ? `Đã lưu ${templatesWithLayout.length} biểu mẫu ở trạng thái nháp, nhưng chưa tải được file mẫu gốc lên Firebase Storage. Hệ thống vẫn lưu cấu hình biểu mẫu để bạn tiếp tục dùng. Chi tiết: ${storageWarning}`
+          : `Đã lưu ${templatesWithLayout.length} biểu mẫu ở trạng thái nháp. Bạn có thể xem trước trong Báo cáo và chốt từng biểu khi sẵn sàng tiếp nhận dữ liệu.`,
       );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'templates');
@@ -1366,6 +1419,11 @@ export function FormLearner({
                         <span className="rounded-full bg-[var(--surface-alt)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
                           {tpl.mode}
                         </span>
+                        {!tpl.sourceWorkbookPath && (
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
+                            Chưa có file mẫu gốc
+                          </span>
+                        )}
                       </div>
                       <p className="mt-1 text-xs text-[var(--ink-soft)]">
                         Sheet: {tpl.sheetName} | File mẫu: {tpl.sourceWorkbookName || 'Chưa lưu file mẫu'}
@@ -1379,6 +1437,14 @@ export function FormLearner({
                       >
                         <Save size={14} />
                         Lưu chỉnh sửa
+                      </button>
+                      <button
+                        onClick={() => attachWorkbookToTemplate(tpl)}
+                        disabled={!manualFile || attachingTemplateId === tpl.id}
+                        className="secondary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <FileSpreadsheet size={14} />
+                        {attachingTemplateId === tpl.id ? 'Đang gắn file...' : 'Gắn file mẫu gốc'}
                       </button>
                       <button
                         onClick={() => toggleTemplatePublished(tpl)}

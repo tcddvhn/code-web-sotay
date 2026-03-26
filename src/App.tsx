@@ -1057,7 +1057,7 @@ export default function App() {
               Cấu hình nguồn lưu trữ và đường dẫn tiếp nhận dữ liệu tập trung cho toàn hệ thống.
             </p>
 
-            <div className="mt-8 grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+            <div className="mt-8 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_320px] xl:grid-cols-[minmax(0,1.45fr)_300px]">
               <div className="space-y-6">
                 <div className="panel-card rounded-[24px] p-6">
                 <label className="col-header block mb-3">Link OneDrive (lưu trữ trực tuyến)</label>
@@ -1117,10 +1117,10 @@ export default function App() {
                 )}
               </div>
 
-              <div className="space-y-6">
-                <div className="panel-card rounded-[24px] p-6">
-                  <h3 className="section-title">Các mục cài đặt dùng để làm gì?</h3>
-                  <div className="mt-4 space-y-4 text-sm leading-6 text-[var(--ink-soft)]">
+              <div className="space-y-4 xl:max-w-[320px] 2xl:max-w-[340px]">
+                <div className="panel-card rounded-[24px] p-5">
+                  <h3 className="section-title text-[1.08rem] leading-6">Các mục cài đặt dùng để làm gì?</h3>
+                  <div className="mt-3 space-y-3 text-[13px] leading-6 text-[var(--ink-soft)]">
                     <p>
                       <strong className="text-[var(--ink)]">Link OneDrive</strong> dùng để lưu đường dẫn truy cập kho tài liệu trực tuyến,
                       giúp người vận hành mở nhanh nơi chứa file mẫu hoặc file gốc dùng chung.
@@ -1145,7 +1145,7 @@ export default function App() {
                 </div>
 
                 {!isAdmin && (
-                  <div className="panel-card rounded-[24px] p-6 text-sm text-[var(--ink-soft)]">
+                  <div className="panel-card rounded-[24px] p-5 text-sm text-[var(--ink-soft)]">
                     Chỉ tài khoản Admin mới được phép thay đổi cấu hình hệ thống và quản lý danh mục đơn vị.
                   </div>
                 )}

@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function email() {
+      return request.auth.token.email;
+    }
+
+    function isAllowedAccount() {
+      return isSignedIn() && email() in [
+        'admin@sotay.com',
+        'trieuthingoc@sotay.com',
+        'tranthikieuanh@sotay.com',
+        'tranphuongha@sotay.com',
+        'phamthithuhanh@sotay.com',
+        'nguyenthugiang@sotay.com',
+        'nguyensinghiem@sotay.com',
+        'nguyenhuuhung@sotay.com'
+      ];
+    }
+
+    function isAdmin() {
+      return isAllowedAccount() && email() == 'admin@sotay.com';
+    }
+
+    match /project_templates/{allPaths=**} {
+      allow read: if isAllowedAccount();
+      allow write: if isAdmin();
+    }
+
+    match /report_exports/{allPaths=**} {
+      allow read: if isAllowedAccount();
+      allow write: if isAllowedAccount();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
