@@ -13,8 +13,10 @@ export function ProjectManager({
 }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [isSavingProject, setIsSavingProject] = useState(false);
   const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -29,21 +31,34 @@ export function ProjectManager({
   }, []);
 
   const handleAddProject = async () => {
-    if (!newProject.name) return;
+    if (!newProject.name.trim()) {
+      setMessage('Vui lòng nhập tên dự án trước khi lưu.');
+      return;
+    }
+
     const id = `proj_${Date.now()}`;
+    setIsSavingProject(true);
+    setMessage(null);
     try {
-      await setDoc(doc(db, 'projects', id), {
+      const payload = {
         id,
-        name: newProject.name,
-        description: newProject.description,
+        name: newProject.name.trim(),
+        description: newProject.description.trim(),
         status: 'ACTIVE',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      } satisfies Omit<Project, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any };
+
+      await setDoc(doc(db, 'projects', id), payload);
+      onSelectProject({ ...payload } as Project);
       setIsAdding(false);
       setNewProject({ name: '', description: '' });
+      setMessage(`Đã lưu dự án "${payload.name}".`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'projects');
+      console.error('Create project error:', error);
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu dự án mới.');
+    } finally {
+      setIsSavingProject(false);
     }
   };
 
@@ -54,8 +69,10 @@ export function ProjectManager({
         status: project.status === 'ACTIVE' ? 'COMPLETED' : 'ACTIVE',
         updatedAt: serverTimestamp(),
       });
+      setMessage(`Đã cập nhật trạng thái dự án "${project.name}".`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'projects');
+      console.error('Update project status error:', error);
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái dự án.');
     }
   };
 
@@ -65,8 +82,10 @@ export function ProjectManager({
     try {
       const deleted = await onDeleteProject(project);
       if (!deleted) {
-        alert('Không thể xóa dự án này. Hãy kiểm tra quyền và dữ liệu liên quan.');
+        setMessage('Không thể xóa dự án này. Hãy kiểm tra quyền và dữ liệu liên quan.');
+        return;
       }
+      setMessage(`Đã xóa dự án "${project.name}".`);
     } finally {
       setDeletingProjectId(null);
     }
@@ -81,6 +100,12 @@ export function ProjectManager({
           Tạo dự án mới
         </button>
       </div>
+
+      {message && (
+        <div className="mb-6 rounded-[18px] border border-[var(--line)] bg-white px-4 py-3 text-sm font-medium text-[var(--ink-soft)] shadow-[0_16px_36px_rgba(38,31,18,0.08)]">
+          {message}
+        </div>
+      )}
 
       {isAdding && (
         <div className="panel-card rounded-[24px] p-6 mb-8">
@@ -101,8 +126,20 @@ export function ProjectManager({
               rows={3}
             />
             <div className="flex gap-3">
-              <button onClick={handleAddProject} className="primary-btn">Lưu dự án</button>
-              <button onClick={() => setIsAdding(false)} className="secondary-btn">Hủy</button>
+              <button
+                onClick={handleAddProject}
+                disabled={isSavingProject}
+                className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isSavingProject ? 'Đang lưu...' : 'Lưu dự án'}
+              </button>
+              <button
+                onClick={() => setIsAdding(false)}
+                disabled={isSavingProject}
+                className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Hủy
+              </button>
             </div>
           </div>
         </div>
@@ -143,4 +180,3 @@ export function ProjectManager({
     </div>
   );
 }
-
