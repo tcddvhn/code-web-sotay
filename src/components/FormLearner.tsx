@@ -89,6 +89,13 @@ export function FormLearner({
     return window.localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '';
   });
   const [manualForm, setManualForm] = useState(DEFAULT_MANUAL_FORM);
+  const configuredGeminiApiKey = (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+  const resolvedGeminiApiKey = geminiApiKey.trim() || configuredGeminiApiKey;
+  const geminiKeySource = geminiApiKey.trim()
+    ? 'Đang dùng khóa bạn nhập tại trình duyệt'
+    : configuredGeminiApiKey
+      ? 'Đã có key từ cấu hình hệ thống'
+      : 'Chưa có key Gemini trong cấu hình';
 
   useEffect(() => {
     if (!project?.id) {
@@ -573,8 +580,6 @@ export function FormLearner({
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           const sheetNames = workbook.SheetNames.slice(0, 10);
-          const resolvedGeminiApiKey = geminiApiKey.trim() || import.meta.env.VITE_GEMINI_API_KEY;
-
           if (!resolvedGeminiApiKey) {
             throw new Error('Chưa có khóa Gemini. Hãy dán API key Gemini vào ô cấu hình AI trước khi phân tích.');
           }
@@ -953,6 +958,15 @@ export function FormLearner({
                 Hệ thống ưu tiên khóa bạn nhập tại đây, sau đó mới dùng `VITE_GEMINI_API_KEY` nếu có sẵn.
                 Nếu không có khóa Gemini hợp lệ thì chức năng AI sẽ không thể chạy.
               </p>
+              <div
+                className={`mt-3 rounded-2xl border px-3 py-2 text-xs font-medium ${
+                  resolvedGeminiApiKey
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-amber-200 bg-amber-50 text-amber-700'
+                }`}
+              >
+                {geminiKeySource}
+              </div>
             </div>
 
             <input
