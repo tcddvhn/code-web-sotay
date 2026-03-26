@@ -883,7 +883,7 @@ export default function App() {
     }
 
     try {
-      const projectIds = Array.from(new Set(projects.map((project) => project.id)));
+      const projectIds = Array.from<string>(new Set(projects.map((project) => project.id)));
 
       for (const projectId of projectIds) {
         await handleDeleteProjectData(projectId);
@@ -1640,7 +1640,7 @@ function DashboardOverview({
 
     return units.map((unit) => {
       const unitRows = rowsForYear.filter((row) => row.unitCode === unit.code);
-      const importedSheets = Array.from(
+      const importedSheets = Array.from<string>(
         new Set(
           unitRows
             .map((row) => templateMap.get(row.templateId)?.sheetName || templateMap.get(row.templateId)?.name || row.templateId),
