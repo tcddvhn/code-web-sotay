@@ -95,6 +95,8 @@ export function FormLearner({
   const [mode, setMode] = useState<Mode>('AI');
   const [file, setFile] = useState<File | null>(null);
   const [manualFile, setManualFile] = useState<File | null>(null);
+  const [aiSheetNames, setAiSheetNames] = useState<string[]>([]);
+  const [selectedAiSheetNames, setSelectedAiSheetNames] = useState<string[]>([]);
   const [isLearning, setIsLearning] = useState(false);
   const [learnedTemplates, setLearnedTemplates] = useState<FormTemplate[]>([]);
   const [confirmedTemplates, setConfirmedTemplates] = useState<Record<string, boolean>>({});
@@ -124,6 +126,43 @@ export function FormLearner({
     : configuredGeminiApiKey
       ? 'Đã có key từ cấu hình hệ thống'
       : 'Chưa có key Gemini trong cấu hình';
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!file) {
+      setAiSheetNames([]);
+      setSelectedAiSheetNames([]);
+      return undefined;
+    }
+
+    file
+      .arrayBuffer()
+      .then((buffer) => {
+        if (isCancelled) {
+          return;
+        }
+
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const nextSheetNames = workbook.SheetNames.filter(Boolean).slice(0, 20);
+        setAiSheetNames(nextSheetNames);
+        setSelectedAiSheetNames((prev) => {
+          const stillValid = prev.filter((sheetName) => nextSheetNames.includes(sheetName));
+          return stillValid.length > 0 ? stillValid : nextSheetNames.slice(0, 1);
+        });
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setAiSheetNames([]);
+          setSelectedAiSheetNames([]);
+          setError('Không thể đọc danh sách sheet từ file mẫu AI.');
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [file]);
 
   useEffect(() => {
     if (!project?.id) {
@@ -159,6 +198,8 @@ export function FormLearner({
   useEffect(() => {
     setFile(null);
     setManualFile(null);
+    setAiSheetNames([]);
+    setSelectedAiSheetNames([]);
     setLearnedTemplates([]);
     setConfirmedTemplates({});
     setHeaderRanges({});
@@ -223,6 +264,12 @@ export function FormLearner({
       setError(null);
       setNotice(null);
     }
+  };
+
+  const toggleAiSheet = (sheetName: string) => {
+    setSelectedAiSheetNames((prev) =>
+      prev.includes(sheetName) ? prev.filter((item) => item !== sheetName) : [...prev, sheetName],
+    );
   };
 
   const buildHeaderLayout = (
@@ -596,6 +643,11 @@ export function FormLearner({
 
   const learnForm = async () => {
     if (!project?.id || !file) return;
+    if (selectedAiSheetNames.length === 0) {
+      setError('Vui lòng chọn ít nhất một sheet để AI học biểu mẫu.');
+      setNotice(null);
+      return;
+    }
     setIsLearning(true);
     setError(null);
     setNotice(null);
@@ -608,9 +660,13 @@ export function FormLearner({
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
-          const sheetNames = workbook.SheetNames.slice(0, 10);
+          const sheetNames = workbook.SheetNames.filter((sheetName) => selectedAiSheetNames.includes(sheetName));
           if (!resolvedGeminiApiKey) {
             throw new Error('Chưa có khóa Gemini. Hãy dán API key Gemini vào ô cấu hình AI trước khi phân tích.');
+          }
+
+          if (sheetNames.length === 0) {
+            throw new Error('Không tìm thấy sheet đã chọn trong file mẫu. Hãy tải lại file và chọn lại sheet.');
           }
 
           const ai = new GoogleGenAI({ apiKey: resolvedGeminiApiKey });
@@ -1058,6 +1114,38 @@ export function FormLearner({
             >
               {file ? file.name : 'Chọn file mẫu'}
             </label>
+
+            {file && aiSheetNames.length > 0 && (
+              <div className="mx-auto mt-6 max-w-xl rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">
+                    Danh sách sheet để AI học
+                  </p>
+                  <span className="text-xs text-[var(--ink-soft)]">
+                    Đã chọn {selectedAiSheetNames.length}/{aiSheetNames.length}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-[var(--ink-soft)]">
+                  AI chỉ phân tích những sheet bạn chọn bên dưới, không tự học toàn bộ workbook nữa.
+                </p>
+                <div className="mt-3 grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1">
+                  {aiSheetNames.map((sheetName) => (
+                    <label
+                      key={sheetName}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-3 py-2 text-sm text-[var(--ink)]"
+                    >
+                      <span className="truncate">{sheetName}</span>
+                      <input
+                        type="checkbox"
+                        checked={selectedAiSheetNames.includes(sheetName)}
+                        onChange={() => toggleAiSheet(sheetName)}
+                        className="theme-checkbox h-4 w-4"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {file && learnedTemplates.length === 0 && !isLearning && (
