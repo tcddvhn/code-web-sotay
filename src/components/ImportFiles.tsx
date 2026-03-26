@@ -20,6 +20,7 @@ export function ImportFiles({
   onDeleteYearData,
   onDeleteProjectData,
   projects,
+  data,
   units,
   selectedProjectId,
   onSelectProject,
@@ -31,6 +32,7 @@ export function ImportFiles({
   onDeleteYearData: (year: string) => Promise<number>;
   onDeleteProjectData: (projectId: string) => Promise<number>;
   projects: Project[];
+  data: Record<string, DataRow[]>;
   units: ManagedUnit[];
   selectedProjectId: string;
   onSelectProject: (projectId: string) => void;
@@ -91,6 +93,18 @@ export function ImportFiles({
     [sortedUnits],
   );
 
+  const importedUnitCodesForProject = useMemo(() => {
+    const codes = new Set<string>();
+    Object.values(data).forEach((rows) => {
+      rows.forEach((row) => {
+        if (row.projectId === selectedProjectId && row.unitCode) {
+          codes.add(row.unitCode);
+        }
+      });
+    });
+    return codes;
+  }, [data, selectedProjectId]);
+
   const appendFiles = (incomingFiles: FileList | File[]) => {
     const nextFiles = Array.from(incomingFiles);
     if (nextFiles.length === 0) {
@@ -135,7 +149,13 @@ export function ImportFiles({
 
   const updateUnitInput = (id: string, value: string) => {
     const normalizedValue = value.trim().toLowerCase();
-    const matchedUnit = sortedUnits.find((unit) => {
+    const takenUnitCodes = new Set(
+      files.filter((item) => item.id !== id).map((item) => item.unitCode).filter(Boolean),
+    );
+    const availableUnitsForCurrentFile = sortedUnits.filter(
+      (unit) => !importedUnitCodesForProject.has(unit.code) && !takenUnitCodes.has(unit.code),
+    );
+    const matchedUnit = availableUnitsForCurrentFile.find((unit) => {
       const matchesName = unit.name.trim().toLowerCase() === normalizedValue;
       const matchesCode = unit.code.trim().toLowerCase() === normalizedValue;
       return matchesName || matchesCode;
@@ -393,7 +413,7 @@ export function ImportFiles({
           <select
             value={selectedProjectId}
             onChange={(event) => onSelectProject(event.target.value)}
-            className="field-input"
+            className="field-input h-11 text-base font-semibold"
           >
             <option value="">-- Chọn dự án --</option>
             {projects.map((project) => (
@@ -411,7 +431,7 @@ export function ImportFiles({
             value={selectedTemplateId}
             onChange={(event) => setSelectedTemplateId(event.target.value)}
             disabled={autoDetectSheets && includeExtraSheets}
-            className="field-input disabled:cursor-not-allowed disabled:opacity-60"
+            className="field-input h-11 text-base font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="">-- Chọn biểu mẫu --</option>
             {publishedTemplates.map((template) => (
@@ -443,7 +463,11 @@ export function ImportFiles({
 
         <div className="panel-card rounded-[24px] p-5">
           <p className="col-header mb-3">3. Năm tổng hợp</p>
-          <select value={selectedYear} onChange={(event) => handleYearChange(event.target.value)} className="field-input">
+          <select
+            value={selectedYear}
+            onChange={(event) => handleYearChange(event.target.value)}
+            className="field-input h-11 text-base font-semibold"
+          >
             {YEARS.map((year) => (
               <option key={year} value={year}>
                 {year}
@@ -463,7 +487,7 @@ export function ImportFiles({
               <select
                 value={selectedUnitToDelete}
                 onChange={(event) => setSelectedUnitToDelete(event.target.value)}
-                className="field-input"
+                className="field-input h-11 text-base font-semibold"
               >
                 <option value="">-- Chọn đơn vị --</option>
                 {sortedUnits.map((unit) => (
@@ -536,12 +560,18 @@ export function ImportFiles({
 
           <div className="space-y-4">
             {files.map((item) => {
+              const takenUnitCodes = new Set(
+                files.filter((fileItem) => fileItem.id !== item.id).map((fileItem) => fileItem.unitCode).filter(Boolean),
+              );
+              const availableUnits = sortedUnits.filter(
+                (unit) => !importedUnitCodesForProject.has(unit.code) && !takenUnitCodes.has(unit.code),
+              );
               const suggestions = item.unitQuery.trim()
-                ? sortedUnits.filter((unit) => {
+                ? availableUnits.filter((unit) => {
                     const keyword = item.unitQuery.trim().toLowerCase();
                     return unit.name.toLowerCase().includes(keyword) || unit.code.toLowerCase().includes(keyword);
                   })
-                : sortedUnits.slice(0, 12);
+                : availableUnits.slice(0, 12);
 
               return (
                 <div key={item.id} className="rounded-[24px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
@@ -568,7 +598,7 @@ export function ImportFiles({
                         value={item.unitQuery}
                         onChange={(event) => updateUnitInput(item.id, event.target.value)}
                         list={`unit-suggestions-${item.id}`}
-                        className="field-input"
+                        className="field-input h-11 text-base font-medium"
                         placeholder="Gõ tên đơn vị để gợi ý"
                       />
                       <datalist id={`unit-suggestions-${item.id}`}>
@@ -583,10 +613,10 @@ export function ImportFiles({
                     <select
                       value={item.unitCode}
                       onChange={(event) => updateUnit(item.id, event.target.value)}
-                      className="field-input"
+                      className="field-input h-11 text-base font-medium"
                     >
                       <option value="">-- Hoặc chọn nhanh đơn vị --</option>
-                      {sortedUnits.map((unit) => (
+                      {availableUnits.map((unit) => (
                         <option key={unit.code} value={unit.code}>
                           {unit.name} ({unit.code})
                         </option>

@@ -1040,6 +1040,7 @@ export default function App() {
             onDeleteYearData={handleDeleteYearData}
             onDeleteProjectData={handleDeleteProjectData}
             projects={projects}
+            data={data}
             units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}

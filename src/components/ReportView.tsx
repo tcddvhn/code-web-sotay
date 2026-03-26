@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
@@ -54,6 +54,10 @@ function sanitizeFileNamePart(value: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9_-]+/g, '_')
     .replace(/^_+|_+$/g, '');
+}
+
+function formatReportValue(value: number) {
+  return value === 0 ? '' : value.toLocaleString('vi-VN');
 }
 
 function buildHeaderRows(layout: HeaderLayout) {
@@ -158,10 +162,10 @@ function buildFlatWorksheetForTemplate(
       });
 
       const rowData: Record<string, string | number> = {
-        'Tiêu chí': sourceRows[0]?.label || `Dòng ${sourceRow}`,
+        'TiÃªu chÃ­': sourceRows[0]?.label || `DÃ²ng ${sourceRow}`,
       };
       values.forEach((value, index) => {
-        rowData[template.columnHeaders[index] || `Cột ${index + 1}`] = value;
+        rowData[template.columnHeaders[index] || `Cá»™t ${index + 1}`] = value === 0 ? '' : value;
       });
 
       return rowData;
@@ -188,6 +192,16 @@ function populateTemplateWorksheet(
       const currentCell = worksheet[address] || {};
       const value = currentRowValues?.[index] ?? 0;
 
+      if (value === 0) {
+        worksheet[address] = {
+          ...currentCell,
+          t: 's',
+          v: '',
+          w: '',
+        };
+        return;
+      }
+
       worksheet[address] = {
         ...currentCell,
         t: 'n',
@@ -209,7 +223,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
   const [templateRows, setTemplateRows] = useState<TemplateRowDefinition[]>([]);
 
   const reportUnitOptions = useMemo(
-    () => [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...units],
+    () => [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Äáº£ng bá»™ ThÃ nh phá»‘' }, ...units],
     [units],
   );
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
@@ -224,7 +238,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     }
 
     const fallbackCount = selectedTemplate.columnMapping?.dataColumns?.length || 0;
-    return Array.from({ length: fallbackCount }, (_, index) => `Cột ${index + 1}`);
+    return Array.from({ length: fallbackCount }, (_, index) => `Cá»™t ${index + 1}`);
   }, [selectedTemplate]);
 
   useEffect(() => {
@@ -258,7 +272,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         setTemplateRows(nextTemplateRows);
       })
       .catch((error) => {
-        console.error('Không thể tải cấu trúc biểu mẫu báo cáo:', error);
+        console.error('KhÃ´ng thá»ƒ táº£i cáº¥u trÃºc biá»ƒu máº«u bÃ¡o cÃ¡o:', error);
         if (!isCancelled) {
           setResolvedHeaderLayout(selectedTemplate.headerLayout || null);
           setTemplateRows([]);
@@ -326,7 +340,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
               const sourceRow = selectedTemplate.columnMapping.startRow + index;
               return {
                 sourceRow,
-                label: labelsBySourceRow.get(sourceRow) || `Dòng ${sourceRow}`,
+                label: labelsBySourceRow.get(sourceRow) || `DÃ²ng ${sourceRow}`,
               };
             },
           );
@@ -338,7 +352,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         const rowEntries = rowsBySourceRow.get(definition.sourceRow) || [];
         const values = new Array(dataColumnCount).fill(0);
         const detailMaps = Array.from({ length: dataColumnCount }, () => new Map<string, CellDetailItem>());
-        const label = labelsBySourceRow.get(definition.sourceRow) || definition.label || `Dòng ${definition.sourceRow}`;
+        const label = labelsBySourceRow.get(definition.sourceRow) || definition.label || `DÃ²ng ${definition.sourceRow}`;
 
         rowEntries.forEach((row) => {
           const unitName = units.find((unit) => unit.code === row.unitCode)?.name || row.unitCode;
@@ -369,7 +383,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         };
       })
       .filter((row) => {
-        const hasMeaningfulLabel = row.label.trim() !== '' && !/^Dòng\s+\d+$/i.test(row.label.trim());
+        const hasMeaningfulLabel = row.label.trim() !== '' && !/^DÃ²ng\s+\d+$/i.test(row.label.trim());
         const hasData = row.details.some((items) => items.length > 0);
         const matchesSearch = normalizedSearchTerm === '' || row.label.toLowerCase().includes(normalizedSearchTerm);
 
@@ -421,7 +435,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
             continue;
           }
         } catch (error) {
-          console.error(`Không thể đọc workbook mẫu của biểu ${template.name}:`, error);
+          console.error(`KhÃ´ng thá»ƒ Ä‘á»c workbook máº«u cá»§a biá»ƒu ${template.name}:`, error);
         }
 
         const fallbackWorksheet = buildFlatWorksheetForTemplate(data, template, selectedYear, selectedUnitCode);
@@ -492,7 +506,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
       });
     } catch (error) {
       console.error('Export upload error:', error);
-      alert('Xuất file thành công nhưng chưa lưu được báo cáo trên Supabase Storage. Vui lòng kiểm tra đăng nhập hoặc quyền bucket uploads.');
+      alert('Xuáº¥t file thÃ nh cÃ´ng nhÆ°ng chÆ°a lÆ°u Ä‘Æ°á»£c bÃ¡o cÃ¡o trÃªn Supabase Storage. Vui lÃ²ng kiá»ƒm tra Ä‘Äƒng nháº­p hoáº·c quyá»n bucket uploads.');
     }
   };
 
@@ -513,7 +527,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
 
     const { workbook, usedTemplateWorkbook } = await buildWorkbookForTemplates([selectedTemplate]);
     if (!usedTemplateWorkbook) {
-      alert('Không đọc được workbook mẫu cho biểu này. Hệ thống sẽ xuất theo bảng tổng hợp hiện tại.');
+      alert('KhÃ´ng Ä‘á»c Ä‘Æ°á»£c workbook máº«u cho biá»ƒu nÃ y. Há»‡ thá»‘ng sáº½ xuáº¥t theo báº£ng tá»•ng há»£p hiá»‡n táº¡i.');
     }
 
     XLSX.writeFile(workbook, fileName);
@@ -538,18 +552,18 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
 
     const { workbook, usedTemplateWorkbook } = await buildWorkbookForTemplates(projectTemplates);
     if (!usedTemplateWorkbook) {
-      alert('Không đọc được workbook mẫu của dự án. Hệ thống sẽ xuất toàn bộ biểu theo bảng tổng hợp đơn giản.');
+      alert('KhÃ´ng Ä‘á»c Ä‘Æ°á»£c workbook máº«u cá»§a dá»± Ã¡n. Há»‡ thá»‘ng sáº½ xuáº¥t toÃ n bá»™ biá»ƒu theo báº£ng tá»•ng há»£p Ä‘Æ¡n giáº£n.');
     }
 
     XLSX.writeFile(workbook, fileName);
-    await persistExportRecord(workbook, fileName, 'ALL', 'Tất cả biểu');
+    await persistExportRecord(workbook, fileName, 'ALL', 'Táº¥t cáº£ biá»ƒu');
   };
 
   const openCellDetail = (row: AggregatedReportRow, columnIndex: number) => {
     setDetailSortOrder('desc');
     setActiveCellDetail({
       rowLabel: row.label,
-      columnLabel: columnHeaders[columnIndex] || `Cột ${columnIndex + 1}`,
+      columnLabel: columnHeaders[columnIndex] || `Cá»™t ${columnIndex + 1}`,
       totalValue: row.values[columnIndex] || 0,
       items: row.details[columnIndex] || [],
     });
@@ -559,8 +573,8 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     <div className="p-6 md:p-8">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="page-title">Báo cáo tổng hợp</h2>
-          <p className="page-subtitle mt-2 text-sm">Truy xuất dữ liệu theo đúng biểu mẫu, dự án, năm và đơn vị.</p>
+          <h2 className="page-title">BÃ¡o cÃ¡o tá»•ng há»£p</h2>
+          <p className="page-subtitle mt-2 text-sm">Truy xuáº¥t dá»¯ liá»‡u theo Ä‘Ãºng biá»ƒu máº«u, dá»± Ã¡n, nÄƒm vÃ  Ä‘Æ¡n vá»‹.</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
@@ -569,7 +583,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
             className="secondary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Download size={16} />
-            Xuất toàn bộ biểu
+            Xuáº¥t toÃ n bá»™ biá»ƒu
           </button>
           <button
             onClick={exportToExcel}
@@ -577,14 +591,14 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
             className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Download size={16} />
-            Xuất biểu đang chọn
+            Xuáº¥t biá»ƒu Ä‘ang chá»n
           </button>
         </div>
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">1. Chọn dự án</label>
+          <label className="col-header mb-2 block">1. Chá»n dá»± Ã¡n</label>
           <select
             value={selectedProjectId}
             onChange={(event) => onSelectProject(event.target.value)}
@@ -599,7 +613,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         </div>
 
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">2. Chọn năm</label>
+          <label className="col-header mb-2 block">2. Chá»n nÄƒm</label>
           <select
             value={selectedYear}
             onChange={(event) => setSelectedYear(event.target.value)}
@@ -614,7 +628,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         </div>
 
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">3. Chọn đơn vị</label>
+          <label className="col-header mb-2 block">3. Chá»n Ä‘Æ¡n vá»‹</label>
           <select
             value={selectedUnitCode}
             onChange={(event) => setSelectedUnitCode(event.target.value)}
@@ -629,12 +643,12 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         </div>
 
         <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">4. Tìm kiếm tiêu chí</label>
+          <label className="col-header mb-2 block">4. TÃ¬m kiáº¿m tiÃªu chÃ­</label>
           <div className="flex items-center gap-2 border-b border-[var(--line-strong)] py-2">
             <Search size={16} className="text-[var(--ink-soft)]" />
             <input
               type="text"
-              placeholder="Tên tiêu chí..."
+              placeholder="TÃªn tiÃªu chÃ­..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="w-full bg-transparent text-sm font-medium focus:outline-none"
@@ -671,7 +685,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
 
       {!selectedTemplate ? (
         <div className="panel-card rounded-[24px] p-10 text-center opacity-60">
-          Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
+          ChÆ°a chá»n biá»ƒu máº«u. Vui lÃ²ng chá»n dá»± Ã¡n vÃ  biá»ƒu máº«u Ä‘á»ƒ hiá»ƒn thá»‹ bÃ¡o cÃ¡o.
         </div>
       ) : (
         <div className="table-shell overflow-hidden rounded-[24px]">
@@ -700,7 +714,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                 ) : (
                   <tr>
                     <th className="sticky left-0 z-10 min-w-[220px] max-w-[280px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-3 py-2 text-[15px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal">
-                      Tiêu chí
+                      TiÃªu chÃ­
                     </th>
                     {columnHeaders.map((header, index) => (
                       <th
@@ -717,7 +731,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                 {aggregatedRows.length > 0 ? (
                   aggregatedRows.map((row) => (
                     <tr key={row.key} className="border-b border-[var(--line)] bg-white hover:bg-[var(--surface-alt)]">
-                      <td className="sticky left-0 z-10 border-r border-[var(--line)] bg-white px-3 py-2 text-[11px] font-medium leading-snug text-[var(--ink)]">
+                      <td className="sticky left-0 z-10 border-r border-[var(--line)] bg-white px-3 py-2 text-[14px] font-semibold leading-snug text-[var(--ink)]">
                         {row.label}
                       </td>
                       {row.values.map((value, index) => (
@@ -726,9 +740,9 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                             type="button"
                             onClick={() => openCellDetail(row, index)}
                             className="h-full min-w-[72px] w-full px-2 py-2 text-center text-[11px] font-mono leading-none text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
-                            title="Xem chi tiết theo đơn vị"
+                            title="Xem chi tiáº¿t theo Ä‘Æ¡n vá»‹"
                           >
-                            {value.toLocaleString('vi-VN')}
+                            {formatReportValue(value)}
                           </button>
                         </td>
                       ))}
@@ -737,7 +751,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                 ) : (
                   <tr>
                     <td colSpan={tableColSpan} className="p-12 text-center italic opacity-40">
-                      Không tìm thấy dữ liệu cho tiêu chí này.
+                      KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u cho tiÃªu chÃ­ nÃ y.
                     </td>
                   </tr>
                 )}
@@ -753,24 +767,24 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
             <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5">
               <div>
                 <div className="surface-tag">{activeCellDetail.columnLabel}</div>
-                <h3 className="section-title mt-3">Chi tiết đơn vị theo ô dữ liệu</h3>
+                <h3 className="section-title mt-3">Chi tiáº¿t Ä‘Æ¡n vá»‹ theo Ã´ dá»¯ liá»‡u</h3>
                 <p className="page-subtitle mt-2 text-sm">{activeCellDetail.rowLabel}</p>
                 <p className="mt-3 text-sm font-semibold text-[var(--primary-dark)]">
-                  Tổng cộng: {activeCellDetail.totalValue.toLocaleString('vi-VN')}
+                  Tá»•ng cá»™ng: {activeCellDetail.totalValue.toLocaleString('vi-VN')}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
                 <div className="panel-soft rounded-full px-3 py-2">
                   <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--ink-soft)]">
-                    Sắp xếp giá trị
+                    Sáº¯p xáº¿p giÃ¡ trá»‹
                   </label>
                   <select
                     value={detailSortOrder}
                     onChange={(event) => setDetailSortOrder(event.target.value as DetailSortOrder)}
                     className="mt-1 w-full bg-transparent text-xs font-semibold text-[var(--ink)] focus:outline-none"
                   >
-                    <option value="desc">Giảm dần</option>
-                    <option value="asc">Tăng dần</option>
+                    <option value="desc">Giáº£m dáº§n</option>
+                    <option value="asc">TÄƒng dáº§n</option>
                   </select>
                 </div>
                 <button
@@ -779,7 +793,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                   className="secondary-btn flex items-center gap-2"
                 >
                   <X size={16} />
-                  Đóng
+                  ÄÃ³ng
                 </button>
               </div>
             </div>
@@ -799,7 +813,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                         </p>
                       </div>
                       <div className="text-left md:text-right">
-                        <p className="col-header mb-1">Giá trị</p>
+                        <p className="col-header mb-1">GiÃ¡ trá»‹</p>
                         <p className="data-value text-lg font-bold text-[var(--primary-dark)]">
                           {item.value.toLocaleString('vi-VN')}
                         </p>
@@ -809,7 +823,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                 </div>
               ) : (
                 <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-soft)]">
-                  Không có đơn vị nào đóng góp dữ liệu cho ô này.
+                  KhÃ´ng cÃ³ Ä‘Æ¡n vá»‹ nÃ o Ä‘Ã³ng gÃ³p dá»¯ liá»‡u cho Ã´ nÃ y.
                 </div>
               )}
             </div>
@@ -819,3 +833,4 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     </div>
   );
 }
+
