@@ -13,6 +13,7 @@ type Mode = 'AI' | 'MANUAL';
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
 const STORAGE_OPERATION_TIMEOUT_MS = 25000;
+const MAX_AI_SHEETS_PER_RUN = 3;
 const DEFAULT_MANUAL_FORM = {
   name: '',
   sheetName: '',
@@ -267,9 +268,36 @@ export function FormLearner({
   };
 
   const toggleAiSheet = (sheetName: string) => {
-    setSelectedAiSheetNames((prev) =>
-      prev.includes(sheetName) ? prev.filter((item) => item !== sheetName) : [...prev, sheetName],
-    );
+    setSelectedAiSheetNames((prev) => {
+      if (prev.includes(sheetName)) {
+        return prev.filter((item) => item !== sheetName);
+      }
+
+      if (prev.length >= MAX_AI_SHEETS_PER_RUN) {
+        setError(`Mỗi lần AI chỉ nên học tối đa ${MAX_AI_SHEETS_PER_RUN} sheet để tránh vượt quota Gemini.`);
+        setNotice(null);
+        return prev;
+      }
+
+      setError(null);
+      return [...prev, sheetName];
+    });
+  };
+
+  const selectAllAiSheets = () => {
+    const limitedSheets = aiSheetNames.slice(0, MAX_AI_SHEETS_PER_RUN);
+    setSelectedAiSheetNames(limitedSheets);
+    if (aiSheetNames.length > MAX_AI_SHEETS_PER_RUN) {
+      setError(`Hệ thống chỉ chọn ${MAX_AI_SHEETS_PER_RUN} sheet đầu tiên để tránh vượt quota Gemini.`);
+      setNotice(null);
+      return;
+    }
+    setError(null);
+  };
+
+  const clearAllAiSheets = () => {
+    setSelectedAiSheetNames([]);
+    setError(null);
   };
 
   const buildHeaderLayout = (
@@ -645,6 +673,11 @@ export function FormLearner({
     if (!project?.id || !file) return;
     if (selectedAiSheetNames.length === 0) {
       setError('Vui lòng chọn ít nhất một sheet để AI học biểu mẫu.');
+      setNotice(null);
+      return;
+    }
+    if (selectedAiSheetNames.length > MAX_AI_SHEETS_PER_RUN) {
+      setError(`Mỗi lần AI chỉ hỗ trợ tối đa ${MAX_AI_SHEETS_PER_RUN} sheet để tránh vượt quota Gemini.`);
       setNotice(null);
       return;
     }
@@ -1126,8 +1159,16 @@ export function FormLearner({
                   </span>
                 </div>
                 <p className="mt-2 text-xs text-[var(--ink-soft)]">
-                  AI chỉ phân tích những sheet bạn chọn bên dưới, không tự học toàn bộ workbook nữa.
+                  AI chỉ phân tích những sheet bạn chọn bên dưới, không tự học toàn bộ workbook nữa. Mỗi lần chỉ nên học tối đa {MAX_AI_SHEETS_PER_RUN} sheet.
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={selectAllAiSheets} className="secondary-btn">
+                    Chọn tối đa {MAX_AI_SHEETS_PER_RUN} sheet đầu
+                  </button>
+                  <button type="button" onClick={clearAllAiSheets} className="secondary-btn">
+                    Bỏ chọn tất cả
+                  </button>
+                </div>
                 <div className="mt-3 grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1">
                   {aiSheetNames.map((sheetName) => (
                     <label
