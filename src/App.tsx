@@ -118,9 +118,22 @@ export default function App() {
 
   const isAuthenticated = useMemo(() => !!user, [user]);
   const assignmentUsers = useMemo(() => buildAssignmentUsers(users), [users]);
+  const effectiveUserProfile = useMemo<UserProfile | null>(() => {
+    if (!user) {
+      return null;
+    }
+
+    const allowedAccount = getAllowedAccount(user.email);
+    return {
+      id: user.uid,
+      email: user.email,
+      displayName: userProfile?.displayName || allowedAccount?.displayName || user.displayName || null,
+      role: userProfile?.role || allowedAccount?.role || 'contributor',
+    };
+  }, [user, userProfile]);
   const isAdmin = useMemo(
-    () => userProfile?.role === 'admin' || isAdminEmail(user?.email),
-    [userProfile, user],
+    () => effectiveUserProfile?.role === 'admin' || isAdminEmail(user?.email),
+    [effectiveUserProfile, user],
   );
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
@@ -175,29 +188,42 @@ export default function App() {
 
     const userRef = doc(db, 'users', user.uid);
     let cancelled = false;
+    const account = getAllowedAccount(user.email);
+    const fallbackProfile: UserProfile = {
+      id: user.uid,
+      email: user.email,
+      displayName: account?.displayName || user.displayName,
+      role: account?.role || 'contributor',
+    };
 
-    getDoc(userRef).then((snap) => {
-      if (cancelled) return;
-      if (!snap.exists()) {
-        const account = getAllowedAccount(user.email);
-        const profile: UserProfile = {
-          id: user.uid,
-          email: user.email,
-          displayName: account?.displayName || user.displayName,
-          role: account?.role || 'contributor',
-        };
-        setDoc(userRef, profile, { merge: true });
-      } else {
+    setUserProfile((current) => current || fallbackProfile);
+
+    getDoc(userRef)
+      .then(async (snap) => {
+        if (cancelled) return;
+        if (!snap.exists()) {
+          await setDoc(userRef, fallbackProfile, { merge: true });
+          return;
+        }
+
         const existing = snap.data() as UserProfile;
-        const account = getAllowedAccount(user.email);
-        if (account?.displayName && existing.displayName !== account.displayName) {
-          setDoc(userRef, { displayName: account.displayName }, { merge: true });
+        const updates: Partial<UserProfile> = {};
+
+        if (fallbackProfile.displayName && existing.displayName !== fallbackProfile.displayName) {
+          updates.displayName = fallbackProfile.displayName;
         }
-        if (account?.role === 'admin' && existing.role !== 'admin') {
-          setDoc(userRef, { role: 'admin' }, { merge: true });
+
+        if (fallbackProfile.role && existing.role !== fallbackProfile.role) {
+          updates.role = fallbackProfile.role;
         }
-      }
-    });
+
+        if (Object.keys(updates).length > 0) {
+          await setDoc(userRef, updates, { merge: true });
+        }
+      })
+      .catch((error) => {
+        console.error('User profile sync error:', error);
+      });
 
     const unsubscribe = onSnapshot(
       userRef,
@@ -411,7 +437,7 @@ export default function App() {
           updatedBy: {
             uid: user?.uid,
             email: user?.email,
-            displayName: user?.displayName,
+            displayName: effectiveUserProfile?.displayName || user?.displayName,
           },
         });
       });
@@ -783,7 +809,7 @@ export default function App() {
         deletedBy: {
           uid: user?.uid,
           email: user?.email,
-          displayName: userProfile?.displayName || user?.displayName,
+          displayName: effectiveUserProfile?.displayName || userProfile?.displayName || user?.displayName,
         },
       },
       { merge: true },
@@ -942,7 +968,7 @@ export default function App() {
             isAdmin={isAdmin}
             assignmentUsers={assignmentUsers}
             assignments={assignments}
-            currentUser={userProfile}
+            currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
           />
         );
@@ -966,7 +992,7 @@ export default function App() {
             isAdmin={isAdmin}
             assignmentUsers={assignmentUsers}
             assignments={assignments}
-            currentUser={userProfile}
+            currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
           />
         );
@@ -989,7 +1015,7 @@ export default function App() {
             isAdmin={isAdmin}
             assignmentUsers={assignmentUsers}
             assignments={assignments}
-            currentUser={userProfile}
+            currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
           />
         );
@@ -1018,7 +1044,7 @@ export default function App() {
             isAdmin={isAdmin}
             assignmentUsers={assignmentUsers}
             assignments={assignments}
-            currentUser={userProfile}
+            currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
           />
         );
@@ -1046,7 +1072,7 @@ export default function App() {
               isAdmin={isAdmin}
               assignmentUsers={assignmentUsers}
               assignments={assignments}
-              currentUser={userProfile}
+              currentUser={effectiveUserProfile}
               onSaveAssignments={handleSaveAssignments}
             />
           );
@@ -1179,7 +1205,7 @@ export default function App() {
         isAdmin={isAdmin}
         onLogout={handleLogout}
         user={user}
-        userProfile={userProfile}
+        userProfile={effectiveUserProfile}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         isMobile={isMobile}

@@ -21,14 +21,28 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && isAllowedEmail() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
           request.auth.token.email == "admin@sotay.com");
     }
 
     function isContributor() {
       return isAuthenticated() && isAllowedEmail() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'contributor'] ||
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'contributor']) ||
           request.auth.token.email == "admin@sotay.com");
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.id == userId &&
+             data.email is string &&
+             data.email == request.auth.token.email &&
+             (!('displayName' in data) || data.displayName is string || data.displayName == null) &&
+             data.role in ['admin', 'contributor'] &&
+             (
+               (request.auth.token.email == "admin@sotay.com" && data.role == 'admin') ||
+               (request.auth.token.email != "admin@sotay.com" && data.role == 'contributor')
+             );
     }
 
     function isValidDataRow(data) {
@@ -118,8 +132,9 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update, delete: if isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUserProfile(request.resource.data, userId);
+      allow update: if (isAuthenticated() && request.auth.uid == userId && isValidUserProfile(request.resource.data, userId)) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /assignments/{assignmentId} {
