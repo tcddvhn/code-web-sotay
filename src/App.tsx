@@ -14,7 +14,6 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { deleteObject, ref } from 'firebase/storage';
 import {
   Activity,
   CheckCircle2,
@@ -34,7 +33,8 @@ import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
-import { auth, db, handleFirestoreError, loginWithEmail, loginWithGoogle, logout, OperationType, signUpWithEmail, storage } from './firebase';
+import { auth, db, handleFirestoreError, loginWithEmail, logout, OperationType, signUpWithEmail } from './firebase';
+import { deleteFileByPath, loginWithSupabaseEmail, logoutSupabase, signUpWithSupabaseEmail } from './supabase';
 import { AppSettings, ConsolidatedData, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAllowedAccount, getAssignmentKey, isAdminEmail, isAllowedEmail } from './access';
@@ -472,7 +472,7 @@ export default function App() {
         const data = docSnap.data() as any;
         if (data?.storagePath) {
           try {
-            await deleteObject(ref(storage, data.storagePath));
+            await deleteFileByPath(data.storagePath);
           } catch (err) {
             // ignore
           }
@@ -499,7 +499,7 @@ export default function App() {
         const data = docSnap.data() as any;
         if (data?.storagePath) {
           try {
-            await deleteObject(ref(storage, data.storagePath));
+            await deleteFileByPath(data.storagePath);
           } catch (err) {
             // ignore
           }
@@ -592,7 +592,7 @@ export default function App() {
 
         if (otherTemplatesUsingWorkbook.length === 0) {
           try {
-            await deleteObject(ref(storage, template.sourceWorkbookPath));
+            await deleteFileByPath(template.sourceWorkbookPath);
           } catch (error) {
             // ignore workbook cleanup errors
           }
@@ -899,12 +899,7 @@ export default function App() {
   };
 
   const handleLogin = async () => {
-    try {
-      await loginWithGoogle();
-      setCurrentView('DASHBOARD');
-    } catch (error) {
-      console.error('Login error:', error);
-    }
+    throw new Error('Đăng nhập Google hiện không dùng cho luồng Supabase Storage. Vui lòng đăng nhập bằng email/mật khẩu.');
   };
 
   const handleEmailLogin = async (email: string, password: string) => {
@@ -913,9 +908,15 @@ export default function App() {
         throw new Error('Email chưa được cấp quyền.');
       }
       await loginWithEmail(email, password);
+      await loginWithSupabaseEmail(email, password);
       setCurrentView('DASHBOARD');
     } catch (error) {
       console.error('Email login error:', error);
+      try {
+        await logout();
+      } catch {
+        // ignore cleanup errors
+      }
       throw error;
     }
   };
@@ -926,9 +927,16 @@ export default function App() {
         throw new Error('Email chưa được cấp quyền.');
       }
       await signUpWithEmail(email, password);
+      await signUpWithSupabaseEmail(email, password);
+      await loginWithSupabaseEmail(email, password);
       setCurrentView('DASHBOARD');
     } catch (error) {
       console.error('Email signup error:', error);
+      try {
+        await logout();
+      } catch {
+        // ignore cleanup errors
+      }
       throw error;
     }
   };
@@ -936,6 +944,11 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await logout();
+      try {
+        await logoutSupabase();
+      } catch (supabaseError) {
+        console.error('Supabase logout error:', supabaseError);
+      }
       setCurrentView('DASHBOARD');
     } catch (error) {
       console.error('Logout error:', error);
@@ -1495,6 +1508,15 @@ function LoginView({
     }
   };
 
+  const submitGoogleLogin = async () => {
+    setError(null);
+    try {
+      await onLogin();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể đăng nhập với Google.');
+    }
+  };
+
   return (
     <div className="h-full flex items-center justify-center p-6 md:p-8">
       <div className="panel-card w-full max-w-md rounded-[28px] p-8 md:p-12 text-center">
@@ -1530,7 +1552,7 @@ function LoginView({
             </button>
           </div>
 
-          <button onClick={onLogin} className="primary-btn flex w-full items-center justify-center gap-3">
+          <button onClick={submitGoogleLogin} className="secondary-btn flex w-full items-center justify-center gap-3">
             <LogIn size={18} />
             Đăng nhập với Google
           </button>

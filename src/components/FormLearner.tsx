@@ -2,9 +2,9 @@
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { AlertCircle, Brain, CheckCircle, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock } from 'lucide-react';
-import { db, handleFirestoreError, OperationType, storage } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { uploadFile } from '../supabase';
 import { FormTemplate, HeaderLayout, Project } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
 import { expandColumnSelection } from '../utils/workbookUtils';
@@ -12,7 +12,6 @@ import { expandColumnSelection } from '../utils/workbookUtils';
 type Mode = 'AI' | 'MANUAL';
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
-const TEMPLATE_STORAGE_FOLDER = 'project_templates';
 const STORAGE_OPERATION_TIMEOUT_MS = 25000;
 const DEFAULT_MANUAL_FORM = {
   name: '',
@@ -30,10 +29,6 @@ const DEFAULT_MANUAL_FORM = {
 
 function buildTemplateId() {
   return `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function sanitizeStorageFileName(fileName: string) {
-  return fileName.replace(/[^a-zA-Z0-9._-]+/g, '_');
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
@@ -287,25 +282,20 @@ export function FormLearner({
       throw new Error('Vui lòng chọn dự án trước khi lưu biểu mẫu.');
     }
 
-    const storagePath = `${TEMPLATE_STORAGE_FOLDER}/${project.id}/${Date.now()}_${sanitizeStorageFileName(sourceFile.name)}`;
-    const storageRef = ref(storage, storagePath);
-
-    await withTimeout(
-      uploadBytes(storageRef, sourceFile, {
+    const uploadResult = await withTimeout(
+      uploadFile(sourceFile, {
+        folder: `project_templates/${project.id}`,
+        fileName: sourceFile.name,
         contentType: sourceFile.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       }),
       STORAGE_OPERATION_TIMEOUT_MS,
-      'Quá thời gian tải file mẫu lên Firebase Storage. Hãy kiểm tra Storage rules hoặc kết nối mạng.',
+      'Quá thời gian tải file mẫu lên Supabase Storage. Hãy kiểm tra đăng nhập hoặc kết nối mạng.',
     );
 
     return {
       sourceWorkbookName: sourceFile.name,
-      sourceWorkbookPath: storagePath,
-      sourceWorkbookUrl: await withTimeout(
-        getDownloadURL(storageRef),
-        STORAGE_OPERATION_TIMEOUT_MS,
-        'Không lấy được đường dẫn file mẫu từ Firebase Storage. Hãy kiểm tra Storage rules.',
-      ),
+      sourceWorkbookPath: uploadResult.path,
+      sourceWorkbookUrl: uploadResult.publicUrl,
     };
   };
 
@@ -561,7 +551,7 @@ export function FormLearner({
       setError(
         error instanceof Error
           ? error.message
-          : 'Không thể gắn lại file mẫu gốc cho biểu. Hãy kiểm tra Firebase Storage.',
+          : 'Không thể gắn lại file mẫu gốc cho biểu. Hãy kiểm tra Supabase Storage.',
       );
     } finally {
       setAttachingTemplateId(null);
@@ -720,7 +710,7 @@ export function FormLearner({
           storageWarning =
             storageError instanceof Error
               ? storageError.message
-              : 'Không thể tải file mẫu lên Firebase Storage.';
+              : 'Không thể tải file mẫu lên Supabase Storage.';
         }
       }
 
@@ -742,7 +732,7 @@ export function FormLearner({
       setError(null);
       setNotice(
         storageWarning
-          ? `Đã lưu ${templatesWithLayout.length} biểu mẫu ở trạng thái nháp, nhưng chưa tải được file mẫu gốc lên Firebase Storage. Hệ thống vẫn lưu cấu hình biểu mẫu để bạn tiếp tục dùng. Chi tiết: ${storageWarning}`
+          ? `Đã lưu ${templatesWithLayout.length} biểu mẫu ở trạng thái nháp, nhưng chưa tải được file mẫu gốc lên Supabase Storage. Hệ thống vẫn lưu cấu hình biểu mẫu để bạn tiếp tục dùng. Chi tiết: ${storageWarning}`
           : `Đã lưu ${templatesWithLayout.length} biểu mẫu ở trạng thái nháp. Bạn có thể xem trước trong Báo cáo và chốt từng biểu khi sẵn sàng tiếp nhận dữ liệu.`,
       );
     } catch (err) {

@@ -3,10 +3,10 @@ import * as XLSX from 'xlsx';
 import { Download, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project } from '../types';
-import { auth, db, storage } from '../firebase';
+import { auth, db } from '../firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { getPreferredReportingYear } from '../utils/reportingYear';
+import { uploadFile } from '../supabase';
 import { loadTemplateWorkbook, resolveTemplateHeaderLayout, resolveTemplateRowLabels } from '../utils/templateWorkbook';
 
 interface ReportViewProps {
@@ -464,10 +464,11 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
-      const storagePath = `report_exports/${selectedProjectId}/${Date.now()}_${templateId}_${selectedUnitOption.code}.xlsx`;
-      const storageRef = ref(storage, storagePath);
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
+      const uploadResult = await uploadFile(blob, {
+        folder: `report_exports/${selectedProjectId}`,
+        fileName: `${templateId}_${selectedUnitOption.code}.xlsx`,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
       const user = auth.currentUser;
 
       await addDoc(collection(db, 'report_exports'), {
@@ -478,8 +479,8 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         unitName: selectedUnitOption.name,
         year: selectedYear,
         fileName,
-        storagePath,
-        downloadURL,
+        storagePath: uploadResult.path,
+        downloadURL: uploadResult.publicUrl,
         createdAt: serverTimestamp(),
         createdBy: user
           ? {
@@ -491,7 +492,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
       });
     } catch (error) {
       console.error('Export upload error:', error);
-      alert('Xuất file thành công nhưng chưa lưu được báo cáo trên hệ thống. Vui lòng kiểm tra quyền Storage.');
+      alert('Xuất file thành công nhưng chưa lưu được báo cáo trên Supabase Storage. Vui lòng kiểm tra đăng nhập hoặc quyền bucket uploads.');
     }
   };
 

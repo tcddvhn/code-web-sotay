@@ -1,15 +1,12 @@
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
   signOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import type { FirebaseOptions } from 'firebase/app';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 const defaultFirebaseConfig = {
   projectId: 'gen-lang-client-0167602527',
@@ -17,7 +14,6 @@ const defaultFirebaseConfig = {
   apiKey: 'AIzaSyBH68EBlVOiQo0kYWCceghZoUkhnKE9rjM',
   authDomain: 'gen-lang-client-0167602527.firebaseapp.com',
   firestoreDatabaseId: 'ai-studio-e4eac8ea-cbf9-4af3-a0ba-840494e3f78a',
-  storageBucket: 'gen-lang-client-0167602527.firebasestorage.app',
   messagingSenderId: '884763283838',
   measurementId: '',
 };
@@ -28,7 +24,6 @@ const envFirebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
@@ -43,8 +38,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig as FirebaseOptions);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const storage = getStorage(app);
-export const googleProvider = new GoogleAuthProvider();
 
 // Operation Types for Error Handling
 export enum OperationType {
@@ -110,7 +103,6 @@ async function testConnection() {
 }
 testConnection();
 
-export const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const loginWithEmail = (email: string, password: string) => signInWithEmailAndPassword(auth, email, password);
 export const signUpWithEmail = (email: string, password: string) => createUserWithEmailAndPassword(auth, email, password);
 export const logout = () => signOut(auth);
