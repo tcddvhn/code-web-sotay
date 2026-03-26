@@ -1321,13 +1321,13 @@ function SystemSettingsUnitsPanel({
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div>
           <p className="col-header mb-3">Đơn vị đang sử dụng</p>
-          <div className="max-h-[360px] space-y-2 overflow-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+          <div className="max-h-[420px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
             {activeUnits.map((unit) => (
               <div
                 key={unit.code}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3"
+                className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 lg:grid-cols-[minmax(0,1fr)_128px]"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 space-y-2">
                   {editingUnitCode === unit.code ? (
                     <input
                       value={editingUnitName}
@@ -1336,24 +1336,24 @@ function SystemSettingsUnitsPanel({
                       placeholder="Nhập tên đơn vị"
                     />
                   ) : (
-                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                    <p className="break-words text-sm font-semibold leading-5 text-[var(--ink)]">{unit.name}</p>
                   )}
                   <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
                 </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
+                <div className="flex shrink-0 flex-col gap-2 self-start lg:w-[128px]">
                   {editingUnitCode === unit.code ? (
                     <>
                       <button
                         onClick={() => saveEditedUnit(unit)}
                         disabled={isSubmitting || !editingUnitName.trim()}
-                        className="primary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Lưu tên
                       </button>
                       <button
                         onClick={cancelEditUnit}
                         disabled={isSubmitting}
-                        className="secondary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Hủy
                       </button>
@@ -1363,14 +1363,14 @@ function SystemSettingsUnitsPanel({
                       <button
                         onClick={() => beginEditUnit(unit)}
                         disabled={isSubmitting}
-                        className="secondary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Đổi tên
                       </button>
                       <button
                         onClick={() => deleteUnit(unit)}
                         disabled={isSubmitting}
-                        className="secondary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Xóa mềm
                       </button>
@@ -1384,21 +1384,21 @@ function SystemSettingsUnitsPanel({
 
         <div>
           <p className="col-header mb-3">Đơn vị đã xóa mềm</p>
-          <div className="max-h-[360px] space-y-2 overflow-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+          <div className="max-h-[420px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
             {deletedUnits.length > 0 ? (
               deletedUnits.map((unit) => (
                 <div
                   key={unit.code}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3"
+                  className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 lg:grid-cols-[minmax(0,1fr)_128px]"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                    <p className="break-words text-sm font-semibold leading-5 text-[var(--ink)]">{unit.name}</p>
                     <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
                   </div>
                   <button
                     onClick={() => restoreUnit(unit)}
                     disabled={isSubmitting}
-                    className="secondary-btn px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="secondary-btn w-full self-start px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40 lg:w-[128px]"
                   >
                     Khôi phục
                   </button>

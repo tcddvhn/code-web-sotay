@@ -13,6 +13,7 @@ type Mode = 'AI' | 'MANUAL';
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
 const TEMPLATE_STORAGE_FOLDER = 'project_templates';
+const STORAGE_OPERATION_TIMEOUT_MS = 25000;
 const DEFAULT_MANUAL_FORM = {
   name: '',
   sheetName: '',
@@ -33,6 +34,24 @@ function buildTemplateId() {
 
 function sanitizeStorageFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]+/g, '_');
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
 }
 
 export function FormLearner({
@@ -64,6 +83,8 @@ export function FormLearner({
   const [manualSheetNames, setManualSheetNames] = useState<string[]>([]);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [isCreatingManual, setIsCreatingManual] = useState(false);
+  const [isSavingTemplates, setIsSavingTemplates] = useState(false);
+  const [saveProgressLabel, setSaveProgressLabel] = useState<string | null>(null);
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -267,14 +288,22 @@ export function FormLearner({
     const storagePath = `${TEMPLATE_STORAGE_FOLDER}/${project.id}/${Date.now()}_${sanitizeStorageFileName(sourceFile.name)}`;
     const storageRef = ref(storage, storagePath);
 
-    await uploadBytes(storageRef, sourceFile, {
-      contentType: sourceFile.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    await withTimeout(
+      uploadBytes(storageRef, sourceFile, {
+        contentType: sourceFile.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+      STORAGE_OPERATION_TIMEOUT_MS,
+      'Quá thời gian tải file mẫu lên Firebase Storage. Hãy kiểm tra Storage rules hoặc kết nối mạng.',
+    );
 
     return {
       sourceWorkbookName: sourceFile.name,
       sourceWorkbookPath: storagePath,
-      sourceWorkbookUrl: await getDownloadURL(storageRef),
+      sourceWorkbookUrl: await withTimeout(
+        getDownloadURL(storageRef),
+        STORAGE_OPERATION_TIMEOUT_MS,
+        'Không lấy được đường dẫn file mẫu từ Firebase Storage. Hãy kiểm tra Storage rules.',
+      ),
     };
   };
 
@@ -609,6 +638,8 @@ export function FormLearner({
 
   const saveTemplates = async (templatesToSave: FormTemplate[], sourceFile?: File) => {
     if (templatesToSave.length === 0) return;
+    setIsSavingTemplates(true);
+    setSaveProgressLabel(sourceFile ? 'Đang xử lý file mẫu...' : 'Đang lưu biểu mẫu...');
     try {
       let templatesWithLayout = templatesToSave;
       let workbookMetadata:
@@ -620,12 +651,15 @@ export function FormLearner({
         | null = null;
 
       if (sourceFile) {
+        setSaveProgressLabel('Đang đọc file mẫu...');
         const data = await sourceFile.arrayBuffer();
         const workbook = XLSX.read(data, { type: 'array' });
+        setSaveProgressLabel('Đang tải file mẫu lên hệ thống...');
         workbookMetadata = await uploadSourceWorkbook(sourceFile);
         templatesWithLayout = templatesToSave.map((tpl) => buildTemplateWithHeaderLayout(tpl, workbook));
       }
 
+      setSaveProgressLabel('Đang lưu cấu hình biểu mẫu...');
       const promises = templatesWithLayout.map((tpl) =>
         setDoc(
           doc(db, 'templates', tpl.id),
@@ -646,6 +680,10 @@ export function FormLearner({
       );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'templates');
+      throw err instanceof Error ? err : new Error('Không thể lưu biểu mẫu.');
+    } finally {
+      setIsSavingTemplates(false);
+      setSaveProgressLabel(null);
     }
   };
 
@@ -1075,7 +1113,7 @@ export function FormLearner({
 
               <div className="mt-6 flex gap-3">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!file) {
                       setError('Vui lòng tải lên file mẫu để lấy tiêu đề.');
                       return;
@@ -1092,12 +1130,20 @@ export function FormLearner({
                       setError('Vui lòng nhập đúng vùng tiêu đề cho tất cả biểu mẫu.');
                       return;
                     }
-                    saveTemplates(learnedTemplates, file);
+                    try {
+                      await saveTemplates(learnedTemplates, file);
+                    } catch (saveError) {
+                      setError(
+                        saveError instanceof Error
+                          ? saveError.message
+                          : 'Không thể lưu biểu mẫu. Vui lòng kiểm tra lại cấu hình lưu trữ.',
+                      );
+                    }
                   }}
                   className="primary-btn flex-1"
-                  disabled={!allConfirmed}
+                  disabled={!allConfirmed || isSavingTemplates}
                 >
-                  Lưu tất cả biểu mẫu
+                  {isSavingTemplates ? saveProgressLabel || 'Đang lưu biểu mẫu...' : 'Lưu tất cả biểu mẫu'}
                 </button>
                 <button onClick={() => setLearnedTemplates([])} className="secondary-btn">
                   Hủy
@@ -1267,11 +1313,11 @@ export function FormLearner({
 
             <button
               onClick={handleManualCreate}
-              disabled={!project || isCreatingManual}
+              disabled={!project || isCreatingManual || isSavingTemplates}
               className="primary-btn mt-6 flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Plus size={16} />
-              {isCreatingManual ? 'Đang tạo biểu mẫu...' : 'Tạo biểu mẫu'}
+              {isCreatingManual || isSavingTemplates ? saveProgressLabel || 'Đang tạo biểu mẫu...' : 'Tạo biểu mẫu'}
             </button>
 
             {error && (
