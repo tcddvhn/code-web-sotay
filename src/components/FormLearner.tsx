@@ -83,6 +83,7 @@ export function FormLearner({
   const [manualSheetNames, setManualSheetNames] = useState<string[]>([]);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [attachingTemplateId, setAttachingTemplateId] = useState<string | null>(null);
+  const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null);
   const [isCreatingManual, setIsCreatingManual] = useState(false);
   const [isSavingTemplates, setIsSavingTemplates] = useState(false);
   const [saveProgressLabel, setSaveProgressLabel] = useState<string | null>(null);
@@ -416,6 +417,7 @@ export function FormLearner({
   };
 
   const saveStoredTemplate = async (template: FormTemplate) => {
+    setSavingTemplateId(template.id);
     const normalizedTemplate: FormTemplate = {
       ...template,
       name: template.name.trim(),
@@ -432,6 +434,7 @@ export function FormLearner({
     if (validationError) {
       setError(validationError);
       setNotice(null);
+      setSavingTemplateId(null);
       return;
     }
 
@@ -461,7 +464,11 @@ export function FormLearner({
       setError(null);
       setNotice(`Đã cập nhật biểu mẫu "${templateToSave.name}".`);
     } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `templates/${template.id}`);
+      console.error('Save template error:', err);
+      setError(err instanceof Error ? err.message : 'Không thể lưu chỉnh sửa biểu mẫu.');
+      setNotice(null);
+    } finally {
+      setSavingTemplateId(null);
     }
   };
 
@@ -483,7 +490,9 @@ export function FormLearner({
           : `Đã mở lại biểu mẫu "${template.name}" để tiếp tục chỉnh sửa.`,
       );
     } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `templates/${template.id}`);
+      console.error('Toggle template publish error:', err);
+      setError(err instanceof Error ? err.message : 'Không thể cập nhật trạng thái chốt biểu mẫu.');
+      setNotice(null);
     }
   };
 
@@ -503,12 +512,17 @@ export function FormLearner({
     try {
       const deleted = await onDeleteTemplate(template);
       if (!deleted) {
-        alert('Không thể xóa biểu mẫu này. Vui lòng kiểm tra quyền và dữ liệu liên quan.');
+        setError('Không thể xóa biểu mẫu này. Vui lòng kiểm tra quyền, dữ liệu liên quan hoặc Firebase rules.');
+        setNotice(null);
         return;
       }
 
       setError(null);
       setNotice(`Đã xóa biểu mẫu "${template.name}" và toàn bộ dữ liệu liên quan của sheet này.`);
+    } catch (error) {
+      console.error('Delete stored template error:', error);
+      setError(error instanceof Error ? error.message : 'Không thể xóa biểu mẫu này.');
+      setNotice(null);
     } finally {
       setDeletingTemplateId(null);
     }
@@ -1433,10 +1447,11 @@ export function FormLearner({
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => saveStoredTemplate(tpl)}
-                        className="secondary-btn inline-flex items-center gap-2"
+                        disabled={savingTemplateId === tpl.id}
+                        className="secondary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Save size={14} />
-                        Lưu chỉnh sửa
+                        {savingTemplateId === tpl.id ? 'Đang lưu...' : 'Lưu chỉnh sửa'}
                       </button>
                       <button
                         onClick={() => attachWorkbookToTemplate(tpl)}
@@ -1448,7 +1463,8 @@ export function FormLearner({
                       </button>
                       <button
                         onClick={() => toggleTemplatePublished(tpl)}
-                        className="primary-btn inline-flex items-center gap-2"
+                        disabled={savingTemplateId === tpl.id || deletingTemplateId === tpl.id}
+                        className="primary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {tpl.isPublished ? <Unlock size={14} /> : <Lock size={14} />}
                         {tpl.isPublished ? 'Mở chốt' : 'Chốt biểu'}

@@ -109,6 +109,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isSettingsHelpExpanded, setIsSettingsHelpExpanded] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [units, setUnits] = useState<ManagedUnit[]>([]);
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
@@ -574,7 +575,7 @@ export default function App() {
 
       return deletedDataRows + deletedExports + 1 > 0;
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `templates/${template.id}`);
+      console.error('Delete template error:', error);
       return false;
     }
   };
@@ -1119,7 +1120,17 @@ export default function App() {
 
               <div className="space-y-4 xl:max-w-[320px] 2xl:max-w-[340px]">
                 <div className="panel-card rounded-[24px] p-5">
-                  <h3 className="section-title text-[1.08rem] leading-6">Các mục cài đặt dùng để làm gì?</h3>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="section-title text-[1.08rem] leading-6">Các mục cài đặt dùng để làm gì?</h3>
+                    <button
+                      type="button"
+                      onClick={() => setIsSettingsHelpExpanded((current) => !current)}
+                      className="secondary-btn px-4 py-2 text-[10px]"
+                    >
+                      {isSettingsHelpExpanded ? 'Ẩn hướng dẫn' : 'Xem hướng dẫn'}
+                    </button>
+                  </div>
+                  {isSettingsHelpExpanded && (
                   <div className="mt-3 space-y-3 text-[13px] leading-6 text-[var(--ink-soft)]">
                     <p>
                       <strong className="text-[var(--ink)]">Link OneDrive</strong> dùng để lưu đường dẫn truy cập kho tài liệu trực tuyến,
@@ -1142,6 +1153,7 @@ export default function App() {
                       toàn bộ dữ liệu dự án, biểu mẫu, tiếp nhận và lịch sử xuất báo cáo.
                     </p>
                   </div>
+                  )}
                 </div>
 
                 {!isAdmin && (
