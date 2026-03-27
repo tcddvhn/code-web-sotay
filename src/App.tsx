@@ -242,11 +242,6 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setProjects([]);
-      return;
-    }
-
     const unsubscribe = onSnapshot(
       collection(db, 'projects'),
       (snapshot) => {
@@ -254,12 +249,13 @@ export default function App() {
         setProjects(list);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'projects');
+        console.error('Projects subscription error:', error);
+        setProjects([]);
       },
     );
 
     return () => unsubscribe();
-  }, [isAuthenticated]);
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -318,7 +314,7 @@ export default function App() {
   }, [isAdmin, isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!selectedProjectId) {
       setAssignments({});
       return;
     }
@@ -336,14 +332,17 @@ export default function App() {
         });
         setAssignments(map);
       },
-      () => setAssignments({}),
+      (error) => {
+        console.error('Assignments subscription error:', error);
+        setAssignments({});
+      },
     );
 
     return () => unsubscribe();
-  }, [isAuthenticated, selectedProjectId]);
+  }, [selectedProjectId]);
 
   useEffect(() => {
-    if (!isAuthenticated || !selectedProjectId) {
+    if (!selectedProjectId) {
       setTemplates([]);
       return;
     }
@@ -355,15 +354,16 @@ export default function App() {
         setTemplates(list);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'templates');
+        console.error('Templates subscription error:', error);
+        setTemplates([]);
       },
     );
 
     return () => unsubscribe();
-  }, [isAuthenticated, selectedProjectId]);
+  }, [selectedProjectId]);
 
   useEffect(() => {
-    if (!isAuthenticated || !selectedProjectId) {
+    if (!selectedProjectId) {
       setData({});
       return;
     }
@@ -382,12 +382,13 @@ export default function App() {
         setData(organized);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'consolidated_data_v2');
+        console.error('Data subscription error:', error);
+        setData({});
       },
     );
 
     return () => unsubscribe();
-  }, [isAuthenticated, selectedProjectId]);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     if (!isAuthenticated) {

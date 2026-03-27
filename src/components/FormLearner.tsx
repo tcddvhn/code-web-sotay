@@ -1,8 +1,8 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
-import { AlertCircle, Brain, CheckCircle, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock } from 'lucide-react';
+import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { uploadFile } from '../supabase';
 import { FormTemplate, HeaderLayout, Project } from '../types';
@@ -113,6 +113,9 @@ export function FormLearner({
   const [isCreatingManual, setIsCreatingManual] = useState(false);
   const [isSavingTemplates, setIsSavingTemplates] = useState(false);
   const [saveProgressLabel, setSaveProgressLabel] = useState<string | null>(null);
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const [previewRows, setPreviewRows] = useState<string[][]>([]);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -209,6 +212,17 @@ export function FormLearner({
     setNotice(null);
     setManualForm(DEFAULT_MANUAL_FORM);
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (learnedTemplates.length === 0) {
+      setPreviewTemplateId(null);
+      setPreviewRows([]);
+      return;
+    }
+    if (!previewTemplateId || !learnedTemplates.some((tpl) => tpl.id === previewTemplateId)) {
+      setPreviewTemplateId(learnedTemplates[0].id);
+    }
+  }, [learnedTemplates, previewTemplateId]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -936,6 +950,86 @@ export function FormLearner({
 
   const allConfirmed = learnedTemplates.length > 0 && learnedTemplates.every((tpl) => confirmedTemplates[tpl.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const renderPreview = async () => {
+      if (!file || !previewTemplateId) {
+        setPreviewRows([]);
+        return;
+      }
+
+      const template = learnedTemplates.find((tpl) => tpl.id === previewTemplateId);
+      if (!template) {
+        setPreviewRows([]);
+        return;
+      }
+
+      setIsPreviewLoading(true);
+      try {
+        const buffer = await file.arrayBuffer();
+        if (cancelled) return;
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const worksheet = workbook.Sheets[template.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+        if (!worksheet) {
+          setPreviewRows([]);
+          return;
+        }
+
+        const range = headerRanges[template.id] || {
+          startRow: template.columnMapping.startRow,
+          endRow: template.columnMapping.startRow,
+          startCol: template.columnMapping.labelColumn,
+          endCol: template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] || template.columnMapping.labelColumn,
+        };
+
+        const firstColIndex = columnLetterToIndex(range.startCol);
+        const lastColIndex = columnLetterToIndex(range.endCol);
+        if (firstColIndex <= 0 || lastColIndex <= 0) {
+          setPreviewRows([]);
+          return;
+        }
+
+        const startCol = Math.min(firstColIndex, lastColIndex) - 1;
+        const endCol = Math.max(firstColIndex, lastColIndex) - 1;
+        const startRow = Math.max(1, range.startRow) - 1;
+        const previewEndRow = Math.max(range.endRow + 8, template.columnMapping.startRow + 6) - 1;
+
+        const sheetRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+        const boundedEndRow = Math.min(sheetRange.e.r, previewEndRow);
+        const rows: string[][] = [];
+
+        for (let r = startRow; r <= boundedEndRow; r += 1) {
+          const line: string[] = [];
+          for (let c = startCol; c <= endCol; c += 1) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r, c })];
+            const value = cell?.w ?? cell?.v ?? '';
+            line.push(String(value).trim());
+          }
+          rows.push(line);
+        }
+
+        if (!cancelled) {
+          setPreviewRows(rows);
+        }
+      } catch (previewError) {
+        if (!cancelled) {
+          console.error('Preview template error:', previewError);
+          setPreviewRows([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsPreviewLoading(false);
+        }
+      }
+    };
+
+    renderPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [file, headerRanges, learnedTemplates, previewTemplateId]);
+
   const handleManualCreate = async () => {
     setIsCreatingManual(true);
     if (!project?.id) {
@@ -1101,7 +1195,8 @@ export function FormLearner({
       </div>
 
       {mode === 'AI' && (
-        <div className="max-w-3xl space-y-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="space-y-6">
           <div className="panel-card rounded-[24px] p-8 text-center">
             <FileSpreadsheet className="mx-auto mb-4 text-[var(--primary)] opacity-40" size={52} />
             <h3 className="section-title mb-3">Tải lên File Mẫu (Template)</h3>
@@ -1386,7 +1481,7 @@ export function FormLearner({
                 ))}
               </div>
 
-              <div className="mt-6 flex gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   onClick={async () => {
                     if (!file) {
@@ -1420,12 +1515,84 @@ export function FormLearner({
                 >
                   {isSavingTemplates ? saveProgressLabel || 'Đang lưu biểu mẫu...' : 'Lưu tất cả biểu mẫu'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!previewTemplateId && learnedTemplates.length > 0) {
+                      setPreviewTemplateId(learnedTemplates[0].id);
+                    }
+                  }}
+                  className="secondary-btn flex items-center gap-2"
+                  disabled={learnedTemplates.length === 0}
+                >
+                  <Eye size={16} />
+                  Xem biểu mẫu
+                </button>
                 <button onClick={() => setLearnedTemplates([])} className="secondary-btn">
                   Hủy
                 </button>
               </div>
             </div>
           )}
+          </div>
+
+          <div className="panel-card rounded-[24px] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="section-title text-base">Xem trước biểu mẫu</h3>
+              <span className="text-xs text-[var(--ink-soft)]">Preview theo file AI đã tải</span>
+            </div>
+
+            {learnedTemplates.length > 0 && (
+              <div className="mt-4">
+                <label className="col-header mb-2 block">Biểu mẫu cần xem</label>
+                <select
+                  value={previewTemplateId || ''}
+                  onChange={(event) => setPreviewTemplateId(event.target.value)}
+                  className="field-select"
+                >
+                  {learnedTemplates.map((tpl) => (
+                    <option key={tpl.id} value={tpl.id}>
+                      {tpl.name} ({tpl.sheetName})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="mt-4 max-h-[620px] overflow-auto rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+              {learnedTemplates.length === 0 ? (
+                <p className="text-sm text-[var(--ink-soft)]">
+                  Sau khi AI học biểu, bạn có thể bấm <strong>Xem biểu mẫu</strong> để hiển thị giao diện xem trước tại đây.
+                </p>
+              ) : isPreviewLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[var(--ink-soft)]">
+                  <Loader2 size={16} className="animate-spin" />
+                  Đang tải giao diện biểu mẫu...
+                </div>
+              ) : previewRows.length > 0 ? (
+                <table className="w-full border-collapse text-xs">
+                  <tbody>
+                    {previewRows.map((row, rowIndex) => (
+                      <tr key={`preview-row-${rowIndex}`} className="border-b border-[var(--line)]">
+                        {row.map((cell, cellIndex) => (
+                          <td
+                            key={`preview-cell-${rowIndex}-${cellIndex}`}
+                            className={`min-w-[80px] px-2 py-1.5 align-top ${rowIndex < 3 ? 'font-semibold text-[var(--primary-dark)]' : 'text-[var(--ink)]'}`}
+                          >
+                            {cell || '\u00A0'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-sm text-[var(--ink-soft)]">
+                  Không thể dựng xem trước cho biểu mẫu đang chọn. Hãy kiểm tra lại tên sheet và vùng tiêu đề.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

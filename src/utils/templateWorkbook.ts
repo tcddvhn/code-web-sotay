@@ -3,6 +3,7 @@ import { FormTemplate, HeaderLayout } from '../types';
 import { columnIndexToLetter, columnLetterToIndex } from './columnUtils';
 
 const NQ22_TEMPLATE_WORKBOOK_URL = '/templates/nq22-report-template.xlsx';
+const TEMPLATE_FETCH_TIMEOUT_MS = 8000;
 
 const cachedTemplateBufferPromises = new Map<string, Promise<ArrayBuffer>>();
 
@@ -74,12 +75,26 @@ async function loadTemplateWorkbookBufferFromUrl(url: string) {
   if (!cachedTemplateBufferPromises.has(url)) {
     cachedTemplateBufferPromises.set(
       url,
-      fetch(url).then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Không thể tải workbook mẫu từ ${url}.`);
+      (async () => {
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), TEMPLATE_FETCH_TIMEOUT_MS);
+        try {
+          const response = await fetch(url, { signal: controller.signal });
+          if (!response.ok) {
+            throw new Error(`Không thể tải workbook mẫu từ ${url}.`);
+          }
+          return response.arrayBuffer();
+        } catch (error) {
+          // Allow retry in future calls when the current request fails/timeouts.
+          cachedTemplateBufferPromises.delete(url);
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            throw new Error(`Tải workbook mẫu quá thời gian (${TEMPLATE_FETCH_TIMEOUT_MS}ms): ${url}.`);
+          }
+          throw error;
+        } finally {
+          window.clearTimeout(timeout);
         }
-        return response.arrayBuffer();
-      }),
+      })(),
     );
   }
 
