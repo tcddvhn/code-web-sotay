@@ -674,7 +674,7 @@ export default function App() {
   };
 
   const handleSaveAssignments = async (assigneeKey: string, unitCodes: string[]) => {
-    if (!isAdmin || !selectedProjectId) {
+    if (!isAdmin) {
       return;
     }
 
@@ -686,64 +686,96 @@ export default function App() {
 
     const orderedUnitCodes = UNITS.filter((unit) => unitCodes.includes(unit.code)).map((unit) => unit.code);
     const selectedUnitSet = new Set(orderedUnitCodes);
-    const snapshot = await getDocs(
-      query(collection(db, 'assignments'), where('projectId', '==', selectedProjectId)),
+
+    // Optimistic local update so switching assignee reflects the latest save immediately.
+    setAssignments((current: Record<string, string[]>) => {
+      const next: Record<string, string[]> = {};
+      Object.entries(current).forEach(([key, assignedUnits]) => {
+        const filtered = assignedUnits.filter((unitCode) => !selectedUnitSet.has(unitCode));
+        if (filtered.length > 0) {
+          next[key] = filtered;
+        }
+      });
+      if (orderedUnitCodes.length > 0) {
+        next[normalizedAssigneeKey] = orderedUnitCodes;
+      }
+      return next;
+    });
+
+    const targetProjectIds: string[] = Array.from(
+      new Set(
+        projects
+          .map((project) => project.id)
+          .filter((projectId): projectId is string => typeof projectId === 'string' && projectId.trim() !== ''),
+      ),
     );
 
-    const nextAssignments = new Map<
-      string,
-      { userId?: string; email: string; displayName: string; unitCodes: string[] }
-    >();
+    if (targetProjectIds.length === 0) {
+      throw new Error('Không tìm thấy dự án nào để lưu phân công.');
+    }
 
-    snapshot.docs.forEach((docSnap) => {
-      const data = docSnap.data() as any;
-      const key = data.assigneeKey || getAssignmentKey(data.email) || data.userId;
-      if (!key) {
-        return;
-      }
+    const saveAssignmentsForProject = async (projectId: string) => {
+      const snapshot = await getDocs(
+        query(collection(db, 'assignments'), where('projectId', '==', projectId)),
+      );
 
-      nextAssignments.set(key, {
-        userId: data.userId || undefined,
-        email: data.email || key,
-        displayName: data.displayName || data.email || key,
-        unitCodes: Array.isArray(data.unitCodes) ? data.unitCodes : [],
+      const nextAssignments = new Map<
+        string,
+        { userId?: string; email: string; displayName: string; unitCodes: string[] }
+      >();
+
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data() as any;
+        const key = getAssignmentKey(data.assigneeKey || data.email) || data.userId;
+        if (!key) {
+          return;
+        }
+
+        nextAssignments.set(key, {
+          userId: data.userId || undefined,
+          email: data.email || key,
+          displayName: data.displayName || data.email || key,
+          unitCodes: Array.isArray(data.unitCodes) ? data.unitCodes : [],
+        });
       });
-    });
 
-    nextAssignments.forEach((entry, key) => {
-      nextAssignments.set(key, {
-        ...entry,
-        unitCodes: entry.unitCodes.filter((unitCode) => !selectedUnitSet.has(unitCode)),
+      nextAssignments.forEach((entry, key) => {
+        nextAssignments.set(key, {
+          ...entry,
+          unitCodes: entry.unitCodes.filter((unitCode) => !selectedUnitSet.has(unitCode)),
+        });
       });
-    });
 
-    nextAssignments.set(normalizedAssigneeKey, {
-      userId: assignmentUser.userId,
-      email: assignmentUser.email,
-      displayName: assignmentUser.displayName,
-      unitCodes: orderedUnitCodes,
-    });
-
-    const batch = writeBatch(db);
-    snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
-
-    nextAssignments.forEach((entry, key) => {
-      if (entry.unitCodes.length === 0) {
-        return;
-      }
-
-      batch.set(doc(db, 'assignments', `${selectedProjectId}_${key}`), {
-        projectId: selectedProjectId,
-        assigneeKey: key,
-        userId: entry.userId || null,
-        email: entry.email,
-        displayName: entry.displayName,
-        unitCodes: entry.unitCodes,
-        updatedAt: serverTimestamp(),
+      nextAssignments.set(normalizedAssigneeKey, {
+        userId: assignmentUser.userId,
+        email: assignmentUser.email,
+        displayName: assignmentUser.displayName,
+        unitCodes: orderedUnitCodes,
       });
-    });
 
-    await batch.commit();
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+
+      nextAssignments.forEach((entry, key) => {
+        if (entry.unitCodes.length === 0) {
+          return;
+        }
+
+        batch.set(doc(db, 'assignments', `${projectId}_${key}`), {
+          projectId,
+          assigneeKey: key,
+          userId: entry.userId || null,
+          email: entry.email,
+          displayName: entry.displayName,
+          unitCodes: entry.unitCodes,
+          updatedAt: serverTimestamp(),
+        });
+      });
+
+      await batch.commit();
+    };
+
+    await Promise.all(targetProjectIds.map((projectId) => saveAssignmentsForProject(projectId)));
   };
 
   const handleSaveSettings = async () => {
