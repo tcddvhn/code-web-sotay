@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
-import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock } from 'lucide-react';
+import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock, X } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { uploadFile } from '../supabase';
 import { FormTemplate, HeaderLayout, Project } from '../types';
@@ -116,6 +116,7 @@ export function FormLearner({
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [previewRows, setPreviewRows] = useState<string[][]>([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -1521,6 +1522,7 @@ export function FormLearner({
                     if (!previewTemplateId && learnedTemplates.length > 0) {
                       setPreviewTemplateId(learnedTemplates[0].id);
                     }
+                    setIsPreviewModalOpen(true);
                   }}
                   className="secondary-btn flex items-center gap-2"
                   disabled={learnedTemplates.length === 0}
@@ -1559,36 +1561,73 @@ export function FormLearner({
               </div>
             )}
 
-            <div className="mt-4 max-h-[620px] overflow-auto rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-3">
-              {learnedTemplates.length === 0 ? (
-                <p className="text-sm text-[var(--ink-soft)]">
-                  Sau khi AI học biểu, bạn có thể bấm <strong>Xem biểu mẫu</strong> để hiển thị giao diện xem trước tại đây.
-                </p>
-              ) : isPreviewLoading ? (
+          <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+            {learnedTemplates.length === 0 ? (
+              <p className="text-sm text-[var(--ink-soft)]">
+                Sau khi AI học biểu, bấm <strong>Xem biểu mẫu</strong> để mở cửa sổ xem chi tiết với không gian rộng hơn.
+              </p>
+            ) : isPreviewLoading ? (
+              <div className="flex items-center gap-2 text-sm text-[var(--ink-soft)]">
+                <Loader2 size={16} className="animate-spin" />
+                Đang tải giao diện biểu mẫu...
+              </div>
+            ) : (
+              <p className="text-sm font-semibold text-[var(--ink)]">
+                Preview hiện tại chỉ hiển thị trong cửa sổ mới; bấm “Xem biểu mẫu” để xem toàn bộ bảng.
+              </p>
+            )}
+          </div>
+          </div>
+        </div>
+      )}
+
+      {isPreviewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-[rgba(15,15,15,0.75)] p-4">
+          <div className="panel-card flex w-full max-w-6xl flex-col overflow-hidden rounded-[30px] shadow-xl">
+            <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-4">
+              <div>
+                <div className="surface-tag">{learnedTemplates.find((tpl) => tpl.id === previewTemplateId)?.name || 'Preview biểu mẫu'}</div>
+                <h3 className="section-title mt-2 text-lg">Preview biểu mẫu</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPreviewModalOpen(false)}
+                className="secondary-btn flex items-center gap-2"
+              >
+                <X size={16} />
+                Đóng
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              {isPreviewLoading ? (
                 <div className="flex items-center gap-2 text-sm text-[var(--ink-soft)]">
                   <Loader2 size={16} className="animate-spin" />
-                  Đang tải giao diện biểu mẫu...
+                  Đang tải preview...
                 </div>
               ) : previewRows.length > 0 ? (
-                <table className="w-full border-collapse text-xs">
-                  <tbody>
-                    {previewRows.map((row, rowIndex) => (
-                      <tr key={`preview-row-${rowIndex}`} className="border-b border-[var(--line)]">
-                        {row.map((cell, cellIndex) => (
-                          <td
-                            key={`preview-cell-${rowIndex}-${cellIndex}`}
-                            className={`min-w-[80px] px-2 py-1.5 align-top ${rowIndex < 3 ? 'font-semibold text-[var(--primary-dark)]' : 'text-[var(--ink)]'}`}
-                          >
-                            {cell || '\u00A0'}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="min-w-full overflow-x-auto">
+                  <table className="w-max border-collapse text-xs">
+                    <tbody>
+                      {previewRows.map((row, rowIndex) => (
+                        <tr key={`preview-row-modal-${rowIndex}`} className="border-b border-[var(--line)]">
+                          {row.map((cell, cellIndex) => (
+                            <td
+                              key={`preview-cell-modal-${rowIndex}-${cellIndex}`}
+                              className={`min-w-[100px] px-2 py-1.5 align-top ${
+                                rowIndex < 3 ? 'font-semibold text-[var(--primary-dark)]' : 'text-[var(--ink)]'
+                              }`}
+                            >
+                              {cell || '\u00A0'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <p className="text-sm text-[var(--ink-soft)]">
-                  Không thể dựng xem trước cho biểu mẫu đang chọn. Hãy kiểm tra lại tên sheet và vùng tiêu đề.
+                  Không có dữ liệu preview. Hãy kiểm tra lại sheet và vùng header.
                 </p>
               )}
             </div>

@@ -90,25 +90,25 @@ service cloud.firestore {
     }
 
     match /consolidated_data/{rowId} {
-      allow read: if isContributor();
+      allow read: if isContributor() || request.auth == null;
       allow create, update: if isAdmin() && isValidDataRow(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /consolidated_data_v2/{rowId} {
-      allow read: if isContributor();
+      allow read: if isContributor() || request.auth == null;
       allow create, update: if isContributor() && isValidDataRow(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /projects/{projectId} {
-      allow read: if isContributor();
+      allow read: if isContributor() || request.auth == null;
       allow create, update: if isAdmin() && isValidProject(request.resource.data);
       allow delete: if isAdmin();
     }
 
     match /templates/{templateId} {
-      allow read: if isContributor();
+      allow read: if isContributor() || request.auth == null;
       allow create, update: if isAdmin() && isValidTemplate(request.resource.data);
       allow delete: if isAdmin();
     }

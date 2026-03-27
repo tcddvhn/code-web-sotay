@@ -221,7 +221,6 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
   const [detailSortOrder, setDetailSortOrder] = useState<DetailSortOrder>('desc');
   const [resolvedHeaderLayout, setResolvedHeaderLayout] = useState<HeaderLayout | null>(null);
   const [templateRows, setTemplateRows] = useState<TemplateRowDefinition[]>([]);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const reportUnitOptions = useMemo(
     () => [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...units],
@@ -687,120 +686,75 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
           Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
         </div>
       ) : (
-        <div className="panel-card rounded-[24px] p-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h3 className="section-title">Preview biểu mẫu</h3>
-              <p className="page-subtitle mt-1 text-sm">
-                Nhấn nút bên phải để mở cửa sổ riêng và xem toàn bộ bảng tổng hợp với không gian rộng hơn.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsPreviewOpen(true)}
-                disabled={aggregatedRows.length === 0}
-                className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Xem đầy đủ preview
-              </button>
-              {aggregatedRows.length === 0 && (
-                <span className="text-xs text-[var(--ink-soft)]">Chưa có dữ liệu để preview.</span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isPreviewOpen && selectedTemplate && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-[rgba(40,40,40,0.7)] p-4">
-          <div className="panel-card flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[30px] shadow-xl">
-            <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-4">
-              <div>
-                <div className="surface-tag">{selectedTemplate.name}</div>
-                <h3 className="section-title mt-2 text-lg">Bảng tổng hợp {selectedUnitOption.name}</h3>
-                <p className="page-subtitle text-sm">Năm {selectedYear}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPreviewOpen(false)}
-                className="secondary-btn flex items-center gap-2"
-              >
-                <X size={16} />
-                Đóng
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto px-4 py-6">
-              <div className="min-w-full overflow-x-auto">
-                <table className="w-max border-collapse table-auto">
-                  <thead>
-                    {headerRows ? (
-                      headerRows.map((row, rowIndex) => (
-                        <tr key={`hdr-${rowIndex}`}>
-                          {row.map((cell, cellIndex) => (
-                            <th
-                              key={`hdr-${rowIndex}-${cellIndex}`}
-                              colSpan={cell.colSpan}
-                              rowSpan={cell.rowSpan}
-                              className={`border-r border-b border-white/70 bg-[var(--primary-dark)] px-2 py-2 text-center align-middle text-[14px] leading-snug tracking-[0.02em] text-white whitespace-normal ${
-                                cellIndex === 0
-                                  ? 'sticky left-0 z-10 min-w-[240px] max-w-[320px] text-[16px] font-bold'
-                                  : 'min-w-[80px] max-w-[150px] font-semibold'
-                              }`}
-                            >
-                              {cell.text || '\u00A0'}
-                            </th>
-                          ))}
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <th className="sticky left-0 z-10 min-w-[240px] max-w-[320px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-3 py-2 text-[14px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal">
-                          Tiêu chí
+        <div className="table-shell overflow-hidden rounded-[24px]">
+          <div className="overflow-x-auto">
+            <table className="w-max border-collapse table-auto">
+              <thead>
+                {headerRows ? (
+                  headerRows.map((row, rowIndex) => (
+                    <tr key={`hdr-${rowIndex}`}>
+                      {row.map((cell, cellIndex) => (
+                        <th
+                          key={`hdr-${rowIndex}-${cellIndex}`}
+                          colSpan={cell.colSpan}
+                          rowSpan={cell.rowSpan}
+                          className={`border-r border-b border-white/70 bg-[var(--primary-dark)] px-2 py-2 text-center align-middle text-[15px] leading-snug tracking-[0.02em] text-white whitespace-normal ${
+                            cellIndex === 0
+                              ? 'sticky left-0 z-10 min-w-[220px] max-w-[280px] text-[16px] font-bold'
+                              : 'min-w-[72px] max-w-[132px] font-semibold'
+                          }`}
+                        >
+                          {cell.text || '\u00A0'}
                         </th>
-                        {columnHeaders.map((header, index) => (
-                          <th
-                            key={header || index}
-                            className="min-w-[80px] max-w-[160px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-2 py-2 text-center text-[14px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal"
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <th className="sticky left-0 z-10 min-w-[220px] max-w-[280px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-3 py-2 text-[15px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal">
+                      Tiêu chí
+                    </th>
+                    {columnHeaders.map((header, index) => (
+                      <th
+                        key={header || index}
+                        className="min-w-[72px] max-w-[132px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-2 py-2 text-center text-[15px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal"
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                )}
+              </thead>
+              <tbody>
+                {aggregatedRows.length > 0 ? (
+                  aggregatedRows.map((row) => (
+                    <tr key={row.key} className="border-b border-[var(--line)] bg-white hover:bg-[var(--surface-alt)]">
+                      <td className="sticky left-0 z-10 border-r border-[var(--line)] bg-white px-3 py-2 text-[14px] font-semibold leading-snug text-[var(--ink)]">
+                        {row.label}
+                      </td>
+                      {row.values.map((value, index) => (
+                        <td key={`${row.key}-${index}`} className="border-r border-[var(--line)] p-0">
+                          <button
+                            type="button"
+                            onClick={() => openCellDetail(row, index)}
+                            className="h-full min-w-[72px] w-full px-2 py-2 text-center text-[11px] font-mono leading-none text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
+                            title="Xem chi tiết theo đơn vị"
                           >
-                            {header}
-                          </th>
-                        ))}
-                      </tr>
-                    )}
-                  </thead>
-                  <tbody>
-                    {aggregatedRows.length > 0 ? (
-                      aggregatedRows.map((row) => (
-                        <tr key={row.key} className="border-b border-[var(--line)] bg-white hover:bg-[var(--surface-alt)]">
-                          <td className="sticky left-0 z-10 border-r border-[var(--line)] bg-white px-3 py-2 text-[14px] font-semibold leading-snug text-[var(--ink)]">
-                            {row.label}
-                          </td>
-                          {row.values.map((value, index) => (
-                            <td key={`${row.key}-${index}`} className="border-r border-[var(--line)] p-0">
-                              <button
-                                type="button"
-                                onClick={() => openCellDetail(row, index)}
-                                className="h-full min-w-[80px] w-full px-2 py-2 text-center text-[12px] font-mono leading-none text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
-                                title="Xem chi tiết theo đơn vị"
-                              >
-                                {formatReportValue(value)}
-                              </button>
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={tableColSpan} className="p-12 text-center italic opacity-40">
-                          Không tìm thấy dữ liệu cho tiêu chí này.
+                            {formatReportValue(value)}
+                          </button>
                         </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={tableColSpan} className="p-12 text-center italic opacity-40">
+                      Không tìm thấy dữ liệu cho tiêu chí này.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
