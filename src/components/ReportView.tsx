@@ -239,6 +239,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
   const [detailSortOrder, setDetailSortOrder] = useState<DetailSortOrder>('desc');
   const [resolvedHeaderLayout, setResolvedHeaderLayout] = useState<HeaderLayout | null>(null);
   const [templateRows, setTemplateRows] = useState<TemplateRowDefinition[]>([]);
+  const [visibleRowCount, setVisibleRowCount] = useState(40);
 
   const reportUnitOptions = useMemo(
     () => [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...units],
@@ -301,6 +302,10 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
       isCancelled = true;
     };
   }, [selectedTemplate]);
+
+  useEffect(() => {
+    setVisibleRowCount(40);
+  }, [selectedTemplateId, selectedYear, selectedUnitCode, searchTerm]);
 
   useEffect(() => {
     setActiveCellDetail(null);
@@ -751,7 +756,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
               </thead>
               <tbody>
                 {aggregatedRows.length > 0 ? (
-                  aggregatedRows.map((row) => (
+                  aggregatedRows.slice(0, visibleRowCount).map((row) => (
                     <tr key={row.key} className="border-b border-[var(--line)] bg-white hover:bg-[var(--surface-alt)]">
                       <td className="sticky left-0 z-10 border-r border-[var(--line)] bg-white px-3 py-2 text-[14px] font-semibold leading-snug text-[var(--ink)]">
                         {row.label}
@@ -780,6 +785,20 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
               </tbody>
             </table>
           </div>
+          {visibleRowCount < aggregatedRows.length && (
+            <div className="flex items-center justify-center gap-2 border-t border-[var(--line)] p-4">
+              <span className="text-xs text-[var(--ink-soft)]">
+                Đang hiển thị {Math.min(visibleRowCount, aggregatedRows.length)} / {aggregatedRows.length} dòng
+              </span>
+              <button
+                type="button"
+                onClick={() => setVisibleRowCount((prev) => Math.min(prev + 40, aggregatedRows.length))}
+                className="secondary-btn text-xs"
+              >
+                Tải thêm
+              </button>
+            </div>
+          )}
         </div>
       )}
 
