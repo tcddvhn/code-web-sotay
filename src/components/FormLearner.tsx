@@ -1606,14 +1606,14 @@ export function FormLearner({
                 </div>
               ) : previewRows.length > 0 ? (
                 <div className="min-w-full overflow-x-auto">
-                  <table className="w-max border-collapse text-xs">
+                  <table className="min-w-[720px] border-collapse border border-[var(--line)] text-xs">
                     <tbody>
                       {previewRows.map((row, rowIndex) => (
                         <tr key={`preview-row-modal-${rowIndex}`} className="border-b border-[var(--line)]">
                           {row.map((cell, cellIndex) => (
                             <td
                               key={`preview-cell-modal-${rowIndex}-${cellIndex}`}
-                              className={`min-w-[100px] px-2 py-1.5 align-top ${
+                              className={`min-w-[100px] border-r border-b border-[var(--line)] px-2 py-1.5 align-top ${
                                 rowIndex < 3 ? 'font-semibold text-[var(--primary-dark)]' : 'text-[var(--ink)]'
                               }`}
                             >

@@ -4,7 +4,7 @@ import { Download, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project } from '../types';
 import { auth, db } from '../firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { getPreferredReportingYear } from '../utils/reportingYear';
 import { uploadFile } from '../supabase';
 import { loadTemplateWorkbook, resolveTemplateHeaderLayout, resolveTemplateRowLabels } from '../utils/templateWorkbook';
@@ -44,6 +44,10 @@ interface ActiveCellDetail {
   items: CellDetailItem[];
 }
 
+interface DataFileRecord {
+  downloadURL?: string;
+}
+
 type DetailSortOrder = 'desc' | 'asc';
 
 const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
@@ -58,6 +62,20 @@ function sanitizeFileNamePart(value: string) {
 
 function formatReportValue(value: number) {
   return value === 0 ? '' : value.toLocaleString('vi-VN');
+}
+
+async function fetchStoredDataFile(projectId: string, unitCode: string, year: string) {
+  if (!projectId || !unitCode || !year) {
+    return null;
+  }
+
+  const reference = doc(db, 'data_files', `${projectId}_${unitCode}_${year}`);
+  const snapshot = await getDoc(reference);
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  return snapshot.data() as DataFileRecord;
 }
 
 function buildHeaderRows(layout: HeaderLayout) {
@@ -512,6 +530,12 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
 
   const exportToExcel = async () => {
     if (!selectedTemplate || aggregatedRows.length === 0) {
+      return;
+    }
+
+    const storedRecord = await fetchStoredDataFile(selectedProjectId, selectedUnitOption.code, selectedYear);
+    if (storedRecord?.downloadURL) {
+      window.open(storedRecord.downloadURL, '_blank');
       return;
     }
 

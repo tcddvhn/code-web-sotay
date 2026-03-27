@@ -3,9 +3,12 @@ import * as XLSX from 'xlsx';
 import { AlertCircle, CheckCircle2, FileCheck, FolderOpen, LoaderCircle, Upload, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import { DataRow, FormTemplate, ManagedUnit, Project } from '../types';
+import { db } from '../firebase';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { parseLegacyFromWorkbook, parseTemplateFromWorkbook } from '../utils/excelParser';
 import { getPinnedYearPreference, getPreferredReportingYear, setPinnedYearPreference } from '../utils/reportingYear';
 import { validateWorkbookSheetNames } from '../utils/workbookUtils';
+import { uploadFile } from '../supabase';
 
 type FileMatchType = 'CODE' | 'NAME' | 'FUZZY' | 'MANUAL' | 'NONE';
 type FileMatchStatus = 'AUTO_FILLED' | 'NEEDS_CONFIRMATION' | 'MANUAL' | 'UNMATCHED' | 'CONFLICT';
@@ -254,6 +257,54 @@ function buildPendingFiles(
 
     return baseItem;
   });
+}
+
+function sanitizeStorageName(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function buildDataFileDocumentId(projectId: string, unitCode: string, year: string) {
+  return `${projectId}_${unitCode}_${year}`;
+}
+
+async function uploadAcceptedDataFile(
+  fileItem: PendingFile,
+  projectId: string,
+  year: string,
+  unitName: string,
+) {
+  const extension = fileItem.file.name.split('.').pop() || 'xlsx';
+  const safeUnitName = sanitizeStorageName(unitName) || fileItem.unitCode;
+  const fileName = `${safeUnitName || fileItem.unitCode}.${extension}`;
+  const renamedFile = new File([fileItem.file], fileName, {
+    type: fileItem.file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+
+  const uploadResult = await uploadFile(renamedFile, {
+    folder: `app_data/${projectId}`,
+    fileName,
+    upsert: true,
+  });
+
+  await setDoc(
+    doc(db, 'data_files', buildDataFileDocumentId(projectId, fileItem.unitCode, year)),
+    {
+      projectId,
+      unitCode: fileItem.unitCode,
+      unitName,
+      year,
+      fileName,
+      storagePath: uploadResult.path,
+      downloadURL: uploadResult.publicUrl,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 export function ImportFiles({
@@ -774,6 +825,11 @@ export function ImportFiles({
         }
 
         importedRows.push(...parsedRowsForFile);
+        try {
+          await uploadAcceptedDataFile(fileItem, selectedProjectId, selectedYear, unitName);
+        } catch (uploadError) {
+          console.error('Không thể upload file dữ liệu đã tiếp nhận:', uploadError);
+        }
         acceptedFiles += 1;
 
         if (templateErrors.length > 0) {
@@ -1073,7 +1129,7 @@ export function ImportFiles({
               const validation = fileValidation[item.id];
               const takenUnitCodes = new Set(files.filter((fileItem) => fileItem.id !== item.id).map((fileItem) => fileItem.unitCode).filter(Boolean));
               const availableUnits = sortedUnits.filter(
-                (unit) => unit.code === item.unitCode || (!importedUnitCodesForProject.has(unit.code) && !takenUnitCodes.has(unit.code)),
+                (unit) => unit.code === item.unitCode || !takenUnitCodes.has(unit.code),
               );
               const suggestions = item.unitQuery.trim()
                 ? availableUnits.filter((unit) => {
