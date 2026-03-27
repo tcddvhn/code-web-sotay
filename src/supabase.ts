@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://taivkgwwinakcoxhquyv.supabase.com';
+const SUPABASE_URL = 'https://taivkgwwinakcoxhquyv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_yhIJUroRXhTStoBOzApNKg_Gk7EVjC5';
 const SUPABASE_BUCKET = 'uploads';
 const SUPABASE_ROOT_FOLDER = 'app_data';
