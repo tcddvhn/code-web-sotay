@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { AlertCircle, FileCheck, FolderOpen, LoaderCircle, Upload, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileCheck, FolderOpen, LoaderCircle, Upload, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import { DataRow, FormTemplate, ManagedUnit, Project } from '../types';
 import { parseLegacyFromWorkbook, parseTemplateFromWorkbook } from '../utils/excelParser';
@@ -38,6 +38,14 @@ type UnitMatchResult = {
   type: FileMatchType;
   score: number;
   reason: string;
+};
+
+type FailedFile = {
+  unitName: string;
+  fileName: string;
+  missingSheets: string[];
+  reason?: string;
+  relativePath?: string;
 };
 
 function normalizeText(value: string) {
@@ -83,7 +91,7 @@ function findBestUnitMatch(searchText: string, units: ManagedUnit[]): UnitMatchR
       unitName: codeMatch.name,
       type: 'CODE',
       score: 1,
-      reason: `Khớp theo mã đơn vị ${codeMatch.code}`,
+      reason: `Khớp theo mã đơn vị ${codeMatch.code}.`,
     };
   }
 
@@ -102,13 +110,13 @@ function findBestUnitMatch(searchText: string, units: ManagedUnit[]): UnitMatchR
     }
 
     if (normalizedSearch.includes(normalizedUnit) || normalizedUnit.includes(normalizedSearch)) {
-      const exactLikeScore = normalizedSearch === normalizedUnit ? 0.99 : 0.95;
+      const score = normalizedSearch === normalizedUnit ? 0.99 : 0.95;
       const next: UnitMatchResult = {
         unitCode: unit.code,
         unitName: unit.name,
         type: 'NAME',
-        score: exactLikeScore,
-        reason: 'Khớp mạnh theo tên đơn vị',
+        score,
+        reason: 'Khớp mạnh theo tên đơn vị.',
       };
       if (!bestMatch || next.score > bestMatch.score) {
         bestMatch = next;
@@ -130,7 +138,7 @@ function findBestUnitMatch(searchText: string, units: ManagedUnit[]): UnitMatchR
       unitName: unit.name,
       type: 'FUZZY',
       score,
-      reason: `Gợi ý gần đúng ${(score * 100).toFixed(0)}%`,
+      reason: `Gợi ý gần đúng ${Math.round(score * 100)}%.`,
     };
 
     if (!bestMatch || next.score > bestMatch.score) {
@@ -152,7 +160,7 @@ function getMatchBadgeLabel(fileItem: PendingFile) {
     case 'MANUAL':
       return 'Đã chọn thủ công';
     case 'CONFLICT':
-      return 'Trùng với đơn vị đã có dữ liệu';
+      return 'Trùng đơn vị đã có dữ liệu';
     default:
       return 'Chưa nhận diện';
   }
@@ -196,7 +204,7 @@ function buildPendingFiles(
       matchType: 'NONE',
       matchStatus: 'UNMATCHED',
       matchScore: 0,
-      matchReason: 'Chưa nhận diện được đơn vị từ tên file',
+      matchReason: 'Chưa nhận diện được đơn vị từ tên file.',
     };
 
     if (!match) {
@@ -212,7 +220,7 @@ function buildPendingFiles(
         matchType: match.type,
         matchStatus: 'CONFLICT',
         matchScore: match.score,
-        matchReason: `${match.reason}. Đơn vị này đã có dữ liệu hoặc đã được chọn trong đợt hiện tại.`,
+        matchReason: `${match.reason} Đơn vị này đã có dữ liệu hoặc đã được chọn trong đợt hiện tại.`,
       };
     }
 
@@ -282,6 +290,7 @@ export function ImportFiles({
   const [managementMessage, setManagementMessage] = useState<string | null>(null);
   const [isManagingData, setIsManagingData] = useState(false);
   const [visibleFileFilter, setVisibleFileFilter] = useState<VisibleFileFilter>('ALL');
+  const [lastFailedFiles, setLastFailedFiles] = useState<FailedFile[]>([]);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentProject = useMemo(
@@ -493,13 +502,23 @@ export function ImportFiles({
           return item;
         }
 
+        if (!unitCode) {
+          return {
+            ...item,
+            unitCode: '',
+            matchStatus: 'UNMATCHED',
+            matchType: 'NONE',
+            matchReason: 'Chưa nhận diện được đơn vị từ tên file.',
+          };
+        }
+
         return {
           ...item,
           unitCode,
-          unitQuery: unitCode ? unitNameByCode[unitCode] || '' : item.unitQuery,
-          matchType: unitCode ? 'MANUAL' : item.matchType,
-          matchStatus: unitCode ? 'MANUAL' : 'UNMATCHED',
-          matchReason: unitCode ? 'Người dùng đã chọn đơn vị thủ công.' : item.matchReason,
+          unitQuery: unitNameByCode[unitCode] || '',
+          matchType: 'MANUAL',
+          matchStatus: 'MANUAL',
+          matchReason: 'Người dùng đã chọn đơn vị thủ công.',
         };
       }),
     );
@@ -528,11 +547,71 @@ export function ImportFiles({
               unitCode: matchedUnit?.code || '',
               matchType: matchedUnit ? 'MANUAL' : item.matchType,
               matchStatus: matchedUnit ? 'MANUAL' : item.matchStatus,
-              matchReason: matchedUnit ? 'Người dùng đã xác nhận đơn vị bằng cách nhập trực tiếp.' : item.matchReason,
+              matchReason: matchedUnit
+                ? 'Người dùng đã xác nhận đơn vị bằng cách nhập trực tiếp.'
+                : item.matchReason,
             }
           : item,
       ),
     );
+  };
+
+  const handleConfirmSuggested = () => {
+    let confirmedCount = 0;
+    const reserved = new Set<string>(Array.from(importedUnitCodesForProject));
+
+    setFiles((current) =>
+      current.map((item) => {
+        if (item.matchStatus === 'NEEDS_CONFIRMATION' && item.suggestedUnitCode && !reserved.has(item.suggestedUnitCode)) {
+          reserved.add(item.suggestedUnitCode);
+          confirmedCount += 1;
+          return {
+            ...item,
+            unitCode: item.suggestedUnitCode,
+            unitQuery: item.suggestedUnitName,
+            matchType: 'MANUAL',
+            matchStatus: 'MANUAL',
+            matchReason: 'Đã xác nhận tự động từ gợi ý hợp lệ.',
+          };
+        }
+
+        if (item.unitCode) {
+          reserved.add(item.unitCode);
+        }
+
+        return item;
+      }),
+    );
+
+    setManagementMessage(
+      confirmedCount > 0
+        ? `Đã xác nhận ${confirmedCount} gợi ý hợp lệ.`
+        : 'Không có gợi ý hợp lệ nào để xác nhận thêm.',
+    );
+  };
+
+  const exportFailedFiles = () => {
+    if (lastFailedFiles.length === 0) {
+      setManagementMessage('Chưa có danh sách file lỗi để xuất.');
+      return;
+    }
+
+    const rows = [
+      ['Tên đơn vị', 'Tên file', 'Thiếu sheet', 'Lý do', 'Đường dẫn tương đối'],
+      ...lastFailedFiles.map((item) => [
+        item.unitName,
+        item.fileName,
+        item.missingSheets.join(', '),
+        item.reason || '',
+        item.relativePath || '',
+      ]),
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'File loi');
+    XLSX.writeFile(workbook, `danh_sach_file_loi_${selectedProjectId || 'du_an'}.xlsx`);
+    setManagementMessage('Đã xuất danh sách file lỗi ra Excel.');
   };
 
   const handleYearChange = (nextYear: string) => {
@@ -557,11 +636,7 @@ export function ImportFiles({
   const resolveTemplatesForWorkbook = (workbook: XLSX.WorkBook) =>
     publishedTemplates.filter((template) => workbook.SheetNames.includes(template.sheetName));
 
-  const parseRowsForTemplate = (
-    workbook: XLSX.WorkBook,
-    template: FormTemplate,
-    unitCode: string,
-  ) => {
+  const parseRowsForTemplate = (workbook: XLSX.WorkBook, template: FormTemplate, unitCode: string) => {
     if (template.mode === 'LEGACY') {
       return parseLegacyFromWorkbook(
         workbook,
@@ -596,21 +671,41 @@ export function ImportFiles({
       return;
     }
 
-    const unassignedFile = files.find((item) => !item.unitCode);
-    if (unassignedFile) {
-      setManagementMessage(`Vui lòng chọn hoặc xác nhận đơn vị cho file "${unassignedFile.file.name}".`);
-      return;
-    }
-
     setIsManagingData(true);
     setManagementMessage(null);
+    setLastFailedFiles([]);
 
     try {
       const importedRows: DataRow[] = [];
-      const failedFiles: { unitName: string; fileName: string; missingSheets: string[]; reason?: string }[] = [];
+      const failedFiles: FailedFile[] = [];
       let acceptedFiles = 0;
 
       for (const fileItem of files) {
+        const unitName = unitNameByCode[fileItem.unitCode] || fileItem.unitQuery || fileItem.file.name;
+
+        if (!fileItem.unitCode) {
+          failedFiles.push({
+            unitName,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason: 'Chưa xác nhận đơn vị cho file này.',
+            relativePath: fileItem.relativePath,
+          });
+          continue;
+        }
+
+        const validation = fileValidation[fileItem.id];
+        if (validation?.status === 'invalid') {
+          failedFiles.push({
+            unitName,
+            fileName: fileItem.file.name,
+            missingSheets: validation.missingSheets,
+            reason: validation.reason,
+            relativePath: fileItem.relativePath,
+          });
+          continue;
+        }
+
         const buffer = await fileItem.file.arrayBuffer();
         const workbook = XLSX.read(buffer, {
           type: 'array',
@@ -619,12 +714,14 @@ export function ImportFiles({
           cellText: false,
         });
 
-        const validation = validateWorkbookSheetNames(workbook.SheetNames, publishedTemplates);
-        if (validation.missingSheets.length > 0) {
+        const sheetValidation = validateWorkbookSheetNames(workbook.SheetNames, publishedTemplates);
+        if (sheetValidation.missingSheets.length > 0) {
           failedFiles.push({
-            unitName: unitNameByCode[fileItem.unitCode] || fileItem.unitCode,
+            unitName,
             fileName: fileItem.file.name,
-            missingSheets: validation.missingSheets,
+            missingSheets: sheetValidation.missingSheets,
+            reason: 'Thiếu biểu mẫu bắt buộc của dự án.',
+            relativePath: fileItem.relativePath,
           });
           continue;
         }
@@ -632,31 +729,18 @@ export function ImportFiles({
         const matchedTemplates = resolveTemplatesForWorkbook(workbook);
         if (matchedTemplates.length === 0) {
           failedFiles.push({
-            unitName: unitNameByCode[fileItem.unitCode] || fileItem.unitCode,
+            unitName,
             fileName: fileItem.file.name,
             missingSheets: [],
-            reason: 'Không tìm thấy sheet trùng tên biểu mẫu nào trong dự án.',
+            reason: 'Không có sheet nào trùng tên biểu mẫu đã chốt.',
+            relativePath: fileItem.relativePath,
           });
           continue;
         }
 
-        const fileRows: DataRow[] = [];
         matchedTemplates.forEach((template) => {
-          const rows = parseRowsForTemplate(workbook, template, fileItem.unitCode);
-          fileRows.push(...rows);
+          importedRows.push(...parseRowsForTemplate(workbook, template, fileItem.unitCode));
         });
-
-        if (fileRows.length === 0) {
-          failedFiles.push({
-            unitName: unitNameByCode[fileItem.unitCode] || fileItem.unitCode,
-            fileName: fileItem.file.name,
-            missingSheets: [],
-            reason: 'File đủ sheet nhưng không đọc được dữ liệu hợp lệ.',
-          });
-          continue;
-        }
-
-        importedRows.push(...fileRows);
         acceptedFiles += 1;
       }
 
@@ -664,23 +748,18 @@ export function ImportFiles({
         await onDataImported(importedRows);
       }
 
-      setFiles([]);
+      setLastFailedFiles(failedFiles);
 
       const summaryLines: string[] = [];
       if (acceptedFiles > 0) {
-        summaryLines.push(
-          `Đã tiếp nhận ${acceptedFiles}/${files.length} file và lưu ${importedRows.length} dòng dữ liệu cho dự án ${currentProject.name}.`,
-        );
+        summaryLines.push(`Đã tiếp nhận ${acceptedFiles} file hợp lệ.`);
       }
 
       if (failedFiles.length > 0) {
-        summaryLines.push('Các đơn vị không được tiếp nhận trong đợt này:');
+        summaryLines.push('Các file chưa được tiếp nhận:');
         failedFiles.forEach((item) => {
-          if (item.missingSheets.length > 0) {
-            summaryLines.push(`- ${item.unitName} (${item.fileName}): thiếu sheet ${item.missingSheets.join(', ')}`);
-            return;
-          }
-          summaryLines.push(`- ${item.unitName} (${item.fileName}): ${item.reason}`);
+          const suffix = item.missingSheets.length > 0 ? ` - thiếu sheet: ${item.missingSheets.join(', ')}` : '';
+          summaryLines.push(`- ${item.unitName} (${item.fileName})${suffix}${item.reason ? ` - ${item.reason}` : ''}`);
         });
       }
 
@@ -689,6 +768,13 @@ export function ImportFiles({
       }
 
       setManagementMessage(summaryLines.join('\n'));
+
+      if (acceptedFiles > 0) {
+        const failedFileKeys = new Set(failedFiles.map((item) => `${item.fileName}__${item.relativePath || ''}`));
+        setFiles((current) =>
+          current.filter((item) => failedFileKeys.has(`${item.file.name}__${item.relativePath || ''}`)),
+        );
+      }
     } catch (error) {
       setManagementMessage(error instanceof Error ? error.message : 'Không thể đọc file Excel này.');
     } finally {
@@ -801,6 +887,8 @@ export function ImportFiles({
     });
   }, [fileValidation, files, visibleFileFilter]);
 
+  const showExportErrors = lastFailedFiles.length > 0;
+
   return (
     <div className="space-y-6 p-6 md:p-8">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
@@ -821,54 +909,33 @@ export function ImportFiles({
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
         <div className="panel-card rounded-[24px] p-5">
           <p className="col-header mb-3">1. Dự án</p>
-          <select
-            value={selectedProjectId}
-            onChange={(event) => onSelectProject(event.target.value)}
-            className="field-input h-11 text-base font-semibold"
-          >
+          <select value={selectedProjectId} onChange={(event) => onSelectProject(event.target.value)} className="field-input h-11 text-base font-semibold">
             <option value="">-- Chọn dự án --</option>
             {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
+              <option key={project.id} value={project.id}>{project.name}</option>
             ))}
           </select>
-          {currentProject && (
-            <p className="page-subtitle mt-3 text-sm">{currentProject.description || 'Chưa có mô tả dự án.'}</p>
-          )}
+          {currentProject && <p className="page-subtitle mt-3 text-sm">{currentProject.description || 'Chưa có mô tả dự án.'}</p>}
         </div>
 
         <div className="panel-card rounded-[24px] p-5">
           <p className="col-header mb-3">2. Biểu mẫu</p>
-          <select
-            value={selectedTemplateId}
-            onChange={(event) => setSelectedTemplateId(event.target.value)}
-            className="field-input h-11 text-base font-semibold"
-          >
+          <select value={selectedTemplateId} onChange={(event) => setSelectedTemplateId(event.target.value)} className="field-input h-11 text-base font-semibold">
             <option value="">-- Chọn biểu mẫu --</option>
             {publishedTemplates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name}
-              </option>
+              <option key={template.id} value={template.id}>{template.name}</option>
             ))}
           </select>
           <p className="page-subtitle mt-3 text-sm">
-            Khi tiếp nhận, hệ thống sẽ đối chiếu toàn bộ biểu mẫu đã chốt của dự án. File chỉ được nhận khi đủ 100%
-            sheet bắt buộc; các sheet thừa sẽ tự bỏ qua.
+            Khi tiếp nhận, hệ thống sẽ đối chiếu toàn bộ biểu mẫu đã chốt của dự án. File chỉ được nhận khi đủ 100% sheet bắt buộc; các sheet thừa sẽ tự bỏ qua.
           </p>
         </div>
 
         <div className="panel-card rounded-[24px] p-5">
           <p className="col-header mb-3">3. Năm tổng hợp</p>
-          <select
-            value={selectedYear}
-            onChange={(event) => handleYearChange(event.target.value)}
-            className="field-input h-11 text-base font-semibold"
-          >
+          <select value={selectedYear} onChange={(event) => handleYearChange(event.target.value)} className="field-input h-11 text-base font-semibold">
             {YEARS.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
+              <option key={year} value={year}>{year}</option>
             ))}
           </select>
           <label className="mt-4 flex items-center gap-2 text-sm text-[var(--ink-soft)]">
@@ -881,38 +948,20 @@ export function ImportFiles({
           <p className="col-header mb-3">4. Quản trị dữ liệu theo năm</p>
           {canManageData ? (
             <div className="space-y-3">
-              <select
-                value={selectedUnitToDelete}
-                onChange={(event) => setSelectedUnitToDelete(event.target.value)}
-                className="field-input h-11 text-base font-semibold"
-              >
+              <select value={selectedUnitToDelete} onChange={(event) => setSelectedUnitToDelete(event.target.value)} className="field-input h-11 text-base font-semibold">
                 <option value="">-- Chọn đơn vị --</option>
                 {sortedUnits.map((unit) => (
-                  <option key={unit.code} value={unit.code}>
-                    {unit.name} ({unit.code})
-                  </option>
+                  <option key={unit.code} value={unit.code}>{unit.name} ({unit.code})</option>
                 ))}
               </select>
               <div className="grid grid-cols-1 gap-2">
-                <button
-                  onClick={handleDeleteUnit}
-                  disabled={isManagingData || !selectedUnitToDelete}
-                  className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
-                >
+                <button onClick={handleDeleteUnit} disabled={isManagingData || !selectedUnitToDelete} className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40">
                   Xóa dữ liệu theo đơn vị
                 </button>
-                <button
-                  onClick={handleDeleteYear}
-                  disabled={isManagingData}
-                  className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
-                >
+                <button onClick={handleDeleteYear} disabled={isManagingData} className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40">
                   Xóa dữ liệu theo năm
                 </button>
-                <button
-                  onClick={handleDeleteProject}
-                  disabled={isManagingData || !currentProject}
-                  className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
-                >
+                <button onClick={handleDeleteProject} disabled={isManagingData || !currentProject} className="primary-btn disabled:cursor-not-allowed disabled:opacity-40">
                   Xóa toàn bộ dự án hiện tại
                 </button>
               </div>
@@ -923,29 +972,23 @@ export function ImportFiles({
         </div>
       </div>
 
-      <div className="panel-card rounded-[28px] border border-dashed border-[var(--line)] p-5">
+      <div className="panel-card rounded-[28px] border border-dashed border-[var(--line)] p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-5 py-7 text-center transition hover:border-[var(--brand)] hover:bg-white">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand)]">
-              <Upload size={22} />
+          <label className="flex min-h-[116px] cursor-pointer flex-col items-center justify-center rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-5 text-center transition hover:border-[var(--brand)] hover:bg-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand)]">
+              <Upload size={18} />
             </div>
-            <p className="mt-4 text-base font-semibold text-[var(--ink)]">Chọn file Excel lẻ</p>
-            <p className="page-subtitle mt-2 text-sm">Dùng khi bạn chỉ tiếp nhận một vài file đơn vị.</p>
+            <p className="mt-3 text-sm font-semibold text-[var(--ink)]">Kéo thả hoặc bấm để chọn file</p>
+            <p className="page-subtitle mt-1 text-xs">Phù hợp khi nhận từng file lẻ.</p>
             <input type="file" multiple accept=".xlsx,.xlsm,.xls" className="hidden" onChange={handleFileChange} />
           </label>
 
-          <button
-            type="button"
-            onClick={() => folderInputRef.current?.click()}
-            className="flex min-h-[150px] flex-col items-center justify-center rounded-[24px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-5 py-7 text-center transition hover:border-[var(--brand)] hover:bg-white"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand)]">
-              <FolderOpen size={22} />
+          <button type="button" onClick={() => folderInputRef.current?.click()} className="flex min-h-[116px] flex-col items-center justify-center rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-5 text-center transition hover:border-[var(--brand)] hover:bg-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand)]">
+              <FolderOpen size={18} />
             </div>
-            <p className="mt-4 text-base font-semibold text-[var(--ink)]">Chọn cả thư mục dữ liệu</p>
-            <p className="page-subtitle mt-2 text-sm">
-              Hệ thống sẽ đọc tên file trong thư mục để tự gợi ý hoặc tự điền đơn vị.
-            </p>
+            <p className="mt-3 text-sm font-semibold text-[var(--ink)]">Chọn cả thư mục dữ liệu</p>
+            <p className="page-subtitle mt-1 text-xs">Hệ thống sẽ gợi ý đơn vị từ tên file trong thư mục.</p>
           </button>
         </div>
 
@@ -962,21 +1005,15 @@ export function ImportFiles({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={visibleFileFilter}
-                onChange={(event) => setVisibleFileFilter(event.target.value as VisibleFileFilter)}
-                className="field-input h-10 min-w-[220px] text-sm font-semibold"
-              >
+              <select value={visibleFileFilter} onChange={(event) => setVisibleFileFilter(event.target.value as VisibleFileFilter)} className="field-input h-10 min-w-[220px] text-sm font-semibold">
                 <option value="ALL">Hiện tất cả file</option>
                 <option value="READY">Chỉ hiện file đã sẵn sàng</option>
                 <option value="NEEDS_CONFIRMATION">Chỉ hiện file cần xác nhận</option>
                 <option value="INVALID">Chỉ hiện file lỗi sheet</option>
               </select>
-              <button
-                onClick={processFiles}
-                disabled={isManagingData}
-                className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
-              >
+              <button onClick={handleConfirmSuggested} className="secondary-btn">Xác nhận tất cả gợi ý hợp lệ</button>
+              <button onClick={exportFailedFiles} disabled={!showExportErrors} className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40">Xuất danh sách file lỗi</button>
+              <button onClick={processFiles} disabled={isManagingData} className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40">
                 {isManagingData ? <LoaderCircle size={16} className="animate-spin" /> : <FileCheck size={16} />}
                 Bắt đầu tổng hợp
               </button>
@@ -986,13 +1023,9 @@ export function ImportFiles({
           <div className="space-y-4">
             {visibleFiles.map((item) => {
               const validation = fileValidation[item.id];
-              const takenUnitCodes = new Set(
-                files.filter((fileItem) => fileItem.id !== item.id).map((fileItem) => fileItem.unitCode).filter(Boolean),
-              );
+              const takenUnitCodes = new Set(files.filter((fileItem) => fileItem.id !== item.id).map((fileItem) => fileItem.unitCode).filter(Boolean));
               const availableUnits = sortedUnits.filter(
-                (unit) =>
-                  unit.code === item.unitCode ||
-                  (!importedUnitCodesForProject.has(unit.code) && !takenUnitCodes.has(unit.code)),
+                (unit) => unit.code === item.unitCode || (!importedUnitCodesForProject.has(unit.code) && !takenUnitCodes.has(unit.code)),
               );
               const suggestions = item.unitQuery.trim()
                 ? availableUnits.filter((unit) => {
@@ -1002,32 +1035,21 @@ export function ImportFiles({
                 : availableUnits.slice(0, 12);
 
               return (
-                <div
-                  key={item.id}
-                  className={`rounded-[24px] border p-4 ${
-                    validation?.status === 'invalid'
-                      ? 'border-red-200 bg-red-50/50'
-                      : item.matchStatus === 'NEEDS_CONFIRMATION' || item.matchStatus === 'UNMATCHED' || item.matchStatus === 'CONFLICT'
-                        ? 'border-amber-200 bg-amber-50/40'
-                        : 'border-[var(--line)] bg-[var(--surface-soft)]'
-                  }`}
-                >
+                <div key={item.id} className={`rounded-[24px] border p-4 ${validation?.status === 'invalid' ? 'border-red-200 bg-red-50/50' : item.matchStatus === 'NEEDS_CONFIRMATION' || item.matchStatus === 'UNMATCHED' || item.matchStatus === 'CONFLICT' ? 'border-amber-200 bg-amber-50/40' : 'border-[var(--line)] bg-[var(--surface-soft)]'}`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                       <p className="truncate text-base font-semibold text-[var(--ink)]">{item.file.name}</p>
-                      <p className="page-subtitle mt-1 text-sm">
-                        {(item.file.size / 1024).toFixed(1)} KB
-                        {item.relativePath ? ` - ${item.relativePath}` : ''}
-                      </p>
+                      <p className="page-subtitle mt-1 text-sm">{(item.file.size / 1024).toFixed(1)} KB{item.relativePath ? ` - ${item.relativePath}` : ''}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${getMatchBadgeTone(item)}`}>
-                        {getMatchBadgeLabel(item)}
-                      </span>
-                      <button
-                        onClick={() => removeFile(item.id)}
-                        className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)] transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
-                      >
+                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${getMatchBadgeTone(item)}`}>{getMatchBadgeLabel(item)}</span>
+                      {validation?.status === 'valid' && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                          <CheckCircle2 size={12} />
+                          File hợp lệ
+                        </span>
+                      )}
+                      <button onClick={() => removeFile(item.id)} className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)] transition hover:border-[var(--brand)] hover:text-[var(--brand)]">
                         <X size={14} />
                         Bỏ file
                       </button>
@@ -1036,59 +1058,33 @@ export function ImportFiles({
 
                   <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                     <div>
-                      <input
-                        value={item.unitQuery}
-                        onChange={(event) => updateUnitInput(item.id, event.target.value)}
-                        list={`unit-suggestions-${item.id}`}
-                        className="field-input h-11 text-base font-medium"
-                        placeholder="Gõ tên đơn vị để gợi ý"
-                      />
+                      <input value={item.unitQuery} onChange={(event) => updateUnitInput(item.id, event.target.value)} list={`unit-suggestions-${item.id}`} className="field-input h-11 text-base font-medium" placeholder="Gõ tên đơn vị để gợi ý" />
                       <datalist id={`unit-suggestions-${item.id}`}>
                         {suggestions.map((unit) => (
-                          <option key={unit.code} value={unit.name}>
-                            {unit.code}
-                          </option>
+                          <option key={unit.code} value={unit.name}>{unit.code}</option>
                         ))}
                       </datalist>
                     </div>
 
-                    <select
-                      value={item.unitCode}
-                      onChange={(event) => updateUnit(item.id, event.target.value)}
-                      className="field-input h-11 text-base font-medium"
-                    >
+                    <select value={item.unitCode} onChange={(event) => updateUnit(item.id, event.target.value)} className="field-input h-11 text-base font-medium">
                       <option value="">-- Hoặc chọn nhanh đơn vị --</option>
                       {availableUnits.map((unit) => (
-                        <option key={unit.code} value={unit.code}>
-                          {unit.name} ({unit.code})
-                        </option>
+                        <option key={unit.code} value={unit.code}>{unit.name} ({unit.code})</option>
                       ))}
                     </select>
                   </div>
 
                   <div className="mt-3 rounded-[18px] border border-[var(--line)] bg-white px-4 py-3 text-sm">
                     <p className="font-semibold text-[var(--ink)]">{item.matchReason}</p>
-                    {item.suggestedUnitCode && (
-                      <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                        Gợi ý: {item.suggestedUnitName} ({item.suggestedUnitCode})
-                      </p>
-                    )}
-                    {validation?.status === 'valid' && (
-                      <p className="mt-2 text-xs text-emerald-700">
-                        File hợp lệ. Đã nhận đủ các sheet bắt buộc: {validation.matchedSheets.join(', ')}
-                      </p>
-                    )}
+                    {item.suggestedUnitCode && <p className="mt-1 text-xs text-[var(--ink-soft)]">Gợi ý: {item.suggestedUnitName} ({item.suggestedUnitCode})</p>}
+                    {validation?.status === 'valid' && <p className="mt-2 text-xs text-emerald-700">File hợp lệ. Đã nhận đủ các sheet bắt buộc: {validation.matchedSheets.join(', ')}</p>}
                     {validation?.status === 'invalid' && (
                       <>
-                        {validation.missingSheets.length > 0 && (
-                          <p className="mt-2 text-xs text-red-700">Thiếu sheet: {validation.missingSheets.join(', ')}</p>
-                        )}
+                        {validation.missingSheets.length > 0 && <p className="mt-2 text-xs text-red-700">Thiếu sheet: {validation.missingSheets.join(', ')}</p>}
                         {validation.reason && <p className="mt-2 text-xs text-red-700">{validation.reason}</p>}
                       </>
                     )}
-                    {(!validation || validation.status === 'pending') && (
-                      <p className="mt-2 text-xs text-[var(--ink-soft)]">Đang kiểm tra cấu trúc file...</p>
-                    )}
+                    {(!validation || validation.status === 'pending') && <p className="mt-2 text-xs text-[var(--ink-soft)]">Đang kiểm tra cấu trúc file...</p>}
                   </div>
                 </div>
               );
