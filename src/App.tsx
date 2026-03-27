@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   collection,
@@ -908,7 +908,14 @@ export default function App() {
         throw new Error('Email chưa được cấp quyền.');
       }
       await loginWithEmail(email, password);
-      await loginWithSupabaseEmail(email, password);
+      try {
+        await loginWithSupabaseEmail(email, password);
+      } catch (supabaseError) {
+        console.error('Supabase login warning:', supabaseError);
+        setAuthError(
+          'Đăng nhập hệ thống thành công nhưng chưa kết nối được Supabase. Một số chức năng tải/lưu file có thể tạm thời không khả dụng.',
+        );
+      }
       setCurrentView('DASHBOARD');
     } catch (error) {
       console.error('Email login error:', error);
@@ -927,8 +934,15 @@ export default function App() {
         throw new Error('Email chưa được cấp quyền.');
       }
       await signUpWithEmail(email, password);
-      await signUpWithSupabaseEmail(email, password);
-      await loginWithSupabaseEmail(email, password);
+      try {
+        await signUpWithSupabaseEmail(email, password);
+        await loginWithSupabaseEmail(email, password);
+      } catch (supabaseError) {
+        console.error('Supabase signup warning:', supabaseError);
+        setAuthError(
+          'Tạo tài khoản thành công nhưng chưa đồng bộ được Supabase. Bạn vẫn có thể vào hệ thống, nhưng cần kiểm tra lại tài khoản Supabase để dùng chức năng tải/lưu file.',
+        );
+      }
       setCurrentView('DASHBOARD');
     } catch (error) {
       console.error('Email signup error:', error);
