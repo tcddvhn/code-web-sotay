@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { AlertCircle, CheckCircle2, FileCheck, FolderOpen, LoaderCircle, Upload, X } from 'lucide-react';
 import { YEARS } from '../constants';
@@ -307,9 +307,15 @@ export function ImportFiles({
     () => projectTemplates.filter((template) => template.isPublished),
     [projectTemplates],
   );
+  const activeTemplates = useMemo(() => {
+    if (!selectedTemplateId) {
+      return publishedTemplates;
+    }
+    return publishedTemplates.filter((template) => template.id === selectedTemplateId);
+  }, [publishedTemplates, selectedTemplateId]);
 
   useEffect(() => {
-    if (!publishedTemplates.some((template) => template.id === selectedTemplateId)) {
+    if (selectedTemplateId && !publishedTemplates.some((template) => template.id === selectedTemplateId)) {
       setSelectedTemplateId(publishedTemplates[0]?.id || '');
     }
   }, [publishedTemplates, selectedTemplateId]);
@@ -391,8 +397,8 @@ export function ImportFiles({
             cellText: false,
           });
 
-          const validation = validateWorkbookSheetNames(workbook.SheetNames, publishedTemplates);
-          const matchedSheets = publishedTemplates
+          const validation = validateWorkbookSheetNames(workbook.SheetNames, activeTemplates);
+          const matchedSheets = activeTemplates
             .filter((template) => workbook.SheetNames.includes(template.sheetName))
             .map((template) => template.sheetName);
 
@@ -457,7 +463,7 @@ export function ImportFiles({
     return () => {
       isCancelled = true;
     };
-  }, [files, publishedTemplates]);
+  }, [activeTemplates, files]);
 
   const appendFiles = (incomingFiles: FileList | File[]) => {
     const nextFiles = Array.from(incomingFiles).filter((file) => /\.(xlsx|xlsm|xls)$/i.test(file.name));
@@ -634,7 +640,7 @@ export function ImportFiles({
   };
 
   const resolveTemplatesForWorkbook = (workbook: XLSX.WorkBook) =>
-    publishedTemplates.filter((template) => workbook.SheetNames.includes(template.sheetName));
+    activeTemplates.filter((template) => workbook.SheetNames.includes(template.sheetName));
 
   const parseRowsForTemplate = (workbook: XLSX.WorkBook, template: FormTemplate, unitCode: string) => {
     if (template.mode === 'LEGACY') {
@@ -666,6 +672,11 @@ export function ImportFiles({
       return;
     }
 
+    if (activeTemplates.length === 0) {
+      setManagementMessage('Biểu mẫu đã chọn không còn hiệu lực. Vui lòng chọn lại biểu mẫu cần tiếp nhận.');
+      return;
+    }
+
     if (files.length === 0) {
       setManagementMessage('Vui lòng chọn ít nhất một file Excel để tiếp nhận.');
       return;
@@ -678,6 +689,7 @@ export function ImportFiles({
     try {
       const importedRows: DataRow[] = [];
       const failedFiles: FailedFile[] = [];
+      const partialWarnings: string[] = [];
       let acceptedFiles = 0;
 
       for (const fileItem of files) {
@@ -714,7 +726,7 @@ export function ImportFiles({
           cellText: false,
         });
 
-        const sheetValidation = validateWorkbookSheetNames(workbook.SheetNames, publishedTemplates);
+        const sheetValidation = validateWorkbookSheetNames(workbook.SheetNames, activeTemplates);
         if (sheetValidation.missingSheets.length > 0) {
           failedFiles.push({
             unitName,
@@ -738,10 +750,37 @@ export function ImportFiles({
           continue;
         }
 
+        const parsedRowsForFile: DataRow[] = [];
+        const templateErrors: string[] = [];
+
         matchedTemplates.forEach((template) => {
-          importedRows.push(...parseRowsForTemplate(workbook, template, fileItem.unitCode));
+          try {
+            parsedRowsForFile.push(...parseRowsForTemplate(workbook, template, fileItem.unitCode));
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : 'Lỗi không xác định.';
+            templateErrors.push(`${template.name}: ${reason}`);
+          }
         });
+
+        if (parsedRowsForFile.length === 0) {
+          failedFiles.push({
+            unitName,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason: templateErrors.length > 0 ? `Không đọc được dữ liệu từ biểu đã khớp. ${templateErrors.join(' | ')}` : 'Không đọc được dữ liệu từ file.',
+            relativePath: fileItem.relativePath,
+          });
+          continue;
+        }
+
+        importedRows.push(...parsedRowsForFile);
         acceptedFiles += 1;
+
+        if (templateErrors.length > 0) {
+          partialWarnings.push(
+            `${unitName} (${fileItem.file.name}) chỉ tiếp nhận một phần. Bỏ qua: ${templateErrors.join(' | ')}`,
+          );
+        }
       }
 
       if (importedRows.length > 0) {
@@ -760,6 +799,13 @@ export function ImportFiles({
         failedFiles.forEach((item) => {
           const suffix = item.missingSheets.length > 0 ? ` - thiếu sheet: ${item.missingSheets.join(', ')}` : '';
           summaryLines.push(`- ${item.unitName} (${item.fileName})${suffix}${item.reason ? ` - ${item.reason}` : ''}`);
+        });
+      }
+
+      if (partialWarnings.length > 0) {
+        summaryLines.push('Các file tiếp nhận một phần:');
+        partialWarnings.forEach((warning) => {
+          summaryLines.push(`- ${warning}`);
         });
       }
 
@@ -927,7 +973,9 @@ export function ImportFiles({
             ))}
           </select>
           <p className="page-subtitle mt-3 text-sm">
-            Khi tiếp nhận, hệ thống sẽ đối chiếu toàn bộ biểu mẫu đã chốt của dự án. File chỉ được nhận khi đủ 100% sheet bắt buộc; các sheet thừa sẽ tự bỏ qua.
+            {selectedTemplateId
+              ? 'Hệ thống đang đối chiếu theo biểu mẫu bạn chọn. File chỉ được nhận khi có đúng sheet bắt buộc của biểu này.'
+              : 'Khi tiếp nhận, hệ thống sẽ đối chiếu toàn bộ biểu mẫu đã chốt của dự án. File chỉ được nhận khi đủ 100% sheet bắt buộc; các sheet thừa sẽ tự bỏ qua.'}
           </p>
         </div>
 
