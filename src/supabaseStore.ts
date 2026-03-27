@@ -1,0 +1,541 @@
+import { ALLOWED_ACCOUNTS, getAssignmentKey } from './access';
+import { supabase } from './supabase';
+import { AppSettings, AssignmentUser, DataRow, FormTemplate, ManagedUnit, Project, UserProfile } from './types';
+
+const SETTINGS_ROW_ID = 'global';
+
+type SupabaseProjectRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: 'ACTIVE' | 'COMPLETED';
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type SupabaseTemplateRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  sheet_name: string;
+  is_published: boolean | null;
+  column_headers: string[] | null;
+  column_mapping: FormTemplate['columnMapping'];
+  header_layout: FormTemplate['headerLayout'] | null;
+  mode: FormTemplate['mode'];
+  legacy_config_name: string | null;
+  source_workbook_name: string | null;
+  source_workbook_path: string | null;
+  source_workbook_url: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type SupabaseUnitRow = {
+  code: string;
+  name: string;
+  is_deleted: boolean | null;
+  deleted_at: string | null;
+  deleted_by: ManagedUnit['deletedBy'] | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type SupabaseAssignmentRow = {
+  id: string;
+  project_id: string;
+  assignee_key: string;
+  user_id: string | null;
+  email: string;
+  display_name: string;
+  unit_codes: string[] | null;
+  updated_at: string | null;
+};
+
+type SupabaseDataFileRow = {
+  id: string;
+  project_id: string;
+  unit_code: string;
+  unit_name: string | null;
+  year: string;
+  file_name: string;
+  storage_path: string;
+  download_url: string | null;
+  updated_at: string | null;
+};
+
+type SupabaseReportExportRow = {
+  id?: string;
+  project_id: string;
+  template_id: string;
+  template_name: string;
+  unit_code: string;
+  unit_name: string;
+  year: string;
+  file_name: string;
+  storage_path: string;
+  download_url: string;
+  created_at?: string | null;
+  created_by: {
+    uid?: string | null;
+    email?: string | null;
+    displayName?: string | null;
+  } | null;
+};
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function mapProject(row: SupabaseProjectRow): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || '',
+    status: row.status,
+    createdAt: row.created_at || nowIso(),
+    updatedAt: row.updated_at || row.created_at || nowIso(),
+  };
+}
+
+function mapTemplate(row: SupabaseTemplateRow): FormTemplate {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    name: row.name,
+    sheetName: row.sheet_name,
+    isPublished: row.is_published ?? false,
+    columnHeaders: row.column_headers || [],
+    columnMapping: row.column_mapping,
+    headerLayout: row.header_layout || undefined,
+    mode: row.mode,
+    legacyConfigName: row.legacy_config_name || undefined,
+    sourceWorkbookName: row.source_workbook_name || undefined,
+    sourceWorkbookPath: row.source_workbook_path || undefined,
+    sourceWorkbookUrl: row.source_workbook_url || undefined,
+    createdAt: row.created_at || nowIso(),
+    updatedAt: row.updated_at || row.created_at || nowIso(),
+  };
+}
+
+function mapUnit(row: SupabaseUnitRow): ManagedUnit {
+  return {
+    code: row.code,
+    name: row.name,
+    isDeleted: row.is_deleted ?? false,
+    deletedAt: row.deleted_at,
+    deletedBy: row.deleted_by || undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapRowToPayload(row: DataRow) {
+  return {
+    project_id: row.projectId,
+    template_id: row.templateId,
+    unit_code: row.unitCode,
+    year: row.year,
+    source_row: row.sourceRow,
+    label: row.label,
+    values: row.values,
+    updated_at: nowIso(),
+    updated_by: row.updatedBy || null,
+  };
+}
+
+export async function listProjects() {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message || 'Không thể tải danh sách dự án từ Supabase.');
+  }
+
+  return ((data || []) as SupabaseProjectRow[]).map(mapProject);
+}
+
+export async function upsertProject(project: Project) {
+  const payload = {
+    id: project.id,
+    name: project.name,
+    description: project.description || '',
+    status: project.status,
+    created_at: typeof project.createdAt === 'string' ? project.createdAt : nowIso(),
+    updated_at: nowIso(),
+  };
+
+  const { error } = await supabase.from('projects').upsert(payload, { onConflict: 'id' });
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu dự án lên Supabase.');
+  }
+}
+
+export async function deleteProjectById(projectId: string) {
+  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+  if (error) {
+    throw new Error(error.message || 'Không thể xóa dự án trên Supabase.');
+  }
+}
+
+export async function listTemplates(projectId?: string) {
+  let builder = supabase.from('templates').select('*').order('created_at', { ascending: true });
+  if (projectId) {
+    builder = builder.eq('project_id', projectId);
+  }
+
+  const { data, error } = await builder;
+  if (error) {
+    throw new Error(error.message || 'Không thể tải danh sách biểu mẫu từ Supabase.');
+  }
+
+  return ((data || []) as SupabaseTemplateRow[]).map(mapTemplate);
+}
+
+export async function upsertTemplate(template: FormTemplate) {
+  const payload = {
+    id: template.id,
+    project_id: template.projectId,
+    name: template.name,
+    sheet_name: template.sheetName,
+    is_published: template.isPublished ?? false,
+    column_headers: template.columnHeaders || [],
+    column_mapping: template.columnMapping,
+    header_layout: template.headerLayout || null,
+    mode: template.mode,
+    legacy_config_name: template.legacyConfigName || null,
+    source_workbook_name: template.sourceWorkbookName || null,
+    source_workbook_path: template.sourceWorkbookPath || null,
+    source_workbook_url: template.sourceWorkbookUrl || null,
+    created_at: typeof template.createdAt === 'string' ? template.createdAt : nowIso(),
+    updated_at: nowIso(),
+  };
+
+  const { error } = await supabase.from('templates').upsert(payload, { onConflict: 'id' });
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu biểu mẫu lên Supabase.');
+  }
+}
+
+export async function deleteTemplateById(templateId: string) {
+  const { error } = await supabase.from('templates').delete().eq('id', templateId);
+  if (error) {
+    throw new Error(error.message || 'Không thể xóa biểu mẫu trên Supabase.');
+  }
+}
+
+export async function listUnits() {
+  const { data, error } = await supabase.from('units').select('*').order('code');
+  if (error) {
+    throw new Error(error.message || 'Không thể tải danh sách đơn vị từ Supabase.');
+  }
+
+  return ((data || []) as SupabaseUnitRow[]).map(mapUnit);
+}
+
+export async function seedUnits(units: ManagedUnit[]) {
+  const payload = units.map((unit) => ({
+    code: unit.code,
+    name: unit.name,
+    is_deleted: unit.isDeleted ?? false,
+    deleted_at: unit.deletedAt || null,
+    deleted_by: unit.deletedBy || null,
+    created_at: typeof unit.createdAt === 'string' ? unit.createdAt : nowIso(),
+    updated_at: typeof unit.updatedAt === 'string' ? unit.updatedAt : nowIso(),
+  }));
+
+  const { error } = await supabase.from('units').upsert(payload, { onConflict: 'code' });
+  if (error) {
+    throw new Error(error.message || 'Không thể khởi tạo danh sách đơn vị trên Supabase.');
+  }
+}
+
+export async function upsertUnit(unit: ManagedUnit) {
+  const payload = {
+    code: unit.code,
+    name: unit.name,
+    is_deleted: unit.isDeleted ?? false,
+    deleted_at: unit.deletedAt || null,
+    deleted_by: unit.deletedBy || null,
+    created_at: typeof unit.createdAt === 'string' ? unit.createdAt : nowIso(),
+    updated_at: nowIso(),
+  };
+
+  const { error } = await supabase.from('units').upsert(payload, { onConflict: 'code' });
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu đơn vị lên Supabase.');
+  }
+}
+
+export async function getSettings() {
+  const { data, error } = await supabase.from('app_settings').select('*').eq('id', SETTINGS_ROW_ID).maybeSingle();
+  if (error) {
+    throw new Error(error.message || 'Không thể tải cài đặt từ Supabase.');
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    oneDriveLink: data.one_drive_link || '',
+    storagePath: data.storage_path || '',
+    receivedPath: data.received_path || '',
+  } satisfies AppSettings;
+}
+
+export async function upsertSettings(settings: AppSettings) {
+  const { error } = await supabase.from('app_settings').upsert(
+    {
+      id: SETTINGS_ROW_ID,
+      one_drive_link: settings.oneDriveLink,
+      storage_path: settings.storagePath,
+      received_path: settings.receivedPath,
+      updated_at: nowIso(),
+    },
+    { onConflict: 'id' },
+  );
+
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu cài đặt lên Supabase.');
+  }
+}
+
+export async function listAssignments(projectId: string) {
+  const { data, error } = await supabase
+    .from('assignments')
+    .select('*')
+    .eq('project_id', projectId);
+
+  if (error) {
+    throw new Error(error.message || 'Không thể tải phân công từ Supabase.');
+  }
+
+  return (data || []) as SupabaseAssignmentRow[];
+}
+
+export async function replaceAssignments(projectId: string, entries: SupabaseAssignmentRow[]) {
+  const { error: deleteError } = await supabase.from('assignments').delete().eq('project_id', projectId);
+  if (deleteError) {
+    throw new Error(deleteError.message || 'Không thể làm mới phân công trên Supabase.');
+  }
+
+  if (entries.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase.from('assignments').insert(entries);
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu phân công trên Supabase.');
+  }
+}
+
+export async function listRowsByProject(projectId: string) {
+  const { data, error } = await supabase.from('consolidated_rows').select('*').eq('project_id', projectId);
+  if (error) {
+    throw new Error(error.message || 'Không thể tải dữ liệu tổng hợp từ Supabase.');
+  }
+
+  const rows = (data || []) as any[];
+  return rows.map((row) => ({
+    projectId: row.project_id,
+    templateId: row.template_id,
+    unitCode: row.unit_code,
+    year: row.year,
+    sourceRow: row.source_row,
+    label: row.label,
+    values: Array.isArray(row.values) ? row.values.map((value: number) => Number(value) || 0) : [],
+    updatedAt: row.updated_at || null,
+    updatedBy: row.updated_by || undefined,
+  })) as DataRow[];
+}
+
+export async function upsertRows(rows: DataRow[]) {
+  if (rows.length === 0) {
+    return;
+  }
+
+  const payload = rows.map((row) => ({
+    ...mapRowToPayload(row),
+    id: `${row.projectId}_${row.templateId}_${row.unitCode}_${row.year}_${row.sourceRow}`,
+  }));
+
+  const { error } = await supabase.from('consolidated_rows').upsert(payload, { onConflict: 'id' });
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu dữ liệu tổng hợp lên Supabase.');
+  }
+}
+
+export async function deleteRowsByProject(projectId: string) {
+  const { error } = await supabase.from('consolidated_rows').delete().eq('project_id', projectId);
+  if (error) {
+    throw new Error(error.message || 'Không thể xóa dữ liệu dự án trên Supabase.');
+  }
+}
+
+export async function deleteRowsByTemplate(templateId: string) {
+  const { error } = await supabase.from('consolidated_rows').delete().eq('template_id', templateId);
+  if (error) {
+    throw new Error(error.message || 'Không thể xóa dữ liệu biểu mẫu trên Supabase.');
+  }
+}
+
+export async function deleteRowsByYear(projectId: string, year: string) {
+  const { error } = await supabase
+    .from('consolidated_rows')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('year', year);
+  if (error) {
+    throw new Error(error.message || 'Không thể xóa dữ liệu theo năm trên Supabase.');
+  }
+}
+
+export async function deleteRowsByUnit(projectId: string, year: string, unitCode: string) {
+  const { error } = await supabase
+    .from('consolidated_rows')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('year', year)
+    .eq('unit_code', unitCode);
+  if (error) {
+    throw new Error(error.message || 'Không thể xóa dữ liệu đơn vị trên Supabase.');
+  }
+}
+
+export async function upsertDataFileRecord(record: {
+  projectId: string;
+  unitCode: string;
+  unitName: string;
+  year: string;
+  fileName: string;
+  storagePath: string;
+  downloadURL: string;
+}) {
+  const payload = {
+    id: `${record.projectId}_${record.unitCode}_${record.year}`,
+    project_id: record.projectId,
+    unit_code: record.unitCode,
+    unit_name: record.unitName,
+    year: record.year,
+    file_name: record.fileName,
+    storage_path: record.storagePath,
+    download_url: record.downloadURL,
+    updated_at: nowIso(),
+  };
+
+  const { error } = await supabase.from('data_files').upsert(payload, { onConflict: 'id' });
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu metadata file dữ liệu lên Supabase.');
+  }
+}
+
+export async function getDataFileRecord(projectId: string, unitCode: string, year: string) {
+  const { data, error } = await supabase
+    .from('data_files')
+    .select('*')
+    .eq('id', `${projectId}_${unitCode}_${year}`)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Không thể tải metadata file dữ liệu từ Supabase.');
+  }
+
+  return (data as SupabaseDataFileRow | null) || null;
+}
+
+export async function deleteDataFilesByProject(projectId: string) {
+  const { error } = await supabase.from('data_files').delete().eq('project_id', projectId);
+  if (error) {
+    throw new Error(error.message || 'Không thể xóa metadata file của dự án trên Supabase.');
+  }
+}
+
+export async function deleteDataFilesByTemplate(_templateId: string) {
+  return;
+}
+
+export async function createReportExport(record: SupabaseReportExportRow) {
+  const payload = {
+    project_id: record.project_id,
+    template_id: record.template_id,
+    template_name: record.template_name,
+    unit_code: record.unit_code,
+    unit_name: record.unit_name,
+    year: record.year,
+    file_name: record.file_name,
+    storage_path: record.storage_path,
+    download_url: record.download_url,
+    created_at: nowIso(),
+    created_by: record.created_by,
+  };
+
+  const { error } = await supabase.from('report_exports').insert(payload);
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu lịch sử xuất báo cáo lên Supabase.');
+  }
+}
+
+export async function deleteReportExportsByProject(projectId: string) {
+  const { data, error } = await supabase
+    .from('report_exports')
+    .select('storage_path')
+    .eq('project_id', projectId);
+  if (error) {
+    throw new Error(error.message || 'Không thể tải lịch sử xuất báo cáo của dự án.');
+  }
+
+  const { error: deleteError } = await supabase.from('report_exports').delete().eq('project_id', projectId);
+  if (deleteError) {
+    throw new Error(deleteError.message || 'Không thể xóa lịch sử xuất báo cáo của dự án.');
+  }
+
+  return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
+}
+
+export async function deleteReportExportsByTemplate(templateId: string) {
+  const { data, error } = await supabase
+    .from('report_exports')
+    .select('storage_path')
+    .eq('template_id', templateId);
+  if (error) {
+    throw new Error(error.message || 'Không thể tải lịch sử xuất báo cáo của biểu mẫu.');
+  }
+
+  const { error: deleteError } = await supabase.from('report_exports').delete().eq('template_id', templateId);
+  if (deleteError) {
+    throw new Error(deleteError.message || 'Không thể xóa lịch sử xuất báo cáo của biểu mẫu.');
+  }
+
+  return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
+}
+
+export function buildStaticUserProfiles(): UserProfile[] {
+  return ALLOWED_ACCOUNTS.map((account) => ({
+    id: getAssignmentKey(account.email),
+    email: account.email,
+    displayName: account.displayName,
+    role: account.role,
+  }));
+}
+
+export function buildAssignmentRows(projectId: string, users: AssignmentUser[], current: Record<string, string[]>) {
+  return Object.entries(current)
+    .filter(([, unitCodes]) => unitCodes.length > 0)
+    .map(([assigneeKey, unitCodes]) => {
+      const assignmentUser = users.find((item) => item.id === assigneeKey);
+      return {
+        id: `${projectId}_${assigneeKey}`,
+        project_id: projectId,
+        assignee_key: assigneeKey,
+        user_id: assignmentUser?.userId || null,
+        email: assignmentUser?.email || assigneeKey,
+        display_name: assignmentUser?.displayName || assigneeKey,
+        unit_codes: unitCodes,
+        updated_at: nowIso(),
+      } satisfies SupabaseAssignmentRow;
+    });
+}
+

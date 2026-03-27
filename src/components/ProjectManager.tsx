@@ -1,34 +1,26 @@
-﻿import React, { useEffect, useState } from 'react';
-import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import React, { useState } from 'react';
 import { Plus, Trash2, CheckCircle, Clock, FolderOpen } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../firebase';
 import { Project } from '../types';
 
 export function ProjectManager({
+  projects,
   onSelectProject,
   onDeleteProject,
+  onCreateProject,
+  onToggleProjectStatus,
 }: {
+  projects: Project[];
   onSelectProject: (p: Project) => void;
   onDeleteProject: (project: Project) => Promise<boolean>;
+  onCreateProject: (payload: { name: string; description: string }) => Promise<Project>;
+  onToggleProjectStatus: (project: Project) => Promise<Project>;
 }) {
-  const [projects, setProjects] = useState<Project[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, 'projects'),
-      (snapshot) => {
-        const list = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as Project));
-        setProjects(list);
-      },
-      (error) => handleFirestoreError(error, OperationType.LIST, 'projects'),
-    );
-    return () => unsubscribe();
-  }, []);
 
   const handleAddProject = async () => {
     if (!newProject.name.trim()) {
@@ -36,24 +28,17 @@ export function ProjectManager({
       return;
     }
 
-    const id = `proj_${Date.now()}`;
     setIsSavingProject(true);
     setMessage(null);
     try {
-      const payload = {
-        id,
+      const project = await onCreateProject({
         name: newProject.name.trim(),
         description: newProject.description.trim(),
-        status: 'ACTIVE',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      } satisfies Omit<Project, 'createdAt' | 'updatedAt'> & { createdAt: any; updatedAt: any };
-
-      await setDoc(doc(db, 'projects', id), payload);
-      onSelectProject({ ...payload } as Project);
+      });
+      onSelectProject(project);
       setIsAdding(false);
       setNewProject({ name: '', description: '' });
-      setMessage(`Đã lưu dự án "${payload.name}".`);
+      setMessage(`Đã lưu dự án "${project.name}".`);
     } catch (error) {
       console.error('Create project error:', error);
       setMessage(error instanceof Error ? error.message : 'Không thể lưu dự án mới.');
@@ -63,16 +48,15 @@ export function ProjectManager({
   };
 
   const toggleStatus = async (project: Project) => {
+    setUpdatingProjectId(project.id);
     try {
-      await setDoc(doc(db, 'projects', project.id), {
-        ...project,
-        status: project.status === 'ACTIVE' ? 'COMPLETED' : 'ACTIVE',
-        updatedAt: serverTimestamp(),
-      });
-      setMessage(`Đã cập nhật trạng thái dự án "${project.name}".`);
+      const updated = await onToggleProjectStatus(project);
+      setMessage(`Đã cập nhật trạng thái dự án "${updated.name}".`);
     } catch (error) {
       console.error('Update project status error:', error);
       setMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái dự án.');
+    } finally {
+      setUpdatingProjectId(null);
     }
   };
 
@@ -93,7 +77,7 @@ export function ProjectManager({
 
   return (
     <div className="p-6 md:p-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 className="page-title">Quản lý Dự án</h2>
         <button onClick={() => setIsAdding(true)} className="primary-btn flex items-center gap-2">
           <Plus size={16} />
@@ -108,7 +92,7 @@ export function ProjectManager({
       )}
 
       {isAdding && (
-        <div className="panel-card rounded-[24px] p-6 mb-8">
+        <div className="panel-card mb-8 rounded-[24px] p-6">
           <h3 className="section-title mb-4">Thông tin dự án mới</h3>
           <div className="space-y-4">
             <input
@@ -145,15 +129,20 @@ export function ProjectManager({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => (
-          <div key={project.id} className="panel-card rounded-[24px] p-6 flex flex-col">
-            <div className="flex items-start justify-between gap-4 mb-4">
+          <div key={project.id} className="panel-card flex flex-col rounded-[24px] p-6">
+            <div className="mb-4 flex items-start justify-between gap-4">
               <div className={`status-pill ${project.status === 'ACTIVE' ? 'status-pill-submitted' : 'status-pill-pending'}`}>
                 {project.status === 'ACTIVE' ? 'Đang triển khai' : 'Đã hoàn thành'}
               </div>
               <div className="flex gap-2">
-                <button onClick={() => toggleStatus(project)} title="Đổi trạng thái">
+                <button
+                  onClick={() => toggleStatus(project)}
+                  title="Đổi trạng thái"
+                  disabled={updatingProjectId === project.id}
+                  className="disabled:cursor-not-allowed disabled:opacity-40"
+                >
                   {project.status === 'ACTIVE' ? <CheckCircle size={16} /> : <Clock size={16} />}
                 </button>
                 <button
@@ -165,8 +154,8 @@ export function ProjectManager({
                 </button>
               </div>
             </div>
-            <h3 className="text-xl font-semibold text-[var(--ink)] mb-2">{project.name}</h3>
-            <p className="text-xs text-[var(--ink-soft)] flex-1">{project.description || 'Không có mô tả.'}</p>
+            <h3 className="mb-2 text-xl font-semibold text-[var(--ink)]">{project.name}</h3>
+            <p className="flex-1 text-xs text-[var(--ink-soft)]">{project.description || 'Không có mô tả.'}</p>
             <button
               onClick={() => onSelectProject(project)}
               className="secondary-btn mt-6 flex items-center justify-center gap-2"

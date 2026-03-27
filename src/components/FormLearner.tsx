@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
-import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock, X } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../firebase';
 import { uploadFile } from '../supabase';
 import { FormTemplate, HeaderLayout, Project } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
 import { expandColumnSelection } from '../utils/workbookUtils';
+import { listTemplates as listTemplatesFromSupabase, upsertTemplate } from '../supabaseStore';
 
 type Mode = 'AI' | 'MANUAL';
 
@@ -175,16 +174,23 @@ export function FormLearner({
       return undefined;
     }
 
-    const q = query(collection(db, 'templates'), where('projectId', '==', project.id));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const list = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as FormTemplate));
-        setManualTemplates(list);
-      },
-      (err) => handleFirestoreError(err, OperationType.LIST, 'templates'),
-    );
-    return () => unsubscribe();
+    let cancelled = false;
+    listTemplatesFromSupabase(project.id)
+      .then((list) => {
+        if (!cancelled) {
+          setManualTemplates(list);
+        }
+      })
+      .catch((error) => {
+        console.error('Load templates from Supabase error:', error);
+        if (!cancelled) {
+          setManualTemplates([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [project?.id]);
 
   useEffect(() => {
@@ -567,14 +573,13 @@ export function FormLearner({
         }
       }
 
-      await setDoc(
-        doc(db, 'templates', template.id),
-        {
-          ...templateToSave,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      await upsertTemplate({
+        ...templateToSave,
+        updatedAt: new Date().toISOString(),
+      });
+      if (project?.id) {
+        setManualTemplates(await listTemplatesFromSupabase(project.id));
+      }
 
       setError(null);
       setNotice(`Đã cập nhật biểu mẫu "${templateToSave.name}".`);
@@ -590,14 +595,14 @@ export function FormLearner({
   const toggleTemplatePublished = async (template: FormTemplate) => {
     try {
       const nextPublished = !template.isPublished;
-      await setDoc(
-        doc(db, 'templates', template.id),
-        {
-          isPublished: nextPublished,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      await upsertTemplate({
+        ...template,
+        isPublished: nextPublished,
+        updatedAt: new Date().toISOString(),
+      });
+      if (project?.id) {
+        setManualTemplates(await listTemplatesFromSupabase(project.id));
+      }
       setError(null);
       setNotice(
         nextPublished
@@ -661,15 +666,15 @@ export function FormLearner({
       const workbookMetadata = await uploadSourceWorkbook(manualFile);
       const templateWithLayout = buildTemplateWithHeaderLayout(template, workbook);
 
-      await setDoc(
-        doc(db, 'templates', template.id),
-        {
-          ...workbookMetadata,
-          headerLayout: templateWithLayout.headerLayout || template.headerLayout,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+      await upsertTemplate({
+        ...template,
+        ...workbookMetadata,
+        headerLayout: templateWithLayout.headerLayout || template.headerLayout,
+        updatedAt: new Date().toISOString(),
+      });
+      if (project?.id) {
+        setManualTemplates(await listTemplatesFromSupabase(project.id));
+      }
 
       setNotice(`Đã gắn lại file mẫu gốc cho biểu "${template.name}".`);
     } catch (error) {
@@ -821,8 +826,8 @@ export function FormLearner({
                 endRow: result.endRow,
               },
               mode: 'AI',
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
             } as FormTemplate);
 
             if (index < sheetNames.length - 1) {
@@ -900,18 +905,17 @@ export function FormLearner({
 
       setSaveProgressLabel('Đang lưu cấu hình biểu mẫu...');
       const promises = templatesWithLayout.map((tpl) =>
-        setDoc(
-          doc(db, 'templates', tpl.id),
-          {
-            ...tpl,
-            ...(workbookMetadata || {}),
-            isPublished: tpl.isPublished ?? false,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        ),
+        upsertTemplate({
+          ...tpl,
+          ...(workbookMetadata || {}),
+          isPublished: tpl.isPublished ?? false,
+          updatedAt: new Date().toISOString(),
+        }),
       );
       await Promise.all(promises);
+      if (project?.id) {
+        setManualTemplates(await listTemplatesFromSupabase(project.id));
+      }
       setLearnedTemplates([]);
       setError(null);
       setNotice(
@@ -920,7 +924,7 @@ export function FormLearner({
           : `Đã lưu ${templatesWithLayout.length} biểu mẫu ở trạng thái nháp. Bạn có thể xem trước trong Báo cáo và chốt từng biểu khi sẵn sàng tiếp nhận dữ liệu.`,
       );
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'templates');
+      console.error('Save templates error:', err);
       throw err instanceof Error ? err : new Error('Không thể lưu biểu mẫu.');
     } finally {
       setIsSavingTemplates(false);
@@ -1108,8 +1112,8 @@ export function FormLearner({
         endRow: Number(manualForm.endRow),
       },
       mode: 'MANUAL',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     try {

@@ -3,12 +3,12 @@ import * as XLSX from 'xlsx';
 import { AlertCircle, CheckCircle2, FileCheck, FolderOpen, LoaderCircle, Upload, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import { DataRow, FormTemplate, ManagedUnit, Project } from '../types';
-import { db } from '../firebase';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { parseLegacyFromWorkbook, parseTemplateFromWorkbook } from '../utils/excelParser';
 import { getPinnedYearPreference, getPreferredReportingYear, setPinnedYearPreference } from '../utils/reportingYear';
 import { validateWorkbookSheetNames } from '../utils/workbookUtils';
 import { uploadFile } from '../supabase';
+import { insertRowsToSupabase } from '../supabaseReports';
+import { upsertDataFileRecord } from '../supabaseStore';
 
 type FileMatchType = 'CODE' | 'NAME' | 'FUZZY' | 'MANUAL' | 'NONE';
 type FileMatchStatus = 'AUTO_FILLED' | 'NEEDS_CONFIRMATION' | 'MANUAL' | 'UNMATCHED' | 'CONFLICT';
@@ -268,19 +268,16 @@ function sanitizeStorageName(value: string) {
     .replace(/^_+|_+$/g, '');
 }
 
-function buildDataFileDocumentId(projectId: string, unitCode: string, year: string) {
-  return `${projectId}_${unitCode}_${year}`;
-}
-
 async function uploadAcceptedDataFile(
   fileItem: PendingFile,
   projectId: string,
+  unitCode: string,
   year: string,
   unitName: string,
 ) {
   const extension = fileItem.file.name.split('.').pop() || 'xlsx';
   const safeUnitName = sanitizeStorageName(unitName) || fileItem.unitCode;
-  const fileName = `${safeUnitName || fileItem.unitCode}.${extension}`;
+  const fileName = `${unitCode}_${safeUnitName || fileItem.unitCode}.${extension}`;
   const renamedFile = new File([fileItem.file], fileName, {
     type: fileItem.file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
@@ -291,20 +288,15 @@ async function uploadAcceptedDataFile(
     upsert: true,
   });
 
-  await setDoc(
-    doc(db, 'data_files', buildDataFileDocumentId(projectId, fileItem.unitCode, year)),
-    {
+  await upsertDataFileRecord({
       projectId,
-      unitCode: fileItem.unitCode,
+      unitCode,
       unitName,
       year,
       fileName,
       storagePath: uploadResult.path,
       downloadURL: uploadResult.publicUrl,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+  });
 }
 
 export function ImportFiles({
@@ -826,7 +818,7 @@ export function ImportFiles({
 
         importedRows.push(...parsedRowsForFile);
         try {
-          await uploadAcceptedDataFile(fileItem, selectedProjectId, selectedYear, unitName);
+          await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, selectedYear, unitName);
         } catch (uploadError) {
           console.error('Không thể upload file dữ liệu đã tiếp nhận:', uploadError);
         }
@@ -841,6 +833,11 @@ export function ImportFiles({
 
       if (importedRows.length > 0) {
         await onDataImported(importedRows);
+        try {
+          await insertRowsToSupabase(importedRows);
+        } catch (insertError) {
+          console.error('Ghi dữ liệu lên Supabase thất bại:', insertError);
+        }
       }
 
       setLastFailedFiles(failedFiles);

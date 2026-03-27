@@ -1,20 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
-  collection,
-  doc,
-  deleteDoc,
-  getDoc,
-  getDocs,
-  limit,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  setDoc,
-  where,
-  writeBatch,
-} from 'firebase/firestore';
-import {
   Activity,
   CheckCircle2,
   FileBarChart,
@@ -33,19 +19,41 @@ import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
-import { auth, db, handleFirestoreError, loginWithEmail, logout, OperationType, signUpWithEmail } from './firebase';
+import { auth, loginWithEmail, logout, signUpWithEmail } from './firebase';
 import { deleteFileByPath, loginWithSupabaseEmail, logoutSupabase, signUpWithSupabaseEmail } from './supabase';
 import { AppSettings, ConsolidatedData, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAllowedAccount, getAssignmentKey, isAdminEmail, isAllowedEmail } from './access';
+import {
+  buildStaticUserProfiles,
+  getSettings as getSettingsFromSupabase,
+  deleteDataFilesByProject,
+  deleteProjectById as deleteProjectFromSupabase,
+  deleteReportExportsByProject as deleteReportExportsByProjectFromSupabase,
+  deleteReportExportsByTemplate as deleteReportExportsByTemplateFromSupabase,
+  deleteRowsByProject as deleteRowsByProjectFromSupabase,
+  deleteRowsByTemplate as deleteRowsByTemplateFromSupabase,
+  deleteRowsByUnit as deleteRowsByUnitFromSupabase,
+  deleteRowsByYear as deleteRowsByYearFromSupabase,
+  deleteTemplateById as deleteTemplateFromSupabase,
+  listAssignments as listAssignmentsFromSupabase,
+  listProjects as listProjectsFromSupabase,
+  listRowsByProject as listRowsByProjectFromSupabase,
+  listTemplates as listTemplatesFromSupabase,
+  listUnits as listUnitsFromSupabase,
+  replaceAssignments as replaceAssignmentsInSupabase,
+  seedUnits as seedUnitsToSupabase,
+  upsertRows as upsertRowsToSupabase,
+  upsertProject as upsertProjectToSupabase,
+  upsertSettings as upsertSettingsToSupabase,
+  upsertUnit as upsertUnitToSupabase,
+} from './supabaseStore';
 
 const DEFAULT_SETTINGS: AppSettings = {
   oneDriveLink: 'https://onedrive.live.com/...',
   storagePath: 'C:\\TongHop\\02_LuuFileGoc',
   receivedPath: 'C:\\TongHop\\01_DaTiepNhan',
 };
-
-const FIRESTORE_BATCH_LIMIT = 400;
 
 type UnitLog = {
   code: string;
@@ -74,6 +82,11 @@ function getTimestampMs(value: any) {
 
   if (typeof value === 'number') {
     return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
   }
 
   return null;
@@ -186,8 +199,6 @@ export default function App() {
       return;
     }
 
-    const userRef = doc(db, 'users', user.uid);
-    let cancelled = false;
     const account = getAllowedAccount(user.email);
     const fallbackProfile: UserProfile = {
       id: user.uid,
@@ -195,224 +206,159 @@ export default function App() {
       displayName: account?.displayName || user.displayName,
       role: account?.role || 'contributor',
     };
-
-    setUserProfile((current) => current || fallbackProfile);
-
-    getDoc(userRef)
-      .then(async (snap) => {
-        if (cancelled) return;
-        if (!snap.exists()) {
-          await setDoc(userRef, fallbackProfile, { merge: true });
-          return;
-        }
-
-        const existing = snap.data() as UserProfile;
-        const updates: Partial<UserProfile> = {};
-
-        if (fallbackProfile.displayName && existing.displayName !== fallbackProfile.displayName) {
-          updates.displayName = fallbackProfile.displayName;
-        }
-
-        if (fallbackProfile.role && existing.role !== fallbackProfile.role) {
-          updates.role = fallbackProfile.role;
-        }
-
-        if (Object.keys(updates).length > 0) {
-          await setDoc(userRef, updates, { merge: true });
-        }
-      })
-      .catch((error) => {
-        console.error('User profile sync error:', error);
-      });
-
-    const unsubscribe = onSnapshot(
-      userRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          setUserProfile(snapshot.data() as UserProfile);
-        }
-      },
-      () => setUserProfile(null),
-    );
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
+    setUserProfile(fallbackProfile);
   }, [user]);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, 'projects'),
-      (snapshot) => {
-        const list = snapshot.docs.map((snapshotDoc) => ({ id: snapshotDoc.id, ...snapshotDoc.data() } as Project));
-        setProjects(list);
-      },
-      (error) => {
-        console.error('Projects subscription error:', error);
-        setProjects([]);
-      },
-    );
+    let cancelled = false;
 
-    return () => unsubscribe();
+    listProjectsFromSupabase()
+      .then((list) => {
+        if (!cancelled && list.length > 0) {
+          setProjects(list);
+        }
+      })
+      .catch((error) => {
+        console.error('Supabase projects load error:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (!isAdmin) {
-      setUsers([]);
+    if (!selectedProjectId) {
       return;
     }
 
-    const unsubscribe = onSnapshot(
-      collection(db, 'users'),
-      (snapshot) => {
-        const list = snapshot.docs.map((snapshotDoc) => ({ id: snapshotDoc.id, ...snapshotDoc.data() } as UserProfile));
-        setUsers(list);
-      },
-      () => setUsers([]),
-    );
+    let cancelled = false;
+    listTemplatesFromSupabase(selectedProjectId)
+      .then((list) => {
+        if (!cancelled && list.length >= 0) {
+          setTemplates(list);
+        }
+      })
+      .catch((error) => {
+        console.error('Supabase templates load error:', error);
+      });
 
-    return () => unsubscribe();
-  }, [isAdmin]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProjectId]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setUnits([]);
+    if (!selectedProjectId) {
       return;
     }
 
-    const unsubscribe = onSnapshot(
-      collection(db, 'units'),
-      async (snapshot) => {
-        if (snapshot.empty) {
-          setUnits([]);
-
-          if (isAdmin) {
-            const batch = writeBatch(db);
-            UNITS.forEach((unit) => {
-              batch.set(doc(db, 'units', unit.code), {
-                ...unit,
-                isDeleted: false,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-              });
-            });
-            await batch.commit();
-          }
+    let cancelled = false;
+    listRowsByProjectFromSupabase(selectedProjectId)
+      .then((rows) => {
+        if (cancelled) {
           return;
         }
-
-        const list = snapshot.docs
-          .map((snapshotDoc) => ({ ...(snapshotDoc.data() as ManagedUnit), code: snapshotDoc.id }))
-          .sort((left, right) => left.code.localeCompare(right.code));
-        setUnits(list);
-      },
-      () => setUnits([]),
-    );
-
-    return () => unsubscribe();
-  }, [isAdmin, isAuthenticated]);
-
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setAssignments({});
-      return;
-    }
-
-    const unsubscribe = onSnapshot(
-      query(collection(db, 'assignments'), where('projectId', '==', selectedProjectId)),
-      (snapshot) => {
-        const map: Record<string, string[]> = {};
-        snapshot.docs.forEach((docSnap) => {
-          const data = docSnap.data() as any;
-          const assigneeKey = data.assigneeKey || getAssignmentKey(data.email) || data.userId;
-          if (assigneeKey && Array.isArray(data.unitCodes)) {
-            map[assigneeKey] = data.unitCodes;
-          }
-        });
-        setAssignments(map);
-      },
-      (error) => {
-        console.error('Assignments subscription error:', error);
-        setAssignments({});
-      },
-    );
-
-    return () => unsubscribe();
-  }, [selectedProjectId]);
-
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setTemplates([]);
-      return;
-    }
-
-    const unsubscribe = onSnapshot(
-      query(collection(db, 'templates'), where('projectId', '==', selectedProjectId)),
-      (snapshot) => {
-        const list = snapshot.docs.map((snapshotDoc) => ({ id: snapshotDoc.id, ...snapshotDoc.data() } as FormTemplate));
-        setTemplates(list);
-      },
-      (error) => {
-        console.error('Templates subscription error:', error);
-        setTemplates([]);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [selectedProjectId]);
-
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setData({});
-      return;
-    }
-
-    const unsubscribe = onSnapshot(
-      query(collection(db, 'consolidated_data_v2'), where('projectId', '==', selectedProjectId)),
-      (snapshot) => {
         const organized: ConsolidatedData = {};
-        snapshot.docs.forEach((snapshotDoc) => {
-          const row = snapshotDoc.data() as DataRow;
+        rows.forEach((row) => {
           if (!organized[row.templateId]) {
             organized[row.templateId] = [];
           }
           organized[row.templateId].push(row);
         });
         setData(organized);
-      },
-      (error) => {
-        console.error('Data subscription error:', error);
-        setData({});
-      },
-    );
+      })
+      .catch((error) => {
+        console.error('Supabase rows load error:', error);
+      });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedProjectId]);
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setSettings(DEFAULT_SETTINGS);
       return;
     }
 
-    const unsubscribe = onSnapshot(
-      doc(db, 'settings', 'global'),
-      (snapshot) => {
-        if (snapshot.exists()) {
+    let cancelled = false;
+    listUnitsFromSupabase()
+      .then(async (list) => {
+        if (cancelled) {
+          return;
+        }
+        if (list.length === 0 && isAdmin) {
+          await seedUnitsToSupabase(UNITS.map((unit) => ({ ...unit, isDeleted: false })));
+          if (cancelled) {
+            return;
+          }
+          list = await listUnitsFromSupabase();
+        }
+        setUnits(list);
+      })
+      .catch((error) => {
+        console.error('Supabase units load error:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isAdmin]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      return;
+    }
+
+    let cancelled = false;
+    listAssignmentsFromSupabase(selectedProjectId)
+      .then((rows) => {
+        if (cancelled) {
+          return;
+        }
+        const map: Record<string, string[]> = {};
+        rows.forEach((row) => {
+          map[row.assignee_key] = Array.isArray(row.unit_codes) ? row.unit_codes : [];
+        });
+        setAssignments(map);
+      })
+      .catch((error) => {
+        console.error('Supabase assignments load error:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    let cancelled = false;
+    getSettingsFromSupabase()
+      .then((nextSettings) => {
+        if (!cancelled && nextSettings) {
           setSettings({
             ...DEFAULT_SETTINGS,
-            ...(snapshot.data() as Partial<AppSettings>),
+            ...nextSettings,
           });
         }
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, 'settings/global');
-      },
-    );
+      })
+      .catch((error) => {
+        console.error('Supabase settings load error:', error);
+      });
 
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    setUsers(isAdmin ? buildStaticUserProfiles() : []);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (projects.length > 0 && !projects.find((p) => p.id === selectedProjectId)) {
@@ -425,127 +371,28 @@ export default function App() {
     }
   }, [projects, selectedProjectId]);
 
-  const saveRowsInBatches = async (rows: DataRow[]) => {
-    for (let index = 0; index < rows.length; index += FIRESTORE_BATCH_LIMIT) {
-      const batch = writeBatch(db);
-      const currentRows = rows.slice(index, index + FIRESTORE_BATCH_LIMIT);
-
-      currentRows.forEach((row) => {
-        const rowId = `${row.projectId}_${row.templateId}_${row.unitCode}_${row.year}_${row.sourceRow}`;
-        batch.set(doc(db, 'consolidated_data_v2', rowId), {
-          ...row,
-          updatedAt: serverTimestamp(),
-          updatedBy: {
-            uid: user?.uid,
-            email: user?.email,
-            displayName: effectiveUserProfile?.displayName || user?.displayName,
-          },
-        });
-      });
-
-      await batch.commit();
-    }
-  };
-
-  const deleteRowsInBatches = async (rowIds: string[]) => {
-    for (let index = 0; index < rowIds.length; index += FIRESTORE_BATCH_LIMIT) {
-      const batch = writeBatch(db);
-      const currentRowIds = rowIds.slice(index, index + FIRESTORE_BATCH_LIMIT);
-
-      currentRowIds.forEach((rowId) => {
-        batch.delete(doc(db, 'consolidated_data_v2', rowId));
-      });
-
-      await batch.commit();
-    }
-  };
-
   const deleteReportExports = async (projectId: string) => {
-    let total = 0;
-
-    while (true) {
-      const q = query(collection(db, 'report_exports'), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) break;
-
-      const batch = writeBatch(db);
-      for (const docSnap of snapshot.docs) {
-        const data = docSnap.data() as any;
-        if (data?.storagePath) {
-          try {
-            await deleteFileByPath(data.storagePath);
-          } catch (err) {
-            // ignore
-          }
-        }
-        batch.delete(docSnap.ref);
+    const storagePaths = await deleteReportExportsByProjectFromSupabase(projectId);
+    for (const storagePath of storagePaths) {
+      try {
+        await deleteFileByPath(storagePath);
+      } catch {
+        // ignore
       }
-      await batch.commit();
-      total += snapshot.size;
     }
-
-    return total;
+    return storagePaths.length;
   };
 
   const deleteReportExportsByTemplate = async (templateId: string) => {
-    let total = 0;
-
-    while (true) {
-      const q = query(collection(db, 'report_exports'), where('templateId', '==', templateId), limit(FIRESTORE_BATCH_LIMIT));
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) break;
-
-      const batch = writeBatch(db);
-      for (const docSnap of snapshot.docs) {
-        const data = docSnap.data() as any;
-        if (data?.storagePath) {
-          try {
-            await deleteFileByPath(data.storagePath);
-          } catch (err) {
-            // ignore
-          }
-        }
-        batch.delete(docSnap.ref);
+    const storagePaths = await deleteReportExportsByTemplateFromSupabase(templateId);
+    for (const storagePath of storagePaths) {
+      try {
+        await deleteFileByPath(storagePath);
+      } catch {
+        // ignore
       }
-      await batch.commit();
-      total += snapshot.size;
     }
-
-    return total;
-  };
-
-  const deleteByProjectQuery = async (collectionName: string, projectId: string) => {
-    let totalDeleted = 0;
-
-    while (true) {
-      const q = query(collection(db, collectionName), where('projectId', '==', projectId), limit(FIRESTORE_BATCH_LIMIT));
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) break;
-
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
-      await batch.commit();
-      totalDeleted += snapshot.size;
-    }
-
-    return totalDeleted;
-  };
-
-  const deleteByFieldQuery = async (collectionName: string, fieldName: string, fieldValue: string) => {
-    let totalDeleted = 0;
-
-    while (true) {
-      const q = query(collection(db, collectionName), where(fieldName, '==', fieldValue), limit(FIRESTORE_BATCH_LIMIT));
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) break;
-
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
-      await batch.commit();
-      totalDeleted += snapshot.size;
-    }
-
-    return totalDeleted;
+    return storagePaths.length;
   };
 
   const handleDeleteProjectData = async (projectId: string) => {
@@ -554,11 +401,25 @@ export default function App() {
     }
 
     try {
-      const deletedDataRows = await deleteByProjectQuery('consolidated_data_v2', projectId);
-      const deletedTemplates = await deleteByProjectQuery('templates', projectId);
-      const deletedAssignments = await deleteByProjectQuery('assignments', projectId);
+      const deletedDataRows = (Object.values(data).flat() as DataRow[]).filter((row) => row.projectId === projectId).length;
+      const deletedTemplates = (await listTemplatesFromSupabase(projectId)).length;
+      const deletedAssignments = (await listAssignmentsFromSupabase(projectId)).length;
       const deletedExports = await deleteReportExports(projectId);
-      await deleteDoc(doc(db, 'projects', projectId));
+      await deleteRowsByProjectFromSupabase(projectId);
+      await replaceAssignmentsInSupabase(projectId, []);
+      await deleteDataFilesByProject(projectId);
+      const projectTemplates = await listTemplatesFromSupabase(projectId);
+      for (const template of projectTemplates) {
+        if (template.sourceWorkbookPath) {
+          try {
+            await deleteFileByPath(template.sourceWorkbookPath);
+          } catch {
+            // ignore
+          }
+        }
+        await deleteTemplateFromSupabase(template.id);
+      }
+      await deleteProjectFromSupabase(projectId);
 
       if (selectedProjectId === projectId) {
         setCurrentView('DASHBOARD');
@@ -566,9 +427,38 @@ export default function App() {
 
       return deletedDataRows + deletedTemplates + deletedAssignments + deletedExports + 1;
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `consolidated_data_v2/${projectId}`);
+      console.error('Delete project error:', error);
       return 0;
     }
+  };
+
+  const handleCreateProject = async (payload: { name: string; description: string }) => {
+    const project: Project = {
+      id: `proj_${Date.now()}`,
+      name: payload.name.trim(),
+      description: payload.description.trim(),
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await upsertProjectToSupabase(project);
+    const nextProjects = await listProjectsFromSupabase();
+    setProjects(nextProjects);
+    return project;
+  };
+
+  const handleToggleProjectStatus = async (project: Project) => {
+    const nextProject: Project = {
+      ...project,
+      status: project.status === 'ACTIVE' ? 'COMPLETED' : 'ACTIVE',
+      updatedAt: new Date().toISOString(),
+    };
+
+    await upsertProjectToSupabase(nextProject);
+    const nextProjects = await listProjectsFromSupabase();
+    setProjects(nextProjects);
+    return nextProject;
   };
 
   const handleDeleteProject = async (project: Project) => {
@@ -582,9 +472,10 @@ export default function App() {
     }
 
     try {
-      const deletedDataRows = await deleteByFieldQuery('consolidated_data_v2', 'templateId', template.id);
+      const deletedDataRows = (Object.values(data).flat() as DataRow[]).filter((row) => row.templateId === template.id).length;
       const deletedExports = await deleteReportExportsByTemplate(template.id);
-      await deleteDoc(doc(db, 'templates', template.id));
+      await deleteRowsByTemplateFromSupabase(template.id);
+      await deleteTemplateFromSupabase(template.id);
 
       if (template.sourceWorkbookPath) {
         const otherTemplatesUsingWorkbook = templates.filter(
@@ -613,9 +504,27 @@ export default function App() {
     }
 
     try {
-      await saveRowsInBatches(newData);
+      const nextRows = newData.map((row) => ({
+        ...row,
+        updatedAt: new Date().toISOString(),
+        updatedBy: {
+          uid: user.uid,
+          email: user.email,
+          displayName: effectiveUserProfile?.displayName || user.displayName,
+        },
+      }));
+      await upsertRowsToSupabase(nextRows);
+      const refreshedRows = await listRowsByProjectFromSupabase(selectedProjectId);
+      const organized: ConsolidatedData = {};
+      refreshedRows.forEach((row) => {
+        if (!organized[row.templateId]) {
+          organized[row.templateId] = [];
+        }
+        organized[row.templateId].push(row);
+      });
+      setData(organized);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'consolidated_data_v2');
+      console.error('Import data error:', error);
     }
   };
 
@@ -625,24 +534,24 @@ export default function App() {
     }
 
     try {
-      const snapshot = await getDocs(
-        query(
-          collection(db, 'consolidated_data_v2'),
-          where('year', '==', year),
-          where('projectId', '==', currentProject.id),
-          where('unitCode', '==', unitCode),
-        ),
-      );
-      const rowIds = snapshot.docs.map((snapshotDoc) => snapshotDoc.id);
-
-      if (rowIds.length === 0) {
+      const count = (Object.values(data).flat() as DataRow[])
+        .filter((row) => row.projectId === currentProject.id && row.year === year && row.unitCode === unitCode).length;
+      if (count === 0) {
         return 0;
       }
-
-      await deleteRowsInBatches(rowIds);
-      return rowIds.length;
+      await deleteRowsByUnitFromSupabase(currentProject.id, year, unitCode);
+      const refreshedRows = await listRowsByProjectFromSupabase(currentProject.id);
+      const organized: ConsolidatedData = {};
+      refreshedRows.forEach((row) => {
+        if (!organized[row.templateId]) {
+          organized[row.templateId] = [];
+        }
+        organized[row.templateId].push(row);
+      });
+      setData(organized);
+      return count;
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `consolidated_data_v2/${unitCode}/${year}`);
+      console.error('Delete unit rows error:', error);
       return 0;
     }
   };
@@ -653,23 +562,24 @@ export default function App() {
     }
 
     try {
-      const snapshot = await getDocs(
-        query(
-          collection(db, 'consolidated_data_v2'),
-          where('year', '==', year),
-          where('projectId', '==', currentProject.id),
-        ),
-      );
-      const rowIds = snapshot.docs.map((snapshotDoc) => snapshotDoc.id);
-
-      if (rowIds.length === 0) {
+      const count = (Object.values(data).flat() as DataRow[])
+        .filter((row) => row.projectId === currentProject.id && row.year === year).length;
+      if (count === 0) {
         return 0;
       }
-
-      await deleteRowsInBatches(rowIds);
-      return rowIds.length;
+      await deleteRowsByYearFromSupabase(currentProject.id, year);
+      const refreshedRows = await listRowsByProjectFromSupabase(currentProject.id);
+      const organized: ConsolidatedData = {};
+      refreshedRows.forEach((row) => {
+        if (!organized[row.templateId]) {
+          organized[row.templateId] = [];
+        }
+        organized[row.templateId].push(row);
+      });
+      setData(organized);
+      return count;
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `consolidated_data_v2/${year}`);
+      console.error('Delete year rows error:', error);
       return 0;
     }
   };
@@ -716,27 +626,20 @@ export default function App() {
     }
 
     const saveAssignmentsForProject = async (projectId: string) => {
-      const snapshot = await getDocs(
-        query(collection(db, 'assignments'), where('projectId', '==', projectId)),
-      );
+      const snapshot = await listAssignmentsFromSupabase(projectId);
+      const nextAssignments = new Map<string, { userId?: string; email: string; displayName: string; unitCodes: string[] }>();
 
-      const nextAssignments = new Map<
-        string,
-        { userId?: string; email: string; displayName: string; unitCodes: string[] }
-      >();
-
-      snapshot.docs.forEach((docSnap) => {
-        const data = docSnap.data() as any;
-        const key = getAssignmentKey(data.assigneeKey || data.email) || data.userId;
+      snapshot.forEach((row) => {
+        const key = getAssignmentKey(row.assignee_key || row.email) || row.user_id || '';
         if (!key) {
           return;
         }
 
         nextAssignments.set(key, {
-          userId: data.userId || undefined,
-          email: data.email || key,
-          displayName: data.displayName || data.email || key,
-          unitCodes: Array.isArray(data.unitCodes) ? data.unitCodes : [],
+          userId: row.user_id || undefined,
+          email: row.email || key,
+          displayName: row.display_name || row.email || key,
+          unitCodes: Array.isArray(row.unit_codes) ? row.unit_codes : [],
         });
       });
 
@@ -754,29 +657,29 @@ export default function App() {
         unitCodes: orderedUnitCodes,
       });
 
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
-
-      nextAssignments.forEach((entry, key) => {
-        if (entry.unitCodes.length === 0) {
-          return;
-        }
-
-        batch.set(doc(db, 'assignments', `${projectId}_${key}`), {
-          projectId,
-          assigneeKey: key,
-          userId: entry.userId || null,
+      const payload = Array.from(nextAssignments.entries())
+        .filter(([, entry]) => entry.unitCodes.length > 0)
+        .map(([key, entry]) => ({
+          id: `${projectId}_${key}`,
+          project_id: projectId,
+          assignee_key: key,
+          user_id: entry.userId || null,
           email: entry.email,
-          displayName: entry.displayName,
-          unitCodes: entry.unitCodes,
-          updatedAt: serverTimestamp(),
-        });
-      });
+          display_name: entry.displayName,
+          unit_codes: entry.unitCodes,
+          updated_at: new Date().toISOString(),
+        }));
 
-      await batch.commit();
+      await replaceAssignmentsInSupabase(projectId, payload);
     };
 
     await Promise.all(targetProjectIds.map((projectId) => saveAssignmentsForProject(projectId)));
+    const refreshed = await listAssignmentsFromSupabase(selectedProjectId);
+    const nextMap: Record<string, string[]> = {};
+    refreshed.forEach((row) => {
+      nextMap[row.assignee_key] = Array.isArray(row.unit_codes) ? row.unit_codes : [];
+    });
+    setAssignments(nextMap);
   };
 
   const handleSaveSettings = async () => {
@@ -785,10 +688,10 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, 'settings', 'global'), settings);
+      await upsertSettingsToSupabase(settings);
       alert('Đã lưu cài đặt!');
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'settings/global');
+      console.error('Save settings error:', error);
     }
   };
 
@@ -814,13 +717,14 @@ export default function App() {
     }, 0);
 
     const nextCode = `DV${String(maxUnitNumber + 1).padStart(3, '0')}`;
-    await setDoc(doc(db, 'units', nextCode), {
+    await upsertUnitToSupabase({
       code: nextCode,
       name: trimmedName,
       isDeleted: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
+    setUnits(await listUnitsFromSupabase());
   };
 
   const handleSoftDeleteUnit = async (unitCode: string) => {
@@ -833,20 +737,18 @@ export default function App() {
       throw new Error('Không tìm thấy đơn vị cần xóa.');
     }
 
-    await setDoc(
-      doc(db, 'units', unitCode),
-      {
-        isDeleted: true,
-        deletedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        deletedBy: {
-          uid: user?.uid,
-          email: user?.email,
-          displayName: effectiveUserProfile?.displayName || userProfile?.displayName || user?.displayName,
-        },
+    await upsertUnitToSupabase({
+      ...targetUnit,
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      deletedBy: {
+        uid: user?.uid,
+        email: user?.email,
+        displayName: effectiveUserProfile?.displayName || userProfile?.displayName || user?.displayName,
       },
-      { merge: true },
-    );
+    });
+    setUnits(await listUnitsFromSupabase());
   };
 
   const handleRestoreUnit = async (unitCode: string) => {
@@ -859,16 +761,14 @@ export default function App() {
       throw new Error('Không tìm thấy đơn vị cần khôi phục.');
     }
 
-    await setDoc(
-      doc(db, 'units', unitCode),
-      {
-        isDeleted: false,
-        deletedAt: null,
-        deletedBy: null,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    await upsertUnitToSupabase({
+      ...targetUnit,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: undefined,
+      updatedAt: new Date().toISOString(),
+    });
+    setUnits(await listUnitsFromSupabase());
   };
 
   const handleRenameUnit = async (unitCode: string, name: string) => {
@@ -893,14 +793,12 @@ export default function App() {
       throw new Error('Tên đơn vị đã tồn tại trong danh mục.');
     }
 
-    await setDoc(
-      doc(db, 'units', unitCode),
-      {
-        name: trimmedName,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    await upsertUnitToSupabase({
+      ...targetUnit,
+      name: trimmedName,
+      updatedAt: new Date().toISOString(),
+    });
+    setUnits(await listUnitsFromSupabase());
   };
 
   const handleDeleteAllSystemData = async () => {
@@ -922,12 +820,11 @@ export default function App() {
         await handleDeleteProjectData(projectId);
       }
 
-      await setDoc(doc(db, 'settings', 'migrations'), { history: [] });
       setSelectedProjectId('');
       setCurrentView('DASHBOARD');
       alert('Đã xóa sạch toàn bộ dữ liệu hệ thống.');
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, 'system/reset-all');
+      console.error('Reset system error:', error);
     }
   };
 
@@ -1035,11 +932,14 @@ export default function App() {
       case 'PROJECTS':
         return isAdmin ? (
           <ProjectManager
+            projects={projects}
             onSelectProject={(project) => {
               setSelectedProjectId(project.id);
               setCurrentView('LEARN_FORM');
             }}
             onDeleteProject={handleDeleteProject}
+            onCreateProject={handleCreateProject}
+            onToggleProjectStatus={handleToggleProjectStatus}
           />
         ) : (
           <DashboardOverview

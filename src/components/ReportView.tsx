@@ -3,11 +3,12 @@ import * as XLSX from 'xlsx';
 import { Download, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project } from '../types';
-import { auth, db } from '../firebase';
-import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth } from '../firebase';
 import { getPreferredReportingYear } from '../utils/reportingYear';
 import { uploadFile } from '../supabase';
 import { loadTemplateWorkbook, resolveTemplateHeaderLayout, resolveTemplateRowLabels } from '../utils/templateWorkbook';
+import { fetchRowsFromSupabase, SupabaseRow } from '../supabaseReports';
+import { createReportExport, getDataFileRecord } from '../supabaseStore';
 
 interface ReportViewProps {
   data: ConsolidatedData;
@@ -69,13 +70,14 @@ async function fetchStoredDataFile(projectId: string, unitCode: string, year: st
     return null;
   }
 
-  const reference = doc(db, 'data_files', `${projectId}_${unitCode}_${year}`);
-  const snapshot = await getDoc(reference);
-  if (!snapshot.exists()) {
+  const record = await getDataFileRecord(projectId, unitCode, year);
+  if (!record) {
     return null;
   }
 
-  return snapshot.data() as DataFileRecord;
+  return {
+    downloadURL: record.download_url || undefined,
+  } as DataFileRecord;
 }
 
 function buildHeaderRows(layout: HeaderLayout) {
@@ -240,6 +242,8 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
   const [resolvedHeaderLayout, setResolvedHeaderLayout] = useState<HeaderLayout | null>(null);
   const [templateRows, setTemplateRows] = useState<TemplateRowDefinition[]>([]);
   const [visibleRowCount, setVisibleRowCount] = useState(40);
+  const [supabaseAggregatedRows, setSupabaseAggregatedRows] = useState<AggregatedReportRow[]>([]);
+  const [isSupabaseLoadingRows, setIsSupabaseLoadingRows] = useState(false);
 
   const reportUnitOptions = useMemo(
     () => [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...units],
@@ -304,6 +308,81 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
   }, [selectedTemplate]);
 
   useEffect(() => {
+    if (!selectedTemplate) {
+      setSupabaseAggregatedRows([]);
+      return undefined;
+    }
+
+    let isCancelled = false;
+    setIsSupabaseLoadingRows(true);
+
+    fetchRowsFromSupabase(selectedProjectId, selectedTemplate.id, selectedYear, selectedUnitCode)
+      .then((rows) => {
+        if (isCancelled) return;
+
+        const columnCount = selectedTemplate.columnMapping.dataColumns.length;
+        const grouped = new Map<
+          number,
+          { values: number[]; details: Map<string, CellDetailItem>[]; label: string }
+        >();
+
+        rows.forEach((row) => {
+          if (!grouped.has(row.source_row)) {
+            grouped.set(row.source_row, {
+              values: new Array(columnCount).fill(0),
+              details: Array.from({ length: columnCount }, () => new Map<string, CellDetailItem>()),
+              label: row.label || `Dòng ${row.source_row}`,
+            });
+          }
+
+          const entry = grouped.get(row.source_row)!;
+          row.values.forEach((value, index) => {
+            entry.values[index] += value ?? 0;
+            const existing = entry.details[index].get(row.unit_code);
+            if (existing) {
+              existing.value += value ?? 0;
+            } else {
+              entry.details[index].set(row.unit_code, {
+                unitCode: row.unit_code,
+                unitName: row.unit_name || row.unit_code,
+                value: value ?? 0,
+              });
+            }
+          });
+        });
+
+        const aggregated: AggregatedReportRow[] = Array.from(grouped.entries())
+          .sort((left, right) => left[0] - right[0])
+          .map(([sourceRow, entry]) => ({
+            key: `${selectedUnitCode}:${sourceRow}`,
+            sourceRow,
+            label: entry.label,
+            values: entry.values,
+            details: entry.details.map((detailMap) => Array.from(detailMap.values())),
+          }));
+
+        if (!isCancelled) {
+          setSupabaseAggregatedRows(aggregated);
+        }
+      })
+      .catch((error) => {
+        console.error('Fetch Supabase aggregated rows error:', error);
+        if (!isCancelled) {
+          setSupabaseAggregatedRows([]);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsSupabaseLoadingRows(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedProjectId, selectedTemplateId, selectedYear, selectedUnitCode, selectedTemplate]);
+
+  useEffect(() => {
     setVisibleRowCount(40);
   }, [selectedTemplateId, selectedYear, selectedUnitCode, searchTerm]);
 
@@ -325,7 +404,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     });
   }, [activeCellDetail, detailSortOrder]);
 
-  const aggregatedRows = useMemo<AggregatedReportRow[]>(() => {
+  const firestoreAggregatedRows = useMemo<AggregatedReportRow[]>(() => {
     if (!selectedTemplate) {
       return [];
     }
@@ -423,6 +502,8 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     return buildHeaderRows(resolvedHeaderLayout);
   }, [resolvedHeaderLayout]);
 
+  const aggregatedRows = supabaseAggregatedRows.length > 0 ? supabaseAggregatedRows : firestoreAggregatedRows;
+
   const tableColSpan = useMemo(() => {
     if (!selectedTemplate) {
       return 0;
@@ -508,18 +589,17 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
       });
       const user = auth.currentUser;
 
-      await addDoc(collection(db, 'report_exports'), {
-        projectId: selectedProjectId,
-        templateId,
-        templateName,
-        unitCode: selectedUnitOption.code,
-        unitName: selectedUnitOption.name,
+      await createReportExport({
+        project_id: selectedProjectId,
+        template_id: templateId,
+        template_name: templateName,
+        unit_code: selectedUnitOption.code,
+        unit_name: selectedUnitOption.name,
         year: selectedYear,
-        fileName,
-        storagePath: uploadResult.path,
-        downloadURL: uploadResult.publicUrl,
-        createdAt: serverTimestamp(),
-        createdBy: user
+        file_name: fileName,
+        storage_path: uploadResult.path,
+        download_url: uploadResult.publicUrl,
+        created_by: user
           ? {
               uid: user.uid,
               email: user.email,
