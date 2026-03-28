@@ -413,6 +413,16 @@ export async function replaceAssignments(projectId: string, entries: SupabaseAss
 }
 
 export async function listRowsByProject(projectId: string) {
+  const { count, error: countError } = await supabase
+    .from('consolidated_rows')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId);
+
+  if (countError) {
+    throw new Error(countError.message || 'Không thể đếm dữ liệu tổng hợp từ Supabase.');
+  }
+
+  const expectedCount = count || 0;
   const rows: any[] = [];
   let from = 0;
 
@@ -439,6 +449,10 @@ export async function listRowsByProject(projectId: string) {
     }
 
     from += SUPABASE_PAGE_SIZE;
+  }
+
+  if (rows.length < expectedCount) {
+    throw new Error(`Chi tai duoc ${rows.length}/${expectedCount} dong du lieu tong hop tu Supabase.`);
   }
 
   return rows.map((row) => ({

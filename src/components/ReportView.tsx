@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Download, Search, X } from 'lucide-react';
+import { Download, LoaderCircle, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import { ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project, UserProfile } from '../types';
 import { getPreferredReportingYear } from '../utils/reportingYear';
@@ -11,7 +11,7 @@ import {
   resolveTemplateHeaderLayout,
   resolveTemplateRowLabels,
 } from '../utils/templateWorkbook';
-import { fetchRowsFromSupabase, SupabaseRow } from '../supabaseReports';
+import { fetchAggregatedRowsFromSupabase, fetchCellDetailsFromSupabase } from '../supabaseReports';
 import { createReportExport, getDataFileRecord } from '../supabaseStore';
 
 interface ReportViewProps {
@@ -45,6 +45,8 @@ interface AggregatedReportRow {
 }
 
 interface ActiveCellDetail {
+  sourceRow: number;
+  columnIndex: number;
   rowLabel: string;
   columnLabel: string;
   totalValue: number;
@@ -295,6 +297,8 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCellDetail, setActiveCellDetail] = useState<ActiveCellDetail | null>(null);
   const [detailSortOrder, setDetailSortOrder] = useState<DetailSortOrder>('desc');
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [detailLoadError, setDetailLoadError] = useState<string | null>(null);
   const [resolvedHeaderLayout, setResolvedHeaderLayout] = useState<HeaderLayout | null>(null);
   const [templateRows, setTemplateRows] = useState<TemplateRowDefinition[]>([]);
   const [visibleRowCount, setVisibleRowCount] = useState(40);
@@ -415,15 +419,11 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
     let isCancelled = false;
     setIsSupabaseLoadingRows(true);
 
-    fetchRowsFromSupabase(selectedProjectId, selectedTemplate.id, selectedYear, selectedUnitCode)
+    fetchAggregatedRowsFromSupabase(selectedProjectId, selectedTemplate.id, selectedYear, selectedUnitCode)
       .then((rows) => {
         if (isCancelled) return;
 
         const columnCount = selectedTemplate.columnMapping.dataColumns.length;
-        const groupedRows = new Map<
-          number,
-          { values: number[]; details: Map<string, CellDetailItem>[]; label: string }
-        >();
         const labelsBySourceRow = new Map<number, string>();
 
         templateRows.forEach((row) => {
@@ -434,48 +434,23 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
           if (!labelsBySourceRow.has(row.source_row) && row.label) {
             labelsBySourceRow.set(row.source_row, row.label);
           }
-
-          if (!groupedRows.has(row.source_row)) {
-            groupedRows.set(row.source_row, {
-              values: new Array(columnCount).fill(0),
-              details: Array.from({ length: columnCount }, () => new Map<string, CellDetailItem>()),
-              label: labelsBySourceRow.get(row.source_row) || row.label || `Dòng ${row.source_row}`,
-            });
-          }
-
-          const entry = groupedRows.get(row.source_row)!;
-          row.values.forEach((value, index) => {
-            entry.values[index] += value ?? 0;
-            const existing = entry.details[index].get(row.unit_code);
-            if (existing) {
-              existing.value += value ?? 0;
-            } else {
-              entry.details[index].set(row.unit_code, {
-                unitCode: row.unit_code,
-                unitName: unitNameByCode.get(row.unit_code) || row.unit_name || row.unit_code,
-                value: value ?? 0,
-              });
-            }
-          });
         });
 
         const rowDefinitions = buildTemplateRowDefinitions(
           selectedTemplate,
           templateRows,
           labelsBySourceRow,
-          Array.from(groupedRows.keys()),
+          rows.map((row) => row.source_row),
         );
         const aggregated: AggregatedReportRow[] = rowDefinitions
           .map((definition) => {
-            const entry = groupedRows.get(definition.sourceRow);
+            const entry = rows.find((row) => row.source_row === definition.sourceRow);
             return {
               key: `${selectedUnitCode}:${definition.sourceRow}`,
               sourceRow: definition.sourceRow,
               label: labelsBySourceRow.get(definition.sourceRow) || definition.label || `Dòng ${definition.sourceRow}`,
               values: entry?.values || new Array(columnCount).fill(0),
-              details:
-                entry?.details.map((detailMap) => Array.from(detailMap.values())) ||
-                Array.from({ length: columnCount }, () => []),
+              details: Array.from({ length: columnCount }, () => []),
             };
           })
           .filter((row) => shouldDisplayReportRow(row, normalizedSearchTerm))
@@ -508,7 +483,6 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
     selectedUnitCode,
     selectedTemplate,
     templateRows,
-    unitNameByCode,
   ]);
 
   useEffect(() => {
@@ -517,6 +491,8 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
 
   useEffect(() => {
     setActiveCellDetail(null);
+    setDetailLoadError(null);
+    setIsDetailLoading(false);
   }, [selectedProjectId, selectedTemplateId, selectedYear, selectedUnitCode, searchTerm]);
 
   const sortedDetailItems = useMemo(() => {
@@ -794,14 +770,54 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
     await persistExportRecord(workbook, fileName, 'ALL', 'Tất cả biểu');
   };
 
-  const openCellDetail = (row: AggregatedReportRow, columnIndex: number) => {
+  const openCellDetail = async (row: AggregatedReportRow, columnIndex: number) => {
     setDetailSortOrder('desc');
+    setDetailLoadError(null);
+    setIsDetailLoading(true);
     setActiveCellDetail({
+      sourceRow: row.sourceRow,
+      columnIndex,
       rowLabel: row.label,
       columnLabel: columnHeaders[columnIndex] || `Cột ${columnIndex + 1}`,
       totalValue: row.values[columnIndex] || 0,
       items: row.details[columnIndex] || [],
     });
+
+    if (!selectedTemplate) {
+      setIsDetailLoading(false);
+      return;
+    }
+
+    try {
+      const detailRows = await fetchCellDetailsFromSupabase(
+        selectedProjectId,
+        selectedTemplate.id,
+        selectedYear,
+        row.sourceRow,
+        columnIndex,
+        selectedUnitCode,
+      );
+
+      setActiveCellDetail((current) => {
+        if (!current || current.sourceRow !== row.sourceRow || current.columnIndex !== columnIndex) {
+          return current;
+        }
+
+        return {
+          ...current,
+          items: detailRows.map((item) => ({
+            unitCode: item.unit_code,
+            unitName: item.unit_name || unitNameByCode.get(item.unit_code) || item.unit_code,
+            value: item.value,
+          })),
+        };
+      });
+    } catch (error) {
+      console.error('Không thể tải chi tiết ô dữ liệu từ Supabase:', error);
+      setDetailLoadError(error instanceof Error ? error.message : 'Không thể tải chi tiết ô dữ liệu.');
+    } finally {
+      setIsDetailLoading(false);
+    }
   };
 
   return (
@@ -1053,7 +1069,16 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
             </div>
 
             <div className="flex-1 overflow-auto p-4 md:p-6">
-              {sortedDetailItems.length > 0 ? (
+              {isDetailLoading ? (
+                <div className="flex h-40 flex-col items-center justify-center gap-3 text-sm text-[var(--ink-soft)]">
+                  <LoaderCircle size={22} className="animate-spin text-[var(--brand)]" />
+                  <span>Đang tải chi tiết đơn vị...</span>
+                </div>
+              ) : detailLoadError ? (
+                <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center text-sm text-[var(--danger)]">
+                  {detailLoadError}
+                </div>
+              ) : sortedDetailItems.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3">
                   {sortedDetailItems.map((item) => (
                     <div
