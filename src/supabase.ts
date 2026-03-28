@@ -76,7 +76,6 @@ export async function loginWithSupabaseEmail(email: string, password: string) {
 
   return data;
 }
-
 export async function ensureSupabaseSession() {
   const {
     data: { session },
