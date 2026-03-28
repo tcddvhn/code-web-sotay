@@ -20,7 +20,7 @@ import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
 import { auth, loginWithEmail, logout, signUpWithEmail } from './firebase';
-import { deleteFileByPath, loginWithSupabaseEmail, logoutSupabase, signUpWithSupabaseEmail } from './supabase';
+import { deleteFileByPath, logoutSupabase, signUpWithSupabaseEmail, syncSupabaseSession } from './supabase';
 import { AppSettings, ConsolidatedData, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAllowedAccount, getAssignmentKey, isAdminEmail, isAllowedEmail } from './access';
@@ -839,7 +839,7 @@ export default function App() {
       }
       await loginWithEmail(email, password);
       try {
-        await loginWithSupabaseEmail(email, password);
+        await syncSupabaseSession(email, password);
       } catch (supabaseError) {
         console.error('Supabase login warning:', supabaseError);
         setAuthError(
@@ -866,7 +866,7 @@ export default function App() {
       await signUpWithEmail(email, password);
       try {
         await signUpWithSupabaseEmail(email, password);
-        await loginWithSupabaseEmail(email, password);
+        await syncSupabaseSession(email, password);
       } catch (supabaseError) {
         console.error('Supabase signup warning:', supabaseError);
         setAuthError(

@@ -65,6 +65,44 @@ export async function signUpWithSupabaseEmail(email: string, password: string) {
   return data;
 }
 
+function canAutoProvisionSupabaseUser(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('invalid login credentials') ||
+    message.includes('email not confirmed') ||
+    message.includes('user not found') ||
+    message.includes('invalid_grant')
+  );
+}
+
+export async function syncSupabaseSession(email: string, password: string) {
+  try {
+    return await loginWithSupabaseEmail(email, password);
+  } catch (loginError) {
+    if (!canAutoProvisionSupabaseUser(loginError)) {
+      throw loginError;
+    }
+
+    try {
+      await signUpWithSupabaseEmail(email, password);
+    } catch (signUpError) {
+      if (
+        signUpError instanceof Error &&
+        !signUpError.message.toLowerCase().includes('already registered') &&
+        !signUpError.message.toLowerCase().includes('already been registered')
+      ) {
+        throw signUpError;
+      }
+    }
+
+    return await loginWithSupabaseEmail(email, password);
+  }
+}
+
 export async function ensureSupabaseSession() {
   const {
     data: { session },
