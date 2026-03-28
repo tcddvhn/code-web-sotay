@@ -71,24 +71,10 @@ export function resolveTemplateEffectiveEndRowFromWorksheet(worksheet: XLSX.Work
 
   const range = XLSX.utils.decode_range(worksheetRef);
   const worksheetMaxRow = range.e.r + 1;
-  let lastRowWithData = template.columnMapping.endRow;
 
-  for (let row = template.columnMapping.startRow; row <= worksheetMaxRow; row += 1) {
-    const hasRelevantData = template.columnMapping.dataColumns.some((col) => {
-      const cell = worksheet[`${col}${row}`];
-      if (!cell) {
-        return false;
-      }
-      const rawValue = cell.w ?? cell.v;
-      return rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '';
-    });
-
-    if (hasRelevantData) {
-      lastRowWithData = row;
-    }
-  }
-
-  return Math.max(template.columnMapping.endRow, lastRowWithData);
+  // Với biểu mẫu thủ công, endRow là mốc nghiệp vụ đã được admin chốt.
+  // Không tự quét xuống dưới nữa để tránh nuốt cả phần ghi chú/chữ ký cuối sheet.
+  return Math.max(template.columnMapping.startRow, Math.min(template.columnMapping.endRow, worksheetMaxRow));
 }
 
 export async function loadTemplateWorkbookBuffer() {
