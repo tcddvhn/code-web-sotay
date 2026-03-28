@@ -91,10 +91,10 @@ function buildHeaderRows(layout: HeaderLayout) {
   const cellMap = new Map(layout.cells.map((cell) => [`${cell.row}:${cell.col}`, cell.value]));
   const mergeMap = new Map((layout.merges || []).map((merge) => [`${merge.startRow}:${merge.startCol}`, merge]));
   const occupied = Array.from({ length: rowCount }, () => Array(colCount).fill(false));
-  const rows: { text: string; rowSpan: number; colSpan: number }[][] = [];
+  const rows: { text: string; rowSpan: number; colSpan: number; startColOffset: number }[][] = [];
 
   for (let r = 0; r < rowCount; r += 1) {
-    const rowCells: { text: string; rowSpan: number; colSpan: number }[] = [];
+    const rowCells: { text: string; rowSpan: number; colSpan: number; startColOffset: number }[] = [];
 
     for (let c = 0; c < colCount; c += 1) {
       if (occupied[r][c]) {
@@ -119,6 +119,7 @@ function buildHeaderRows(layout: HeaderLayout) {
         text: cellMap.get(`${rowNum}:${colNum}`) || '',
         rowSpan,
         colSpan,
+        startColOffset: c,
       });
     }
 
@@ -126,6 +127,50 @@ function buildHeaderRows(layout: HeaderLayout) {
   }
 
   return rows;
+}
+
+function buildTemplateRowDefinitions(
+  template: FormTemplate,
+  templateRows: TemplateRowDefinition[],
+  labelsBySourceRow: Map<number, string>,
+) {
+  if (templateRows.length > 0) {
+    return templateRows.map((row) => ({
+      sourceRow: row.sourceRow,
+      label: labelsBySourceRow.get(row.sourceRow) || row.label || `Dòng ${row.sourceRow}`,
+    }));
+  }
+
+  return Array.from(
+    { length: template.columnMapping.endRow - template.columnMapping.startRow + 1 },
+    (_, index) => {
+      const sourceRow = template.columnMapping.startRow + index;
+      return {
+        sourceRow,
+        label: labelsBySourceRow.get(sourceRow) || `Dòng ${sourceRow}`,
+      };
+    },
+  );
+}
+
+function shouldDisplayReportRow(row: AggregatedReportRow, normalizedSearchTerm: string) {
+  const hasMeaningfulLabel = row.label.trim() !== '' && !/^Dòng\s+\d+$/i.test(row.label.trim());
+  const hasData = row.details.some((items) => items.length > 0);
+  const matchesSearch = normalizedSearchTerm === '' || row.label.toLowerCase().includes(normalizedSearchTerm);
+
+  return matchesSearch && (hasMeaningfulLabel || hasData);
+}
+
+function estimateReportColumnWidth(columnIndex: number, headerText: string, totalColumns: number) {
+  if (columnIndex === 0) {
+    return 250;
+  }
+
+  const normalizedLength = headerText.trim().length;
+  const compactBase = totalColumns >= 8 ? 106 : 118;
+  const dynamicWidth = compactBase + Math.min(normalizedLength * 1.6, totalColumns >= 8 ? 24 : 38);
+
+  return Math.max(compactBase, Math.min(dynamicWidth, totalColumns >= 8 ? 142 : 168));
 }
 
 function buildValueMapForTemplate(
@@ -268,6 +313,8 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     return Array.from({ length: fallbackCount }, (_, index) => `Cột ${index + 1}`);
   }, [selectedTemplate]);
 
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
   useEffect(() => {
     if (projectTemplates.length > 0 && !projectTemplates.find((tpl) => tpl.id === selectedTemplateId)) {
       setSelectedTemplateId(projectTemplates[0].id);
@@ -325,21 +372,30 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         if (isCancelled) return;
 
         const columnCount = selectedTemplate.columnMapping.dataColumns.length;
-        const grouped = new Map<
+        const groupedRows = new Map<
           number,
           { values: number[]; details: Map<string, CellDetailItem>[]; label: string }
         >();
+        const labelsBySourceRow = new Map<number, string>();
+
+        templateRows.forEach((row) => {
+          labelsBySourceRow.set(row.sourceRow, row.label);
+        });
 
         rows.forEach((row) => {
-          if (!grouped.has(row.source_row)) {
-            grouped.set(row.source_row, {
+          if (!labelsBySourceRow.has(row.source_row) && row.label) {
+            labelsBySourceRow.set(row.source_row, row.label);
+          }
+
+          if (!groupedRows.has(row.source_row)) {
+            groupedRows.set(row.source_row, {
               values: new Array(columnCount).fill(0),
               details: Array.from({ length: columnCount }, () => new Map<string, CellDetailItem>()),
-              label: row.label || `Dòng ${row.source_row}`,
+              label: labelsBySourceRow.get(row.source_row) || row.label || `Dòng ${row.source_row}`,
             });
           }
 
-          const entry = grouped.get(row.source_row)!;
+          const entry = groupedRows.get(row.source_row)!;
           row.values.forEach((value, index) => {
             entry.values[index] += value ?? 0;
             const existing = entry.details[index].get(row.unit_code);
@@ -355,15 +411,22 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
           });
         });
 
-        const aggregated: AggregatedReportRow[] = Array.from(grouped.entries())
-          .sort((left, right) => left[0] - right[0])
-          .map(([sourceRow, entry]) => ({
-            key: `${selectedUnitCode}:${sourceRow}`,
-            sourceRow,
-            label: entry.label,
-            values: entry.values,
-            details: entry.details.map((detailMap) => Array.from(detailMap.values())),
-          }));
+        const rowDefinitions = buildTemplateRowDefinitions(selectedTemplate, templateRows, labelsBySourceRow);
+        const aggregated: AggregatedReportRow[] = rowDefinitions
+          .map((definition) => {
+            const entry = groupedRows.get(definition.sourceRow);
+            return {
+              key: `${selectedUnitCode}:${definition.sourceRow}`,
+              sourceRow: definition.sourceRow,
+              label: labelsBySourceRow.get(definition.sourceRow) || definition.label || `Dòng ${definition.sourceRow}`,
+              values: entry?.values || new Array(columnCount).fill(0),
+              details:
+                entry?.details.map((detailMap) => Array.from(detailMap.values())) ||
+                Array.from({ length: columnCount }, () => []),
+            };
+          })
+          .filter((row) => shouldDisplayReportRow(row, normalizedSearchTerm))
+          .sort((left, right) => left.sourceRow - right.sourceRow);
 
         if (!isCancelled) {
           setSupabaseAggregatedRows(aggregated);
@@ -384,7 +447,16 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     return () => {
       isCancelled = true;
     };
-  }, [selectedProjectId, selectedTemplateId, selectedYear, selectedUnitCode, selectedTemplate, unitNameByCode]);
+  }, [
+    normalizedSearchTerm,
+    selectedProjectId,
+    selectedTemplateId,
+    selectedYear,
+    selectedUnitCode,
+    selectedTemplate,
+    templateRows,
+    unitNameByCode,
+  ]);
 
   useEffect(() => {
     setVisibleRowCount(40);
@@ -437,21 +509,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
       }
     });
 
-    const rowDefinitions =
-      templateRows.length > 0
-        ? templateRows
-        : Array.from(
-            { length: selectedTemplate.columnMapping.endRow - selectedTemplate.columnMapping.startRow + 1 },
-            (_, index) => {
-              const sourceRow = selectedTemplate.columnMapping.startRow + index;
-              return {
-                sourceRow,
-                label: labelsBySourceRow.get(sourceRow) || `Dòng ${sourceRow}`,
-              };
-            },
-          );
-
-    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+    const rowDefinitions = buildTemplateRowDefinitions(selectedTemplate, templateRows, labelsBySourceRow);
 
     return rowDefinitions
       .map((definition) => {
@@ -488,13 +546,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
           details: detailMaps.map((detailMap) => Array.from(detailMap.values())),
         };
       })
-      .filter((row) => {
-        const hasMeaningfulLabel = row.label.trim() !== '' && !/^Dòng\s+\d+$/i.test(row.label.trim());
-        const hasData = row.details.some((items) => items.length > 0);
-        const matchesSearch = normalizedSearchTerm === '' || row.label.toLowerCase().includes(normalizedSearchTerm);
-
-        return matchesSearch && (hasMeaningfulLabel || hasData);
-      })
+      .filter((row) => shouldDisplayReportRow(row, normalizedSearchTerm))
       .sort((left, right) => left.sourceRow - right.sourceRow);
   }, [data, searchTerm, selectedTemplate, selectedUnitCode, selectedYear, templateRows, units]);
 
@@ -519,6 +571,20 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
 
     return 1 + columnHeaders.length;
   }, [columnHeaders.length, headerRows, resolvedHeaderLayout, selectedTemplate]);
+
+  const tableColumnWidths = useMemo(() => {
+    if (tableColSpan <= 0) {
+      return [];
+    }
+
+    return Array.from({ length: tableColSpan }, (_, index) => {
+      if (index === 0) {
+        return estimateReportColumnWidth(index, 'Tiêu chí', tableColSpan);
+      }
+
+      return estimateReportColumnWidth(index, columnHeaders[index - 1] || `Cột ${index}`, tableColSpan);
+    });
+  }, [columnHeaders, tableColSpan]);
 
   const buildWorkbookForTemplates = async (templatesToExport: FormTemplate[]) => {
     let workbook: XLSX.WorkBook | null = null;
@@ -797,9 +863,14 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
           Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
         </div>
       ) : (
-        <div className="table-shell overflow-hidden rounded-[24px]">
+        <div className="table-shell overflow-hidden rounded-[24px] border border-[var(--line-strong)] bg-white">
           <div className="overflow-x-auto">
-            <table className="w-max border-collapse table-auto">
+            <table className="w-max min-w-full border-separate border-spacing-0 table-auto bg-white">
+              <colgroup>
+                {tableColumnWidths.map((width, index) => (
+                  <col key={`report-col-${index}`} style={{ width: `${width}px`, minWidth: `${width}px` }} />
+                ))}
+              </colgroup>
               <thead>
                 {headerRows ? (
                   headerRows.map((row, rowIndex) => (
@@ -809,10 +880,12 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                           key={`hdr-${rowIndex}-${cellIndex}`}
                           colSpan={cell.colSpan}
                           rowSpan={cell.rowSpan}
-                          className={`border-r border-b border-white/70 bg-[var(--primary-dark)] px-2 py-2 text-center align-middle text-[15px] leading-snug tracking-[0.02em] text-white whitespace-normal ${
-                            cellIndex === 0
-                              ? 'sticky left-0 z-10 min-w-[220px] max-w-[280px] text-[16px] font-bold'
-                              : 'min-w-[72px] max-w-[132px] font-semibold'
+                          className={`border-b border-r border-[var(--line-strong)] bg-[#faf8f4] px-2.5 py-2 text-center align-middle text-[13px] leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere] ${
+                            rowIndex === 0 ? 'border-t' : ''
+                          } ${
+                            cell.startColOffset === 0
+                              ? 'sticky left-0 z-10 bg-[#f8f6f1] text-[14px] font-bold'
+                              : 'font-semibold'
                           }`}
                         >
                           {cell.text || '\u00A0'}
@@ -822,13 +895,13 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
                   ))
                 ) : (
                   <tr>
-                    <th className="sticky left-0 z-10 min-w-[220px] max-w-[280px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-3 py-2 text-[15px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal">
+                    <th className="sticky left-0 top-0 z-10 border-b border-r border-t border-[var(--line-strong)] bg-[#f8f6f1] px-3 py-2 text-[14px] font-bold leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere]">
                       Tiêu chí
                     </th>
                     {columnHeaders.map((header, index) => (
                       <th
                         key={header || index}
-                        className="min-w-[72px] max-w-[132px] border-r border-b border-white/70 bg-[var(--primary-dark)] px-2 py-2 text-center text-[15px] font-semibold leading-snug tracking-[0.02em] text-white whitespace-normal"
+                        className="border-b border-r border-t border-[var(--line-strong)] bg-[#faf8f4] px-2.5 py-2 text-center text-[13px] font-semibold leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere]"
                       >
                         {header}
                       </th>
@@ -839,16 +912,16 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
               <tbody>
                 {aggregatedRows.length > 0 ? (
                   aggregatedRows.slice(0, visibleRowCount).map((row) => (
-                    <tr key={row.key} className="border-b border-[var(--line)] bg-white hover:bg-[var(--surface-alt)]">
-                      <td className="sticky left-0 z-10 border-r border-[var(--line)] bg-white px-3 py-2 text-[14px] font-semibold leading-snug text-[var(--ink)]">
+                    <tr key={row.key} className="bg-white hover:bg-[#faf7f2]">
+                      <td className="sticky left-0 z-10 border-b border-r border-[var(--line)] bg-white px-3 py-1.5 text-[13px] font-semibold leading-[1.45] text-[var(--ink)] [overflow-wrap:anywhere]">
                         {row.label}
                       </td>
                       {row.values.map((value, index) => (
-                        <td key={`${row.key}-${index}`} className="border-r border-[var(--line)] p-0">
+                        <td key={`${row.key}-${index}`} className="border-b border-r border-[var(--line)] p-0">
                           <button
                             type="button"
                             onClick={() => openCellDetail(row, index)}
-                            className="h-full min-w-[72px] w-full px-2 py-2 text-center text-[11px] font-mono leading-none text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
+                            className="h-full min-h-[42px] w-full px-2 py-1.5 text-center text-[13px] font-medium leading-[1.35] text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
                             title="Xem chi tiết theo đơn vị"
                           >
                             {formatReportValue(value)}
