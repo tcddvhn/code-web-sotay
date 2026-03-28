@@ -19,6 +19,7 @@ import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
 import {
   deleteFileByPath,
+  deleteFolderByPath,
   getCurrentSupabaseUser,
   loginWithSupabaseEmail,
   logoutSupabase,
@@ -568,6 +569,19 @@ export default function App() {
           await deleteFileByPath(storagePath);
         } catch {
           // ignore
+        }
+      }
+      const cleanupPrefixes = [
+        `data_files/${projectId}`,
+        `project_templates/${projectId}`,
+        `report_exports/${projectId}`,
+        projectId,
+      ];
+      for (const prefix of cleanupPrefixes) {
+        try {
+          await deleteFolderByPath(prefix);
+        } catch (error) {
+          console.warn(`Không thể dọn thư mục lưu trữ ${prefix}:`, error);
         }
       }
       const projectTemplates = await listTemplatesFromSupabase(projectId);

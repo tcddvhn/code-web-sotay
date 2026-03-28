@@ -1,6 +1,7 @@
 ﻿import * as XLSX from 'xlsx';
 import { SHEET_CONFIGS } from '../constants';
 import { DataRow, FormTemplate } from '../types';
+import { resolveTemplateEffectiveEndRowFromWorksheet } from './templateWorkbook';
 
 export function normalizeCellValue(value: unknown): number {
   if (value === null || value === undefined || value === '') {
@@ -33,35 +34,6 @@ function getLabelForRow(worksheet: XLSX.WorkSheet, sourceRow: number) {
   const labelCell = worksheet[XLSX.utils.encode_cell({ r: sourceRow - 1, c: 0 })];
   const label = labelCell?.v ?? labelCell?.w;
   return label ? String(label).trim() : `Dòng ${sourceRow}`;
-}
-
-function resolveEffectiveEndRow(worksheet: XLSX.WorkSheet, startRow: number, endRow: number, dataColumns: string[]) {
-  const worksheetRef = worksheet['!ref'];
-  if (!worksheetRef) {
-    return endRow;
-  }
-
-  const range = XLSX.utils.decode_range(worksheetRef);
-  const worksheetMaxRow = range.e.r + 1;
-  let lastRowWithData = endRow;
-
-  for (let row = startRow; row <= worksheetMaxRow; row += 1) {
-    const hasRelevantData = dataColumns.some((col) => {
-      const cell = worksheet[`${col}${row}`];
-      if (!cell) {
-        return false;
-      }
-
-      const rawValue = cell.w ?? cell.v;
-      return rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '';
-    });
-
-    if (hasRelevantData) {
-      lastRowWithData = row;
-    }
-  }
-
-  return Math.max(endRow, lastRowWithData);
 }
 
 export async function parseLegacySheet(
@@ -140,7 +112,7 @@ export function parseTemplateFromWorkbook(
   }
 
   const { labelColumn, dataColumns, startRow, endRow } = template.columnMapping;
-  const effectiveEndRow = resolveEffectiveEndRow(worksheet, startRow, endRow, dataColumns);
+  const effectiveEndRow = resolveTemplateEffectiveEndRowFromWorksheet(worksheet, template);
   const rows: DataRow[] = [];
 
   for (let r = startRow; r <= effectiveEndRow; r += 1) {

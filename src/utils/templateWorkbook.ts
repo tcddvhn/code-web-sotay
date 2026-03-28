@@ -63,7 +63,7 @@ function readWorksheetText(worksheet: XLSX.WorkSheet, row: number, col: string) 
   return value === undefined || value === null ? '' : String(value).trim();
 }
 
-function resolveTemplateEffectiveEndRow(worksheet: XLSX.WorkSheet, template: FormTemplate) {
+export function resolveTemplateEffectiveEndRowFromWorksheet(worksheet: XLSX.WorkSheet, template: FormTemplate) {
   const worksheetRef = worksheet['!ref'];
   if (!worksheetRef) {
     return template.columnMapping.endRow;
@@ -171,7 +171,7 @@ export async function resolveTemplateRowLabels(template: FormTemplate) {
       return [] as Array<{ sourceRow: number; label: string }>;
     }
 
-    const effectiveEndRow = resolveTemplateEffectiveEndRow(worksheet, template);
+    const effectiveEndRow = resolveTemplateEffectiveEndRowFromWorksheet(worksheet, template);
     const rows = [];
     for (let sourceRow = template.columnMapping.startRow; sourceRow <= effectiveEndRow; sourceRow += 1) {
       rows.push({

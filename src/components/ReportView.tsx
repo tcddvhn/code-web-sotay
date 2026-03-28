@@ -5,7 +5,12 @@ import { YEARS } from '../constants';
 import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project, UserProfile } from '../types';
 import { getPreferredReportingYear } from '../utils/reportingYear';
 import { uploadFile } from '../supabase';
-import { loadTemplateWorkbook, resolveTemplateHeaderLayout, resolveTemplateRowLabels } from '../utils/templateWorkbook';
+import {
+  loadTemplateWorkbook,
+  resolveTemplateEffectiveEndRowFromWorksheet,
+  resolveTemplateHeaderLayout,
+  resolveTemplateRowLabels,
+} from '../utils/templateWorkbook';
 import { fetchRowsFromSupabase, SupabaseRow } from '../supabaseReports';
 import { createReportExport, getDataFileRecord } from '../supabaseStore';
 
@@ -251,7 +256,8 @@ function populateTemplateWorksheet(
   selectedUnitCode: string,
 ) {
   const valueMap = buildValueMapForTemplate(data, template, year, selectedUnitCode);
-  const { startRow, endRow, dataColumns } = template.columnMapping;
+  const { startRow, dataColumns } = template.columnMapping;
+  const endRow = resolveTemplateEffectiveEndRowFromWorksheet(worksheet, template);
 
   for (let sourceRow = startRow; sourceRow <= endRow; sourceRow += 1) {
     const currentRowValues = valueMap.get(sourceRow);

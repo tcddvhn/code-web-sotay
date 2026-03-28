@@ -58,6 +58,24 @@ function stripRootFolderPrefix(path: string) {
   return normalizedPath;
 }
 
+function buildStoragePathCandidates(path: string) {
+  const normalizedPath = path.trim().replace(/^\/+|\/+$/g, '');
+  if (!normalizedPath) {
+    return [];
+  }
+
+  const withoutRoot = stripRootFolderPrefix(normalizedPath);
+  return Array.from(
+    new Set(
+      [
+        normalizedPath,
+        withoutRoot,
+        joinStoragePath(SUPABASE_ROOT_FOLDER, withoutRoot),
+      ].filter(Boolean),
+    ),
+  );
+}
+
 export async function loginWithSupabaseEmail(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -154,17 +172,72 @@ export async function uploadFile(
 }
 
 export async function deleteFileByPath(storagePath: string) {
-  const normalizedPath = storagePath.trim().replace(/^\/+|\/+$/g, '');
-  if (!normalizedPath) {
+  const candidates = buildStoragePathCandidates(storagePath);
+  if (candidates.length === 0) {
     return;
   }
 
   await ensureSupabaseSession();
 
-  const { error } = await supabase.storage.from(SUPABASE_BUCKET).remove([normalizedPath]);
+  const { error } = await supabase.storage.from(SUPABASE_BUCKET).remove(candidates);
 
   if (error) {
     throw new Error(error.message || 'Không thể xóa file trên Supabase Storage.');
+  }
+}
+
+async function listFilesRecursively(prefix: string, accumulator: string[]) {
+  const normalizedPrefix = prefix.trim().replace(/^\/+|\/+$/g, '');
+  const { data, error } = await supabase.storage.from(SUPABASE_BUCKET).list(normalizedPrefix, {
+    limit: 1000,
+    sortBy: { column: 'name', order: 'asc' },
+  });
+
+  if (error) {
+    throw new Error(error.message || `Không thể đọc thư mục ${normalizedPrefix} trên Supabase Storage.`);
+  }
+
+  for (const entry of data || []) {
+    const nextPath = joinStoragePath(normalizedPrefix, entry.name);
+    const isFolder = !entry.metadata;
+
+    if (isFolder) {
+      await listFilesRecursively(nextPath, accumulator);
+    } else {
+      accumulator.push(nextPath);
+    }
+  }
+}
+
+export async function deleteFolderByPath(storagePath: string) {
+  const candidates = buildStoragePathCandidates(storagePath);
+  if (candidates.length === 0) {
+    return;
+  }
+
+  await ensureSupabaseSession();
+
+  for (const candidate of candidates) {
+    const filesToDelete: string[] = [];
+    try {
+      await listFilesRecursively(candidate, filesToDelete);
+    } catch {
+      continue;
+    }
+
+    if (filesToDelete.length === 0) {
+      continue;
+    }
+
+    for (let index = 0; index < filesToDelete.length; index += 100) {
+      const chunk = filesToDelete.slice(index, index + 100);
+      const { error } = await supabase.storage.from(SUPABASE_BUCKET).remove(chunk);
+      if (error) {
+        throw new Error(error.message || `Không thể xóa thư mục ${candidate} trên Supabase Storage.`);
+      }
+    }
+
+    return;
   }
 }
 
