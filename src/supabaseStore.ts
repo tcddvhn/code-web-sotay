@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, Project, UserProfile } from './types';
 
 const SETTINGS_ROW_ID = 'global';
+const SUPABASE_PAGE_SIZE = 1000;
 
 type SupabaseProjectRow = {
   id: string;
@@ -412,12 +413,34 @@ export async function replaceAssignments(projectId: string, entries: SupabaseAss
 }
 
 export async function listRowsByProject(projectId: string) {
-  const { data, error } = await supabase.from('consolidated_rows').select('*').eq('project_id', projectId);
-  if (error) {
-    throw new Error(error.message || 'Không thể tải dữ liệu tổng hợp từ Supabase.');
+  const rows: any[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('consolidated_rows')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('template_id', { ascending: true })
+      .order('year', { ascending: true })
+      .order('source_row', { ascending: true })
+      .order('unit_code', { ascending: true })
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(error.message || 'Không thể tải dữ liệu tổng hợp từ Supabase.');
+    }
+
+    const pageRows = (data || []) as any[];
+    rows.push(...pageRows);
+
+    if (pageRows.length < SUPABASE_PAGE_SIZE) {
+      break;
+    }
+
+    from += SUPABASE_PAGE_SIZE;
   }
 
-  const rows = (data || []) as any[];
   return rows.map((row) => ({
     projectId: row.project_id,
     templateId: row.template_id,
