@@ -1191,6 +1191,7 @@ export default function App() {
         return (
           <ReportView
             data={data}
+            dataFiles={dataFiles}
             projects={projects}
             templates={templates}
             units={availableUnitsForProject}

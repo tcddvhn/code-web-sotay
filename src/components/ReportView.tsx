@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
-import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project, UserProfile } from '../types';
+import { ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project, UserProfile } from '../types';
 import { getPreferredReportingYear } from '../utils/reportingYear';
 import { uploadFile } from '../supabase';
 import {
@@ -16,6 +16,7 @@ import { createReportExport, getDataFileRecord } from '../supabaseStore';
 
 interface ReportViewProps {
   data: ConsolidatedData;
+  dataFiles: DataFileRecordSummary[];
   projects: Project[];
   templates: FormTemplate[];
   units: ManagedUnit[];
@@ -287,7 +288,7 @@ function populateTemplateWorksheet(
   }
 }
 
-export function ReportView({ data, projects, templates, units, selectedProjectId, onSelectProject, currentUser }: ReportViewProps) {
+export function ReportView({ data, dataFiles, projects, templates, units, selectedProjectId, onSelectProject, currentUser }: ReportViewProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState(() => getPreferredReportingYear());
   const [selectedUnitCode, setSelectedUnitCode] = useState(TOTAL_REPORT_UNIT_CODE);
@@ -300,16 +301,53 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
   const [supabaseAggregatedRows, setSupabaseAggregatedRows] = useState<AggregatedReportRow[]>([]);
   const [isSupabaseLoadingRows, setIsSupabaseLoadingRows] = useState(false);
 
-  const reportUnitOptions = useMemo(
-    () => [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...units],
-    [units],
-  );
   const unitNameByCode = useMemo(
     () => new Map(units.map((unit) => [unit.code, unit.name])),
     [units],
   );
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
   const selectedTemplate = projectTemplates.find((tpl) => tpl.id === selectedTemplateId) || null;
+  const reportUnitOptions = useMemo(() => {
+    const importedUnitCodes = new Set<string>();
+
+    dataFiles
+      .filter((file) => file.projectId === selectedProjectId && file.year === selectedYear)
+      .forEach((file) => {
+        if (file.unitCode) {
+          importedUnitCodes.add(file.unitCode);
+        }
+      });
+
+    projectTemplates.forEach((template) => {
+      (data[template.id] || [])
+        .filter((row) => row.year === selectedYear && row.projectId === selectedProjectId)
+        .forEach((row) => {
+          if (row.unitCode) {
+            importedUnitCodes.add(row.unitCode);
+          }
+        });
+    });
+
+    const importedUnits = Array.from(importedUnitCodes)
+      .map((unitCode) => {
+        const matchedUnit = units.find((unit) => unit.code === unitCode);
+        if (matchedUnit) {
+          return matchedUnit;
+        }
+
+        const matchedFile = dataFiles.find(
+          (file) => file.projectId === selectedProjectId && file.year === selectedYear && file.unitCode === unitCode,
+        );
+
+        return {
+          code: unitCode,
+          name: matchedFile?.unitName || unitCode,
+        };
+      })
+      .sort((left, right) => left.name.localeCompare(right.name, 'vi'));
+
+    return [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...importedUnits];
+  }, [data, dataFiles, projectTemplates, selectedProjectId, selectedYear, units]);
   const selectedUnitOption =
     reportUnitOptions.find((unit) => unit.code === selectedUnitCode) || reportUnitOptions[0];
 
