@@ -349,6 +349,16 @@ export default function App() {
     };
   }, [isAuthReady, selectedProjectId]);
 
+  const refreshTemplatesForProject = async (projectId: string) => {
+    if (!projectId) {
+      setTemplates([]);
+      return;
+    }
+
+    const list = await listTemplatesFromSupabase(projectId);
+    setTemplates(list);
+  };
+
   useEffect(() => {
     if (!isAuthReady) {
       return;
@@ -1128,6 +1138,7 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             onDeleteTemplate={handleDeleteTemplate}
+            onTemplatesChanged={refreshTemplatesForProject}
           />
         ) : (
           <DashboardOverview

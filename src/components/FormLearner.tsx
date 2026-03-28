@@ -82,11 +82,13 @@ export function FormLearner({
   selectedProjectId,
   onSelectProject,
   onDeleteTemplate,
+  onTemplatesChanged,
 }: {
   projects: Project[];
   selectedProjectId: string;
   onSelectProject: (projectId: string) => void;
   onDeleteTemplate: (template: FormTemplate) => Promise<boolean>;
+  onTemplatesChanged?: (projectId: string) => Promise<void>;
 }) {
   const project = useMemo(
     () => projects.find((item) => item.id === selectedProjectId) || null,
@@ -578,7 +580,9 @@ export function FormLearner({
         updatedAt: new Date().toISOString(),
       });
       if (project?.id) {
-        setManualTemplates(await listTemplatesFromSupabase(project.id));
+        const nextTemplates = await listTemplatesFromSupabase(project.id);
+        setManualTemplates(nextTemplates);
+        await onTemplatesChanged?.(project.id);
       }
 
       setError(null);
@@ -601,7 +605,9 @@ export function FormLearner({
         updatedAt: new Date().toISOString(),
       });
       if (project?.id) {
-        setManualTemplates(await listTemplatesFromSupabase(project.id));
+        const nextTemplates = await listTemplatesFromSupabase(project.id);
+        setManualTemplates(nextTemplates);
+        await onTemplatesChanged?.(project.id);
       }
       setError(null);
       setNotice(
@@ -635,6 +641,11 @@ export function FormLearner({
         setError('Không thể xóa biểu mẫu này. Vui lòng kiểm tra quyền, dữ liệu liên quan hoặc policy của Supabase.');
         setNotice(null);
         return;
+      }
+      if (project?.id) {
+        const nextTemplates = await listTemplatesFromSupabase(project.id);
+        setManualTemplates(nextTemplates);
+        await onTemplatesChanged?.(project.id);
       }
 
       setError(null);
@@ -673,7 +684,9 @@ export function FormLearner({
         updatedAt: new Date().toISOString(),
       });
       if (project?.id) {
-        setManualTemplates(await listTemplatesFromSupabase(project.id));
+        const nextTemplates = await listTemplatesFromSupabase(project.id);
+        setManualTemplates(nextTemplates);
+        await onTemplatesChanged?.(project.id);
       }
 
       setNotice(`Đã gắn lại file mẫu gốc cho biểu "${template.name}".`);
@@ -914,7 +927,9 @@ export function FormLearner({
       );
       await Promise.all(promises);
       if (project?.id) {
-        setManualTemplates(await listTemplatesFromSupabase(project.id));
+        const nextTemplates = await listTemplatesFromSupabase(project.id);
+        setManualTemplates(nextTemplates);
+        await onTemplatesChanged?.(project.id);
       }
       setLearnedTemplates([]);
       setError(null);
