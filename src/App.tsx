@@ -29,6 +29,8 @@ import { AppSettings, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAssignmentKey } from './access';
 import {
+  countDataFilesByYear,
+  countRowsByYear,
   deleteDataFileByUnit,
   deleteDataFilesByYear,
   getUserProfileByEmail,
@@ -776,11 +778,13 @@ export default function App() {
     }
 
     try {
-      const count = (Object.values(data).flat() as DataRow[])
-        .filter((row) => row.projectId === currentProject.id && row.year === year).length;
-      if (count === 0) {
+      const rowsBeforeDelete = await countRowsByYear(currentProject.id, year);
+      const dataFilesBeforeDelete = await countDataFilesByYear(currentProject.id, year);
+
+      if (rowsBeforeDelete === 0 && dataFilesBeforeDelete === 0) {
         return 0;
       }
+
       await deleteRowsByYearFromSupabase(currentProject.id, year);
       const deletedDataFilePaths = await deleteDataFilesByYear(currentProject.id, year);
       for (const storagePath of deletedDataFilePaths) {
@@ -799,12 +803,23 @@ export default function App() {
         }
         organized[row.templateId].push(row);
       });
+
+      const remainingRowsForYear = refreshedRows.filter((row) => row.projectId === currentProject.id && row.year === year).length;
+      const remainingDataFilesForYear = refreshedDataFiles.filter((file) => file.projectId === currentProject.id && file.year === year).length;
+
       setData(organized);
       setDataFiles(refreshedDataFiles);
-      return count;
+
+      if (remainingRowsForYear > 0 || remainingDataFilesForYear > 0) {
+        throw new Error(
+          `Hệ thống chưa xóa hết dữ liệu năm ${year}. Còn ${remainingRowsForYear} dòng dữ liệu và ${remainingDataFilesForYear} file metadata.`,
+        );
+      }
+
+      return rowsBeforeDelete;
     } catch (error) {
       console.error('Delete year rows error:', error);
-      return 0;
+      throw error instanceof Error ? error : new Error('Không thể xóa dữ liệu theo năm.');
     }
   };
 

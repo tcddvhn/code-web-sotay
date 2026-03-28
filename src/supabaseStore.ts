@@ -447,6 +447,20 @@ export async function upsertRows(rows: DataRow[]) {
   }
 }
 
+export async function countRowsByYear(projectId: string, year: string) {
+  const { count, error } = await supabase
+    .from('consolidated_rows')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('year', year);
+
+  if (error) {
+    throw new Error(error.message || 'Không thể đếm dữ liệu theo năm trên Supabase.');
+  }
+
+  return count || 0;
+}
+
 export async function deleteRowsByProject(projectId: string) {
   const { error } = await supabase.from('consolidated_rows').delete().eq('project_id', projectId);
   if (error) {
@@ -547,6 +561,20 @@ export async function listDataFilesByProject(projectId: string): Promise<DataFil
     downloadURL: row.download_url,
     updatedAt: row.updated_at,
   }));
+}
+
+export async function countDataFilesByYear(projectId: string, year: string) {
+  const { count, error } = await supabase
+    .from('data_files')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('year', year);
+
+  if (error) {
+    throw new Error(error.message || 'Không thể đếm metadata file theo năm trên Supabase.');
+  }
+
+  return count || 0;
 }
 
 export async function deleteDataFilesByProject(projectId: string) {
