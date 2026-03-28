@@ -583,6 +583,21 @@ export default function App() {
       }
       await deleteProjectFromSupabase(projectId);
 
+      const nextProjects = await listProjectsFromSupabase();
+      setProjects(nextProjects);
+      setTemplates((prev) => prev.filter((template) => template.projectId !== projectId));
+      setData((prev) => {
+        const nextData: ConsolidatedData = {};
+        Object.entries(prev).forEach(([templateId, rows]) => {
+          const remainingRows = rows.filter((row) => row.projectId !== projectId);
+          if (remainingRows.length > 0) {
+            nextData[templateId] = remainingRows;
+          }
+        });
+        return nextData;
+      });
+      setAssignments({});
+
       if (selectedProjectId === projectId) {
         setDataFiles([]);
         setCurrentView('DASHBOARD');

@@ -35,6 +35,35 @@ function getLabelForRow(worksheet: XLSX.WorkSheet, sourceRow: number) {
   return label ? String(label).trim() : `Dòng ${sourceRow}`;
 }
 
+function resolveEffectiveEndRow(worksheet: XLSX.WorkSheet, startRow: number, endRow: number, dataColumns: string[]) {
+  const worksheetRef = worksheet['!ref'];
+  if (!worksheetRef) {
+    return endRow;
+  }
+
+  const range = XLSX.utils.decode_range(worksheetRef);
+  const worksheetMaxRow = range.e.r + 1;
+  let lastRowWithData = endRow;
+
+  for (let row = startRow; row <= worksheetMaxRow; row += 1) {
+    const hasRelevantData = dataColumns.some((col) => {
+      const cell = worksheet[`${col}${row}`];
+      if (!cell) {
+        return false;
+      }
+
+      const rawValue = cell.w ?? cell.v;
+      return rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '';
+    });
+
+    if (hasRelevantData) {
+      lastRowWithData = row;
+    }
+  }
+
+  return Math.max(endRow, lastRowWithData);
+}
+
 export async function parseLegacySheet(
   file: File,
   unitCode: string,
@@ -111,9 +140,10 @@ export function parseTemplateFromWorkbook(
   }
 
   const { labelColumn, dataColumns, startRow, endRow } = template.columnMapping;
+  const effectiveEndRow = resolveEffectiveEndRow(worksheet, startRow, endRow, dataColumns);
   const rows: DataRow[] = [];
 
-  for (let r = startRow; r <= endRow; r += 1) {
+  for (let r = startRow; r <= effectiveEndRow; r += 1) {
     const labelCell = worksheet[`${labelColumn}${r}`];
     const labelText = String(labelCell?.w ?? labelCell?.v ?? '').trim();
 
@@ -149,4 +179,3 @@ export function parseTemplateFromWorkbook(
 
   return rows;
 }
-
