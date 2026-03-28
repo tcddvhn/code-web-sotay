@@ -12,10 +12,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
-import { UserProfile, ViewMode } from '../types';
+import { AuthenticatedUser, UserProfile, ViewMode } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { User } from 'firebase/auth';
 
 interface SidebarProps {
   currentView: ViewMode;
@@ -23,7 +22,7 @@ interface SidebarProps {
   isAuthenticated: boolean;
   isAdmin: boolean;
   onLogout: () => void;
-  user: User | null;
+  user: AuthenticatedUser | null;
   userProfile?: UserProfile | null;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -148,4 +147,3 @@ export function Sidebar({
     </div>
   );
 }
-

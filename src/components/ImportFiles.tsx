@@ -7,7 +7,6 @@ import { parseLegacyFromWorkbook, parseTemplateFromWorkbook } from '../utils/exc
 import { getPinnedYearPreference, getPreferredReportingYear, setPinnedYearPreference } from '../utils/reportingYear';
 import { validateWorkbookSheetNames } from '../utils/workbookUtils';
 import { uploadFile } from '../supabase';
-import { insertRowsToSupabase } from '../supabaseReports';
 import { upsertDataFileRecord } from '../supabaseStore';
 
 type FileMatchType = 'CODE' | 'NAME' | 'FUZZY' | 'MANUAL' | 'NONE';
@@ -283,7 +282,7 @@ async function uploadAcceptedDataFile(
   });
 
   const uploadResult = await uploadFile(renamedFile, {
-    folder: `app_data/${projectId}`,
+    folder: `data_files/${projectId}`,
     fileName,
     upsert: true,
   });
@@ -833,11 +832,6 @@ export function ImportFiles({
 
       if (importedRows.length > 0) {
         await onDataImported(importedRows);
-        try {
-          await insertRowsToSupabase(importedRows);
-        } catch (insertError) {
-          console.error('Ghi dữ liệu lên Supabase thất bại:', insertError);
-        }
       }
 
       setLastFailedFiles(failedFiles);

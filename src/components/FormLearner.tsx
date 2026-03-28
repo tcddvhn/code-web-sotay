@@ -632,7 +632,7 @@ export function FormLearner({
     try {
       const deleted = await onDeleteTemplate(template);
       if (!deleted) {
-        setError('Không thể xóa biểu mẫu này. Vui lòng kiểm tra quyền, dữ liệu liên quan hoặc Firebase rules.');
+        setError('Không thể xóa biểu mẫu này. Vui lòng kiểm tra quyền, dữ liệu liên quan hoặc policy của Supabase.');
         setNotice(null);
         return;
       }

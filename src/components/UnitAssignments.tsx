@@ -70,7 +70,7 @@ export function UnitAssignments({ projectId, units, users, assignments, onSaveAs
         <div>
           <h3 className="section-title">Phân công theo dõi đơn vị</h3>
           <p className="page-subtitle mt-2 text-sm">
-            Admin gán đơn vị cho 8 tài khoản đã cấp quyền. Đơn vị đã giao cho người khác sẽ tự ẩn khỏi danh sách chọn.
+            Admin gán đơn vị cho các tài khoản đang active trong Supabase. Đơn vị đã giao cho người khác sẽ tự ẩn khỏi danh sách chọn.
           </p>
         </div>
         <button

@@ -1,9 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type AuthChangeEvent, type Session, type User as SupabaseUser } from '@supabase/supabase-js';
+import { AuthenticatedUser } from './types';
 
-const SUPABASE_URL = 'https://taivkgwwinakcoxhquyv.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_yhIJUroRXhTStoBOzApNKg_Gk7EVjC5';
-const SUPABASE_BUCKET = 'uploads';
-const SUPABASE_ROOT_FOLDER = 'app_data';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://taivkgwwinakcoxhquyv.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_yhIJUroRXhTStoBOzApNKg_Gk7EVjC5';
+const SUPABASE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'uploads';
+const SUPABASE_ROOT_FOLDER = import.meta.env.VITE_SUPABASE_ROOT_FOLDER || 'app_data';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -11,6 +13,20 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     autoRefreshToken: true,
   },
 });
+
+function mapSupabaseUser(user: SupabaseUser | null | undefined): AuthenticatedUser | null {
+  if (!user) {
+    return null;
+  }
+
+  const metadata = user.user_metadata || {};
+  return {
+    id: user.id,
+    email: user.email || null,
+    displayName: metadata.display_name || metadata.name || null,
+    photoURL: metadata.avatar_url || metadata.picture || null,
+  };
+}
 
 function sanitizeFileName(fileName: string) {
   return fileName
@@ -25,6 +41,21 @@ function joinStoragePath(...parts: string[]) {
     .map((part) => part.trim().replace(/^\/+|\/+$/g, ''))
     .filter(Boolean)
     .join('/');
+}
+
+function stripRootFolderPrefix(path: string) {
+  const normalizedPath = path.trim().replace(/^\/+|\/+$/g, '');
+  const rootPrefix = `${SUPABASE_ROOT_FOLDER}/`;
+
+  if (normalizedPath === SUPABASE_ROOT_FOLDER) {
+    return '';
+  }
+
+  if (normalizedPath.startsWith(rootPrefix)) {
+    return normalizedPath.slice(rootPrefix.length);
+  }
+
+  return normalizedPath;
 }
 
 export async function loginWithSupabaseEmail(email: string, password: string) {
@@ -46,25 +77,6 @@ export async function loginWithSupabaseEmail(email: string, password: string) {
   return data;
 }
 
-export async function signUpWithSupabaseEmail(email: string, password: string) {
-  const normalizedEmail = email.trim().toLowerCase();
-
-  if (!normalizedEmail || !password) {
-    throw new Error('Vui lòng nhập đầy đủ email và mật khẩu.');
-  }
-
-  const { data, error } = await supabase.auth.signUp({
-    email: normalizedEmail,
-    password,
-  });
-
-  if (error) {
-    throw new Error(error.message || 'Không thể tạo tài khoản Supabase.');
-  }
-
-  return data;
-}
-
 export async function ensureSupabaseSession() {
   const {
     data: { session },
@@ -75,6 +87,24 @@ export async function ensureSupabaseSession() {
   }
 
   return session;
+}
+
+export async function getCurrentSupabaseUser() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return mapSupabaseUser(session?.user);
+}
+
+export function onSupabaseAuthStateChange(callback: (user: AuthenticatedUser | null, session: Session | null, event: AuthChangeEvent) => void) {
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(mapSupabaseUser(session?.user), session, event);
+  });
+
+  return () => subscription.unsubscribe();
 }
 
 export async function uploadFile(
@@ -94,7 +124,7 @@ export async function uploadFile(
 
   const originalName = file instanceof File ? file.name : options?.fileName || 'upload.bin';
   const safeFileName = sanitizeFileName(options?.fileName || originalName || 'upload.bin');
-  const relativeFolder = options?.folder ? joinStoragePath(options.folder) : '';
+  const relativeFolder = options?.folder ? joinStoragePath(stripRootFolderPrefix(options.folder)) : '';
   const filePath = joinStoragePath(
     SUPABASE_ROOT_FOLDER,
     relativeFolder,

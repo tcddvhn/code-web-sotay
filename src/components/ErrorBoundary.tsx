@@ -31,13 +31,11 @@ export class ErrorBoundary extends (React.Component as any) {
       let errorMessage = 'Đã xảy ra lỗi không mong muốn.';
       
       try {
-        // Try to parse Firestore JSON error
-        const firestoreError = JSON.parse(this.state.error.message);
-        if (firestoreError.error) {
-          errorMessage = `Lỗi hệ thống: ${firestoreError.error}`;
+        const structuredError = JSON.parse(this.state.error.message);
+        if (structuredError.error) {
+          errorMessage = `Lỗi hệ thống: ${structuredError.error}`;
         }
       } catch (e) {
-        // Not a Firestore JSON error
         errorMessage = this.state.error.message || errorMessage;
       }
 
@@ -60,5 +58,4 @@ export class ErrorBoundary extends (React.Component as any) {
     return this.props.children;
   }
 }
-
 

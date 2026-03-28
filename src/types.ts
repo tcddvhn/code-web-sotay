@@ -58,6 +58,13 @@ export interface UserProfile {
   role: 'admin' | 'contributor';
 }
 
+export interface AuthenticatedUser {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL?: string | null;
+}
+
 export interface AssignmentUser {
   id: string;
   email: string;

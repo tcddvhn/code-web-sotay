@@ -1,4 +1,4 @@
-import { ALLOWED_ACCOUNTS, getAssignmentKey } from './access';
+import { getAssignmentKey } from './access';
 import { supabase } from './supabase';
 import { AppSettings, AssignmentUser, DataRow, FormTemplate, ManagedUnit, Project, UserProfile } from './types';
 
@@ -50,6 +50,17 @@ type SupabaseAssignmentRow = {
   display_name: string;
   unit_codes: string[] | null;
   updated_at: string | null;
+};
+
+type SupabaseUserProfileRow = {
+  email: string;
+  auth_user_id: string | null;
+  display_name: string;
+  role: 'admin' | 'contributor';
+  is_active: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+  last_login_at: string | null;
 };
 
 type SupabaseDataFileRow = {
@@ -141,6 +152,15 @@ function mapRowToPayload(row: DataRow) {
     values: row.values,
     updated_at: nowIso(),
     updated_by: row.updatedBy || null,
+  };
+}
+
+function mapUserProfile(row: SupabaseUserProfileRow): UserProfile {
+  return {
+    id: row.auth_user_id || getAssignmentKey(row.email),
+    email: row.email,
+    displayName: row.display_name || row.email,
+    role: row.role || 'contributor',
   };
 }
 
@@ -303,6 +323,65 @@ export async function upsertSettings(settings: AppSettings) {
   }
 }
 
+export async function listUserProfiles() {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('is_active', true)
+    .order('role', { ascending: true })
+    .order('display_name', { ascending: true });
+
+  if (error) {
+    throw new Error(error.message || 'Không thể tải danh sách tài khoản từ Supabase.');
+  }
+
+  return ((data || []) as SupabaseUserProfileRow[]).map(mapUserProfile);
+}
+
+export async function getUserProfileByEmail(email?: string | null) {
+  const normalizedEmail = getAssignmentKey(email);
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('email', normalizedEmail)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Không thể tải hồ sơ tài khoản từ Supabase.');
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapUserProfile(data as SupabaseUserProfileRow);
+}
+
+export async function touchUserProfileSession(email: string, authUserId: string) {
+  const normalizedEmail = getAssignmentKey(email);
+  if (!normalizedEmail || !authUserId) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({
+      auth_user_id: authUserId,
+      last_login_at: nowIso(),
+      updated_at: nowIso(),
+    })
+    .eq('email', normalizedEmail);
+
+  if (error) {
+    throw new Error(error.message || 'Không thể cập nhật phiên đăng nhập người dùng trên Supabase.');
+  }
+}
+
 export async function listAssignments(projectId: string) {
   const { data, error } = await supabase
     .from('assignments')
@@ -447,10 +526,66 @@ export async function getDataFileRecord(projectId: string, unitCode: string, yea
 }
 
 export async function deleteDataFilesByProject(projectId: string) {
-  const { error } = await supabase.from('data_files').delete().eq('project_id', projectId);
+  const { data, error } = await supabase
+    .from('data_files')
+    .select('storage_path')
+    .eq('project_id', projectId);
   if (error) {
-    throw new Error(error.message || 'Không thể xóa metadata file của dự án trên Supabase.');
+    throw new Error(error.message || 'Không thể tải metadata file của dự án trên Supabase.');
   }
+
+  const { error: deleteError } = await supabase.from('data_files').delete().eq('project_id', projectId);
+  if (deleteError) {
+    throw new Error(deleteError.message || 'Không thể xóa metadata file của dự án trên Supabase.');
+  }
+
+  return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
+}
+
+export async function deleteDataFilesByYear(projectId: string, year: string) {
+  const { data, error } = await supabase
+    .from('data_files')
+    .select('storage_path')
+    .eq('project_id', projectId)
+    .eq('year', year);
+  if (error) {
+    throw new Error(error.message || 'Không thể tải metadata file theo năm trên Supabase.');
+  }
+
+  const { error: deleteError } = await supabase
+    .from('data_files')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('year', year);
+  if (deleteError) {
+    throw new Error(deleteError.message || 'Không thể xóa metadata file theo năm trên Supabase.');
+  }
+
+  return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
+}
+
+export async function deleteDataFileByUnit(projectId: string, year: string, unitCode: string) {
+  const { data, error } = await supabase
+    .from('data_files')
+    .select('storage_path')
+    .eq('project_id', projectId)
+    .eq('year', year)
+    .eq('unit_code', unitCode);
+  if (error) {
+    throw new Error(error.message || 'Không thể tải metadata file của đơn vị trên Supabase.');
+  }
+
+  const { error: deleteError } = await supabase
+    .from('data_files')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('year', year)
+    .eq('unit_code', unitCode);
+  if (deleteError) {
+    throw new Error(deleteError.message || 'Không thể xóa metadata file của đơn vị trên Supabase.');
+  }
+
+  return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
 }
 
 export async function deleteDataFilesByTemplate(_templateId: string) {
@@ -512,15 +647,6 @@ export async function deleteReportExportsByTemplate(templateId: string) {
   return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
 }
 
-export function buildStaticUserProfiles(): UserProfile[] {
-  return ALLOWED_ACCOUNTS.map((account) => ({
-    id: getAssignmentKey(account.email),
-    email: account.email,
-    displayName: account.displayName,
-    role: account.role,
-  }));
-}
-
 export function buildAssignmentRows(projectId: string, users: AssignmentUser[], current: Record<string, string[]>) {
   return Object.entries(current)
     .filter(([, unitCodes]) => unitCodes.length > 0)
@@ -538,4 +664,3 @@ export function buildAssignmentRows(projectId: string, users: AssignmentUser[], 
       } satisfies SupabaseAssignmentRow;
     });
 }
-

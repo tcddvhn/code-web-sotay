@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
-import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project } from '../types';
-import { auth } from '../firebase';
+import { ConsolidatedData, DataRow, FormTemplate, HeaderLayout, ManagedUnit, Project, UserProfile } from '../types';
 import { getPreferredReportingYear } from '../utils/reportingYear';
 import { uploadFile } from '../supabase';
 import { loadTemplateWorkbook, resolveTemplateHeaderLayout, resolveTemplateRowLabels } from '../utils/templateWorkbook';
@@ -17,6 +16,7 @@ interface ReportViewProps {
   units: ManagedUnit[];
   selectedProjectId: string;
   onSelectProject: (id: string) => void;
+  currentUser: UserProfile | null;
 }
 
 interface CellDetailItem {
@@ -232,7 +232,7 @@ function populateTemplateWorksheet(
   }
 }
 
-export function ReportView({ data, projects, templates, units, selectedProjectId, onSelectProject }: ReportViewProps) {
+export function ReportView({ data, projects, templates, units, selectedProjectId, onSelectProject, currentUser }: ReportViewProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState(() => getPreferredReportingYear());
   const [selectedUnitCode, setSelectedUnitCode] = useState(TOTAL_REPORT_UNIT_CODE);
@@ -404,7 +404,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     });
   }, [activeCellDetail, detailSortOrder]);
 
-  const firestoreAggregatedRows = useMemo<AggregatedReportRow[]>(() => {
+  const localAggregatedRows = useMemo<AggregatedReportRow[]>(() => {
     if (!selectedTemplate) {
       return [];
     }
@@ -502,7 +502,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     return buildHeaderRows(resolvedHeaderLayout);
   }, [resolvedHeaderLayout]);
 
-  const aggregatedRows = supabaseAggregatedRows.length > 0 ? supabaseAggregatedRows : firestoreAggregatedRows;
+  const aggregatedRows = supabaseAggregatedRows.length > 0 ? supabaseAggregatedRows : localAggregatedRows;
 
   const tableColSpan = useMemo(() => {
     if (!selectedTemplate) {
@@ -587,8 +587,6 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         fileName: `${templateId}_${selectedUnitOption.code}.xlsx`,
         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
-      const user = auth.currentUser;
-
       await createReportExport({
         project_id: selectedProjectId,
         template_id: templateId,
@@ -599,11 +597,11 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
         file_name: fileName,
         storage_path: uploadResult.path,
         download_url: uploadResult.publicUrl,
-        created_by: user
+        created_by: currentUser
           ? {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
+              uid: currentUser.id,
+              email: currentUser.email,
+              displayName: currentUser.displayName,
             }
           : null,
       });

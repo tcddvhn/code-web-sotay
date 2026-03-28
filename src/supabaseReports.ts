@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { DataRow } from './types';
 
 export interface SupabaseRow {
   id: string;
@@ -12,26 +11,6 @@ export interface SupabaseRow {
   label: string;
   values: number[];
   created_at: string;
-}
-
-export async function insertRowsToSupabase(rows: DataRow[]) {
-  if (rows.length === 0) return;
-
-  const payload = rows.map((row) => ({
-    project_id: row.projectId,
-    template_id: row.templateId,
-    unit_code: row.unitCode,
-    unit_name: row.label ? row.label : row.unitCode,
-    year: row.year,
-    source_row: row.sourceRow,
-    label: row.label,
-    values: row.values,
-  }));
-
-  const { error } = await supabase.from('consolidated_rows').insert(payload);
-  if (error) {
-    throw new Error(error.message);
-  }
 }
 
 export async function fetchRowsFromSupabase(

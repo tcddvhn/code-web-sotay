@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   Activity,
   CheckCircle2,
@@ -7,7 +6,6 @@ import {
   Globe,
   Link as LinkIcon,
   Lock,
-  LogIn,
   Users,
   X,
 } from 'lucide-react';
@@ -19,14 +17,22 @@ import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
-import { auth, loginWithEmail, logout, signUpWithEmail } from './firebase';
-import { deleteFileByPath, loginWithSupabaseEmail, logoutSupabase, signUpWithSupabaseEmail } from './supabase';
-import { AppSettings, ConsolidatedData, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
-import { getPreferredReportingYear } from './utils/reportingYear';
-import { buildAssignmentUsers, getAllowedAccount, getAssignmentKey, isAdminEmail, isAllowedEmail } from './access';
 import {
-  buildStaticUserProfiles,
+  deleteFileByPath,
+  getCurrentSupabaseUser,
+  loginWithSupabaseEmail,
+  logoutSupabase,
+  onSupabaseAuthStateChange,
+} from './supabase';
+import { AppSettings, AuthenticatedUser, ConsolidatedData, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
+import { getPreferredReportingYear } from './utils/reportingYear';
+import { buildAssignmentUsers, getAssignmentKey } from './access';
+import {
+  deleteDataFileByUnit,
+  deleteDataFilesByYear,
+  getUserProfileByEmail,
   getSettings as getSettingsFromSupabase,
+  listUserProfiles as listUserProfilesFromSupabase,
   deleteDataFilesByProject,
   deleteProjectById as deleteProjectFromSupabase,
   deleteReportExportsByProject as deleteReportExportsByProjectFromSupabase,
@@ -43,6 +49,7 @@ import {
   listUnits as listUnitsFromSupabase,
   replaceAssignments as replaceAssignmentsInSupabase,
   seedUnits as seedUnitsToSupabase,
+  touchUserProfileSession,
   upsertRows as upsertRowsToSupabase,
   upsertProject as upsertProjectToSupabase,
   upsertSettings as upsertSettingsToSupabase,
@@ -117,7 +124,7 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -136,18 +143,14 @@ export default function App() {
       return null;
     }
 
-    const allowedAccount = getAllowedAccount(user.email);
     return {
-      id: user.uid,
+      id: user.id,
       email: user.email,
-      displayName: userProfile?.displayName || allowedAccount?.displayName || user.displayName || null,
-      role: userProfile?.role || allowedAccount?.role || 'contributor',
+      displayName: userProfile?.displayName || user.displayName || null,
+      role: userProfile?.role || 'contributor',
     };
   }, [user, userProfile]);
-  const isAdmin = useMemo(
-    () => effectiveUserProfile?.role === 'admin' || isAdminEmail(user?.email),
-    [effectiveUserProfile, user],
-  );
+  const isAdmin = useMemo(() => effectiveUserProfile?.role === 'admin', [effectiveUserProfile]);
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
     [projects, selectedProjectId],
@@ -162,21 +165,114 @@ export default function App() {
   );
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
-      if (nextUser?.email && !isAllowedEmail(nextUser.email)) {
-        setAuthError('Tài khoản này chưa được cấp quyền truy cập hệ thống.');
-        logout();
+    let active = true;
+
+    const applyAuthUser = async (nextUser: AuthenticatedUser | null) => {
+      if (!nextUser) {
+        if (!active) {
+          return;
+        }
         setUser(null);
         setUserProfile(null);
         setIsAuthReady(true);
         return;
       }
-      setAuthError(null);
-      setUser(nextUser);
-      setIsAuthReady(true);
+
+      if (!nextUser.email) {
+        try {
+          await logoutSupabase();
+        } catch (error) {
+          console.error('Supabase logout cleanup error:', error);
+        }
+        if (!active) {
+          return;
+        }
+        setAuthError('Phiên Supabase hiện không có email hợp lệ.');
+        setUser(null);
+        setUserProfile(null);
+        setCurrentView('LOGIN');
+        setIsAuthReady(true);
+        return;
+      }
+
+      try {
+        const profile = await getUserProfileByEmail(nextUser.email);
+        if (!profile) {
+          setAuthError('Tài khoản này chưa được cấp quyền truy cập trong bảng user_profiles của Supabase.');
+          try {
+            await logoutSupabase();
+          } catch (error) {
+            console.error('Supabase logout cleanup error:', error);
+          }
+          if (!active) {
+            return;
+          }
+          setUser(null);
+          setUserProfile(null);
+          setCurrentView('LOGIN');
+          setIsAuthReady(true);
+          return;
+        }
+
+        try {
+          await touchUserProfileSession(nextUser.email, nextUser.id);
+        } catch (error) {
+          console.error('Supabase user profile touch warning:', error);
+        }
+
+        if (!active) {
+          return;
+        }
+
+        setUser(nextUser);
+        setUserProfile({
+          ...profile,
+          displayName: profile.displayName || nextUser.displayName || nextUser.email,
+        });
+        setAuthError(null);
+        setCurrentView((current) => (current === 'LOGIN' ? 'DASHBOARD' : current));
+        setIsAuthReady(true);
+        return;
+      } catch (error) {
+        console.error('Supabase profile load error:', error);
+        try {
+          await logoutSupabase();
+        } catch (logoutError) {
+          console.error('Supabase logout cleanup error:', logoutError);
+        }
+        if (!active) {
+          return;
+        }
+        setAuthError(error instanceof Error ? error.message : 'Không thể tải hồ sơ tài khoản từ Supabase.');
+        setUser(null);
+        setUserProfile(null);
+        setCurrentView('LOGIN');
+        setIsAuthReady(true);
+        return;
+      }
+
+    };
+
+    getCurrentSupabaseUser()
+      .then((currentUser) => applyAuthUser(currentUser))
+      .catch((error) => {
+        console.error('Supabase session load error:', error);
+        if (!active) {
+          return;
+        }
+        setAuthError('Không thể khởi tạo phiên đăng nhập từ Supabase.');
+        setUser(null);
+        setIsAuthReady(true);
+      });
+
+    const unsubscribe = onSupabaseAuthStateChange((nextUser) => {
+      void applyAuthUser(nextUser);
     });
 
-    return () => unsubscribe();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -194,27 +290,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setUserProfile(null);
+    if (isAuthenticated) {
       return;
     }
 
-    const account = getAllowedAccount(user.email);
-    const fallbackProfile: UserProfile = {
-      id: user.uid,
-      email: user.email,
-      displayName: account?.displayName || user.displayName,
-      role: account?.role || 'contributor',
-    };
-    setUserProfile(fallbackProfile);
-  }, [user]);
+    setProjects([]);
+    setTemplates([]);
+    setData({});
+    setUnits([]);
+    setAssignments({});
+    setUsers([]);
+    setSettings(DEFAULT_SETTINGS);
+    setSelectedProjectId('');
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setProjects([]);
+      return;
+    }
+
     let cancelled = false;
 
     listProjectsFromSupabase()
       .then((list) => {
-        if (!cancelled && list.length > 0) {
+        if (!cancelled) {
           setProjects(list);
         }
       })
@@ -225,10 +325,16 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setTemplates([]);
+      return;
+    }
+
     if (!selectedProjectId) {
+      setTemplates([]);
       return;
     }
 
@@ -249,7 +355,13 @@ export default function App() {
   }, [selectedProjectId]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setData({});
+      return;
+    }
+
     if (!selectedProjectId) {
+      setData({});
       return;
     }
 
@@ -307,7 +419,13 @@ export default function App() {
   }, [isAuthenticated, isAdmin]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setAssignments({});
+      return;
+    }
+
     if (!selectedProjectId) {
+      setAssignments({});
       return;
     }
 
@@ -357,8 +475,26 @@ export default function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    setUsers(isAdmin ? buildStaticUserProfiles() : []);
-  }, [isAdmin]);
+    if (!isAuthenticated) {
+      setUsers([]);
+      return;
+    }
+
+    let cancelled = false;
+    listUserProfilesFromSupabase()
+      .then((list) => {
+        if (!cancelled) {
+          setUsers(list);
+        }
+      })
+      .catch((error) => {
+        console.error('Supabase user profiles load error:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (projects.length > 0 && !projects.find((p) => p.id === selectedProjectId)) {
@@ -407,7 +543,14 @@ export default function App() {
       const deletedExports = await deleteReportExports(projectId);
       await deleteRowsByProjectFromSupabase(projectId);
       await replaceAssignmentsInSupabase(projectId, []);
-      await deleteDataFilesByProject(projectId);
+      const deletedDataFilePaths = await deleteDataFilesByProject(projectId);
+      for (const storagePath of deletedDataFilePaths) {
+        try {
+          await deleteFileByPath(storagePath);
+        } catch {
+          // ignore
+        }
+      }
       const projectTemplates = await listTemplatesFromSupabase(projectId);
       for (const template of projectTemplates) {
         if (template.sourceWorkbookPath) {
@@ -508,7 +651,7 @@ export default function App() {
         ...row,
         updatedAt: new Date().toISOString(),
         updatedBy: {
-          uid: user.uid,
+          uid: user.id,
           email: user.email,
           displayName: effectiveUserProfile?.displayName || user.displayName,
         },
@@ -540,6 +683,14 @@ export default function App() {
         return 0;
       }
       await deleteRowsByUnitFromSupabase(currentProject.id, year, unitCode);
+      const deletedDataFilePaths = await deleteDataFileByUnit(currentProject.id, year, unitCode);
+      for (const storagePath of deletedDataFilePaths) {
+        try {
+          await deleteFileByPath(storagePath);
+        } catch {
+          // ignore
+        }
+      }
       const refreshedRows = await listRowsByProjectFromSupabase(currentProject.id);
       const organized: ConsolidatedData = {};
       refreshedRows.forEach((row) => {
@@ -568,6 +719,14 @@ export default function App() {
         return 0;
       }
       await deleteRowsByYearFromSupabase(currentProject.id, year);
+      const deletedDataFilePaths = await deleteDataFilesByYear(currentProject.id, year);
+      for (const storagePath of deletedDataFilePaths) {
+        try {
+          await deleteFileByPath(storagePath);
+        } catch {
+          // ignore
+        }
+      }
       const refreshedRows = await listRowsByProjectFromSupabase(currentProject.id);
       const organized: ConsolidatedData = {};
       refreshedRows.forEach((row) => {
@@ -743,9 +902,9 @@ export default function App() {
       deletedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       deletedBy: {
-        uid: user?.uid,
+        uid: user?.id,
         email: user?.email,
-        displayName: effectiveUserProfile?.displayName || userProfile?.displayName || user?.displayName,
+        displayName: effectiveUserProfile?.displayName || user?.displayName,
       },
     });
     setUnits(await listUnitsFromSupabase());
@@ -828,71 +987,20 @@ export default function App() {
     }
   };
 
-  const handleLogin = async () => {
-    throw new Error('Đăng nhập Google hiện không dùng cho luồng Supabase Storage. Vui lòng đăng nhập bằng email/mật khẩu.');
-  };
-
   const handleEmailLogin = async (email: string, password: string) => {
     try {
-      if (!isAllowedEmail(email)) {
-        throw new Error('Email chưa được cấp quyền.');
-      }
-      await loginWithEmail(email, password);
-      try {
-        await loginWithSupabaseEmail(email, password);
-      } catch (supabaseError) {
-        console.error('Supabase login warning:', supabaseError);
-        setAuthError(
-          'Đăng nhập hệ thống thành công nhưng chưa kết nối được Supabase. Một số chức năng tải/lưu file có thể tạm thời không khả dụng.',
-        );
-      }
-      setCurrentView('DASHBOARD');
+      setAuthError(null);
+      await loginWithSupabaseEmail(email, password);
     } catch (error) {
       console.error('Email login error:', error);
-      try {
-        await logout();
-      } catch {
-        // ignore cleanup errors
-      }
-      throw error;
-    }
-  };
-
-  const handleEmailSignup = async (email: string, password: string) => {
-    try {
-      if (!isAllowedEmail(email)) {
-        throw new Error('Email chưa được cấp quyền.');
-      }
-      await signUpWithEmail(email, password);
-      try {
-        await signUpWithSupabaseEmail(email, password);
-        await loginWithSupabaseEmail(email, password);
-      } catch (supabaseError) {
-        console.error('Supabase signup warning:', supabaseError);
-        setAuthError(
-          'Tạo tài khoản thành công nhưng chưa đồng bộ được Supabase. Bạn vẫn có thể vào hệ thống, nhưng cần kiểm tra lại tài khoản Supabase để dùng chức năng tải/lưu file.',
-        );
-      }
-      setCurrentView('DASHBOARD');
-    } catch (error) {
-      console.error('Email signup error:', error);
-      try {
-        await logout();
-      } catch {
-        // ignore cleanup errors
-      }
       throw error;
     }
   };
 
   const handleLogout = async () => {
     try {
-      await logout();
-      try {
-        await logoutSupabase();
-      } catch (supabaseError) {
-        console.error('Supabase logout error:', supabaseError);
-      }
+      setAuthError(null);
+      await logoutSupabase();
       setCurrentView('DASHBOARD');
     } catch (error) {
       console.error('Logout error:', error);
@@ -909,7 +1017,7 @@ export default function App() {
 
   const renderContent = () => {
     if (currentView === 'LOGIN') {
-      return <LoginView onLogin={handleLogin} onLoginWithEmail={handleEmailLogin} onSignUpWithEmail={handleEmailSignup} authError={authError} />;
+      return <LoginView onLoginWithEmail={handleEmailLogin} authError={authError} />;
     }
 
     switch (currentView) {
@@ -1018,6 +1126,7 @@ export default function App() {
             units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            currentUser={effectiveUserProfile}
           />
         );
       case 'SETTINGS':
@@ -1416,14 +1525,10 @@ function SystemSettingsUnitsPanel({
 }
 
 function LoginView({
-  onLogin,
   onLoginWithEmail,
-  onSignUpWithEmail,
   authError,
 }: {
-  onLogin: () => void;
   onLoginWithEmail: (email: string, password: string) => Promise<void>;
-  onSignUpWithEmail: (email: string, password: string) => Promise<void>;
   authError: string | null;
 }) {
   const [email, setEmail] = useState('');
@@ -1443,28 +1548,6 @@ function LoginView({
     }
   };
 
-  const submitEmailSignup = async () => {
-    setError(null);
-    if (!email || !password) {
-      setError('Vui lòng nhập email và mật khẩu.');
-      return;
-    }
-    try {
-      await onSignUpWithEmail(email.trim(), password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tạo tài khoản.');
-    }
-  };
-
-  const submitGoogleLogin = async () => {
-    setError(null);
-    try {
-      await onLogin();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể đăng nhập với Google.');
-    }
-  };
-
   return (
     <div className="h-full flex items-center justify-center p-6 md:p-8">
       <div className="panel-card w-full max-w-md rounded-[28px] p-8 md:p-12 text-center">
@@ -1472,7 +1555,7 @@ function LoginView({
           <Lock size={30} />
         </div>
         <h2 className="section-title">Đăng nhập hệ thống</h2>
-        <p className="page-subtitle mt-3 text-sm">Dành cho quản trị viên tiếp nhận và hợp nhất dữ liệu báo cáo.</p>
+        <p className="page-subtitle mt-3 text-sm">Dành cho các tài khoản đã được kích hoạt trong Supabase.</p>
 
         <div className="mt-8 space-y-4">
           <div className="panel-soft rounded-[20px] p-4 text-left">
@@ -1495,15 +1578,10 @@ function LoginView({
             <button onClick={submitEmailLogin} className="primary-btn mt-4 w-full">
               Đăng nhập bằng tài khoản
             </button>
-            <button onClick={submitEmailSignup} className="secondary-btn mt-3 w-full">
-              Tạo tài khoản
-            </button>
+            <p className="mt-3 text-[12px] leading-5 text-[var(--ink-soft)]">
+              Tài khoản và mật khẩu được quản trị viên cấp sẵn trên Supabase.
+            </p>
           </div>
-
-          <button onClick={submitGoogleLogin} className="secondary-btn flex w-full items-center justify-center gap-3">
-            <LogIn size={18} />
-            Đăng nhập với Google
-          </button>
           <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--ink-soft)]">
             Chỉ tài khoản được cấp quyền mới có thể tiếp nhận dữ liệu
           </p>
