@@ -50,6 +50,14 @@ type FailedFile = {
   relativePath?: string;
 };
 
+type OperationProgress = {
+  visible: boolean;
+  title: string;
+  description: string;
+  percent: number;
+  status: 'running' | 'done';
+};
+
 function normalizeText(value: string) {
   return value
     .normalize('NFD')
@@ -333,6 +341,7 @@ export function ImportFiles({
   const [isManagingData, setIsManagingData] = useState(false);
   const [visibleFileFilter, setVisibleFileFilter] = useState<VisibleFileFilter>('ALL');
   const [lastFailedFiles, setLastFailedFiles] = useState<FailedFile[]>([]);
+  const [operationProgress, setOperationProgress] = useState<OperationProgress | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentProject = useMemo(
@@ -684,6 +693,30 @@ export function ImportFiles({
   const resolveTemplatesForWorkbook = (workbook: XLSX.WorkBook) =>
     activeTemplates.filter((template) => workbook.SheetNames.includes(template.sheetName));
 
+  const showProgress = (title: string, description: string, percent: number) => {
+    setOperationProgress({
+      visible: true,
+      title,
+      description,
+      percent: Math.max(0, Math.min(100, Math.round(percent))),
+      status: 'running',
+    });
+  };
+
+  const completeProgress = (title: string, description: string) => {
+    setOperationProgress({
+      visible: true,
+      title,
+      description,
+      percent: 100,
+      status: 'done',
+    });
+  };
+
+  const closeProgress = () => {
+    setOperationProgress(null);
+  };
+
   const parseRowsForTemplate = (workbook: XLSX.WorkBook, template: FormTemplate, unitCode: string) => {
     if (template.mode === 'LEGACY') {
       return parseLegacyFromWorkbook(
@@ -727,14 +760,21 @@ export function ImportFiles({
     setIsManagingData(true);
     setManagementMessage(null);
     setLastFailedFiles([]);
+    showProgress('Đang tổng hợp dữ liệu', 'Đang chuẩn bị đọc các file Excel...', 3);
 
     try {
       const importedRows: DataRow[] = [];
       const failedFiles: FailedFile[] = [];
       const partialWarnings: string[] = [];
       let acceptedFiles = 0;
+      const totalFiles = Math.max(files.length, 1);
 
-      for (const fileItem of files) {
+      for (const [index, fileItem] of files.entries()) {
+        showProgress(
+          'Đang tổng hợp dữ liệu',
+          `Đang xử lý file ${index + 1}/${files.length}: ${fileItem.file.name}`,
+          5 + ((index + 0.25) / totalFiles) * 75,
+        );
         const unitName = unitNameByCode[fileItem.unitCode] || fileItem.unitQuery || fileItem.file.name;
 
         if (!fileItem.unitCode) {
@@ -767,6 +807,11 @@ export function ImportFiles({
           cellHTML: false,
           cellText: false,
         });
+        showProgress(
+          'Đang tổng hợp dữ liệu',
+          `Đã đọc file ${index + 1}/${files.length}, đang kiểm tra sheet và lấy dữ liệu...`,
+          5 + ((index + 0.6) / totalFiles) * 75,
+        );
 
         const sheetValidation = validateWorkbookSheetNames(workbook.SheetNames, activeTemplates);
         if (sheetValidation.missingSheets.length > 0) {
@@ -822,6 +867,11 @@ export function ImportFiles({
           console.error('Không thể upload file dữ liệu đã tiếp nhận:', uploadError);
         }
         acceptedFiles += 1;
+        showProgress(
+          'Đang tổng hợp dữ liệu',
+          `Đã xử lý ${index + 1}/${files.length} file. Đang tiếp tục...`,
+          5 + ((index + 1) / totalFiles) * 75,
+        );
 
         if (templateErrors.length > 0) {
           partialWarnings.push(
@@ -831,6 +881,7 @@ export function ImportFiles({
       }
 
       if (importedRows.length > 0) {
+        showProgress('Đang tổng hợp dữ liệu', 'Đang ghi dữ liệu tổng hợp vào hệ thống...', 90);
         await onDataImported(importedRows);
       }
 
@@ -861,6 +912,7 @@ export function ImportFiles({
       }
 
       setManagementMessage(summaryLines.join('\n'));
+      completeProgress('Hoàn tất tổng hợp', acceptedFiles > 0 ? 'Hệ thống đã tiếp nhận xong dữ liệu.' : 'Đã hoàn tất xử lý file.');
 
       if (acceptedFiles > 0) {
         const failedFileKeys = new Set(failedFiles.map((item) => `${item.fileName}__${item.relativePath || ''}`));
@@ -869,6 +921,7 @@ export function ImportFiles({
         );
       }
     } catch (error) {
+      closeProgress();
       setManagementMessage(error instanceof Error ? error.message : 'Không thể đọc file Excel này.');
     } finally {
       setIsManagingData(false);
@@ -914,15 +967,22 @@ export function ImportFiles({
 
     setIsManagingData(true);
     setManagementMessage(null);
+    showProgress('Đang xóa dữ liệu theo năm', `Đang chuẩn bị xóa dữ liệu năm ${selectedYear}...`, 10);
 
     try {
+      showProgress('Đang xóa dữ liệu theo năm', `Đang xóa các dòng dữ liệu của năm ${selectedYear}...`, 65);
       const deletedCount = await onDeleteYearData(selectedYear);
       setManagementMessage(
         deletedCount > 0
           ? `Đã xóa ${deletedCount} dòng dữ liệu của năm ${selectedYear}.`
           : `Không tìm thấy dữ liệu nào của năm ${selectedYear} để xóa.`,
       );
+      completeProgress(
+        'Hoàn tất xóa dữ liệu theo năm',
+        deletedCount > 0 ? `Đã xử lý xong dữ liệu năm ${selectedYear}.` : `Không có dữ liệu năm ${selectedYear} để xóa.`,
+      );
     } catch (error) {
+      closeProgress();
       setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu theo năm.');
     } finally {
       setIsManagingData(false);
@@ -944,15 +1004,22 @@ export function ImportFiles({
 
     setIsManagingData(true);
     setManagementMessage(null);
+    showProgress('Đang xóa toàn bộ dự án', `Đang chuẩn bị xóa dự án "${currentProject.name}"...`, 5);
 
     try {
+      showProgress('Đang xóa toàn bộ dự án', `Đang xóa dữ liệu, biểu mẫu và file của dự án "${currentProject.name}"...`, 70);
       const deletedCount = await onDeleteProjectData(currentProject.id);
       setManagementMessage(
         deletedCount > 0
           ? `Đã xóa dự án "${currentProject.name}" và ${deletedCount - 1} bản ghi liên quan.`
           : `Không thể xóa dự án "${currentProject.name}".`,
       );
+      completeProgress(
+        deletedCount > 0 ? 'Đã xóa toàn bộ dự án' : 'Không thể xóa dự án',
+        deletedCount > 0 ? `Dự án "${currentProject.name}" đã được xử lý xong.` : `Không thể xóa dự án "${currentProject.name}".`,
+      );
     } catch (error) {
+      closeProgress();
       setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu của dự án.');
     } finally {
       setIsManagingData(false);
@@ -983,6 +1050,7 @@ export function ImportFiles({
   const showExportErrors = lastFailedFiles.length > 0;
 
   return (
+    <>
     <div className="space-y-6 p-6 md:p-8">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div>
@@ -1188,5 +1256,43 @@ export function ImportFiles({
         </div>
       )}
     </div>
+    {operationProgress?.visible && (
+      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(33,25,17,0.35)] px-4">
+        <div className="w-full max-w-lg rounded-[28px] border border-[var(--line)] bg-white p-6 shadow-[0_30px_90px_rgba(38,31,18,0.24)]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">Tiến độ xử lý</p>
+              <h3 className="mt-2 text-xl font-semibold text-[var(--ink)]">{operationProgress.title}</h3>
+              <p className="mt-2 text-sm text-[var(--ink-soft)]">{operationProgress.description}</p>
+            </div>
+            <div className={`flex h-11 w-11 items-center justify-center rounded-full ${operationProgress.status === 'done' ? 'bg-emerald-50 text-emerald-700' : 'bg-[var(--surface-soft)] text-[var(--brand)]'}`}>
+              {operationProgress.status === 'done' ? <CheckCircle2 size={22} /> : <LoaderCircle size={22} className="animate-spin" />}
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <div className="flex items-center justify-between text-sm font-semibold text-[var(--ink)]">
+              <span>Hoàn thành</span>
+              <span>{operationProgress.percent}%</span>
+            </div>
+            <div className="mt-2 h-3 overflow-hidden rounded-full bg-[var(--surface-soft)]">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${operationProgress.status === 'done' ? 'bg-emerald-500' : 'bg-[var(--brand)]'}`}
+                style={{ width: `${operationProgress.percent}%` }}
+              />
+            </div>
+          </div>
+
+          {operationProgress.status === 'done' && (
+            <div className="mt-6 flex justify-end">
+              <button type="button" onClick={closeProgress} className="primary-btn">
+                Đã hiểu
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 }
