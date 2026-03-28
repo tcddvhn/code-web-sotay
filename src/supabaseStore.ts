@@ -1,6 +1,6 @@
 import { getAssignmentKey } from './access';
 import { supabase } from './supabase';
-import { AppSettings, AssignmentUser, DataRow, FormTemplate, ManagedUnit, Project, UserProfile } from './types';
+import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, Project, UserProfile } from './types';
 
 const SETTINGS_ROW_ID = 'global';
 
@@ -523,6 +523,30 @@ export async function getDataFileRecord(projectId: string, unitCode: string, yea
   }
 
   return (data as SupabaseDataFileRow | null) || null;
+}
+
+export async function listDataFilesByProject(projectId: string): Promise<DataFileRecordSummary[]> {
+  const { data, error } = await supabase
+    .from('data_files')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message || 'Không thể tải danh sách file dữ liệu từ Supabase.');
+  }
+
+  return ((data || []) as SupabaseDataFileRow[]).map((row) => ({
+    id: row.id,
+    projectId: row.project_id,
+    unitCode: row.unit_code,
+    unitName: row.unit_name,
+    year: row.year,
+    fileName: row.file_name,
+    storagePath: row.storage_path,
+    downloadURL: row.download_url,
+    updatedAt: row.updated_at,
+  }));
 }
 
 export async function deleteDataFilesByProject(projectId: string) {

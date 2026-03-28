@@ -249,6 +249,10 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     () => [{ code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' }, ...units],
     [units],
   );
+  const unitNameByCode = useMemo(
+    () => new Map(units.map((unit) => [unit.code, unit.name])),
+    [units],
+  );
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
   const selectedTemplate = projectTemplates.find((tpl) => tpl.id === selectedTemplateId) || null;
   const selectedUnitOption =
@@ -344,7 +348,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
             } else {
               entry.details[index].set(row.unit_code, {
                 unitCode: row.unit_code,
-                unitName: row.unit_name || row.unit_code,
+                unitName: unitNameByCode.get(row.unit_code) || row.unit_name || row.unit_code,
                 value: value ?? 0,
               });
             }
@@ -380,7 +384,7 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
     return () => {
       isCancelled = true;
     };
-  }, [selectedProjectId, selectedTemplateId, selectedYear, selectedUnitCode, selectedTemplate]);
+  }, [selectedProjectId, selectedTemplateId, selectedYear, selectedUnitCode, selectedTemplate, unitNameByCode]);
 
   useEffect(() => {
     setVisibleRowCount(40);

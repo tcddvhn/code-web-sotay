@@ -24,7 +24,7 @@ import {
   logoutSupabase,
   onSupabaseAuthStateChange,
 } from './supabase';
-import { AppSettings, AuthenticatedUser, ConsolidatedData, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
+import { AppSettings, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAssignmentKey } from './access';
 import {
@@ -32,6 +32,7 @@ import {
   deleteDataFilesByYear,
   getUserProfileByEmail,
   getSettings as getSettingsFromSupabase,
+  listDataFilesByProject as listDataFilesByProjectFromSupabase,
   listUserProfiles as listUserProfilesFromSupabase,
   deleteDataFilesByProject,
   deleteProjectById as deleteProjectFromSupabase,
@@ -133,6 +134,7 @@ export default function App() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [units, setUnits] = useState<ManagedUnit[]>([]);
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
+  const [dataFiles, setDataFiles] = useState<DataFileRecordSummary[]>([]);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
@@ -294,19 +296,12 @@ export default function App() {
       return;
     }
 
-    setProjects([]);
-    setTemplates([]);
-    setData({});
-    setUnits([]);
-    setAssignments({});
     setUsers([]);
     setSettings(DEFAULT_SETTINGS);
-    setSelectedProjectId('');
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setProjects([]);
+    if (!isAuthReady) {
       return;
     }
 
@@ -325,11 +320,10 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated]);
+  }, [isAuthReady]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setTemplates([]);
+    if (!isAuthReady) {
       return;
     }
 
@@ -352,11 +346,10 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedProjectId]);
+  }, [isAuthReady, selectedProjectId]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setData({});
+    if (!isAuthReady) {
       return;
     }
 
@@ -387,10 +380,36 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedProjectId]);
+  }, [isAuthReady, selectedProjectId]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthReady) {
+      return;
+    }
+
+    if (!selectedProjectId) {
+      setDataFiles([]);
+      return;
+    }
+
+    let cancelled = false;
+    listDataFilesByProjectFromSupabase(selectedProjectId)
+      .then((rows) => {
+        if (!cancelled) {
+          setDataFiles(rows);
+        }
+      })
+      .catch((error) => {
+        console.error('Supabase data files load error:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthReady, selectedProjectId]);
+
+  useEffect(() => {
+    if (!isAuthReady) {
       return;
     }
 
@@ -416,7 +435,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, isAdmin]);
+  }, [isAuthenticated, isAdmin, isAuthReady]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -565,6 +584,7 @@ export default function App() {
       await deleteProjectFromSupabase(projectId);
 
       if (selectedProjectId === projectId) {
+        setDataFiles([]);
         setCurrentView('DASHBOARD');
       }
 
@@ -658,6 +678,7 @@ export default function App() {
       }));
       await upsertRowsToSupabase(nextRows);
       const refreshedRows = await listRowsByProjectFromSupabase(selectedProjectId);
+      const refreshedDataFiles = await listDataFilesByProjectFromSupabase(selectedProjectId);
       const organized: ConsolidatedData = {};
       refreshedRows.forEach((row) => {
         if (!organized[row.templateId]) {
@@ -666,6 +687,7 @@ export default function App() {
         organized[row.templateId].push(row);
       });
       setData(organized);
+      setDataFiles(refreshedDataFiles);
     } catch (error) {
       console.error('Import data error:', error);
     }
@@ -692,6 +714,7 @@ export default function App() {
         }
       }
       const refreshedRows = await listRowsByProjectFromSupabase(currentProject.id);
+      const refreshedDataFiles = await listDataFilesByProjectFromSupabase(currentProject.id);
       const organized: ConsolidatedData = {};
       refreshedRows.forEach((row) => {
         if (!organized[row.templateId]) {
@@ -700,6 +723,7 @@ export default function App() {
         organized[row.templateId].push(row);
       });
       setData(organized);
+      setDataFiles(refreshedDataFiles);
       return count;
     } catch (error) {
       console.error('Delete unit rows error:', error);
@@ -728,6 +752,7 @@ export default function App() {
         }
       }
       const refreshedRows = await listRowsByProjectFromSupabase(currentProject.id);
+      const refreshedDataFiles = await listDataFilesByProjectFromSupabase(currentProject.id);
       const organized: ConsolidatedData = {};
       refreshedRows.forEach((row) => {
         if (!organized[row.templateId]) {
@@ -736,6 +761,7 @@ export default function App() {
         organized[row.templateId].push(row);
       });
       setData(organized);
+      setDataFiles(refreshedDataFiles);
       return count;
     } catch (error) {
       console.error('Delete year rows error:', error);
@@ -1035,6 +1061,7 @@ export default function App() {
             assignments={assignments}
             currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
+            dataFiles={dataFiles}
           />
         );
       case 'PROJECTS':
@@ -1062,6 +1089,7 @@ export default function App() {
             assignments={assignments}
             currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
+            dataFiles={dataFiles}
           />
         );
       case 'LEARN_FORM':
@@ -1085,6 +1113,7 @@ export default function App() {
             assignments={assignments}
             currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
+            dataFiles={dataFiles}
           />
         );
       case 'IMPORT':
@@ -1115,6 +1144,7 @@ export default function App() {
             assignments={assignments}
             currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
+            dataFiles={dataFiles}
           />
         );
       case 'REPORTS':
@@ -1144,6 +1174,7 @@ export default function App() {
               assignments={assignments}
               currentUser={effectiveUserProfile}
               onSaveAssignments={handleSaveAssignments}
+              dataFiles={dataFiles}
             />
           );
         }
@@ -1595,6 +1626,7 @@ function LoginView({
 
 function DashboardOverview({
   data,
+  dataFiles,
   templates,
   projects,
   units,
@@ -1607,6 +1639,7 @@ function DashboardOverview({
   onSaveAssignments,
 }: {
   data: ConsolidatedData;
+  dataFiles: DataFileRecordSummary[];
   templates: FormTemplate[];
   projects: Project[];
   units: ManagedUnit[];
@@ -1626,6 +1659,13 @@ function DashboardOverview({
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
   const templateMap = new Map(projectTemplates.map((tpl) => [tpl.id, tpl]));
+  const submittedUnitCodes = useMemo(() => {
+    return new Set(
+      dataFiles
+        .filter((file) => file.projectId === selectedProjectId && file.year === dashboardYear)
+        .map((file) => file.unitCode),
+    );
+  }, [dashboardYear, dataFiles, selectedProjectId]);
 
   const rowsForYear = useMemo(() => {
     const rows = Object.values(data).flat();
@@ -1677,7 +1717,7 @@ function DashboardOverview({
         name: unit.name,
         importedSheets,
         rowCount: unitRows.length,
-        isSubmitted: importedSheets.length > 0,
+        isSubmitted: submittedUnitCodes.has(unit.code) || importedSheets.length > 0,
         lastUpdatedBy: lastUpdatedBy.get(unit.code)?.name,
         assignedTo: assignmentMap.get(unit.code),
       };
@@ -1692,7 +1732,7 @@ function DashboardOverview({
 
       return left.name.localeCompare(right.name, 'vi');
     });
-  }, [rowsForYear, templateMap, lastUpdatedBy, assignmentMap, units]);
+  }, [assignmentMap, lastUpdatedBy, rowsForYear, submittedUnitCodes, templateMap, units]);
 
   const unitLogs = useMemo<UnitLog[]>(() => {
     const assigneeFilteredLogs =

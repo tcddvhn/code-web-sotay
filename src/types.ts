@@ -39,6 +39,18 @@ export interface DataRow {
   };
 }
 
+export interface DataFileRecordSummary {
+  id: string;
+  projectId: string;
+  unitCode: string;
+  unitName?: string | null;
+  year: string;
+  fileName: string;
+  storagePath: string;
+  downloadURL?: string | null;
+  updatedAt?: any;
+}
+
 export interface ConsolidatedData {
   [templateId: string]: DataRow[];
 }
