@@ -115,14 +115,22 @@ export function parseTemplateFromWorkbook(
 
   for (let r = startRow; r <= endRow; r += 1) {
     const labelCell = worksheet[`${labelColumn}${r}`];
-    if (!labelCell || !labelCell.v) {
-      continue;
-    }
+    const labelText = String(labelCell?.w ?? labelCell?.v ?? '').trim();
 
     const values = dataColumns.map((col) => {
       const cell = worksheet[`${col}${r}`];
       return normalizeCellValue(cell?.v ?? cell?.w);
     });
+
+    const hasVisibleLabel = labelText !== '';
+    const hasAnyDataCell = dataColumns.some((col) => {
+      const cell = worksheet[`${col}${r}`];
+      return cell !== undefined && cell !== null && String(cell.v ?? cell.w ?? '').trim() !== '';
+    });
+
+    if (!hasVisibleLabel && !hasAnyDataCell) {
+      continue;
+    }
 
     rows.push({
       projectId: template.projectId,
@@ -130,7 +138,7 @@ export function parseTemplateFromWorkbook(
       unitCode,
       year,
       sourceRow: r,
-      label: String(labelCell.v),
+      label: labelText || `Dòng ${r}`,
       values,
     });
   }
@@ -141,5 +149,4 @@ export function parseTemplateFromWorkbook(
 
   return rows;
 }
-
 
