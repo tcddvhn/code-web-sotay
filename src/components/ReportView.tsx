@@ -57,8 +57,6 @@ interface DataFileRecord {
   downloadURL?: string;
 }
 
-type DetailSortOrder = 'desc' | 'asc';
-
 const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
 
 function sanitizeFileNamePart(value: string) {
@@ -296,7 +294,6 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
   const [selectedUnitCode, setSelectedUnitCode] = useState(TOTAL_REPORT_UNIT_CODE);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCellDetail, setActiveCellDetail] = useState<ActiveCellDetail | null>(null);
-  const [detailSortOrder, setDetailSortOrder] = useState<DetailSortOrder>('desc');
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState<string | null>(null);
   const [resolvedHeaderLayout, setResolvedHeaderLayout] = useState<HeaderLayout | null>(null);
@@ -501,13 +498,14 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
     }
 
     return [...activeCellDetail.items].sort((left, right) => {
-      if (left.value === right.value) {
-        return left.unitName.localeCompare(right.unitName, 'vi');
+      const codeCompare = left.unitCode.localeCompare(right.unitCode, 'vi', { numeric: true, sensitivity: 'base' });
+      if (codeCompare !== 0) {
+        return codeCompare;
       }
 
-      return detailSortOrder === 'desc' ? right.value - left.value : left.value - right.value;
+      return left.unitName.localeCompare(right.unitName, 'vi');
     });
-  }, [activeCellDetail, detailSortOrder]);
+  }, [activeCellDetail]);
 
   const localAggregatedRows = useMemo<AggregatedReportRow[]>(() => {
     if (!selectedTemplate) {
@@ -771,7 +769,6 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
   };
 
   const openCellDetail = async (row: AggregatedReportRow, columnIndex: number) => {
-    setDetailSortOrder('desc');
     setDetailLoadError(null);
     setIsDetailLoading(true);
     setActiveCellDetail({
@@ -1044,18 +1041,8 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
-                <div className="panel-soft rounded-full px-3 py-2">
-                  <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--ink-soft)]">
-                    Sắp xếp giá trị
-                  </label>
-                  <select
-                    value={detailSortOrder}
-                    onChange={(event) => setDetailSortOrder(event.target.value as DetailSortOrder)}
-                    className="mt-1 w-full bg-transparent text-xs font-semibold text-[var(--ink)] focus:outline-none"
-                  >
-                    <option value="desc">Giảm dần</option>
-                    <option value="asc">Tăng dần</option>
-                  </select>
+                <div className="panel-soft rounded-full px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--ink-soft)]">
+                  Sắp theo mã đơn vị tăng dần
                 </div>
                 <button
                   type="button"

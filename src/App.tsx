@@ -78,6 +78,14 @@ type UnitLog = {
 
 type UnitStatusFilter = 'ALL' | 'SUBMITTED' | 'PENDING';
 
+function normalizeProjectName(value: string) {
+  return value
+    .normalize('NFC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('vi-VN');
+}
+
 function getTimestampMs(value: any) {
   if (!value) {
     return null;
@@ -637,6 +645,13 @@ export default function App() {
   };
 
   const handleCreateProject = async (payload: { name: string; description: string }) => {
+    const normalizedName = normalizeProjectName(payload.name);
+    const duplicateProject = projects.find((project) => normalizeProjectName(project.name) === normalizedName);
+
+    if (duplicateProject) {
+      throw new Error(`Tên dự án "${payload.name.trim()}" đã tồn tại. Vui lòng chọn tên khác.`);
+    }
+
     const project: Project = {
       id: `proj_${Date.now()}`,
       name: payload.name.trim(),
