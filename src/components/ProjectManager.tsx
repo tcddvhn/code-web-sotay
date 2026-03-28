@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, CheckCircle, Clock, FolderOpen } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Clock, FolderOpen, Pencil, Save, X } from 'lucide-react';
 import { Project } from '../types';
 
 export function ProjectManager({
@@ -7,12 +7,14 @@ export function ProjectManager({
   onSelectProject,
   onDeleteProject,
   onCreateProject,
+  onUpdateProject,
   onToggleProjectStatus,
 }: {
   projects: Project[];
   onSelectProject: (p: Project) => void;
   onDeleteProject: (project: Project) => Promise<boolean>;
   onCreateProject: (payload: { name: string; description: string }) => Promise<Project>;
+  onUpdateProject: (project: Project, payload: { name: string; description: string }) => Promise<Project>;
   onToggleProjectStatus: (project: Project) => Promise<Project>;
 }) {
   const [isAdding, setIsAdding] = useState(false);
@@ -20,6 +22,8 @@ export function ProjectManager({
   const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingProjectDraft, setEditingProjectDraft] = useState({ name: '', description: '' });
   const [message, setMessage] = useState<string | null>(null);
 
   const handleAddProject = async () => {
@@ -55,6 +59,43 @@ export function ProjectManager({
     } catch (error) {
       console.error('Update project status error:', error);
       setMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái dự án.');
+    } finally {
+      setUpdatingProjectId(null);
+    }
+  };
+
+  const startEditingProject = (project: Project) => {
+    setEditingProjectId(project.id);
+    setEditingProjectDraft({
+      name: project.name,
+      description: project.description || '',
+    });
+    setMessage(null);
+  };
+
+  const cancelEditingProject = () => {
+    setEditingProjectId(null);
+    setEditingProjectDraft({ name: '', description: '' });
+  };
+
+  const saveProjectChanges = async (project: Project) => {
+    if (!editingProjectDraft.name.trim()) {
+      setMessage('Vui lòng nhập tên dự án trước khi lưu chỉnh sửa.');
+      return;
+    }
+
+    setUpdatingProjectId(project.id);
+    setMessage(null);
+    try {
+      const updated = await onUpdateProject(project, {
+        name: editingProjectDraft.name.trim(),
+        description: editingProjectDraft.description.trim(),
+      });
+      setMessage(`Đã cập nhật dự án "${updated.name}".`);
+      cancelEditingProject();
+    } catch (error) {
+      console.error('Update project error:', error);
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật dự án.');
     } finally {
       setUpdatingProjectId(null);
     }
@@ -138,6 +179,14 @@ export function ProjectManager({
               </div>
               <div className="flex gap-2">
                 <button
+                  onClick={() => startEditingProject(project)}
+                  title="Sửa thông tin dự án"
+                  disabled={updatingProjectId === project.id || deletingProjectId === project.id}
+                  className="disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
                   onClick={() => toggleStatus(project)}
                   title="Đổi trạng thái"
                   disabled={updatingProjectId === project.id}
@@ -154,15 +203,57 @@ export function ProjectManager({
                 </button>
               </div>
             </div>
-            <h3 className="mb-2 text-xl font-semibold text-[var(--ink)]">{project.name}</h3>
-            <p className="flex-1 text-xs text-[var(--ink-soft)]">{project.description || 'Không có mô tả.'}</p>
-            <button
-              onClick={() => onSelectProject(project)}
-              className="secondary-btn mt-6 flex items-center justify-center gap-2"
-            >
-              <FolderOpen size={16} />
-              Truy cập dự án
-            </button>
+
+            {editingProjectId === project.id ? (
+              <>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    className="field-input"
+                    value={editingProjectDraft.name}
+                    onChange={(event) => setEditingProjectDraft((prev) => ({ ...prev, name: event.target.value }))}
+                    placeholder="Tên dự án"
+                  />
+                  <textarea
+                    className="field-input"
+                    rows={3}
+                    value={editingProjectDraft.description}
+                    onChange={(event) => setEditingProjectDraft((prev) => ({ ...prev, description: event.target.value }))}
+                    placeholder="Mô tả chi tiết dự án..."
+                  />
+                </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => saveProjectChanges(project)}
+                    disabled={updatingProjectId === project.id}
+                    className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Save size={16} />
+                    {updatingProjectId === project.id ? 'Đang lưu...' : 'Lưu chỉnh sửa'}
+                  </button>
+                  <button
+                    onClick={cancelEditingProject}
+                    disabled={updatingProjectId === project.id}
+                    className="secondary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <X size={16} />
+                    Hủy
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="mb-2 text-xl font-semibold text-[var(--ink)]">{project.name}</h3>
+                <p className="flex-1 text-xs text-[var(--ink-soft)]">{project.description || 'Không có mô tả.'}</p>
+                <button
+                  onClick={() => onSelectProject(project)}
+                  className="secondary-btn mt-6 flex items-center justify-center gap-2"
+                >
+                  <FolderOpen size={16} />
+                  Truy cập dự án
+                </button>
+              </>
+            )}
           </div>
         ))}
       </div>

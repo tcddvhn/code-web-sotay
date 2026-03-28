@@ -667,6 +667,29 @@ export default function App() {
     return project;
   };
 
+  const handleUpdateProject = async (project: Project, payload: { name: string; description: string }) => {
+    const normalizedName = normalizeProjectName(payload.name);
+    const duplicateProject = projects.find(
+      (item) => item.id !== project.id && normalizeProjectName(item.name) === normalizedName,
+    );
+
+    if (duplicateProject) {
+      throw new Error(`Tên dự án "${payload.name.trim()}" đã tồn tại. Vui lòng chọn tên khác.`);
+    }
+
+    const nextProject: Project = {
+      ...project,
+      name: payload.name.trim(),
+      description: payload.description.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await upsertProjectToSupabase(nextProject);
+    const nextProjects = await listProjectsFromSupabase();
+    setProjects(nextProjects);
+    return nextProject;
+  };
+
   const handleToggleProjectStatus = async (project: Project) => {
     const nextProject: Project = {
       ...project,
@@ -1143,6 +1166,7 @@ export default function App() {
             }}
             onDeleteProject={handleDeleteProject}
             onCreateProject={handleCreateProject}
+            onUpdateProject={handleUpdateProject}
             onToggleProjectStatus={handleToggleProjectStatus}
           />
         ) : (

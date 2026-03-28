@@ -530,7 +530,9 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
       return [];
     }
 
-    return [...activeCellDetail.items].sort((left, right) => {
+    return [...activeCellDetail.items]
+      .filter((item) => item.value !== 0)
+      .sort((left, right) => {
       const codeCompare = left.unitCode.localeCompare(right.unitCode, 'vi', { numeric: true, sensitivity: 'base' });
       if (codeCompare !== 0) {
         return codeCompare;
@@ -539,6 +541,8 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
       return left.unitName.localeCompare(right.unitName, 'vi');
     });
   }, [activeCellDetail]);
+
+  const contributingUnitCount = sortedDetailItems.length;
 
   const localAggregatedRows = useMemo<AggregatedReportRow[]>(() => {
     if (!selectedTemplate) {
@@ -1101,6 +1105,9 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
                 <p className="page-subtitle mt-2 text-sm">{activeCellDetail.rowLabel}</p>
                 <p className="mt-3 text-sm font-semibold text-[var(--primary-dark)]">
                   Tổng cộng: {activeCellDetail.totalValue.toLocaleString('vi-VN')}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-[var(--ink-soft)]">
+                  Có số liệu: {contributingUnitCount.toLocaleString('vi-VN')} đơn vị
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
