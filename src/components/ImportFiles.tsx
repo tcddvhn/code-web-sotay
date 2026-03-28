@@ -717,19 +717,19 @@ export function ImportFiles({
     setOperationProgress(null);
   };
 
-  const parseRowsForTemplate = (workbook: XLSX.WorkBook, template: FormTemplate, unitCode: string) => {
+  const parseRowsForTemplate = (workbook: XLSX.WorkBook, template: FormTemplate, unitCode: string, year: string) => {
     if (template.mode === 'LEGACY') {
       return parseLegacyFromWorkbook(
         workbook,
         unitCode,
-        selectedYear,
+        year,
         template.legacyConfigName || template.sheetName,
         template.projectId,
         template.id,
       );
     }
 
-    return parseTemplateFromWorkbook(workbook, template, unitCode, selectedYear);
+    return parseTemplateFromWorkbook(workbook, template, unitCode, year);
   };
 
   const processFiles = async () => {
@@ -757,6 +757,7 @@ export function ImportFiles({
       return;
     }
 
+    const importYear = selectedYear;
     setIsManagingData(true);
     setManagementMessage(null);
     setLastFailedFiles([]);
@@ -842,7 +843,7 @@ export function ImportFiles({
 
         matchedTemplates.forEach((template) => {
           try {
-            parsedRowsForFile.push(...parseRowsForTemplate(workbook, template, fileItem.unitCode));
+            parsedRowsForFile.push(...parseRowsForTemplate(workbook, template, fileItem.unitCode, importYear));
           } catch (error) {
             const reason = error instanceof Error ? error.message : 'Lỗi không xác định.';
             templateErrors.push(`${template.name}: ${reason}`);
@@ -862,7 +863,7 @@ export function ImportFiles({
 
         importedRows.push(...parsedRowsForFile);
         try {
-          await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, selectedYear, unitName);
+          await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, importYear, unitName);
         } catch (uploadError) {
           console.error('Không thể upload file dữ liệu đã tiếp nhận:', uploadError);
         }
@@ -934,9 +935,10 @@ export function ImportFiles({
       return;
     }
 
+    const yearToDelete = selectedYear;
     const unitName = unitNameByCode[selectedUnitToDelete] || selectedUnitToDelete;
     const confirmed = window.confirm(
-      `Xóa toàn bộ dữ liệu của đơn vị "${unitName}" trong năm ${selectedYear} thuộc dự án hiện tại?`,
+      `Xóa toàn bộ dữ liệu của đơn vị "${unitName}" trong năm ${yearToDelete} thuộc dự án hiện tại?`,
     );
     if (!confirmed) {
       return;
@@ -946,11 +948,11 @@ export function ImportFiles({
     setManagementMessage(null);
 
     try {
-      const deletedCount = await onDeleteUnitData(selectedYear, selectedUnitToDelete);
+      const deletedCount = await onDeleteUnitData(yearToDelete, selectedUnitToDelete);
       setManagementMessage(
         deletedCount > 0
-          ? `Đã xóa ${deletedCount} dòng dữ liệu của đơn vị ${unitName} trong năm ${selectedYear}.`
-          : `Không tìm thấy dữ liệu của đơn vị ${unitName} trong năm ${selectedYear}.`,
+          ? `Đã xóa ${deletedCount} dòng dữ liệu của đơn vị ${unitName} trong năm ${yearToDelete}.`
+          : `Không tìm thấy dữ liệu của đơn vị ${unitName} trong năm ${yearToDelete}.`,
       );
     } catch (error) {
       setManagementMessage(error instanceof Error ? error.message : 'Không thể xóa dữ liệu của đơn vị.');
@@ -960,26 +962,27 @@ export function ImportFiles({
   };
 
   const handleDeleteYear = async () => {
-    const confirmed = window.confirm(`Xóa toàn bộ dữ liệu đã lưu của năm ${selectedYear} trong dự án hiện tại?`);
+    const yearToDelete = selectedYear;
+    const confirmed = window.confirm(`Xóa toàn bộ dữ liệu đã lưu của năm ${yearToDelete} trong dự án hiện tại?`);
     if (!confirmed) {
       return;
     }
 
     setIsManagingData(true);
     setManagementMessage(null);
-    showProgress('Đang xóa dữ liệu theo năm', `Đang chuẩn bị xóa dữ liệu năm ${selectedYear}...`, 10);
+    showProgress('Đang xóa dữ liệu theo năm', `Đang chuẩn bị xóa dữ liệu năm ${yearToDelete}...`, 10);
 
     try {
-      showProgress('Đang xóa dữ liệu theo năm', `Đang xóa các dòng dữ liệu của năm ${selectedYear}...`, 65);
-      const deletedCount = await onDeleteYearData(selectedYear);
+      showProgress('Đang xóa dữ liệu theo năm', `Đang xóa các dòng dữ liệu của năm ${yearToDelete}...`, 65);
+      const deletedCount = await onDeleteYearData(yearToDelete);
       setManagementMessage(
         deletedCount > 0
-          ? `Đã xóa ${deletedCount} dòng dữ liệu của năm ${selectedYear}.`
-          : `Không tìm thấy dữ liệu nào của năm ${selectedYear} để xóa.`,
+          ? `Đã xóa ${deletedCount} dòng dữ liệu của năm ${yearToDelete}.`
+          : `Không tìm thấy dữ liệu nào của năm ${yearToDelete} để xóa.`,
       );
       completeProgress(
         'Hoàn tất xóa dữ liệu theo năm',
-        deletedCount > 0 ? `Đã xử lý xong dữ liệu năm ${selectedYear}.` : `Không có dữ liệu năm ${selectedYear} để xóa.`,
+        deletedCount > 0 ? `Đã xử lý xong dữ liệu năm ${yearToDelete}.` : `Không có dữ liệu năm ${yearToDelete} để xóa.`,
       );
     } catch (error) {
       closeProgress();

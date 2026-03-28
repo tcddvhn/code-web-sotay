@@ -16,7 +16,7 @@ import { Sidebar } from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
-import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS } from './constants';
+import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS, YEARS } from './constants';
 import {
   deleteFileByPath,
   deleteFolderByPath,
@@ -1695,7 +1695,7 @@ function DashboardOverview({
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<UnitStatusFilter>('ALL');
-  const dashboardYear = getPreferredReportingYear();
+  const [dashboardYear, setDashboardYear] = useState(() => getPreferredReportingYear());
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
@@ -1851,7 +1851,7 @@ function DashboardOverview({
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         <div className="panel-card rounded-[24px] p-6">
           <p className="col-header mb-2">Chọn dự án</p>
           <select
@@ -1865,6 +1865,24 @@ function DashboardOverview({
           </select>
           <p className="mt-3 text-xs text-[var(--ink-soft)]">
             {selectedProject ? selectedProject.description || DEFAULT_PROJECT_NAME : DEFAULT_PROJECT_NAME}
+          </p>
+        </div>
+
+        <div className="panel-card rounded-[24px] p-6">
+          <p className="col-header mb-2">Chọn năm</p>
+          <select
+            value={dashboardYear}
+            onChange={(event) => setDashboardYear(event.target.value)}
+            className="field-select text-sm font-bold"
+          >
+            {YEARS.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+          <p className="mt-3 text-xs text-[var(--ink-soft)]">
+            Tiến độ và nhật ký bên dưới sẽ được lọc theo đúng dự án và năm bạn đang chọn.
           </p>
         </div>
 
