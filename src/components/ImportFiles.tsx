@@ -395,13 +395,13 @@ export function ImportFiles({
     const codes = new Set<string>();
     Object.values(data).forEach((rows) => {
       rows.forEach((row) => {
-        if (row.projectId === selectedProjectId && row.unitCode) {
+        if (row.projectId === selectedProjectId && row.year === selectedYear && row.unitCode) {
           codes.add(row.unitCode);
         }
       });
     });
     return codes;
-  }, [data, selectedProjectId]);
+  }, [data, selectedProjectId, selectedYear]);
 
   useEffect(() => {
     let isCancelled = false;

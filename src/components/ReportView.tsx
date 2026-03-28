@@ -133,24 +133,28 @@ function buildTemplateRowDefinitions(
   template: FormTemplate,
   templateRows: TemplateRowDefinition[],
   labelsBySourceRow: Map<number, string>,
+  extraSourceRows: number[] = [],
 ) {
+  const sourceRows = new Set<number>(extraSourceRows);
+
   if (templateRows.length > 0) {
-    return templateRows.map((row) => ({
-      sourceRow: row.sourceRow,
-      label: labelsBySourceRow.get(row.sourceRow) || row.label || `Dòng ${row.sourceRow}`,
-    }));
+    templateRows.forEach((row) => sourceRows.add(row.sourceRow));
+  } else {
+    Array.from(
+      { length: template.columnMapping.endRow - template.columnMapping.startRow + 1 },
+      (_, index) => template.columnMapping.startRow + index,
+    ).forEach((sourceRow) => sourceRows.add(sourceRow));
   }
 
-  return Array.from(
-    { length: template.columnMapping.endRow - template.columnMapping.startRow + 1 },
-    (_, index) => {
-      const sourceRow = template.columnMapping.startRow + index;
-      return {
-        sourceRow,
-        label: labelsBySourceRow.get(sourceRow) || `Dòng ${sourceRow}`,
-      };
-    },
-  );
+  return Array.from(sourceRows)
+    .sort((left, right) => left - right)
+    .map((sourceRow) => ({
+      sourceRow,
+      label:
+        labelsBySourceRow.get(sourceRow) ||
+        templateRows.find((row) => row.sourceRow === sourceRow)?.label ||
+        `Dòng ${sourceRow}`,
+    }));
 }
 
 function shouldDisplayReportRow(row: AggregatedReportRow, normalizedSearchTerm: string) {
@@ -411,7 +415,12 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
           });
         });
 
-        const rowDefinitions = buildTemplateRowDefinitions(selectedTemplate, templateRows, labelsBySourceRow);
+        const rowDefinitions = buildTemplateRowDefinitions(
+          selectedTemplate,
+          templateRows,
+          labelsBySourceRow,
+          Array.from(groupedRows.keys()),
+        );
         const aggregated: AggregatedReportRow[] = rowDefinitions
           .map((definition) => {
             const entry = groupedRows.get(definition.sourceRow);
@@ -509,7 +518,12 @@ export function ReportView({ data, projects, templates, units, selectedProjectId
       }
     });
 
-    const rowDefinitions = buildTemplateRowDefinitions(selectedTemplate, templateRows, labelsBySourceRow);
+    const rowDefinitions = buildTemplateRowDefinitions(
+      selectedTemplate,
+      templateRows,
+      labelsBySourceRow,
+      Array.from(rowsBySourceRow.keys()),
+    );
 
     return rowDefinitions
       .map((definition) => {

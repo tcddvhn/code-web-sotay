@@ -63,6 +63,34 @@ function readWorksheetText(worksheet: XLSX.WorkSheet, row: number, col: string) 
   return value === undefined || value === null ? '' : String(value).trim();
 }
 
+function resolveTemplateEffectiveEndRow(worksheet: XLSX.WorkSheet, template: FormTemplate) {
+  const worksheetRef = worksheet['!ref'];
+  if (!worksheetRef) {
+    return template.columnMapping.endRow;
+  }
+
+  const range = XLSX.utils.decode_range(worksheetRef);
+  const worksheetMaxRow = range.e.r + 1;
+  let lastRowWithData = template.columnMapping.endRow;
+
+  for (let row = template.columnMapping.startRow; row <= worksheetMaxRow; row += 1) {
+    const hasRelevantData = template.columnMapping.dataColumns.some((col) => {
+      const cell = worksheet[`${col}${row}`];
+      if (!cell) {
+        return false;
+      }
+      const rawValue = cell.w ?? cell.v;
+      return rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '';
+    });
+
+    if (hasRelevantData) {
+      lastRowWithData = row;
+    }
+  }
+
+  return Math.max(template.columnMapping.endRow, lastRowWithData);
+}
+
 export async function loadTemplateWorkbookBuffer() {
   return loadTemplateWorkbookBufferFromUrl(NQ22_TEMPLATE_WORKBOOK_URL);
 }
@@ -143,8 +171,9 @@ export async function resolveTemplateRowLabels(template: FormTemplate) {
       return [] as Array<{ sourceRow: number; label: string }>;
     }
 
+    const effectiveEndRow = resolveTemplateEffectiveEndRow(worksheet, template);
     const rows = [];
-    for (let sourceRow = template.columnMapping.startRow; sourceRow <= template.columnMapping.endRow; sourceRow += 1) {
+    for (let sourceRow = template.columnMapping.startRow; sourceRow <= effectiveEndRow; sourceRow += 1) {
       rows.push({
         sourceRow,
         label: readWorksheetText(worksheet, sourceRow, template.columnMapping.labelColumn),
