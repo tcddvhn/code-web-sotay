@@ -111,11 +111,16 @@ export function parseTemplateFromWorkbook(
     throw new Error('Không tìm thấy sheet phù hợp trong file Excel.');
   }
 
-  const { labelColumn, dataColumns, startRow, endRow } = template.columnMapping;
+  const { labelColumn, dataColumns, startRow } = template.columnMapping;
   const effectiveEndRow = resolveTemplateEffectiveEndRowFromWorksheet(worksheet, template);
+  const specialRows = new Set(template.columnMapping.specialRows || []);
   const rows: DataRow[] = [];
 
   for (let r = startRow; r <= effectiveEndRow; r += 1) {
+    if (specialRows.has(r)) {
+      continue;
+    }
+
     const labelCell = worksheet[`${labelColumn}${r}`];
     const labelText = String(labelCell?.w ?? labelCell?.v ?? '').trim();
 

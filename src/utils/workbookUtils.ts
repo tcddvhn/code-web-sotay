@@ -39,6 +39,38 @@ export function expandColumnSelection(input: string) {
   return Array.from(new Set(columns));
 }
 
+export function expandRowSelection(input: string) {
+  const tokens = input
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  const rows: number[] = [];
+
+  tokens.forEach((token) => {
+    const normalizedToken = token.replace(/\s+/g, '');
+    const rangeParts = normalizedToken
+      .split('-')
+      .map((part) => Number(part.replace(/[^\d]/g, '')))
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    if (rangeParts.length === 2) {
+      const [from, to] = rangeParts[0] <= rangeParts[1] ? [rangeParts[0], rangeParts[1]] : [rangeParts[1], rangeParts[0]];
+      for (let value = from; value <= to; value += 1) {
+        rows.push(value);
+      }
+      return;
+    }
+
+    const singleValue = Number(normalizedToken.replace(/[^\d]/g, ''));
+    if (Number.isFinite(singleValue) && singleValue > 0) {
+      rows.push(singleValue);
+    }
+  });
+
+  return Array.from(new Set(rows)).sort((left, right) => left - right);
+}
+
 export function validateWorkbookSheetNames(workbookSheetNames: string[], templates: FormTemplate[]) {
   const expectedSheets = Array.from(
     new Set(

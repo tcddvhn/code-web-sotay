@@ -5,7 +5,7 @@ import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, P
 import { uploadFile } from '../supabase';
 import { FormTemplate, HeaderLayout, Project } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
-import { expandColumnSelection } from '../utils/workbookUtils';
+import { expandColumnSelection, expandRowSelection } from '../utils/workbookUtils';
 import { listTemplates as listTemplatesFromSupabase, upsertTemplate } from '../supabaseStore';
 
 type Mode = 'AI' | 'MANUAL';
@@ -18,6 +18,7 @@ const DEFAULT_MANUAL_FORM = {
   sheetName: '',
   labelColumn: 'A',
   dataColumns: '',
+  specialRows: '',
   columnHeaders: '',
   startRow: 1,
   endRow: 200,
@@ -525,6 +526,14 @@ export function FormLearner({
       return 'Vui lòng khai báo ít nhất một cột dữ liệu.';
     }
 
+    if (
+      (template.columnMapping.specialRows || []).some(
+        (row) => row < template.columnMapping.startRow || row > template.columnMapping.endRow,
+      )
+    ) {
+      return 'Dòng đặc biệt phải nằm trong vùng dữ liệu đã khai báo.';
+    }
+
     if (template.headerLayout && template.headerLayout.endRow < template.headerLayout.startRow) {
       return 'Vùng tiêu đề phải có dòng kết thúc lớn hơn hoặc bằng dòng bắt đầu.';
     }
@@ -550,6 +559,7 @@ export function FormLearner({
         ...template.columnMapping,
         labelColumn: template.columnMapping.labelColumn.trim().toUpperCase(),
         dataColumns: expandColumnSelection(template.columnMapping.dataColumns.join(',')),
+        specialRows: expandRowSelection((template.columnMapping.specialRows || []).join(',')),
       },
     };
 
@@ -1102,6 +1112,7 @@ export function FormLearner({
     }
 
     const dataColumns = expandColumnSelection(manualForm.dataColumns);
+    const specialRows = expandRowSelection(manualForm.specialRows);
     if (dataColumns.length === 0) {
       setError('Vùng cột dữ liệu không hợp lệ. Ví dụ đúng: A-C, F hoặc B,D,G.');
       setNotice(null);
@@ -1125,6 +1136,7 @@ export function FormLearner({
         dataColumns,
         startRow: Number(manualForm.startRow),
         endRow: Number(manualForm.endRow),
+        specialRows,
       },
       mode: 'MANUAL',
       createdAt: new Date().toISOString(),
@@ -1155,6 +1167,7 @@ export function FormLearner({
         ...DEFAULT_MANUAL_FORM,
         labelColumn: prev.labelColumn,
         dataColumns: prev.dataColumns,
+        specialRows: prev.specialRows,
         startRow: prev.startRow,
         endRow: prev.endRow,
         verticalHeaderStartRow: prev.verticalHeaderStartRow,
@@ -1790,6 +1803,12 @@ export function FormLearner({
                       value={manualForm.dataColumns}
                       onChange={(e) => setManualForm({ ...manualForm, dataColumns: e.target.value.toUpperCase() })}
                     />
+                    <input
+                      className="field-input"
+                      placeholder="Dòng đặc biệt bỏ qua khi tổng hợp (VD: 34 hoặc 34,56-58)"
+                      value={manualForm.specialRows}
+                      onChange={(e) => setManualForm({ ...manualForm, specialRows: e.target.value })}
+                    />
                     <div className="grid grid-cols-2 gap-3">
                       <input
                         className="field-input"
@@ -1969,6 +1988,19 @@ export function FormLearner({
                       />
                     </label>
                     <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
+                      Dòng đặc biệt bỏ qua khi tổng hợp
+                      <input
+                        className="field-input mt-2"
+                        placeholder="VD: 34 hoặc 34,56-58"
+                        value={(tpl.columnMapping.specialRows || []).join(', ')}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, {
+                            specialRows: expandRowSelection(e.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
                       Tiêu đề cột ngang (phân cách bằng dấu phẩy)
                       <input
                         className="field-input mt-2"
@@ -2055,7 +2087,10 @@ export function FormLearner({
                 <strong className="text-[var(--ink)]">5. Vùng lấy dữ liệu</strong> là các cột số liệu thật sự cần tổng hợp, ví dụ `C-H` hoặc `B,D,G`.
               </p>
               <p>
-                <strong className="text-[var(--ink)]">6. Sau khi tạo xong</strong>, biểu sẽ lưu ở trạng thái nháp. Bạn nên rà lại, xem thử ở mục báo cáo, rồi mới bấm chốt biểu để đưa vào tiếp nhận dữ liệu.
+                <strong className="text-[var(--ink)]">6. Dòng đặc biệt</strong> dùng cho các dòng ngắt khối, tiêu đề phụ hoặc dòng merge giữa biểu. Chỉ cần nhập số dòng, ví dụ `34` hoặc `34,56-58`. Hệ thống sẽ giữ dòng đó khi vẽ báo cáo nhưng bỏ qua khi tổng hợp dữ liệu.
+              </p>
+              <p>
+                <strong className="text-[var(--ink)]">7. Sau khi tạo xong</strong>, biểu sẽ lưu ở trạng thái nháp. Bạn nên rà lại, xem thử ở mục báo cáo, rồi mới bấm chốt biểu để đưa vào tiếp nhận dữ liệu.
               </p>
             </div>
           </div>

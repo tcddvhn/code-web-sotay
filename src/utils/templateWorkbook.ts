@@ -63,6 +63,41 @@ function readWorksheetText(worksheet: XLSX.WorkSheet, row: number, col: string) 
   return value === undefined || value === null ? '' : String(value).trim();
 }
 
+function readWorksheetRowLabel(worksheet: XLSX.WorkSheet, row: number, template: FormTemplate) {
+  const directLabel = readWorksheetText(worksheet, row, template.columnMapping.labelColumn);
+  if (directLabel) {
+    return directLabel;
+  }
+
+  const worksheetRef = worksheet['!ref'];
+  if (!worksheetRef) {
+    return '';
+  }
+
+  const range = XLSX.utils.decode_range(worksheetRef);
+  const startColIndex = Math.max(
+    1,
+    Math.min(
+      columnLetterToIndex(template.columnMapping.labelColumn),
+      ...template.columnMapping.dataColumns.map((column) => columnLetterToIndex(column)),
+    ),
+  );
+  const endColIndex = Math.max(
+    startColIndex,
+    ...template.columnMapping.dataColumns.map((column) => columnLetterToIndex(column)),
+    range.e.c + 1,
+  );
+
+  for (let colIndex = startColIndex; colIndex <= endColIndex; colIndex += 1) {
+    const value = readWorksheetText(worksheet, row, columnIndexToLetter(colIndex));
+    if (value) {
+      return value;
+    }
+  }
+
+  return '';
+}
+
 export function resolveTemplateEffectiveEndRowFromWorksheet(worksheet: XLSX.WorkSheet, template: FormTemplate) {
   const worksheetRef = worksheet['!ref'];
   if (!worksheetRef) {
@@ -162,7 +197,7 @@ export async function resolveTemplateRowLabels(template: FormTemplate) {
     for (let sourceRow = template.columnMapping.startRow; sourceRow <= effectiveEndRow; sourceRow += 1) {
       rows.push({
         sourceRow,
-        label: readWorksheetText(worksheet, sourceRow, template.columnMapping.labelColumn),
+        label: readWorksheetRowLabel(worksheet, sourceRow, template),
       });
     }
 

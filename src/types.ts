@@ -130,6 +130,7 @@ export interface FormTemplate {
     dataColumns: string[];
     startRow: number;
     endRow: number;
+    specialRows?: number[];
   };
   headerLayout?: HeaderLayout;
   mode: TemplateMode;

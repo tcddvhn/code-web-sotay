@@ -34,12 +34,14 @@ interface CellDetailItem {
 interface TemplateRowDefinition {
   sourceRow: number;
   label: string;
+  isSpecial?: boolean;
 }
 
 interface AggregatedReportRow {
   key: string;
   sourceRow: number;
   label: string;
+  isSpecial?: boolean;
   values: number[];
   details: CellDetailItem[][];
 }
@@ -142,6 +144,7 @@ function buildTemplateRowDefinitions(
   extraSourceRows: number[] = [],
 ) {
   const sourceRows = new Set<number>(extraSourceRows);
+  const specialRows = new Set(template.columnMapping.specialRows || []);
 
   if (templateRows.length > 0) {
     templateRows.forEach((row) => sourceRows.add(row.sourceRow));
@@ -160,10 +163,15 @@ function buildTemplateRowDefinitions(
         labelsBySourceRow.get(sourceRow) ||
         templateRows.find((row) => row.sourceRow === sourceRow)?.label ||
         `Dòng ${sourceRow}`,
+      isSpecial: specialRows.has(sourceRow),
     }));
 }
 
 function shouldDisplayReportRow(row: AggregatedReportRow, normalizedSearchTerm: string) {
+  if (row.isSpecial) {
+    return normalizedSearchTerm === '' || row.label.toLowerCase().includes(normalizedSearchTerm);
+  }
+
   const hasMeaningfulLabel = row.label.trim() !== '' && !/^Dòng\s+\d+$/i.test(row.label.trim());
   const hasData = row.details.some((items) => items.length > 0);
   const matchesSearch = normalizedSearchTerm === '' || row.label.toLowerCase().includes(normalizedSearchTerm);
@@ -189,11 +197,12 @@ function buildValueMapForTemplate(
   year: string,
   selectedUnitCode: string,
 ) {
+  const specialRows = new Set(template.columnMapping.specialRows || []);
   const rows = (data[template.id] || []).filter((row) => row.year === year);
   const relevantRows =
     selectedUnitCode === TOTAL_REPORT_UNIT_CODE
-      ? rows
-      : rows.filter((row) => row.unitCode === selectedUnitCode);
+      ? rows.filter((row) => !specialRows.has(row.sourceRow))
+      : rows.filter((row) => row.unitCode === selectedUnitCode && !specialRows.has(row.sourceRow));
   const rowMap = new Map<number, number[]>();
 
   relevantRows.forEach((row) => {
@@ -212,23 +221,39 @@ function buildFlatWorksheetForTemplate(
   template: FormTemplate,
   year: string,
   selectedUnitCode: string,
+  templateRows: TemplateRowDefinition[] = [],
 ) {
+  const specialRows = new Set(template.columnMapping.specialRows || []);
   const rows = (data[template.id] || []).filter((row) => row.year === year);
   const relevantRows =
     selectedUnitCode === TOTAL_REPORT_UNIT_CODE
-      ? rows
-      : rows.filter((row) => row.unitCode === selectedUnitCode);
+      ? rows.filter((row) => !specialRows.has(row.sourceRow))
+      : rows.filter((row) => row.unitCode === selectedUnitCode && !specialRows.has(row.sourceRow));
   const rowMap = new Map<number, DataRow[]>();
+  const labelsBySourceRow = new Map<number, string>();
 
   relevantRows.forEach((row) => {
     const existing = rowMap.get(row.sourceRow) || [];
     existing.push(row);
     rowMap.set(row.sourceRow, existing);
+    if (!labelsBySourceRow.has(row.sourceRow) && row.label) {
+      labelsBySourceRow.set(row.sourceRow, row.label);
+    }
   });
 
-  const exportRows = Array.from(rowMap.entries())
-    .sort((left, right) => left[0] - right[0])
-    .map(([sourceRow, sourceRows]) => {
+  templateRows.forEach((row) => {
+    labelsBySourceRow.set(row.sourceRow, row.label);
+  });
+
+  const rowDefinitions = buildTemplateRowDefinitions(
+    template,
+    templateRows,
+    labelsBySourceRow,
+    Array.from(rowMap.keys()),
+  );
+
+  const exportRows = rowDefinitions.map((definition) => {
+      const sourceRows = rowMap.get(definition.sourceRow) || [];
       const values = new Array(template.columnMapping.dataColumns.length).fill(0);
       sourceRows.forEach((row) => {
         row.values.forEach((value, index) => {
@@ -237,11 +262,13 @@ function buildFlatWorksheetForTemplate(
       });
 
       const rowData: Record<string, string | number> = {
-        'Tiêu chí': sourceRows[0]?.label || `Dòng ${sourceRow}`,
+        'Tiêu chí': labelsBySourceRow.get(definition.sourceRow) || definition.label || `Dòng ${definition.sourceRow}`,
       };
-      values.forEach((value, index) => {
-        rowData[template.columnHeaders[index] || `Cột ${index + 1}`] = value === 0 ? '' : value;
-      });
+      if (!definition.isSpecial) {
+        values.forEach((value, index) => {
+          rowData[template.columnHeaders[index] || `Cột ${index + 1}`] = value === 0 ? '' : value;
+        });
+      }
 
       return rowData;
     });
@@ -259,8 +286,13 @@ function populateTemplateWorksheet(
   const valueMap = buildValueMapForTemplate(data, template, year, selectedUnitCode);
   const { startRow, dataColumns } = template.columnMapping;
   const endRow = resolveTemplateEffectiveEndRowFromWorksheet(worksheet, template);
+  const specialRows = new Set(template.columnMapping.specialRows || []);
 
   for (let sourceRow = startRow; sourceRow <= endRow; sourceRow += 1) {
+    if (specialRows.has(sourceRow)) {
+      continue;
+    }
+
     const currentRowValues = valueMap.get(sourceRow);
 
     dataColumns.forEach((columnLetter, index) => {
@@ -427,11 +459,11 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
           labelsBySourceRow.set(row.sourceRow, row.label);
         });
 
-        rows.forEach((row) => {
-          if (!labelsBySourceRow.has(row.source_row) && row.label) {
-            labelsBySourceRow.set(row.source_row, row.label);
-          }
-        });
+      rows.forEach((row) => {
+        if (!labelsBySourceRow.has(row.source_row) && row.label) {
+          labelsBySourceRow.set(row.source_row, row.label);
+        }
+      });
 
         const rowDefinitions = buildTemplateRowDefinitions(
           selectedTemplate,
@@ -446,6 +478,7 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
               key: `${selectedUnitCode}:${definition.sourceRow}`,
               sourceRow: definition.sourceRow,
               label: labelsBySourceRow.get(definition.sourceRow) || definition.label || `Dòng ${definition.sourceRow}`,
+              isSpecial: definition.isSpecial,
               values: entry?.values || new Array(columnCount).fill(0),
               details: Array.from({ length: columnCount }, () => []),
             };
@@ -513,11 +546,12 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
     }
 
     const dataColumnCount = selectedTemplate.columnMapping.dataColumns.length;
+    const specialRows = new Set(selectedTemplate.columnMapping.specialRows || []);
     const allYearRows = (data[selectedTemplate.id] || []).filter((row) => row.year === selectedYear);
     const relevantRows =
       selectedUnitCode === TOTAL_REPORT_UNIT_CODE
-        ? allYearRows
-        : allYearRows.filter((row) => row.unitCode === selectedUnitCode);
+        ? allYearRows.filter((row) => !specialRows.has(row.sourceRow))
+        : allYearRows.filter((row) => row.unitCode === selectedUnitCode && !specialRows.has(row.sourceRow));
 
     const rowsBySourceRow = new Map<number, typeof relevantRows>();
     relevantRows.forEach((row) => {
@@ -574,6 +608,7 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
           key: `${selectedUnitCode}:${definition.sourceRow}`,
           sourceRow: definition.sourceRow,
           label,
+          isSpecial: definition.isSpecial,
           values,
           details: detailMaps.map((detailMap) => Array.from(detailMap.values())),
         };
@@ -626,6 +661,9 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
       const templateWorkbook = XLSX.utils.book_new();
 
       for (const template of templatesToExport) {
+        const fallbackTemplateRows =
+          template.id === selectedTemplate?.id ? templateRows : await resolveTemplateRowLabels(template).catch(() => []);
+
         try {
           const sourceWorkbook = await loadTemplateWorkbook(template);
           const worksheet = sourceWorkbook.Sheets[template.sheetName];
@@ -644,7 +682,13 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
           console.error(`Không thể đọc workbook mẫu của biểu ${template.name}:`, error);
         }
 
-        const fallbackWorksheet = buildFlatWorksheetForTemplate(data, template, selectedYear, selectedUnitCode);
+        const fallbackWorksheet = buildFlatWorksheetForTemplate(
+          data,
+          template,
+          selectedYear,
+          selectedUnitCode,
+          fallbackTemplateRows,
+        );
         XLSX.utils.book_append_sheet(
           templateWorkbook,
           fallbackWorksheet,
@@ -659,14 +703,22 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
 
     if (!workbook) {
       const fallbackWorkbook = XLSX.utils.book_new();
-      templatesToExport.forEach((template) => {
-        const fallbackWorksheet = buildFlatWorksheetForTemplate(data, template, selectedYear, selectedUnitCode);
+      for (const template of templatesToExport) {
+        const fallbackTemplateRows =
+          template.id === selectedTemplate?.id ? templateRows : await resolveTemplateRowLabels(template).catch(() => []);
+        const fallbackWorksheet = buildFlatWorksheetForTemplate(
+          data,
+          template,
+          selectedYear,
+          selectedUnitCode,
+          fallbackTemplateRows,
+        );
         XLSX.utils.book_append_sheet(
           fallbackWorkbook,
           fallbackWorksheet,
           template.sheetName.slice(0, 31) || template.name.slice(0, 31) || 'BaoCao',
         );
-      });
+      }
       workbook = fallbackWorkbook;
     }
 
@@ -983,23 +1035,34 @@ export function ReportView({ data, dataFiles, projects, templates, units, select
               <tbody>
                 {aggregatedRows.length > 0 ? (
                   aggregatedRows.slice(0, visibleRowCount).map((row) => (
-                    <tr key={row.key} className="bg-white hover:bg-[#faf7f2]">
-                      <td className="sticky left-0 z-10 border-b border-r border-[var(--line)] bg-white px-3 py-1.5 text-[13px] font-semibold leading-[1.45] text-[var(--ink)] [overflow-wrap:anywhere]">
-                        {row.label}
-                      </td>
-                      {row.values.map((value, index) => (
-                        <td key={`${row.key}-${index}`} className="border-b border-r border-[var(--line)] p-0">
-                          <button
-                            type="button"
-                            onClick={() => openCellDetail(row, index)}
-                            className="h-full min-h-[42px] w-full px-2 py-1.5 text-center text-[13px] font-medium leading-[1.35] text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
-                            title="Xem chi tiết theo đơn vị"
-                          >
-                            {formatReportValue(value)}
-                          </button>
+                    row.isSpecial ? (
+                      <tr key={row.key} className="bg-[#eef3ff]">
+                        <td
+                          colSpan={tableColSpan}
+                          className="border-b border-r border-[var(--line)] px-3 py-2 text-center text-[13px] font-bold leading-[1.45] text-[var(--ink)]"
+                        >
+                          {row.label || `Dòng ${row.sourceRow}`}
                         </td>
-                      ))}
-                    </tr>
+                      </tr>
+                    ) : (
+                      <tr key={row.key} className="bg-white hover:bg-[#faf7f2]">
+                        <td className="sticky left-0 z-10 border-b border-r border-[var(--line)] bg-white px-3 py-1.5 text-[13px] font-semibold leading-[1.45] text-[var(--ink)] [overflow-wrap:anywhere]">
+                          {row.label}
+                        </td>
+                        {row.values.map((value, index) => (
+                          <td key={`${row.key}-${index}`} className="border-b border-r border-[var(--line)] p-0">
+                            <button
+                              type="button"
+                              onClick={() => openCellDetail(row, index)}
+                              className="h-full min-h-[42px] w-full px-2 py-1.5 text-center text-[13px] font-medium leading-[1.35] text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
+                              title="Xem chi tiết theo đơn vị"
+                            >
+                              {formatReportValue(value)}
+                            </button>
+                          </td>
+                        ))}
+                      </tr>
+                    )
                   ))
                 ) : (
                   <tr>
