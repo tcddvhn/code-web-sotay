@@ -58,6 +58,14 @@ type OperationProgress = {
   status: 'running' | 'done';
 };
 
+type ImportResultSummary = {
+  visible: boolean;
+  totalSelected: number;
+  updatedCount: number;
+  failedFiles: FailedFile[];
+  partialWarnings: string[];
+};
+
 function normalizeText(value: string) {
   return value
     .normalize('NFD')
@@ -342,6 +350,7 @@ export function ImportFiles({
   const [visibleFileFilter, setVisibleFileFilter] = useState<VisibleFileFilter>('ALL');
   const [lastFailedFiles, setLastFailedFiles] = useState<FailedFile[]>([]);
   const [operationProgress, setOperationProgress] = useState<OperationProgress | null>(null);
+  const [importResultSummary, setImportResultSummary] = useState<ImportResultSummary | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentProject = useMemo(
@@ -717,6 +726,10 @@ export function ImportFiles({
     setOperationProgress(null);
   };
 
+  const closeImportResultSummary = () => {
+    setImportResultSummary(null);
+  };
+
   const parseRowsForTemplate = (workbook: XLSX.WorkBook, template: FormTemplate, unitCode: string, year: string) => {
     if (template.mode === 'LEGACY') {
       return parseLegacyFromWorkbook(
@@ -768,6 +781,7 @@ export function ImportFiles({
       const failedFiles: FailedFile[] = [];
       const partialWarnings: string[] = [];
       let acceptedFiles = 0;
+      const totalSelected = files.length;
       const totalFiles = Math.max(files.length, 1);
 
       for (const [index, fileItem] of files.entries()) {
@@ -913,7 +927,14 @@ export function ImportFiles({
       }
 
       setManagementMessage(summaryLines.join('\n'));
-      completeProgress('Hoàn tất tổng hợp', acceptedFiles > 0 ? 'Hệ thống đã tiếp nhận xong dữ liệu.' : 'Đã hoàn tất xử lý file.');
+      setImportResultSummary({
+        visible: true,
+        totalSelected,
+        updatedCount: acceptedFiles,
+        failedFiles,
+        partialWarnings,
+      });
+      closeProgress();
 
       if (acceptedFiles > 0) {
         const failedFileKeys = new Set(failedFiles.map((item) => `${item.fileName}__${item.relativePath || ''}`));
@@ -1293,6 +1314,98 @@ export function ImportFiles({
               </button>
             </div>
           )}
+        </div>
+      </div>
+    )}
+    {importResultSummary?.visible && (
+      <div className="fixed inset-0 z-[81] flex items-center justify-center bg-[rgba(33,25,17,0.42)] px-4 py-6">
+        <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-[var(--line)] bg-white shadow-[0_30px_90px_rgba(38,31,18,0.24)]">
+          <div className="border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">Kết quả tiếp nhận</p>
+                <h3 className="mt-2 text-xl font-semibold text-[var(--ink)]">Tổng hợp file đã hoàn tất</h3>
+                <p className="mt-2 text-sm text-[var(--ink-soft)]">
+                  Đã cập nhật {importResultSummary.updatedCount}/{importResultSummary.totalSelected} đơn vị được chọn.
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <CheckCircle2 size={22} />
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="rounded-[18px] border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">Đã cập nhật</p>
+                <p className="mt-2 text-2xl font-bold text-emerald-800">{importResultSummary.updatedCount}</p>
+              </div>
+              <div className="rounded-[18px] border border-[var(--line)] bg-white px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">Đã chọn</p>
+                <p className="mt-2 text-2xl font-bold text-[var(--ink)]">{importResultSummary.totalSelected}</p>
+              </div>
+              <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">Không cập nhật được</p>
+                <p className="mt-2 text-2xl font-bold text-amber-800">{importResultSummary.failedFiles.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 space-y-5 overflow-auto px-6 py-5">
+            {importResultSummary.failedFiles.length > 0 ? (
+              <div>
+                <h4 className="text-sm font-semibold text-[var(--ink)]">Danh sách đơn vị không cập nhật được</h4>
+                <div className="mt-3 space-y-3">
+                  {importResultSummary.failedFiles.map((item, index) => (
+                    <div key={`${item.fileName}-${item.relativePath || ''}-${index}`} className="rounded-[20px] border border-amber-200 bg-amber-50/50 px-4 py-4">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[var(--ink)]">{item.unitName}</p>
+                          <p className="mt-1 break-all text-xs text-[var(--ink-soft)]">{item.fileName}</p>
+                          {item.relativePath && <p className="mt-1 break-all text-[11px] text-[var(--ink-soft)]">{item.relativePath}</p>}
+                        </div>
+                        <div className="rounded-full border border-amber-200 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
+                          Không cập nhật
+                        </div>
+                      </div>
+                      {item.missingSheets.length > 0 && (
+                        <p className="mt-3 text-xs font-medium text-amber-800">
+                          Thiếu sheet: {item.missingSheets.join(', ')}
+                        </p>
+                      )}
+                      {item.reason && (
+                        <p className="mt-2 text-xs text-amber-900">
+                          Lý do: {item.reason}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-5 text-sm font-medium text-emerald-800">
+                Tất cả các đơn vị đã chọn đều đã được cập nhật thành công.
+              </div>
+            )}
+
+            {importResultSummary.partialWarnings.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-[var(--ink)]">Các đơn vị tiếp nhận một phần</h4>
+                <div className="mt-3 space-y-3">
+                  {importResultSummary.partialWarnings.map((warning, index) => (
+                    <div key={`partial-warning-${index}`} className="rounded-[20px] border border-blue-200 bg-blue-50/60 px-4 py-4 text-sm text-blue-900">
+                      {warning}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end border-t border-[var(--line)] px-6 py-4">
+            <button type="button" onClick={closeImportResultSummary} className="primary-btn">
+              Đã hiểu
+            </button>
+          </div>
         </div>
       </div>
     )}
