@@ -55,7 +55,15 @@ export interface ConsolidatedData {
   [templateId: string]: DataRow[];
 }
 
-export type ViewMode = 'IMPORT' | 'REPORTS' | 'SETTINGS' | 'DASHBOARD' | 'LOGIN' | 'PROJECTS' | 'LEARN_FORM';
+export type ViewMode =
+  | 'IMPORT'
+  | 'REPORTS'
+  | 'SETTINGS'
+  | 'DASHBOARD'
+  | 'LOGIN'
+  | 'PROJECTS'
+  | 'LEARN_FORM'
+  | 'HANDBOOK';
 
 export interface AppSettings {
   oneDriveLink: string;

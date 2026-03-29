@@ -17,6 +17,7 @@ import { Sidebar } from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
 import { UnitAssignments } from './components/UnitAssignments';
+import { HandbookShell } from './handbook/HandbookShell';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS, YEARS } from './constants';
 import {
   deleteFileByPath,
@@ -1161,6 +1162,14 @@ export default function App() {
     }
 
     switch (currentView) {
+      case 'HANDBOOK':
+        return (
+          <HandbookShell
+            isAdmin={isAdmin}
+            onOpenDataSystem={() => setCurrentView('DASHBOARD')}
+            onOpenAdmin={() => setCurrentView(isAdmin ? 'SETTINGS' : 'LOGIN')}
+          />
+        );
       case 'DASHBOARD':
         return (
           <DashboardOverview

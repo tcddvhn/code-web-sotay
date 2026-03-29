@@ -1,5 +1,6 @@
 ﻿import React from 'react';
 import {
+  BookOpenText,
   LayoutDashboard,
   FileUp,
   FileText,
@@ -42,6 +43,7 @@ export function Sidebar({
   isMobile = false,
 }: SidebarProps) {
   const baseMenu = [
+    { id: 'HANDBOOK' as ViewMode, label: 'Sổ tay (mới)', icon: BookOpenText },
     { id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: LayoutDashboard },
   ];
   const menuItems = isMobile
