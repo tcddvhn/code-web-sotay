@@ -5,6 +5,7 @@ import {
   FileBarChart,
   Link as LinkIcon,
   Lock,
+  LogIn,
   Users,
   X,
 } from 'lucide-react';
@@ -1168,12 +1169,14 @@ export default function App() {
             units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            isAuthenticated={isAuthenticated}
             isAdmin={isAdmin}
             assignmentUsers={assignmentUsers}
             assignments={assignments}
             currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
             dataFiles={dataFiles}
+            onOpenLogin={() => setCurrentView('LOGIN')}
           />
         );
       case 'PROJECTS':
@@ -1197,12 +1200,14 @@ export default function App() {
             units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            isAuthenticated={isAuthenticated}
             isAdmin={isAdmin}
             assignmentUsers={assignmentUsers}
             assignments={assignments}
             currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
             dataFiles={dataFiles}
+            onOpenLogin={() => setCurrentView('LOGIN')}
           />
         );
       case 'LEARN_FORM':
@@ -1222,12 +1227,14 @@ export default function App() {
             units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            isAuthenticated={isAuthenticated}
             isAdmin={isAdmin}
             assignmentUsers={assignmentUsers}
             assignments={assignments}
             currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
             dataFiles={dataFiles}
+            onOpenLogin={() => setCurrentView('LOGIN')}
           />
         );
       case 'IMPORT':
@@ -1253,12 +1260,14 @@ export default function App() {
             units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
+            isAuthenticated={isAuthenticated}
             isAdmin={isAdmin}
             assignmentUsers={assignmentUsers}
             assignments={assignments}
             currentUser={effectiveUserProfile}
             onSaveAssignments={handleSaveAssignments}
             dataFiles={dataFiles}
+            onOpenLogin={() => setCurrentView('LOGIN')}
           />
         );
       case 'REPORTS':
@@ -1284,12 +1293,14 @@ export default function App() {
               units={availableUnitsForProject}
               selectedProjectId={selectedProjectId}
               onSelectProject={setSelectedProjectId}
+              isAuthenticated={isAuthenticated}
               isAdmin={isAdmin}
               assignmentUsers={assignmentUsers}
               assignments={assignments}
               currentUser={effectiveUserProfile}
               onSaveAssignments={handleSaveAssignments}
               dataFiles={dataFiles}
+              onOpenLogin={() => setCurrentView('LOGIN')}
             />
           );
         }
@@ -1747,11 +1758,13 @@ function DashboardOverview({
   units,
   selectedProjectId,
   onSelectProject,
+  isAuthenticated,
   isAdmin,
   assignmentUsers,
   assignments,
   currentUser,
   onSaveAssignments,
+  onOpenLogin,
 }: {
   data: ConsolidatedData;
   dataFiles: DataFileRecordSummary[];
@@ -1760,16 +1773,20 @@ function DashboardOverview({
   units: ManagedUnit[];
   selectedProjectId: string;
   onSelectProject: (id: string) => void;
+  isAuthenticated: boolean;
   isAdmin: boolean;
   assignmentUsers: ReturnType<typeof buildAssignmentUsers>;
   assignments: Record<string, string[]>;
   currentUser: UserProfile | null;
   onSaveAssignments: (assigneeKey: string, unitCodes: string[]) => Promise<void>;
+  onOpenLogin: () => void;
 }) {
   const [isLogOpen, setIsLogOpen] = useState(false);
+  const [isLoginPromptOpen, setIsLoginPromptOpen] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<UnitStatusFilter>('ALL');
   const [dashboardYear, setDashboardYear] = useState(() => getPreferredReportingYear());
+  const currentAssignmentKey = useMemo(() => getAssignmentKey(currentUser?.email), [currentUser?.email]);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
@@ -1850,6 +1867,24 @@ function DashboardOverview({
   }, [assignmentMap, lastUpdatedBy, rowsForYear, submittedUnitCodes, templateMap, units]);
 
   const unitLogs = useMemo<UnitLog[]>(() => {
+    if (isAuthenticated && !isAdmin) {
+      if (currentAssignedUnitCodes.length === 0) {
+        return [];
+      }
+
+      const currentUserLogs = allUnitLogs.filter((unit) => currentAssignedUnitCodes.includes(unit.code));
+
+      if (statusFilter === 'SUBMITTED') {
+        return currentUserLogs.filter((unit) => unit.isSubmitted);
+      }
+
+      if (statusFilter === 'PENDING') {
+        return currentUserLogs.filter((unit) => !unit.isSubmitted);
+      }
+
+      return currentUserLogs;
+    }
+
     const assigneeFilteredLogs =
       selectedAssignee === 'ALL'
         ? allUnitLogs
@@ -1864,7 +1899,7 @@ function DashboardOverview({
     }
 
     return assigneeFilteredLogs;
-  }, [allUnitLogs, assignments, selectedAssignee, statusFilter]);
+  }, [allUnitLogs, assignments, currentAssignedUnitCodes, isAdmin, isAuthenticated, selectedAssignee, statusFilter]);
 
   const submittedCount = allUnitLogs.filter((unit) => unit.isSubmitted).length;
   const totalUnits = units.length;
@@ -1873,6 +1908,20 @@ function DashboardOverview({
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
   const completedProjects = projects.filter((p) => p.status === 'COMPLETED').length;
   const assignees = useMemo(() => assignmentUsers, [assignmentUsers]);
+  const currentAssignedUnitCodes = useMemo(
+    () => (currentAssignmentKey ? assignments[currentAssignmentKey] || [] : []),
+    [assignments, currentAssignmentKey],
+  );
+  const shouldLockToCurrentUserAssignments = isAuthenticated && !isAdmin && currentAssignedUnitCodes.length > 0;
+
+  useEffect(() => {
+    if (shouldLockToCurrentUserAssignments) {
+      setSelectedAssignee(currentAssignmentKey);
+      return;
+    }
+
+    setSelectedAssignee('ALL');
+  }, [currentAssignmentKey, shouldLockToCurrentUserAssignments]);
 
   const stats = [
     { label: 'Tổng đơn vị', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
@@ -1899,9 +1948,32 @@ function DashboardOverview({
 
   const previewLogs = unitLogs.slice(0, 8);
 
+  const openLogView = (nextStatus?: UnitStatusFilter) => {
+    if (!isAuthenticated) {
+      setIsLoginPromptOpen(true);
+      return;
+    }
+
+    if (nextStatus) {
+      setStatusFilter(nextStatus);
+    }
+
+    setIsLogOpen(true);
+  };
+
   return (
     <div className="p-6 md:p-8">
-      <header className="mb-6 md:mb-8">
+      <header className="relative mb-6 md:mb-8">
+        {!isAuthenticated && (
+          <button
+            type="button"
+            onClick={onOpenLogin}
+            className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm md:hidden"
+            title="Đăng nhập"
+          >
+            <LogIn size={18} />
+          </button>
+        )}
         <div>
           <div className="surface-tag">Năm tổng hợp {dashboardYear}</div>
           <h2 className="page-title mt-4">HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG</h2>
@@ -2051,25 +2123,19 @@ function DashboardOverview({
             </div>
             <button
               type="button"
-              onClick={() => {
-                setStatusFilter('SUBMITTED');
-                setIsLogOpen(true);
-              }}
+              onClick={() => openLogView('SUBMITTED')}
               className="status-pill status-pill-submitted w-full justify-center"
             >
               Đã tiếp nhận
             </button>
             <button
               type="button"
-              onClick={() => {
-                setStatusFilter('PENDING');
-                setIsLogOpen(true);
-              }}
+              onClick={() => openLogView('PENDING')}
               className="status-pill status-pill-pending w-full justify-center"
             >
               Chưa tiếp nhận
             </button>
-            <button onClick={() => setIsLogOpen(true)} className="primary-btn w-full">
+            <button onClick={() => openLogView()} className="primary-btn w-full">
               Xem tất cả nhật ký
             </button>
           </div>
@@ -2202,13 +2268,55 @@ function DashboardOverview({
           </div>
 
           <div className="mt-6">
-            <button onClick={() => setIsLogOpen(true)} className="primary-btn w-full">
+            <button onClick={() => openLogView()} className="primary-btn w-full">
               Xem tất cả nhật ký
             </button>
           </div>
         </div>
         )}
       </div>
+
+      {isLoginPromptOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(44,62,80,0.45)] p-4 backdrop-blur-sm">
+          <div className="panel-card w-full max-w-md rounded-[28px] p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="section-title">BẠN CẦN ĐĂNG NHẬP ĐỂ XEM CHI TIẾT</h3>
+                <p className="page-subtitle mt-2 text-sm">
+                  Hãy đăng nhập để xem nhật ký chi tiết và danh sách đơn vị được phân công cho tài khoản của bạn.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLoginPromptOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/85 text-[var(--primary-dark)]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsLoginPromptOpen(false)}
+                className="secondary-btn px-5 py-3"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLoginPromptOpen(false);
+                  onOpenLogin();
+                }}
+                className="primary-btn px-5 py-3"
+              >
+                Đăng nhập
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLogOpen && selectedProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(44,62,80,0.45)] p-4 backdrop-blur-sm md:p-8">
@@ -2242,6 +2350,11 @@ function DashboardOverview({
                         </option>
                       ))}
                     </select>
+                  </div>
+                )}
+                {shouldLockToCurrentUserAssignments && (
+                  <div className="panel-soft rounded-full px-3 py-2 text-xs font-semibold text-[var(--primary-dark)]">
+                    Đang xem đơn vị được phân công cho {currentUser?.displayName || currentUser?.email || 'bạn'}
                   </div>
                 )}
                 <button
@@ -2285,6 +2398,13 @@ function DashboardOverview({
 
             <div className="flex-1 overflow-auto p-4 md:p-6">
               <div className="grid grid-cols-1 gap-3">
+                {unitLogs.length === 0 && (
+                  <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-5 text-sm text-[var(--ink-soft)]">
+                    {isAuthenticated && !isAdmin
+                      ? 'Tài khoản của bạn hiện chưa được phân công đơn vị nào trong dự án này.'
+                      : 'Chưa có đơn vị nào phù hợp với bộ lọc hiện tại.'}
+                  </div>
+                )}
                 {unitLogs.map((unit, index) => (
                   <div
                     key={unit.code}
