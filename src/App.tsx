@@ -6,6 +6,7 @@ import {
   Link as LinkIcon,
   Lock,
   LogIn,
+  LogOut,
   Users,
   X,
 } from 'lucide-react';
@@ -1177,6 +1178,7 @@ export default function App() {
             onSaveAssignments={handleSaveAssignments}
             dataFiles={dataFiles}
             onOpenLogin={() => setCurrentView('LOGIN')}
+            onLogout={handleLogout}
           />
         );
       case 'PROJECTS':
@@ -1208,6 +1210,7 @@ export default function App() {
             onSaveAssignments={handleSaveAssignments}
             dataFiles={dataFiles}
             onOpenLogin={() => setCurrentView('LOGIN')}
+            onLogout={handleLogout}
           />
         );
       case 'LEARN_FORM':
@@ -1235,6 +1238,7 @@ export default function App() {
             onSaveAssignments={handleSaveAssignments}
             dataFiles={dataFiles}
             onOpenLogin={() => setCurrentView('LOGIN')}
+            onLogout={handleLogout}
           />
         );
       case 'IMPORT':
@@ -1268,6 +1272,7 @@ export default function App() {
             onSaveAssignments={handleSaveAssignments}
             dataFiles={dataFiles}
             onOpenLogin={() => setCurrentView('LOGIN')}
+            onLogout={handleLogout}
           />
         );
       case 'REPORTS':
@@ -1301,6 +1306,7 @@ export default function App() {
               onSaveAssignments={handleSaveAssignments}
               dataFiles={dataFiles}
               onOpenLogin={() => setCurrentView('LOGIN')}
+              onLogout={handleLogout}
             />
           );
         }
@@ -1765,6 +1771,7 @@ function DashboardOverview({
   currentUser,
   onSaveAssignments,
   onOpenLogin,
+  onLogout,
 }: {
   data: ConsolidatedData;
   dataFiles: DataFileRecordSummary[];
@@ -1780,6 +1787,7 @@ function DashboardOverview({
   currentUser: UserProfile | null;
   onSaveAssignments: (assigneeKey: string, unitCodes: string[]) => Promise<void>;
   onOpenLogin: () => void;
+  onLogout: () => Promise<void>;
 }) {
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isLoginPromptOpen, setIsLoginPromptOpen] = useState(false);
@@ -1965,16 +1973,14 @@ function DashboardOverview({
   return (
     <div className="p-6 md:p-8">
       <header className="relative mb-6 md:mb-8">
-        {!isAuthenticated && (
-          <button
-            type="button"
-            onClick={onOpenLogin}
-            className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm md:hidden"
-            title="Đăng nhập"
-          >
-            <LogIn size={18} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={isAuthenticated ? () => void onLogout() : onOpenLogin}
+          className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm md:hidden"
+          title={isAuthenticated ? 'Đăng xuất' : 'Đăng nhập'}
+        >
+          {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
+        </button>
         <div>
           <div className="surface-tag">Năm tổng hợp {dashboardYear}</div>
           <h2 className="page-title mt-4">HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG</h2>
