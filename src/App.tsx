@@ -2064,7 +2064,7 @@ function DashboardOverview({
             </div>
           </div>
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-6 hidden space-y-3 md:block">
             {previewLogs.map((unit) => (
               <div
                 key={unit.code}
@@ -2089,9 +2089,31 @@ function DashboardOverview({
             ))}
           </div>
 
-          <button onClick={() => setIsLogOpen(true)} className="primary-btn mt-6 w-full">
-            Xem tất cả nhật ký
-          </button>
+          <div className="mt-6 grid grid-cols-1 gap-3 md:block">
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('SUBMITTED');
+                setIsLogOpen(true);
+              }}
+              className="status-pill status-pill-submitted w-full justify-center md:hidden"
+            >
+              Đã tiếp nhận
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('PENDING');
+                setIsLogOpen(true);
+              }}
+              className="status-pill status-pill-pending w-full justify-center md:hidden"
+            >
+              Chưa tiếp nhận
+            </button>
+            <button onClick={() => setIsLogOpen(true)} className="primary-btn w-full">
+              Xem tất cả nhật ký
+            </button>
+          </div>
         </div>
         )}
       </div>
