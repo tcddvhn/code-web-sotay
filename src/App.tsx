@@ -3,7 +3,6 @@ import {
   Activity,
   CheckCircle2,
   FileBarChart,
-  Globe,
   Link as LinkIcon,
   Lock,
   Users,
@@ -1902,7 +1901,7 @@ function DashboardOverview({
 
   return (
     <div className="p-6 md:p-8">
-      <header className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <header className="mb-6 md:mb-8">
         <div>
           <div className="surface-tag">Năm tổng hợp {dashboardYear}</div>
           <h2 className="page-title mt-4">HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG</h2>
@@ -1915,18 +1914,60 @@ function DashboardOverview({
             Theo dõi nhanh tình hình tiếp nhận dữ liệu của các đơn vị, số biểu đã nhập và mức độ hoàn thành tổng hợp trên toàn hệ thống.
           </p>
         </div>
-
-        <div className="panel-soft rounded-full px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <Globe size={15} className="text-[var(--success)]" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--primary-dark)]">
-              Hệ thống trực tuyến
-            </span>
-          </div>
-        </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="panel-card rounded-[24px] p-5 md:hidden">
+        <div className="space-y-4">
+          <div>
+            <p className="col-header mb-2">Chọn dự án</p>
+            <select
+              value={selectedProjectId}
+              onChange={(event) => onSelectProject(event.target.value)}
+              className="field-select text-sm font-bold"
+            >
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>{project.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="border-t border-[var(--line)]" />
+
+          <div>
+            <p className="col-header mb-2">Chọn năm</p>
+            <select
+              value={dashboardYear}
+              onChange={(event) => setDashboardYear(event.target.value)}
+              className="field-select text-sm font-bold"
+            >
+              {YEARS.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="border-t border-[var(--line)]" />
+
+          <p className="text-xs leading-5 text-[var(--ink-soft)]">
+            {selectedProject ? selectedProject.description || DEFAULT_PROJECT_NAME : DEFAULT_PROJECT_NAME}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6 panel-card rounded-[24px] p-5 md:hidden">
+        <h3 className="section-title text-base">Tiến độ tiếp nhận</h3>
+        <div className="mt-3 space-y-1.5 text-sm leading-tight text-[var(--ink)]">
+          <p>- Dự án đang chạy: <span className="font-semibold">{activeProjects}</span></p>
+          <p>- Dự án hoàn thành: <span className="font-semibold">{completedProjects}</span></p>
+          <p>- Tổng số đơn vị: <span className="font-semibold">{totalUnits}</span></p>
+          <p>- Đơn vị đã tiếp nhận: <span className="font-semibold">{submittedCount}/{totalUnits}</span></p>
+          <p>- Tỷ lệ hoàn thành: <span className="font-semibold text-[var(--primary-dark)]">{completionRate}%</span></p>
+        </div>
+      </div>
+
+      <div className="mt-6 hidden grid-cols-1 gap-6 md:grid md:grid-cols-2 xl:grid-cols-4">
         <div className="panel-card rounded-[24px] p-6">
           <p className="col-header mb-2">Chọn dự án</p>
           <select
@@ -1974,7 +2015,7 @@ function DashboardOverview({
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-8 hidden grid-cols-1 gap-6 md:grid md:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.label} className="panel-card rounded-[24px] p-6">
             <div className="flex items-start justify-between gap-4">
@@ -2001,7 +2042,78 @@ function DashboardOverview({
         </div>
       )}
 
-      <div className={`mt-8 grid grid-cols-1 gap-8 ${selectedProject ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]' : ''}`}>
+      {selectedProject && (
+        <div className="mt-6 panel-card rounded-[28px] p-5 md:hidden">
+          <div className="flex flex-col gap-3">
+            <div>
+              <h3 className="section-title text-base">Nhật ký tiếp nhận đơn vị</h3>
+              <p className="page-subtitle mt-2 text-sm">Mở nhanh danh sách đã tiếp nhận hoặc chưa tiếp nhận.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('SUBMITTED');
+                setIsLogOpen(true);
+              }}
+              className="status-pill status-pill-submitted w-full justify-center"
+            >
+              Đã tiếp nhận
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('PENDING');
+                setIsLogOpen(true);
+              }}
+              className="status-pill status-pill-pending w-full justify-center"
+            >
+              Chưa tiếp nhận
+            </button>
+            <button onClick={() => setIsLogOpen(true)} className="primary-btn w-full">
+              Xem tất cả nhật ký
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 panel-card rounded-[28px] p-6 md:hidden">
+        <div className="flex flex-col gap-3">
+          <div>
+            <h3 className="section-title">Biểu đồ tiếp nhận dữ liệu</h3>
+            <p className="page-subtitle mt-2 text-sm">Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm {dashboardYear}.</p>
+          </div>
+          <div className="status-pill status-pill-submitted self-start">{submittedCount} đơn vị đã nộp</div>
+        </div>
+
+        <div className="mt-8 h-[280px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={56}
+                outerRadius={96}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                {pieData.map((entry, index) => (
+                  <Cell key={`${entry.name}-${index}`} fill={index === 0 ? '#b30f14' : '#e2d6c4'} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend verticalAlign="bottom" height={36} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="mt-2 text-center">
+          <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Mức độ hoàn thành tiếp nhận</p>
+        </div>
+      </div>
+
+      <div className={`mt-8 hidden grid-cols-1 gap-8 md:grid ${selectedProject ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]' : ''}`}>
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -2064,7 +2176,7 @@ function DashboardOverview({
             </div>
           </div>
 
-          <div className="mt-6 hidden space-y-3 md:block">
+          <div className="mt-6 space-y-3">
             {previewLogs.map((unit) => (
               <div
                 key={unit.code}
@@ -2089,27 +2201,7 @@ function DashboardOverview({
             ))}
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-3 md:block">
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('SUBMITTED');
-                setIsLogOpen(true);
-              }}
-              className="status-pill status-pill-submitted w-full justify-center md:hidden"
-            >
-              Đã tiếp nhận
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('PENDING');
-                setIsLogOpen(true);
-              }}
-              className="status-pill status-pill-pending w-full justify-center md:hidden"
-            >
-              Chưa tiếp nhận
-            </button>
+          <div className="mt-6">
             <button onClick={() => setIsLogOpen(true)} className="primary-btn w-full">
               Xem tất cả nhật ký
             </button>
