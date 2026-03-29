@@ -2138,18 +2138,32 @@ function DashboardOverview({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 border-b border-[var(--line)] bg-[var(--primary-soft)] px-6 py-4 md:grid-cols-3">
-              <div className="rounded-2xl bg-white/70 px-4 py-3">
-                <p className="col-header mb-1">Tổng đơn vị</p>
-                <p className="data-value text-2xl font-bold">{totalUnits}</p>
+            <div className="border-b border-[var(--line)] bg-[var(--primary-soft)] px-6 py-4">
+              <div className="space-y-2 text-sm text-[var(--ink)] md:hidden">
+                <p>
+                  - Tổng số đơn vị: <span className="font-semibold">{totalUnits}</span>
+                </p>
+                <p>
+                  - Đã tiếp nhận: <span className="font-semibold text-[var(--success)]">{submittedCount}</span>
+                </p>
+                <p>
+                  - Chưa tiếp nhận: <span className="font-semibold text-[var(--warning)]">{totalUnits - submittedCount}</span>
+                </p>
               </div>
-              <div className="rounded-2xl bg-white/70 px-4 py-3">
-                <p className="col-header mb-1">Đã tiếp nhận</p>
-                <p className="data-value text-2xl font-bold text-[var(--success)]">{submittedCount}</p>
-              </div>
-              <div className="rounded-2xl bg-white/70 px-4 py-3">
-                <p className="col-header mb-1">Chưa tiếp nhận</p>
-                <p className="data-value text-2xl font-bold text-[var(--warning)]">{totalUnits - submittedCount}</p>
+
+              <div className="hidden grid-cols-3 gap-4 md:grid">
+                <div className="rounded-2xl bg-white/70 px-4 py-3">
+                  <p className="col-header mb-1">Tổng đơn vị</p>
+                  <p className="data-value text-2xl font-bold">{totalUnits}</p>
+                </div>
+                <div className="rounded-2xl bg-white/70 px-4 py-3">
+                  <p className="col-header mb-1">Đã tiếp nhận</p>
+                  <p className="data-value text-2xl font-bold text-[var(--success)]">{submittedCount}</p>
+                </div>
+                <div className="rounded-2xl bg-white/70 px-4 py-3">
+                  <p className="col-header mb-1">Chưa tiếp nhận</p>
+                  <p className="data-value text-2xl font-bold text-[var(--warning)]">{totalUnits - submittedCount}</p>
+                </div>
               </div>
             </div>
 
@@ -2158,40 +2172,49 @@ function DashboardOverview({
                 {unitLogs.map((unit, index) => (
                   <div
                     key={unit.code}
-                    className="grid gap-4 rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-4 md:grid-cols-[64px_minmax(0,1.6fr)_minmax(0,1fr)_auto] md:items-center"
+                    className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-4"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-alt)] text-sm font-bold text-[var(--primary-dark)]">
-                      {index + 1}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">
-                        {unit.isSubmitted
-                          ? `Đã lưu ${unit.rowCount.toLocaleString('vi-VN')} dòng dữ liệu.`
-                          : 'Hiện chưa có dữ liệu nào được tiếp nhận trong năm này.'}
-                      </p>
-                      <div className="mt-2 text-[11px] text-[var(--ink-soft)]">
-                        {isAdmin && <p>Người theo dõi: {unit.assignedTo || 'Chưa phân công'}</p>}
-                        <p>Cập nhật gần nhất: {unit.lastUpdatedBy || 'Chưa có'}</p>
-                      </div>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="col-header mb-2">Biểu đã nhập</p>
-                      <p className="truncate text-sm text-[var(--ink)]">
-                        {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'Chưa có biểu nào'}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-start md:self-auto">
-                      {unit.isSubmitted && <CheckCircle2 size={16} className="text-[var(--success)]" />}
-                      <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
+                    <div className="flex items-center justify-between gap-3 md:hidden">
+                      <p className="min-w-0 text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                      <span className={unit.isSubmitted ? 'status-pill status-pill-submitted shrink-0' : 'status-pill status-pill-pending shrink-0'}>
                         {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                       </span>
+                    </div>
+
+                    <div className="hidden gap-4 md:grid md:grid-cols-[64px_minmax(0,1.6fr)_minmax(0,1fr)_auto] md:items-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-alt)] text-sm font-bold text-[var(--primary-dark)]">
+                        {index + 1}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">
+                          {unit.isSubmitted
+                            ? `Đã lưu ${unit.rowCount.toLocaleString('vi-VN')} dòng dữ liệu.`
+                            : 'Hiện chưa có dữ liệu nào được tiếp nhận trong năm này.'}
+                        </p>
+                        <div className="mt-2 text-[11px] text-[var(--ink-soft)]">
+                          {isAdmin && <p>Người theo dõi: {unit.assignedTo || 'Chưa phân công'}</p>}
+                          <p>Cập nhật gần nhất: {unit.lastUpdatedBy || 'Chưa có'}</p>
+                        </div>
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="col-header mb-2">Biểu đã nhập</p>
+                        <p className="truncate text-sm text-[var(--ink)]">
+                          {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'Chưa có biểu nào'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start md:self-auto">
+                        {unit.isSubmitted && <CheckCircle2 size={16} className="text-[var(--success)]" />}
+                        <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
+                          {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
