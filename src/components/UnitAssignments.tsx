@@ -2,14 +2,13 @@
 import { AssignmentUser, ManagedUnit } from '../types';
 
 interface UnitAssignmentsProps {
-  projectId: string;
   units: ManagedUnit[];
   users: AssignmentUser[];
   assignments: Record<string, string[]>;
   onSaveAssignments: (assigneeKey: string, unitCodes: string[]) => Promise<void>;
 }
 
-export function UnitAssignments({ projectId, units, users, assignments, onSaveAssignments }: UnitAssignmentsProps) {
+export function UnitAssignments({ units, users, assignments, onSaveAssignments }: UnitAssignmentsProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>(users[0]?.id || '');
   const [unitFilter, setUnitFilter] = useState('');
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
@@ -70,7 +69,7 @@ export function UnitAssignments({ projectId, units, users, assignments, onSaveAs
         <div>
           <h3 className="section-title">Phân công theo dõi đơn vị</h3>
           <p className="page-subtitle mt-2 text-sm">
-            Admin gán đơn vị cho các tài khoản đang active trong Supabase. Đơn vị đã giao cho người khác sẽ tự ẩn khỏi danh sách chọn.
+            Chỉ admin được phép chỉnh phân công. Bộ phân công này dùng chung cho tất cả dự án; đơn vị đã giao cho người khác sẽ tự ẩn khỏi danh sách chọn.
           </p>
         </div>
         <button
@@ -103,7 +102,7 @@ export function UnitAssignments({ projectId, units, users, assignments, onSaveAs
             placeholder="Nhập mã hoặc tên đơn vị"
           />
           <p className="mt-3 text-xs text-[var(--ink-soft)]">
-            Dự án: <span className="font-semibold">{projectId}</span>
+            Áp dụng chung toàn hệ thống và được lưu trong bảng phân công riêng, không phụ thuộc vào bất kỳ dự án nào.
           </p>
           <p className="mt-2 text-xs text-[var(--ink-soft)]">
             Đang hiện {filteredUnits.length}/{units.length} đơn vị khả dụng.

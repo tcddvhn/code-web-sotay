@@ -47,11 +47,13 @@ import {
   deleteRowsByYear as deleteRowsByYearFromSupabase,
   deleteTemplateById as deleteTemplateFromSupabase,
   listAssignments as listAssignmentsFromSupabase,
+  listGlobalAssignments as listGlobalAssignmentsFromSupabase,
   listProjects as listProjectsFromSupabase,
   listRowsByProject as listRowsByProjectFromSupabase,
   listTemplates as listTemplatesFromSupabase,
   listUnits as listUnitsFromSupabase,
   replaceAssignments as replaceAssignmentsInSupabase,
+  replaceGlobalAssignments as replaceGlobalAssignmentsInSupabase,
   seedUnits as seedUnitsToSupabase,
   touchUserProfileSession,
   upsertRows as upsertRowsToSupabase,
@@ -77,6 +79,7 @@ type UnitLog = {
 };
 
 type UnitStatusFilter = 'ALL' | 'SUBMITTED' | 'PENDING';
+const GLOBAL_ASSIGNMENT_PROJECT_NAME = 'THỐNG KÊ SỐ LIỆU SƠ KẾT NQ21';
 
 function normalizeProjectName(value: string) {
   return value
@@ -459,36 +462,82 @@ export default function App() {
   }, [isAuthenticated, isAdmin, isAuthReady]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setAssignments({});
-      return;
-    }
-
-    if (!selectedProjectId) {
+    if (!isAuthenticated || !isAdmin) {
       setAssignments({});
       return;
     }
 
     let cancelled = false;
-    listAssignmentsFromSupabase(selectedProjectId)
-      .then((rows) => {
+    listGlobalAssignmentsFromSupabase()
+      .then(async (rows) => {
         if (cancelled) {
           return;
         }
+
+        let sourceRows = rows;
+
+        if (sourceRows.length === 0) {
+          const legacySourceProject = projects.find(
+            (project) => normalizeProjectName(project.name) === normalizeProjectName(GLOBAL_ASSIGNMENT_PROJECT_NAME),
+          );
+
+          if (legacySourceProject) {
+            const legacyRows = await listAssignmentsFromSupabase(legacySourceProject.id);
+            sourceRows = legacyRows.map((row) => ({
+              id: row.assignee_key,
+              assignee_key: row.assignee_key,
+              user_id: row.user_id,
+              email: row.email,
+              display_name: row.display_name,
+              unit_codes: row.unit_codes,
+              updated_at: row.updated_at,
+            }));
+
+            if (legacyRows.length > 0) {
+              try {
+                await replaceGlobalAssignmentsInSupabase(sourceRows);
+              } catch (bootstrapError) {
+                console.warn('Không thể tự bootstrap global_assignments từ dữ liệu cũ:', bootstrapError);
+              }
+            }
+          }
+        }
+
         const map: Record<string, string[]> = {};
-        rows.forEach((row) => {
+        sourceRows.forEach((row) => {
           map[row.assignee_key] = Array.isArray(row.unit_codes) ? row.unit_codes : [];
         });
         setAssignments(map);
       })
       .catch((error) => {
-        console.error('Supabase assignments load error:', error);
+        console.error('Supabase global assignments load error:', error);
+        const legacySourceProject = projects.find(
+          (project) => normalizeProjectName(project.name) === normalizeProjectName(GLOBAL_ASSIGNMENT_PROJECT_NAME),
+        );
+        if (!legacySourceProject || cancelled) {
+          return;
+        }
+
+        listAssignmentsFromSupabase(legacySourceProject.id)
+          .then((rows) => {
+            if (cancelled) {
+              return;
+            }
+            const map: Record<string, string[]> = {};
+            rows.forEach((row) => {
+              map[row.assignee_key] = Array.isArray(row.unit_codes) ? row.unit_codes : [];
+            });
+            setAssignments(map);
+          })
+          .catch((legacyError) => {
+            console.error('Supabase legacy assignments fallback load error:', legacyError);
+          });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [selectedProjectId]);
+  }, [isAdmin, isAuthenticated, projects]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -615,6 +664,7 @@ export default function App() {
         }
         await deleteTemplateFromSupabase(template.id);
       }
+
       await deleteProjectFromSupabase(projectId);
 
       const nextProjects = await listProjectsFromSupabase();
@@ -890,68 +940,39 @@ export default function App() {
       return next;
     });
 
-    const targetProjectIds: string[] = Array.from(
-      new Set(
-        projects
-          .map((project) => project.id)
-          .filter((projectId): projectId is string => typeof projectId === 'string' && projectId.trim() !== ''),
-      ),
-    );
+    const nextAssignments = new Map<string, { userId?: string; email: string; displayName: string; unitCodes: string[] }>();
 
-    if (targetProjectIds.length === 0) {
-      throw new Error('Không tìm thấy dự án nào để lưu phân công.');
-    }
-
-    const saveAssignmentsForProject = async (projectId: string) => {
-      const snapshot = await listAssignmentsFromSupabase(projectId);
-      const nextAssignments = new Map<string, { userId?: string; email: string; displayName: string; unitCodes: string[] }>();
-
-      snapshot.forEach((row) => {
-        const key = getAssignmentKey(row.assignee_key || row.email) || row.user_id || '';
-        if (!key) {
-          return;
-        }
-
-        nextAssignments.set(key, {
-          userId: row.user_id || undefined,
-          email: row.email || key,
-          displayName: row.display_name || row.email || key,
-          unitCodes: Array.isArray(row.unit_codes) ? row.unit_codes : [],
-        });
+    Object.entries(assignments).forEach(([key, currentUnitCodes]) => {
+      const currentUserProfile = assignmentUsers.find((item) => item.id === key);
+      nextAssignments.set(key, {
+        userId: currentUserProfile?.userId,
+        email: currentUserProfile?.email || key,
+        displayName: currentUserProfile?.displayName || currentUserProfile?.email || key,
+        unitCodes: currentUnitCodes.filter((unitCode) => !selectedUnitSet.has(unitCode)),
       });
+    });
 
-      nextAssignments.forEach((entry, key) => {
-        nextAssignments.set(key, {
-          ...entry,
-          unitCodes: entry.unitCodes.filter((unitCode) => !selectedUnitSet.has(unitCode)),
-        });
-      });
+    nextAssignments.set(normalizedAssigneeKey, {
+      userId: assignmentUser.userId,
+      email: assignmentUser.email,
+      displayName: assignmentUser.displayName,
+      unitCodes: orderedUnitCodes,
+    });
 
-      nextAssignments.set(normalizedAssigneeKey, {
-        userId: assignmentUser.userId,
-        email: assignmentUser.email,
-        displayName: assignmentUser.displayName,
-        unitCodes: orderedUnitCodes,
-      });
+    const payload = Array.from(nextAssignments.entries())
+      .filter(([, entry]) => entry.unitCodes.length > 0)
+      .map(([key, entry]) => ({
+        id: key,
+        assignee_key: key,
+        user_id: entry.userId || null,
+        email: entry.email,
+        display_name: entry.displayName,
+        unit_codes: entry.unitCodes,
+        updated_at: new Date().toISOString(),
+      }));
 
-      const payload = Array.from(nextAssignments.entries())
-        .filter(([, entry]) => entry.unitCodes.length > 0)
-        .map(([key, entry]) => ({
-          id: `${projectId}_${key}`,
-          project_id: projectId,
-          assignee_key: key,
-          user_id: entry.userId || null,
-          email: entry.email,
-          display_name: entry.displayName,
-          unit_codes: entry.unitCodes,
-          updated_at: new Date().toISOString(),
-        }));
-
-      await replaceAssignmentsInSupabase(projectId, payload);
-    };
-
-    await Promise.all(targetProjectIds.map((projectId) => saveAssignmentsForProject(projectId)));
-    const refreshed = await listAssignmentsFromSupabase(selectedProjectId);
+    await replaceGlobalAssignmentsInSupabase(payload);
+    const refreshed = await listGlobalAssignmentsFromSupabase();
     const nextMap: Record<string, string[]> = {};
     refreshed.forEach((row) => {
       nextMap[row.assignee_key] = Array.isArray(row.unit_codes) ? row.unit_codes : [];
@@ -1972,7 +1993,6 @@ function DashboardOverview({
       {isAdmin && assignees.length > 0 && (
         <div className="mt-8">
           <UnitAssignments
-            projectId={selectedProjectId}
             units={units}
             users={assignees}
             assignments={assignments}
@@ -2089,7 +2109,7 @@ function DashboardOverview({
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                {assignees.length > 0 && (
+                {isAdmin && assignees.length > 0 && (
                   <div className="panel-soft rounded-full px-3 py-2">
                     <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--ink-soft)]">
                       Lọc theo người theo dõi
@@ -2155,7 +2175,7 @@ function DashboardOverview({
                           : 'Hiện chưa có dữ liệu nào được tiếp nhận trong năm này.'}
                       </p>
                       <div className="mt-2 text-[11px] text-[var(--ink-soft)]">
-                        <p>Người theo dõi: {unit.assignedTo || 'Chưa phân công'}</p>
+                        {isAdmin && <p>Người theo dõi: {unit.assignedTo || 'Chưa phân công'}</p>}
                         <p>Cập nhật gần nhất: {unit.lastUpdatedBy || 'Chưa có'}</p>
                       </div>
                     </div>

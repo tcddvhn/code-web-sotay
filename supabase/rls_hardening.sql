@@ -80,6 +80,16 @@ create policy "admin_insert_assignments" on assignments for insert to authentica
 create policy "admin_update_assignments" on assignments for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
 create policy "admin_delete_assignments" on assignments for delete to authenticated using (public.is_admin_user());
 
+alter table if exists global_assignments enable row level security;
+drop policy if exists "auth_read_global_assignments" on global_assignments;
+drop policy if exists "admin_insert_global_assignments" on global_assignments;
+drop policy if exists "admin_update_global_assignments" on global_assignments;
+drop policy if exists "admin_delete_global_assignments" on global_assignments;
+create policy "auth_read_global_assignments" on global_assignments for select to authenticated using (public.is_active_user());
+create policy "admin_insert_global_assignments" on global_assignments for insert to authenticated with check (public.is_admin_user());
+create policy "admin_update_global_assignments" on global_assignments for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
+create policy "admin_delete_global_assignments" on global_assignments for delete to authenticated using (public.is_admin_user());
+
 drop policy if exists "public_read_consolidated_rows" on consolidated_rows;
 drop policy if exists "auth_read_consolidated_rows" on consolidated_rows;
 drop policy if exists "auth_write_consolidated_rows" on consolidated_rows;

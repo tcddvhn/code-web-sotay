@@ -53,6 +53,16 @@ type SupabaseAssignmentRow = {
   updated_at: string | null;
 };
 
+type SupabaseGlobalAssignmentRow = {
+  id: string;
+  assignee_key: string;
+  user_id: string | null;
+  email: string;
+  display_name: string;
+  unit_codes: string[] | null;
+  updated_at: string | null;
+};
+
 type SupabaseUserProfileRow = {
   email: string;
   auth_user_id: string | null;
@@ -412,6 +422,34 @@ export async function replaceAssignments(projectId: string, entries: SupabaseAss
   }
 }
 
+export async function listGlobalAssignments() {
+  const { data, error } = await supabase
+    .from('global_assignments')
+    .select('*');
+
+  if (error) {
+    throw new Error(error.message || 'Không thể tải phân công toàn hệ thống từ Supabase.');
+  }
+
+  return (data || []) as SupabaseGlobalAssignmentRow[];
+}
+
+export async function replaceGlobalAssignments(entries: SupabaseGlobalAssignmentRow[]) {
+  const { error: deleteError } = await supabase.from('global_assignments').delete().neq('id', '');
+  if (deleteError) {
+    throw new Error(deleteError.message || 'Không thể làm mới phân công toàn hệ thống trên Supabase.');
+  }
+
+  if (entries.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase.from('global_assignments').insert(entries);
+  if (error) {
+    throw new Error(error.message || 'Không thể lưu phân công toàn hệ thống trên Supabase.');
+  }
+}
+
 export async function listRowsByProject(projectId: string) {
   const { count, error: countError } = await supabase
     .from('consolidated_rows')
@@ -751,5 +789,22 @@ export function buildAssignmentRows(projectId: string, users: AssignmentUser[], 
         unit_codes: unitCodes,
         updated_at: nowIso(),
       } satisfies SupabaseAssignmentRow;
+    });
+}
+
+export function buildGlobalAssignmentRows(users: AssignmentUser[], current: Record<string, string[]>) {
+  return Object.entries(current)
+    .filter(([, unitCodes]) => unitCodes.length > 0)
+    .map(([assigneeKey, unitCodes]) => {
+      const assignmentUser = users.find((item) => item.id === assigneeKey);
+      return {
+        id: assigneeKey,
+        assignee_key: assigneeKey,
+        user_id: assignmentUser?.userId || null,
+        email: assignmentUser?.email || assigneeKey,
+        display_name: assignmentUser?.displayName || assigneeKey,
+        unit_codes: unitCodes,
+        updated_at: nowIso(),
+      } satisfies SupabaseGlobalAssignmentRow;
     });
 }

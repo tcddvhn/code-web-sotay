@@ -129,6 +129,16 @@ create table if not exists assignments (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists global_assignments (
+  id text primary key,
+  assignee_key text not null,
+  user_id text,
+  email text not null,
+  display_name text not null,
+  unit_codes jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists consolidated_rows (
   id text primary key,
   project_id text not null references projects(id) on delete cascade,
@@ -301,6 +311,7 @@ alter table units enable row level security;
 alter table app_settings enable row level security;
 alter table user_profiles enable row level security;
 alter table assignments enable row level security;
+alter table global_assignments enable row level security;
 alter table consolidated_rows enable row level security;
 alter table data_files enable row level security;
 alter table report_exports enable row level security;
@@ -381,6 +392,15 @@ drop policy if exists "admin_delete_assignments" on assignments;
 create policy "admin_insert_assignments" on assignments for insert to authenticated with check (public.is_admin_user());
 create policy "admin_update_assignments" on assignments for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
 create policy "admin_delete_assignments" on assignments for delete to authenticated using (public.is_admin_user());
+
+drop policy if exists "auth_read_global_assignments" on global_assignments;
+drop policy if exists "admin_insert_global_assignments" on global_assignments;
+drop policy if exists "admin_update_global_assignments" on global_assignments;
+drop policy if exists "admin_delete_global_assignments" on global_assignments;
+create policy "auth_read_global_assignments" on global_assignments for select to authenticated using (public.is_active_user());
+create policy "admin_insert_global_assignments" on global_assignments for insert to authenticated with check (public.is_admin_user());
+create policy "admin_update_global_assignments" on global_assignments for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
+create policy "admin_delete_global_assignments" on global_assignments for delete to authenticated using (public.is_admin_user());
 
 drop policy if exists "public_read_consolidated_rows" on consolidated_rows;
 drop policy if exists "auth_read_consolidated_rows" on consolidated_rows;
