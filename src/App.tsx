@@ -2099,16 +2099,18 @@ function DashboardOverview({
       {isLogOpen && selectedProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(44,62,80,0.45)] p-4 backdrop-blur-sm md:p-8">
           <div className="panel-card flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[30px]">
-            <div className="flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 md:flex-row md:items-start md:justify-between">
+            <div className="relative flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="surface-tag">{totalUnits} đơn vị toàn hệ thống</div>
-                <h3 className="section-title mt-3">Nhật ký tiếp nhận dữ liệu năm {dashboardYear}</h3>
-                <p className="page-subtitle mt-2 text-sm">
+                <div className="surface-tag hidden md:inline-flex">{totalUnits} đơn vị toàn hệ thống</div>
+                <h3 className="mt-3 text-[1.6rem] font-black leading-tight tracking-[-0.02em] text-[var(--primary-dark)] md:text-[2.3rem]">
+                  NHẬT KÝ NĂM {dashboardYear}
+                </h3>
+                <p className="page-subtitle mt-2 hidden text-sm md:block">
                   Hiển thị đầy đủ trạng thái của từng đơn vị cùng số biểu đã được nhập vào hệ thống tập trung.
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 pr-10 md:pr-0">
                 {isAdmin && assignees.length > 0 && (
                   <div className="panel-soft rounded-full px-3 py-2">
                     <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--ink-soft)]">
@@ -2130,18 +2132,18 @@ function DashboardOverview({
                 )}
                 <button
                   onClick={() => setIsLogOpen(false)}
-                  className="secondary-btn flex items-center justify-center gap-2 self-start px-4 py-3"
+                  className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/85 text-[var(--primary-dark)] md:static md:h-auto md:w-auto md:gap-2 md:self-start md:rounded-[18px] md:px-4 md:py-3"
                 >
                   <X size={16} />
-                  Đóng
+                  <span className="hidden md:inline">Đóng</span>
                 </button>
               </div>
             </div>
 
             <div className="border-b border-[var(--line)] bg-[var(--primary-soft)] px-6 py-4">
-              <div className="space-y-2 text-sm text-[var(--ink)] md:hidden">
+              <div className="space-y-1 text-sm leading-tight text-[var(--ink)] md:hidden">
                 <p>
-                  - Tổng số đơn vị: <span className="font-semibold">{totalUnits}</span>
+                  - Dự án: <span className="font-semibold">{selectedProject.name}</span>
                 </p>
                 <p>
                   - Đã tiếp nhận: <span className="font-semibold text-[var(--success)]">{submittedCount}</span>
