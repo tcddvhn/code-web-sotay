@@ -1832,6 +1832,12 @@ function DashboardOverview({
     return map;
   }, [assignments, assignmentUsers]);
 
+  const currentAssignedUnitCodes = useMemo(
+    () => (currentAssignmentKey ? assignments[currentAssignmentKey] || [] : []),
+    [assignments, currentAssignmentKey],
+  );
+  const shouldLockToCurrentUserAssignments = isAuthenticated && !isAdmin && currentAssignedUnitCodes.length > 0;
+
   const allUnitLogs = useMemo<UnitLog[]>(() => {
     const sheetOrder = new Map(SHEET_CONFIGS.map((sheet, index) => [sheet.name, index]));
 
@@ -1908,11 +1914,6 @@ function DashboardOverview({
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
   const completedProjects = projects.filter((p) => p.status === 'COMPLETED').length;
   const assignees = useMemo(() => assignmentUsers, [assignmentUsers]);
-  const currentAssignedUnitCodes = useMemo(
-    () => (currentAssignmentKey ? assignments[currentAssignmentKey] || [] : []),
-    [assignments, currentAssignmentKey],
-  );
-  const shouldLockToCurrentUserAssignments = isAuthenticated && !isAdmin && currentAssignedUnitCodes.length > 0;
 
   useEffect(() => {
     if (shouldLockToCurrentUserAssignments) {
