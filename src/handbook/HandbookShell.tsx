@@ -25,6 +25,7 @@ const EMPTY_SUMMARIES: HandbookSectionSummary[] = [
   { section: 'bieu-mau', count: 0 },
   { section: 'tai-lieu', count: 0 },
 ];
+const CONTENT_SECTIONS: HandbookContentSection[] = ['quy-dinh', 'hoi-dap', 'bieu-mau', 'tai-lieu'];
 
 function getSectionTitle(section: HandbookSection) {
   switch (section) {
@@ -87,6 +88,27 @@ export function HandbookShell({
     const [summaryData, noticeData] = await Promise.all([listHandbookSectionSummaries(), listHandbookNotices(4)]);
     setSummaries(summaryData);
     setNotices(noticeData);
+  };
+
+  const refreshAllSections = async () => {
+    const results = await Promise.all(CONTENT_SECTIONS.map((section) => listHandbookNodesBySection(section)));
+    setSectionNodes({
+      'quy-dinh': results[0],
+      'hoi-dap': results[1],
+      'bieu-mau': results[2],
+      'tai-lieu': results[3],
+    });
+    setSelectedNodeIds((current) => {
+      const next = { ...current };
+      CONTENT_SECTIONS.forEach((section, index) => {
+        const sectionNodes = results[index];
+        if (next[section] && sectionNodes.some((node) => node.id === next[section])) {
+          return;
+        }
+        next[section] = sectionNodes[0]?.id;
+      });
+      return next;
+    });
   };
 
   const refreshAdminData = async () => {
@@ -298,11 +320,11 @@ export function HandbookShell({
             nodes={adminNodes}
             onSave={async (node) => {
               await upsertHandbookNode(node);
-              await Promise.all([refreshAdminData(), refreshHomeData()]);
+              await Promise.all([refreshAdminData(), refreshHomeData(), refreshAllSections()]);
             }}
             onDelete={async (nodeId) => {
               await deleteHandbookNode(nodeId);
-              await Promise.all([refreshAdminData(), refreshHomeData()]);
+              await Promise.all([refreshAdminData(), refreshHomeData(), refreshAllSections()]);
             }}
           />
         );
@@ -485,4 +507,3 @@ export function HandbookShell({
     </div>
   );
 }
-

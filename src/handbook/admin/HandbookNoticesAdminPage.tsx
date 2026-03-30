@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Megaphone, Plus, Save, Trash2 } from 'lucide-react';
 import { HandbookNoticeItem } from '../types';
 
@@ -23,6 +23,18 @@ export function HandbookNoticesAdminPage({
 }) {
   const [draft, setDraft] = useState<HandbookNoticeItem>(notices[0] || createNoticeDraft());
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!draft.id && notices[0]) {
+      setDraft(notices[0]);
+      return;
+    }
+
+    const updated = notices.find((notice) => notice.id === draft.id);
+    if (updated) {
+      setDraft(updated);
+    }
+  }, [draft.id, notices]);
 
   return (
     <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
@@ -61,6 +73,16 @@ export function HandbookNoticesAdminPage({
             Tiêu đề
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 outline-none" />
           </label>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block text-sm font-semibold text-[var(--ink)]">
+              Published at
+              <input value={draft.publishedAt || ''} onChange={(e) => setDraft({ ...draft, publishedAt: e.target.value })} className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 outline-none" />
+            </label>
+            <label className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--ink)]">
+              <input type="checkbox" checked={draft.isPublished} onChange={(e) => setDraft({ ...draft, isPublished: e.target.checked })} />
+              Đang xuất bản
+            </label>
+          </div>
           <label className="block text-sm font-semibold text-[var(--ink)]">
             Nội dung
             <textarea value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} className="mt-2 h-56 w-full rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 outline-none" />

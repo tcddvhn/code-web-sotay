@@ -57,6 +57,16 @@ function normalizePdfRefs(input: unknown) {
     .filter((item): item is { doc: string; page: number } => !!item);
 }
 
+function slugify(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120);
+}
+
 function mapNode(row: HandbookNodeRow): HandbookNodeRecord {
   return {
     id: row.id,
@@ -109,13 +119,14 @@ export async function listAllHandbookNodesForAdmin(section?: HandbookContentSect
 }
 
 export async function upsertHandbookNode(node: HandbookNodeRecord) {
+  const normalizedPdfRefs = normalizePdfRefs(node.pdfRefs || []);
   const payload = {
     id: node.id,
     legacy_id: node.legacyId || null,
-    parent_id: node.parentId || null,
+    parent_id: node.parentId && node.parentId !== node.id ? node.parentId : null,
     section: node.section,
     title: node.title,
-    slug: node.slug || null,
+    slug: node.slug || slugify(node.title || node.id) || null,
     tag: node.tag || null,
     summary_html: node.summaryHtml || null,
     detail_html: node.detailHtml || null,
@@ -123,7 +134,7 @@ export async function upsertHandbookNode(node: HandbookNodeRecord) {
     level: node.level,
     file_url: node.fileUrl || null,
     file_name: node.fileName || null,
-    pdf_refs: node.pdfRefs || [],
+    pdf_refs: normalizedPdfRefs,
     force_accordion: node.forceAccordion,
     is_published: node.isPublished,
     updated_at: new Date().toISOString(),
@@ -157,7 +168,7 @@ export async function upsertHandbookNotice(notice: HandbookNoticeItem) {
     id: notice.id,
     title: notice.title,
     content: notice.content,
-    published_at: notice.publishedAt || null,
+    published_at: notice.publishedAt?.trim() ? notice.publishedAt : null,
     is_published: notice.isPublished,
     updated_at: new Date().toISOString(),
     created_by: notice.createdBy || null,

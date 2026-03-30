@@ -263,6 +263,29 @@ Rà cac file:
    - publish/unpublish
    - file/pdf refs
 
+## Cap nhat moi nhat 2026-03-30 cuoi ngay
+
+Da bo sung them cho admin handbook:
+
+- sua `parent_id`
+- sua `sort_order`
+- sua `tag`
+- sua `file_url` / `file_name`
+- sua `pdf_refs`
+- bat/tat `is_published`
+- bat/tat `force_accordion`
+- notices co them `published_at` va `is_published`
+
+Da sua luon luong refresh:
+
+- sau khi save/delete node handbook, phan preview section va homepage handbook ben ngoai duoc refresh lai ngay
+
+Da tang cuong service ghi:
+
+- loc `pdf_refs` rong/khong hop le
+- tu sinh `slug` neu bo trong
+- chan `parent_id = id`
+
 ## Viec chinh sua cu the du kien o pha tiep theo
 
 ### Nhung file kha nang cao se duoc tao tiep

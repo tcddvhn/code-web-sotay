@@ -145,3 +145,38 @@
   2. sai logic Dashboard o nhat ky theo doi don vi tiep nhan giua admin va contributor
 - Da tach log ky thuat rieng tai `docs/system-data-maintenance-log.md` de tiep tuc theo doi cac thay doi da duoc phe duyet tren he thong du lieu hien hanh.
 - Da bo sung script `npm run check:encoding` de canh bao som loi ma hoa tieng Viet truoc khi commit.
+
+## Cap nhat tiep theo 2026-03-30 - nang cap admin CRUD handbook
+
+### Viec moi vua bo sung
+
+1. Nang cap trang admin node handbook:
+   - chon `parent_id`
+   - sua `sort_order`
+   - sua `tag`
+   - sua `file_url` / `file_name`
+   - sua danh sach `pdf_refs`
+   - bat/tat `is_published`
+   - bat/tat `force_accordion`
+2. Nang cap trang admin notices:
+   - sua `published_at`
+   - bat/tat `is_published`
+3. Sua `HandbookShell` de sau khi admin save/delete node:
+   - refresh lai home summaries
+   - refresh lai admin data
+   - refresh lai section nodes de preview handbook ben ngoai khop ngay
+4. Tang cuong an toan ghi du lieu trong `handbookAdmin`:
+   - loc `pdf_refs` khong hop le truoc khi upsert
+   - tu sinh `slug` neu admin de trong
+   - chan truong hop `parent_id = id`
+   - chuan hoa `published_at`
+
+### Huong tiep theo da hop ly nhat
+
+1. Lam tiep `publish/unpublish` ro hon trong UI section neu can.
+2. Bo sung thao tac doi parent/sort theo dang cay thay vi chi la form.
+3. Sau nhom admin CRUD, moi den:
+   - `search_logs`
+   - `view_logs`
+   - `favorites`
+   - `recent_views`
