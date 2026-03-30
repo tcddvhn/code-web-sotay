@@ -1,4 +1,4 @@
-﻿import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { SHEET_CONFIGS } from '../constants';
 import { DataRow, FormTemplate } from '../types';
 import { resolveTemplateEffectiveEndRowFromWorksheet } from './templateWorkbook';

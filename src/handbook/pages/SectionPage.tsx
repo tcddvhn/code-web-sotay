@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Bookmark, BookmarkCheck, Download, ExternalLink, FileSearch, Filter } from 'lucide-react';
 import { HandbookNodeOutlineItem } from '../types';
 

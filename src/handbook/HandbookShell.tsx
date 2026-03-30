@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Database, ShieldUser, X } from 'lucide-react';
 import { HANDBOOK_NAV_ITEMS } from './config';
 import './handbookLegacySkin.css';

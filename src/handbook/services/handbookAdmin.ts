@@ -1,4 +1,4 @@
-﻿import { supabase } from '../../supabase';
+import { supabase } from '../../supabase';
 import { HandbookContentSection, HandbookNodeRecord, HandbookNoticeItem } from '../types';
 
 type HandbookNodeRow = {

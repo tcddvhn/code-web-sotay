@@ -1,4 +1,4 @@
-﻿# Handbook Sample Seed Guide
+# Handbook Sample Seed Guide
 
 ## Muc tieu
 

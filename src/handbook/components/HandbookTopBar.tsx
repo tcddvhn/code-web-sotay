@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Bell, Menu, Search, ShieldUser } from 'lucide-react';
 
 export function HandbookTopBar({

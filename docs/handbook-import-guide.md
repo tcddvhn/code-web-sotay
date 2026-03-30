@@ -1,4 +1,4 @@
-﻿# Huong dan flatten va import du lieu handbook
+# Huong dan flatten va import du lieu handbook
 
 ## Muc tieu
 

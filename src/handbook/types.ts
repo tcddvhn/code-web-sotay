@@ -1,4 +1,4 @@
-﻿export type HandbookSection = 'home' | 'quy-dinh' | 'hoi-dap' | 'bieu-mau' | 'tai-lieu';
+export type HandbookSection = 'home' | 'quy-dinh' | 'hoi-dap' | 'bieu-mau' | 'tai-lieu';
 
 export type HandbookContentSection = Exclude<HandbookSection, 'home'>;
 

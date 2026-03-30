@@ -1,4 +1,4 @@
-﻿# Handbook Worklog
+# Handbook Worklog
 
 ## Nguyen tac lam viec da chot
 

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Megaphone, Plus, Save, Trash2 } from 'lucide-react';
 import { HandbookNoticeItem } from '../types';
 

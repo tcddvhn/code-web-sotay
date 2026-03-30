@@ -1,4 +1,4 @@
-﻿import { SheetConfig, Unit } from './types';
+import { SheetConfig, Unit } from './types';
 
 export const SHEET_CONFIGS: SheetConfig[] = [
   { name: "1B", startRow: 9, endRow: 23, startCol: 2, endCol: 7 },

@@ -1,4 +1,4 @@
-﻿import { supabase } from '../../supabase';
+import { supabase } from '../../supabase';
 import { listHandbookNotices, listHandbookSectionSummaries } from './handbookContent';
 import { listHandbookFeedback } from './handbookFeedback';
 

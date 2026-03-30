@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Database, Settings, ShieldCheck, X } from 'lucide-react';
 
 export function HandbookSecondaryMenu({

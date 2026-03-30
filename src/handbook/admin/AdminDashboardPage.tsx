@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { FileSearch, FileText, Megaphone, MessageSquareQuote, Rows3, Star, TimerReset } from 'lucide-react';
 import { HandbookUsageCounters, HandbookNoticeItem, HandbookSectionSummary } from '../types';
 import { HandbookFeedbackItem } from '../services/handbookFeedback';

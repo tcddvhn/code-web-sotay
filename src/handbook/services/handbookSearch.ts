@@ -1,3 +1,3 @@
-﻿import { searchHandbookNodes } from './handbookContent';
+import { searchHandbookNodes } from './handbookContent';
 
 export { searchHandbookNodes };
