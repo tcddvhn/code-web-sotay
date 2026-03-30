@@ -19,9 +19,9 @@ export function HandbookSecondaryMenu({
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-[rgba(19,15,12,0.32)] px-4 py-6 md:hidden">
-      <div className="ml-auto w-full max-w-sm rounded-[28px] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[0_24px_48px_rgba(38,31,18,0.18)]">
-        <div className="mb-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-[rgba(19,15,12,0.36)] md:hidden">
+      <div className="ml-auto flex h-full w-full max-w-sm flex-col border-l border-[var(--line)] bg-[var(--surface)] shadow-[0_24px_48px_rgba(38,31,18,0.18)]">
+        <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--primary)]">Menu phụ</div>
             <div className="text-lg font-extrabold text-[var(--primary-dark)]">Tiện ích hệ thống</div>
@@ -36,11 +36,11 @@ export function HandbookSecondaryMenu({
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto px-5 py-5">
           <button
             type="button"
             onClick={onOpenDataSystem}
-            className="panel-soft flex w-full items-start gap-3 rounded-[22px] px-4 py-4 text-left"
+            className="flex w-full items-start gap-3 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-left"
           >
             <Database size={18} className="mt-1 text-[var(--primary-dark)]" />
             <div>
@@ -51,15 +51,15 @@ export function HandbookSecondaryMenu({
             </div>
           </button>
 
-          <div className="panel-soft rounded-[22px] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
-            Search, thông báo và tài khoản sẽ tiếp tục được gom vào khung điều hướng này trên mobile để giữ 5 tab Sổ tay gọn như site cũ.
+          <div className="rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
+            Mobile vẫn giữ 5 tab Sổ tay như site cũ. Search, thông báo và lối vào dữ liệu được gom trong menu phụ để màn hình đỡ rối hơn.
           </div>
 
           {isAdmin && (
             <button
               type="button"
               onClick={onOpenAdmin}
-              className="panel-soft flex w-full items-start gap-3 rounded-[22px] px-4 py-4 text-left"
+              className="flex w-full items-start gap-3 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-left"
             >
               <ShieldCheck size={18} className="mt-1 text-[var(--primary-dark)]" />
               <div>
@@ -71,12 +71,12 @@ export function HandbookSecondaryMenu({
             </button>
           )}
 
-          <div className="panel-soft flex items-start gap-3 rounded-[22px] px-4 py-4 text-left">
+          <div className="flex items-start gap-3 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-left">
             <Settings size={18} className="mt-1 text-[var(--primary-dark)]" />
             <div>
               <div className="font-bold text-[var(--ink)]">Ghi chú triển khai</div>
               <div className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">
-                Module Sổ tay đang được chuẩn bị sẵn trong repo mới và chưa gắn vào runtime chính để tránh rung hệ thống đang vận hành.
+                Site sổ tay cũ vẫn chạy độc lập. Module mới này chỉ xây lại giao diện và lõi dữ liệu trên nền Supabase của repo hiện tại.
               </div>
             </div>
           </div>

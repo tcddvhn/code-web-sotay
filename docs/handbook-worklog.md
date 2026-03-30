@@ -219,6 +219,70 @@
 
 ### Viec moi vua bo sung
 
+## Cap nhat tiep theo 2026-03-30 - pivot giao dien handbook ve kieu So tay cu
+
+### Ly do doi huong giao dien
+
+- User da review tren mobile va desktop.
+- Ket luan: giao dien handbook moi truoc do dep nhung qua nhieu card/khung, khong phu hop voi nghiep vu nhieu chu.
+- Huong da chot moi:
+  - giu nguyen kien truc moi tren Supabase
+  - bo cach trinh bay card-heavy
+  - dua giao dien handbook moi quay ve cam giac cua site `sotay-dangvien` dang chay
+
+### Viec moi vua thuc hien
+
+1. Doi lai shell handbook theo tinh than site cu:
+   - header do co dinh
+   - 5 tab mobile co dinh ben duoi
+   - nav doc o desktop
+2. Doi lai `HomePage`:
+   - hero search do dam
+   - noi dung theo khoi don gian, khong tach thanh qua nhieu card to
+   - giu cac khu `Vua xem`, `Yeu thich`, `Thong bao`, `Gop y`, `He thong du lieu`
+3. Doi lai `SectionPage`:
+   - bo bo cuc 2 cot card lon
+   - chuyen sang dang danh sach mo rong tung muc
+   - moi muc hien title/tag/muc con gon, mo ra de doc noi dung chi tiet ngay ben duoi
+   - giu logic yeu thich, file dinh kem, PDF refs
+4. Doi lai `SearchPage`:
+   - modal tim kiem goi gon, gan cach trinh bay cua site cu hon
+5. Doi lai menu phu mobile:
+   - nhan manh `He thong du lieu` di bang menu phu
+   - giu 5 tab So tay quen tay tren mobile
+
+### File giao dien handbook da doi o dot nay
+
+- `src/handbook/HandbookShell.tsx`
+- `src/handbook/components/HandbookTopBar.tsx`
+- `src/handbook/components/HandbookBottomNav.tsx`
+- `src/handbook/components/HandbookSecondaryMenu.tsx`
+- `src/handbook/pages/HomePage.tsx`
+- `src/handbook/pages/SearchPage.tsx`
+- `src/handbook/pages/SectionPage.tsx`
+
+### Nguyen tac an toan van duoc giu nguyen
+
+- Khong sua repo `sotay-dangvien`
+- Khong doi domain/site cu
+- Khong sua luong nghiep vu cua He thong du lieu hien hanh
+- Chi thay lop hien thi handbook preview trong repo moi
+
+### Buoc tiep theo sau khi user chot giao dien handbook
+
+1. Tiep tuc chuoi migrate du lieu that:
+   - xuat JSON tu he cu
+   - `handbook:extract`
+   - `handbook:flatten`
+   - review output
+   - import vao Supabase
+2. Sau khi co du lieu that, doi chieu handbook moi voi site cu tren:
+   - Trang chu
+   - Quy dinh
+   - Hoi dap
+   - Bieu mau
+   - Tai lieu
+
 1. Tao service `src/handbook/services/handbookFeedback.ts` de gui/lay du lieu tu bang `handbook_feedback`.
 2. Nang cap `HandbookShell` de:
    - gui feedback handbook moi

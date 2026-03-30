@@ -1,5 +1,5 @@
 ﻿import React, { useMemo, useState } from 'react';
-import { Bookmark, BookmarkCheck, Download, ExternalLink, FileSearch, Filter, FolderKanban } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Download, ExternalLink, FileSearch, Filter } from 'lucide-react';
 import { HandbookNodeOutlineItem } from '../types';
 
 function DetailHtml({ html }: { html?: string | null }) {
@@ -70,16 +70,29 @@ export function SectionPage({
       .map(([tag]) => tag);
   }, [nodes]);
 
+  const getLevelAccent = (depth: number) => {
+    switch (depth) {
+      case 0:
+        return 'border-l-[4px] border-l-[var(--primary)]';
+      case 1:
+        return 'border-l-[3px] border-l-[#1b5e20]';
+      case 2:
+        return 'border-l-[3px] border-l-[#34495e]';
+      default:
+        return 'border-l-[2px] border-l-[#d35400]';
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="panel-card rounded-[30px] p-6 md:p-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--primary)]">{eyebrow}</div>
-        <h2 className="mt-3 text-[2rem] font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">{title}</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">{description}</p>
-        {helperText ? <div className="mt-3 text-sm font-semibold text-[var(--primary-dark)]">{helperText}</div> : null}
+    <div className="space-y-4">
+      <div className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4 md:px-5">
+        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--primary)]">{eyebrow}</div>
+        <h2 className="mt-2 font-['Times_New_Roman'] text-[1.65rem] font-extrabold text-[var(--primary-dark)]">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">{description}</p>
+        {helperText ? <div className="mt-2 text-sm font-semibold text-[var(--primary-dark)]">{helperText}</div> : null}
 
         {topTags.length > 0 ? (
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {topTags.map((tag) => (
               <button
                 key={tag}
@@ -94,176 +107,152 @@ export function SectionPage({
         ) : null}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <div className="panel-card rounded-[28px] p-4 md:p-5">
-          <div className="flex items-center justify-between gap-3 px-2 pb-3">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Danh sách nội dung</div>
-              <div className="mt-1 text-sm text-[var(--ink-soft)]">
-                {filteredNodes.length === nodes.length ? `${nodes.length} mục đang xuất bản` : `${filteredNodes.length}/${nodes.length} mục khớp bộ lọc`}
-              </div>
-            </div>
-            <FolderKanban size={18} className="text-[var(--primary-dark)]" />
-          </div>
-
-          <div className="px-2 pb-3">
-            <div className="flex items-center gap-3 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
-              <Filter size={16} className="text-[var(--primary-dark)]" />
-              <input
-                value={filterQuery}
-                onChange={(event) => setFilterQuery(event.target.value)}
-                placeholder="Lọc nhanh theo tên mục hoặc tag..."
-                className="w-full bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-soft)]"
-              />
+      <div className="rounded-[14px] border border-[var(--line)] bg-white px-3 py-4 md:px-4">
+        <div className="flex flex-col gap-3 border-b border-[var(--line)] pb-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-sm font-bold text-[var(--ink)]">Danh sách nội dung</div>
+            <div className="mt-1 text-sm text-[var(--ink-soft)]">
+              {filteredNodes.length === nodes.length ? `${nodes.length} mục đang xuất bản` : `${filteredNodes.length}/${nodes.length} mục khớp bộ lọc`}
             </div>
           </div>
-
-          <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
-            {filteredNodes.length > 0 ? (
-              filteredNodes.map((node) => {
-                const isActive = node.id === selectedNode?.id;
-                return (
-                  <button
-                    key={node.id}
-                    type="button"
-                    onClick={() => onSelectNode(node.id)}
-                    className={`w-full rounded-[22px] border px-4 py-3 text-left transition-transform hover:-translate-y-0.5 ${
-                      isActive
-                        ? 'border-[var(--primary)] bg-[var(--primary-soft)]'
-                        : 'border-[var(--line)] bg-[var(--surface-soft)]'
-                    }`}
-                    style={{ paddingLeft: `${16 + node.depth * 18}px` }}
-                  >
-                    <div className="text-sm font-bold text-[var(--ink)]">{node.title}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
-                      {node.tag ? <span>{node.tag}</span> : null}
-                      {node.childrenCount > 0 ? <span>{node.childrenCount} mục con</span> : null}
-                    </div>
-                  </button>
-                );
-              })
-            ) : (
-              <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
-                {nodes.length > 0
-                  ? 'Không có mục nào khớp từ khóa lọc hiện tại.'
-                  : 'Chưa có dữ liệu nào trong section này. Bạn có thể import dữ liệu handbook vào Supabase rồi tải lại trang để xem.'}
-              </div>
-            )}
+          <div className="flex items-center gap-3 rounded-[12px] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 md:min-w-[320px]">
+            <Filter size={16} className="text-[var(--primary-dark)]" />
+            <input
+              value={filterQuery}
+              onChange={(event) => setFilterQuery(event.target.value)}
+              placeholder="Lọc nhanh theo tên mục hoặc tag..."
+              className="w-full bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-soft)]"
+            />
           </div>
         </div>
 
-        <div className="panel-card rounded-[28px] p-6 md:p-7">
-          {selectedNode ? (
-            <div className="space-y-6">
-              <div>
-                <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Nội dung đang xem</div>
-                <h3 className="mt-2 text-[1.8rem] font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">{selectedNode.title}</h3>
-                {selectedNode.tag ? <div className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">Tag: {selectedNode.tag}</div> : null}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
-                  Cấp nội dung: {selectedNode.level + 1}
-                </div>
-                {selectedNode.childrenCount > 0 ? (
-                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
-                    {selectedNode.childrenCount} mục con
-                  </div>
-                ) : null}
-                {selectedNode.fileUrl ? (
-                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
-                    Có file đính kèm
-                  </div>
-                ) : null}
-                {selectedNode.pdfRefs.length > 0 ? (
-                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
-                    {selectedNode.pdfRefs.length} tham chiếu PDF
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={!canFavorite || !onToggleFavorite}
-                  onClick={() => selectedNode && onToggleFavorite?.(selectedNode.id)}
-                  className="secondary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+        <div className="mt-4 space-y-2">
+          {filteredNodes.length > 0 ? (
+            filteredNodes.map((node) => {
+              const isActive = node.id === selectedNode?.id;
+              return (
+                <div
+                  key={node.id}
+                  className={`overflow-hidden rounded-[10px] border border-[var(--line)] bg-white ${getLevelAccent(node.depth)}`}
+                  style={{ marginLeft: `${node.depth * 14}px` }}
                 >
-                  {isFavorite ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-                  {isFavorite ? 'Đã lưu yêu thích' : canFavorite ? 'Lưu vào yêu thích' : 'Đăng nhập để lưu'}
-                </button>
-              </div>
-
-              {selectedNode.summaryHtml ? (
-                <div className="rounded-[24px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Tóm tắt</div>
-                  <div className="mt-3 prose prose-sm max-w-none text-[var(--ink)]" dangerouslySetInnerHTML={{ __html: selectedNode.summaryHtml }} />
-                </div>
-              ) : null}
-
-              <div className="rounded-[24px] border border-[var(--line)] bg-white/80 p-5">
-                <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Nội dung chi tiết</div>
-                <div className="mt-4">
-                  <DetailHtml html={selectedNode.detailHtml} />
-                </div>
-              </div>
-
-              {(selectedNode.fileUrl || selectedNode.pdfRefs.length > 0) && (
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-                  <div className="rounded-[24px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                    <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Tệp đính kèm</div>
-                    {selectedNode.fileUrl ? (
-                      <a
-                        href={selectedNode.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary-dark)] hover:underline"
-                      >
-                        <Download size={15} />
-                        {selectedNode.fileName || 'Mở tệp đính kèm'}
-                      </a>
-                    ) : (
-                      <div className="mt-3 text-sm text-[var(--ink-soft)]">Mục này chưa gắn file tải về.</div>
-                    )}
-                  </div>
-
-                  <div className="rounded-[24px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                    <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">PDF refs</div>
-                    {selectedNode.pdfRefs.length > 0 ? (
-                      <div className="mt-3 space-y-2 text-sm text-[var(--ink-soft)]">
-                        {selectedNode.pdfRefs.map((ref) => (
-                          <div key={`${ref.doc}-${ref.page}`} className="flex items-center justify-between gap-3 rounded-2xl bg-white/70 px-3 py-2">
-                            <span>{ref.doc}</span>
-                            <span>Trang {ref.page}</span>
-                          </div>
-                        ))}
+                  <button
+                    type="button"
+                    onClick={() => onSelectNode(node.id)}
+                    className={`flex w-full items-start justify-between gap-3 px-3 py-3 text-left transition ${
+                      isActive ? 'bg-[var(--surface-soft)]' : 'hover:bg-[var(--surface-soft)]'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[15px] font-bold leading-6 text-[var(--ink)]">{node.title}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
+                        {node.tag ? <span>{node.tag}</span> : null}
+                        {node.childrenCount > 0 ? <span>{node.childrenCount} mục con</span> : null}
                       </div>
-                    ) : (
-                      <div className="mt-3 text-sm text-[var(--ink-soft)]">Chưa có tham chiếu PDF cho mục này.</div>
-                    )}
-                  </div>
+                    </div>
+                    <div className="pt-1 text-xs font-bold text-[var(--ink-soft)]">{isActive ? '−' : '+'}</div>
+                  </button>
+
+                  {isActive ? (
+                    <div className="border-t border-[var(--line)] px-3 py-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-soft)]">
+                          Cấp {node.level + 1}
+                        </div>
+                        {node.tag ? (
+                          <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-soft)]">
+                            Tag: {node.tag}
+                          </div>
+                        ) : null}
+                        {node.childrenCount > 0 ? (
+                          <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-soft)]">
+                            {node.childrenCount} mục con
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={!canFavorite || !onToggleFavorite}
+                          onClick={() => onToggleFavorite?.(node.id)}
+                          className="secondary-btn inline-flex items-center gap-2 !px-3 !py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isFavorite ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                          {isFavorite ? 'Đã lưu yêu thích' : canFavorite ? 'Lưu yêu thích' : 'Đăng nhập để lưu'}
+                        </button>
+                        {node.fileUrl ? (
+                          <a
+                            href={node.fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="secondary-btn inline-flex items-center gap-2 !px-3 !py-2 text-xs"
+                          >
+                            <Download size={14} />
+                            {node.fileName || 'Mở tệp'}
+                          </a>
+                        ) : null}
+                      </div>
+
+                      {node.summaryHtml ? (
+                        <div className="mt-4 border-l-[3px] border-l-[var(--primary)] pl-3">
+                          <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">Tóm tắt</div>
+                          <div className="mt-2 prose prose-sm max-w-none text-[var(--ink)]" dangerouslySetInnerHTML={{ __html: node.summaryHtml }} />
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4">
+                        <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">Nội dung chi tiết</div>
+                        <div className="mt-2 text-[15px] leading-7 text-[var(--ink)]">
+                          <DetailHtml html={node.detailHtml} />
+                        </div>
+                      </div>
+
+                      {node.pdfRefs.length > 0 ? (
+                        <div className="mt-4 border-t border-[var(--line)] pt-3">
+                          <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">Tham chiếu PDF</div>
+                          <div className="mt-2 space-y-2">
+                            {node.pdfRefs.map((ref) => (
+                              <div key={`${ref.doc}-${ref.page}`} className="flex items-center justify-between gap-3 text-sm text-[var(--ink-soft)]">
+                                <span>{ref.doc}</span>
+                                <span>Trang {ref.page}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
-              )}
-            </div>
+              );
+            })
           ) : (
-            <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 text-center">
-              <FileSearch size={28} className="text-[var(--primary-dark)]" />
-              <div className="text-lg font-extrabold text-[var(--primary-dark)]">Chưa có nội dung để hiển thị</div>
-              <div className="max-w-xl text-sm leading-7 text-[var(--ink-soft)]">
-                Khi dữ liệu handbook đã được import sang Supabase, danh sách nội dung sẽ xuất hiện ở cột bên trái và phần chi tiết sẽ hiển thị tại đây.
-              </div>
-              <a
-                href="https://supabase.com/dashboard/project/taivkgwwinakcoxhquyv/editor"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary-dark)] hover:underline"
-              >
-                Kiểm tra dữ liệu trong Supabase
-                <ExternalLink size={15} />
-              </a>
+            <div className="rounded-[12px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
+              {nodes.length > 0
+                ? 'Không có mục nào khớp từ khóa lọc hiện tại.'
+                : 'Chưa có dữ liệu nào trong section này. Bạn có thể import dữ liệu handbook vào Supabase rồi tải lại trang để xem.'}
             </div>
           )}
         </div>
+
+        {!selectedNode && (
+          <div className="mt-6 flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-[12px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-6 text-center">
+            <FileSearch size={28} className="text-[var(--primary-dark)]" />
+            <div className="text-lg font-extrabold text-[var(--primary-dark)]">Chưa có nội dung để hiển thị</div>
+            <div className="max-w-xl text-sm leading-7 text-[var(--ink-soft)]">
+              Khi dữ liệu handbook đã được import sang Supabase, danh sách nội dung sẽ xuất hiện đầy đủ tại đây.
+            </div>
+            <a
+              href="https://supabase.com/dashboard/project/taivkgwwinakcoxhquyv/editor"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary-dark)] hover:underline"
+            >
+              Kiểm tra dữ liệu trong Supabase
+              <ExternalLink size={15} />
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -25,12 +25,12 @@ export function SearchPage({
   error?: string | null;
 }) {
   return (
-    <div className="panel-card rounded-[28px] border p-5 md:p-6">
-      <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Tra cứu toàn bộ Sổ tay</div>
-      <div className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
+    <div className="rounded-[16px] border border-[var(--line)] bg-white p-4 md:p-5">
+      <div className="text-base font-bold text-[var(--primary-dark)]">Tìm kiếm thông tin</div>
+      <div className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">
         Ưu tiên gõ theo tên văn bản, câu hỏi, tag hoặc tên biểu mẫu để ra kết quả nhanh hơn.
       </div>
-      <div className="mt-3 flex items-center gap-3 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
+      <div className="mt-3 flex items-center gap-3 rounded-[12px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
         <Search size={18} className="text-[var(--primary-dark)]" />
         <input
           value={query}
@@ -40,7 +40,7 @@ export function SearchPage({
         />
       </div>
 
-      <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto pr-1">
+      <div className="mt-4 max-h-[65vh] space-y-2 overflow-y-auto pr-1">
         {isLoading ? (
           <div className="text-sm text-[var(--ink-soft)]">Đang tìm kiếm dữ liệu handbook...</div>
         ) : error ? (
@@ -51,11 +51,12 @@ export function SearchPage({
               key={item.id}
               type="button"
               onClick={() => onSelectResult(item)}
-              className="w-full rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-left transition-transform hover:-translate-y-0.5"
+              className="w-full rounded-[12px] border border-[var(--line)] px-4 py-3 text-left transition hover:bg-[var(--surface-soft)]"
             >
               <div className="text-sm font-bold text-[var(--ink)]">{item.title}</div>
               <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
-                {(SECTION_LABELS[item.section] || item.section)} {item.tag ? `• ${item.tag}` : ''}
+                {(SECTION_LABELS[item.section] || item.section)}
+                {item.tag ? ` • ${item.tag}` : ''}
               </div>
             </button>
           ))

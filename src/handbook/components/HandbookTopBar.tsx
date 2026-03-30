@@ -15,46 +15,56 @@ export function HandbookTopBar({
   onOpenAdmin?: () => void;
 }) {
   return (
-    <header className="panel-card rounded-[28px] border px-4 py-4 md:px-6">
-      <div className="flex items-center gap-3">
+    <header
+      className="fixed inset-x-0 top-0 z-40 border-b border-[rgba(255,255,255,0.18)] text-white shadow-[0_14px_30px_rgba(125,7,9,0.22)]"
+      style={{
+        background:
+          'linear-gradient(rgba(179,15,20,0.9), rgba(179,15,20,0.9)), radial-gradient(circle at top left, rgba(255,255,255,0.22), transparent 40%)',
+      }}
+    >
+      <div className="mx-auto flex h-[72px] max-w-[1520px] items-center gap-2 px-3 md:h-[74px] md:px-6 xl:px-8">
         <button
           type="button"
           onClick={onToggleMenu}
-          className="secondary-btn flex h-11 w-11 items-center justify-center !rounded-full !p-0 md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-white/95 transition hover:bg-white/10 md:hidden"
           aria-label="Mở menu phụ"
         >
-          <Menu size={18} />
+          <Menu size={20} />
         </button>
 
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--primary)]">Sổ tay nghiệp vụ</div>
-          <div className="truncate text-xl font-extrabold tracking-[-0.03em] text-[var(--primary-dark)] md:text-2xl">{title}</div>
+          <div className="truncate text-[15px] font-extrabold uppercase tracking-[0.03em] md:text-[18px]">
+            SỔ TAY NGHIỆP VỤ TCĐ, ĐV
+          </div>
+          <div className="truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75 md:text-xs">
+            {title}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onOpenSearch}
-            className="secondary-btn flex h-11 w-11 items-center justify-center !rounded-full !p-0"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-white/95 transition hover:bg-white/10"
             aria-label="Tìm kiếm"
           >
-            <Search size={18} />
+            <Search size={20} />
           </button>
           <button
             type="button"
             onClick={onOpenNotices}
-            className="secondary-btn hidden h-11 w-11 items-center justify-center !rounded-full !p-0 md:flex"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-white/95 transition hover:bg-white/10"
             aria-label="Thông báo"
           >
-            <Bell size={18} />
+            <Bell size={20} />
           </button>
           <button
             type="button"
             onClick={onOpenAdmin}
-            className="secondary-btn hidden h-11 w-11 items-center justify-center !rounded-full !p-0 md:flex"
+            className="hidden h-10 w-10 items-center justify-center rounded-full text-white/95 transition hover:bg-white/10 md:flex"
             aria-label="Quản trị"
           >
-            <ShieldUser size={18} />
+            <ShieldUser size={20} />
           </button>
         </div>
       </div>

@@ -159,11 +159,11 @@ export function HandbookShell({
     setSelectedNodeIds((current) => {
       const next = { ...current };
       CONTENT_SECTIONS.forEach((section, index) => {
-        const sectionNodes = results[index];
-        if (next[section] && sectionNodes.some((node) => node.id === next[section])) {
+        const nodes = results[index];
+        if (next[section] && nodes.some((node) => node.id === next[section])) {
           return;
         }
-        next[section] = sectionNodes[0]?.id;
+        next[section] = nodes[0]?.id;
       });
       return next;
     });
@@ -405,108 +405,6 @@ export function HandbookShell({
     setActiveSection(section);
   };
 
-  const renderSection = () => {
-    if (shellError) {
-      return (
-        <div className="panel-card rounded-[28px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] p-6 text-sm leading-7 text-[var(--primary-dark)]">
-          {shellError}
-        </div>
-      );
-    }
-
-    if (activeSection === 'home') {
-      return (
-        <HomePage
-          summaries={summaries}
-          notices={notices}
-          favorites={activityCards.favorites}
-          recentViews={activityCards.recentViews}
-          currentUserName={currentUser?.fullName || currentUser?.email || null}
-          feedbackEnabled={Boolean(currentUserEmail)}
-          feedbackSubmitting={isSubmittingFeedback}
-          feedbackMessage={feedbackStatus}
-          feedbackError={feedbackError}
-          onSubmitFeedback={handleSubmitFeedback}
-          onSelectSection={setActiveSection}
-          onOpenNode={openNode}
-          onOpenSearch={() => setIsSearchOpen(true)}
-          onOpenDataSystem={onOpenDataSystem}
-        />
-      );
-    }
-
-    const currentNodes = sectionNodes[activeSection as HandbookContentSection] || [];
-    const currentSelectedNodeId = selectedNodeIds[activeSection as HandbookContentSection] || null;
-    const setSelectedNode = (nodeId: string) => {
-      setSelectedNodeIds((current) => ({
-        ...current,
-        [activeSection as HandbookContentSection]: nodeId,
-      }));
-    };
-
-    if (sectionLoading[activeSection as HandbookContentSection]) {
-      return (
-        <div className="panel-card rounded-[28px] p-6 text-sm leading-7 text-[var(--ink-soft)]">
-          Đang tải dữ liệu section <strong>{activeSectionMeta.label}</strong> từ Supabase...
-        </div>
-      );
-    }
-
-    switch (activeSection) {
-      case 'quy-dinh':
-        return (
-          <RegulationsPage
-            nodes={currentNodes}
-            selectedNodeId={currentSelectedNodeId}
-            onSelectNode={setSelectedNode}
-            canFavorite={Boolean(currentUserEmail)}
-            isFavorite={currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        );
-      case 'hoi-dap':
-        return (
-          <FaqPage
-            nodes={currentNodes}
-            selectedNodeId={currentSelectedNodeId}
-            onSelectNode={setSelectedNode}
-            canFavorite={Boolean(currentUserEmail)}
-            isFavorite={currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        );
-      case 'bieu-mau':
-        return (
-          <FormsPage
-            nodes={currentNodes}
-            selectedNodeId={currentSelectedNodeId}
-            onSelectNode={setSelectedNode}
-            canFavorite={Boolean(currentUserEmail)}
-            isFavorite={currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        );
-      case 'tai-lieu':
-        return (
-          <DocumentsPage
-            nodes={currentNodes}
-            selectedNodeId={currentSelectedNodeId}
-            onSelectNode={setSelectedNode}
-            canFavorite={Boolean(currentUserEmail)}
-            isFavorite={currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
-  const handleSelectSearchResult = (item: HandbookNodeOutlineItem) => {
-    openNode(item.id, item.section);
-    setIsSearchOpen(false);
-  };
-
   const handleToggleFavorite = async (nodeId: string) => {
     if (!currentUserEmail) {
       setEngagementError('Cần đăng nhập để sử dụng tính năng yêu thích của Sổ tay mới.');
@@ -554,9 +452,84 @@ export function HandbookShell({
     }
   };
 
+  const handleSelectSearchResult = (item: HandbookNodeOutlineItem) => {
+    openNode(item.id, item.section);
+    setIsSearchOpen(false);
+  };
+
+  const renderSection = () => {
+    if (shellError) {
+      return (
+        <div className="rounded-[14px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] p-4 text-sm leading-7 text-[var(--primary-dark)]">
+          {shellError}
+        </div>
+      );
+    }
+
+    if (activeSection === 'home') {
+      return (
+        <HomePage
+          summaries={summaries}
+          notices={notices}
+          favorites={activityCards.favorites}
+          recentViews={activityCards.recentViews}
+          currentUserName={currentUser?.fullName || currentUser?.email || null}
+          feedbackEnabled={Boolean(currentUserEmail)}
+          feedbackSubmitting={isSubmittingFeedback}
+          feedbackMessage={feedbackStatus}
+          feedbackError={feedbackError}
+          onSubmitFeedback={handleSubmitFeedback}
+          onSelectSection={setActiveSection}
+          onOpenNode={openNode}
+          onOpenSearch={() => setIsSearchOpen(true)}
+          onOpenDataSystem={onOpenDataSystem}
+        />
+      );
+    }
+
+    const currentNodes = sectionNodes[activeSection as HandbookContentSection] || [];
+    const currentSelectedNodeId = selectedNodeIds[activeSection as HandbookContentSection] || null;
+    const setSelectedNode = (nodeId: string) => {
+      setSelectedNodeIds((current) => ({
+        ...current,
+        [activeSection as HandbookContentSection]: nodeId,
+      }));
+    };
+
+    if (sectionLoading[activeSection as HandbookContentSection]) {
+      return (
+        <div className="rounded-[14px] border border-[var(--line)] bg-white p-4 text-sm leading-7 text-[var(--ink-soft)]">
+          Đang tải dữ liệu section <strong>{activeSectionMeta.label}</strong> từ Supabase...
+        </div>
+      );
+    }
+
+    const sectionProps = {
+      nodes: currentNodes,
+      selectedNodeId: currentSelectedNodeId,
+      onSelectNode: setSelectedNode,
+      canFavorite: Boolean(currentUserEmail),
+      isFavorite: currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false,
+      onToggleFavorite: handleToggleFavorite,
+    };
+
+    switch (activeSection) {
+      case 'quy-dinh':
+        return <RegulationsPage {...sectionProps} />;
+      case 'hoi-dap':
+        return <FaqPage {...sectionProps} />;
+      case 'bieu-mau':
+        return <FormsPage {...sectionProps} />;
+      case 'tai-lieu':
+        return <DocumentsPage {...sectionProps} />;
+      default:
+        return null;
+    }
+  };
+
   const renderAdminPanel = () => {
     if (adminError) {
-      return <div className="rounded-[22px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] p-4 text-sm text-[var(--primary-dark)]">{adminError}</div>;
+      return <div className="rounded-[16px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] p-4 text-sm text-[var(--primary-dark)]">{adminError}</div>;
     }
 
     switch (adminView) {
@@ -603,85 +576,81 @@ export function HandbookShell({
   };
 
   return (
-    <div className="min-h-screen bg-transparent px-4 py-4 md:px-6 md:py-6 xl:px-8">
-      <div className="mx-auto flex max-w-[1520px] flex-col gap-6 pb-24 md:pb-8">
-        <HandbookTopBar
-          title={getSectionTitle(activeSection)}
-          onToggleMenu={() => setIsSecondaryMenuOpen(true)}
-          onOpenSearch={() => setIsSearchOpen(true)}
-          onOpenNotices={() => setActiveSection('home')}
-          onOpenAdmin={() => {
-            if (isAdmin) {
-              setIsAdminOpen(true);
-              setAdminView('dashboard');
-              return;
-            }
-            onOpenAdmin?.();
-          }}
-        />
+    <div className="min-h-screen bg-[var(--surface-alt)]">
+      <HandbookTopBar
+        title={getSectionTitle(activeSection)}
+        onToggleMenu={() => setIsSecondaryMenuOpen(true)}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenNotices={() => setActiveSection('home')}
+        onOpenAdmin={() => {
+          if (isAdmin) {
+            setIsAdminOpen(true);
+            setAdminView('dashboard');
+            return;
+          }
+          onOpenAdmin?.();
+        }}
+      />
 
-        <div className="hidden grid-cols-5 gap-3 md:grid">
-          {HANDBOOK_NAV_ITEMS.map((item) => {
-            const isActive = item.id === activeSection;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveSection(item.id)}
-                className={`panel-card rounded-[24px] px-4 py-4 text-left transition-transform hover:-translate-y-0.5 ${
-                  isActive ? 'border-[var(--primary)] bg-[var(--primary-soft)]' : ''
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[var(--primary-dark)] shadow-[0_8px_18px_rgba(38,31,18,0.08)]">
-                    <item.icon size={18} />
-                  </div>
-                  <div>
-                    <div className="font-bold text-[var(--ink)]">{item.label}</div>
-                    <div className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">{item.description}</div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {renderSection()}
-
-        {engagementError ? (
-          <div className="rounded-[24px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] px-4 py-3 text-sm text-[var(--primary-dark)]">
-            {engagementError}
-          </div>
-        ) : null}
-
-        <div className="panel-card rounded-[28px] border p-6 md:p-7">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Lối vào Hệ thống dữ liệu</div>
-              <div className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-[var(--primary-dark)]">Menu phụ trên mobile, mục chính trên desktop</div>
-              <div className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
-                Theo quyết định đã chốt, <code>Hệ thống dữ liệu</code> sẽ được đưa vào menu phụ trên mobile để giữ 5 tab Sổ tay gọn và quen thuộc.
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button type="button" onClick={onOpenDataSystem} className="primary-btn inline-flex items-center gap-2">
-                <Database size={16} />
-                Hệ thống dữ liệu
-              </button>
-              {isAdmin && (
+      <div className="mx-auto flex max-w-[1520px] gap-6 px-4 pb-24 pt-[88px] md:px-6 md:pb-8 md:pt-[98px] xl:px-8">
+        <aside className="sticky top-[98px] hidden h-[calc(100vh-122px)] w-[88px] shrink-0 rounded-[18px] border border-[var(--line)] bg-white md:block">
+          <div className="flex h-full flex-col items-stretch py-3">
+            {HANDBOOK_NAV_ITEMS.map((item) => {
+              const isActive = item.id === activeSection;
+              return (
                 <button
+                  key={item.id}
                   type="button"
-                  onClick={() => {
-                    setIsAdminOpen(true);
-                    setAdminView('dashboard');
-                  }}
-                  className="secondary-btn inline-flex items-center gap-2"
+                  onClick={() => setActiveSection(item.id)}
+                  className={`mx-2 mb-2 flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-[14px] px-2 py-3 text-center text-[11px] font-semibold transition ${
+                    isActive ? 'bg-[var(--primary-soft)] text-[var(--primary-dark)]' : 'text-[var(--ink-soft)] hover:bg-[var(--surface-soft)]'
+                  }`}
                 >
-                  <ShieldUser size={16} />
-                  Quản trị handbook mới
+                  <item.icon size={18} />
+                  <span>{item.shortLabel}</span>
                 </button>
-              )}
+              );
+            })}
+          </div>
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          {renderSection()}
+
+          {engagementError ? (
+            <div className="mt-4 rounded-[14px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] px-4 py-3 text-sm text-[var(--primary-dark)]">
+              {engagementError}
+            </div>
+          ) : null}
+
+          <div className="mt-4 rounded-[14px] border border-[var(--line)] bg-white px-4 py-4 md:px-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-sm font-bold text-[var(--ink)]">Lối vào Hệ thống dữ liệu</div>
+                <div className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                  Mobile dùng menu phụ để giữ 5 tab Sổ tay gọn như site cũ. Desktop có thể chuyển thẳng sang hệ thống dữ liệu bất cứ lúc nào.
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button type="button" onClick={onOpenDataSystem} className="primary-btn inline-flex items-center gap-2">
+                  <Database size={16} />
+                  Hệ thống dữ liệu
+                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAdminOpen(true);
+                      setAdminView('dashboard');
+                    }}
+                    className="secondary-btn inline-flex items-center gap-2"
+                  >
+                    <ShieldUser size={16} />
+                    Quản trị handbook mới
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -706,8 +675,8 @@ export function HandbookShell({
 
       {isSearchOpen && (
         <div className="fixed inset-0 z-50 bg-[rgba(19,15,12,0.36)] px-4 py-6">
-          <div className="mx-auto max-w-4xl">
-            <div className="mb-4 flex justify-end">
+          <div className="mx-auto max-w-4xl pt-[58px]">
+            <div className="mb-3 flex justify-end">
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(false)}
@@ -732,7 +701,7 @@ export function HandbookShell({
 
       {isAdminOpen && isAdmin && (
         <div className="fixed inset-0 z-50 bg-[rgba(19,15,12,0.42)] px-4 py-6">
-          <div className="mx-auto max-w-[1500px]">
+          <div className="mx-auto max-w-[1500px] pt-[48px]">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-bold uppercase tracking-[0.22em] text-white/80">Admin handbook riêng</div>

@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { BellRing, Bookmark, Clock3, Database, ExternalLink, FolderOpen, MessageSquareQuote, Search, Sparkles } from 'lucide-react';
+import { BellRing, Bookmark, Clock3, Database, ExternalLink, FolderOpen, MessageSquareQuote, Search } from 'lucide-react';
 import { HANDBOOK_QUICK_LINKS } from '../config';
 import { HandbookActivityCardItem, HandbookNoticeItem, HandbookSectionSummary } from '../types';
 
@@ -60,284 +60,223 @@ export function HomePage({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="panel-card overflow-hidden rounded-[32px] border">
-        <div className="grid gap-8 p-6 md:p-8 xl:grid-cols-[minmax(0,1.2fr)_380px]">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(179,15,20,0.18)] bg-[var(--primary-soft)] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--primary-dark)]">
-              Sổ tay nghiệp vụ mới
-            </div>
-            <h1 className="mt-5 text-[2.2rem] font-extrabold leading-[1.02] tracking-[-0.05em] text-[var(--primary-dark)] md:text-[3rem]">
-              Cổng tra cứu thống nhất cho nội dung Sổ tay và Hệ thống dữ liệu
-            </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--ink-soft)] md:text-[15px]">
-              Module Sổ tay mới đang được đọc trực tiếp từ dữ liệu Supabase. Giao diện giữ thói quen 5 tab mobile của hệ cũ,
-              đồng thời chuẩn bị sẵn cấu trúc để quản trị nội dung tập trung trong các pha tiếp theo.
-            </p>
-
+    <div className="space-y-5">
+      <section
+        className="rounded-[16px] px-4 py-5 text-white shadow-[0_18px_34px_rgba(125,7,9,0.2)] md:px-6 md:py-6"
+        style={{
+          background: 'linear-gradient(135deg, rgba(179,15,20,0.96), rgba(141,17,19,0.92))',
+        }}
+      >
+        <h2 className="font-['Times_New_Roman'] text-[1.45rem] font-extrabold md:text-[1.75rem]">
+          Bạn cần tôi giúp gì hôm nay?
+        </h2>
+        <p className="mt-1 text-sm leading-6 text-white/85">
+          Tra cứu nhanh quy định, câu hỏi, biểu mẫu và tài liệu theo đúng ngôn ngữ người dùng.
+        </p>
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="mt-4 flex w-full items-center gap-3 rounded-[12px] bg-white px-3 py-2 text-left text-[var(--ink)]"
+        >
+          <Search size={18} className="text-[var(--primary-dark)]" />
+          <div className="min-w-0">
+            <div className="text-sm font-bold">Nhập từ khóa để tìm trong toàn bộ Sổ tay</div>
+            <div className="text-xs text-[var(--ink-soft)]">Ví dụ: mất thẻ đảng, miễn sinh hoạt, kết nạp, chuyển sinh hoạt...</div>
+          </div>
+        </button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {['Mất thẻ đảng', 'Chuyển sinh hoạt', 'Mẫu báo cáo', 'Tài liệu gốc'].map((item) => (
             <button
+              key={item}
               type="button"
               onClick={onOpenSearch}
-              className="mt-6 flex w-full items-center gap-3 rounded-[24px] border border-[var(--line)] bg-white px-4 py-4 text-left shadow-[0_12px_28px_rgba(38,31,18,0.08)] transition hover:-translate-y-0.5 md:max-w-[680px]"
+              className="rounded-full border border-white/30 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
-                <Search size={18} />
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-[var(--ink)]">Tìm nhanh quy định, câu hỏi, biểu mẫu, tài liệu</div>
-                <div className="mt-1 text-sm text-[var(--ink-soft)]">Gõ theo tên văn bản, từ khóa nghiệp vụ hoặc tên biểu mẫu để tra cứu nhanh.</div>
-              </div>
+              {item}
             </button>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button type="button" onClick={() => onSelectSection('quy-dinh')} className="primary-btn inline-flex items-center gap-2">
-                Bắt đầu tra cứu
-                <Sparkles size={16} />
-              </button>
-              <button type="button" onClick={onOpenDataSystem} className="secondary-btn inline-flex items-center gap-2">
-                <Database size={16} />
-                Vào Hệ thống dữ liệu
-              </button>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="panel-soft rounded-[24px] p-5">
-              <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">Nguyên tắc triển khai</div>
-              <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
-                Không sửa site cũ trong giai đoạn xây mới. Module này chỉ đọc dữ liệu đã migrate sang Supabase và tách độc lập với luồng hệ thống dữ liệu đang vận hành.
-              </div>
-            </div>
-            <div className="panel-soft rounded-[24px] p-5">
-              <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">Tiến độ pha đọc</div>
-              <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
-                Đã có shell, schema và adapter nội dung. Mục tiêu tiếp theo là hoàn thiện trang đọc, sau đó mới bước sang khu quản trị nội dung.
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {HANDBOOK_QUICK_LINKS.map((item) => (
-          <button
-            key={item.title}
-            type="button"
-            onClick={() => onSelectSection(item.section)}
-            className="panel-card rounded-[26px] p-5 text-left transition-transform hover:-translate-y-0.5"
-          >
-            <div className="text-sm font-extrabold text-[var(--primary-dark)]">{item.title}</div>
-            <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{item.description}</div>
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {[
-          { label: 'Điều lệ, hướng dẫn', section: 'quy-dinh' as const },
-          { label: 'Tình huống thường gặp', section: 'hoi-dap' as const },
-          { label: 'Biểu mẫu tải về', section: 'bieu-mau' as const },
-          { label: 'PDF, văn bản gốc', section: 'tai-lieu' as const },
-        ].map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            onClick={() => onSelectSection(item.section)}
-            className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm font-semibold text-[var(--primary-dark)] transition hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]"
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_360px]">
-        <div className="panel-card rounded-[28px] p-6 md:p-7">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Dữ liệu đã sẵn sàng</div>
-              <div className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-[var(--primary-dark)]">4 khu nội dung cốt lõi</div>
-            </div>
-            <FolderOpen size={18} className="text-[var(--primary-dark)]" />
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {summaries.map((item) => (
-              <button
-                key={item.section}
-                type="button"
-                onClick={() => onSelectSection(item.section)}
-                className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-left transition-transform hover:-translate-y-0.5"
-              >
-                <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">{SECTION_LABELS[item.section]}</div>
-                <div className="mt-2 text-3xl font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">{item.count}</div>
-                <div className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">Số node đang được xuất bản trong section này.</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel-card rounded-[28px] p-6 md:p-7">
-          <div className="flex items-center gap-3">
-            <BellRing size={18} className="text-[var(--primary-dark)]" />
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Thông báo mới</div>
-              <div className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">Từ bảng handbook_notices</div>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-4">
-            {notices.length > 0 ? (
-              notices.map((notice) => (
-                <div key={notice.id} className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                  <div className="text-sm font-bold text-[var(--ink)]">{notice.title}</div>
-                  <div className="mt-2 line-clamp-4 text-sm leading-7 text-[var(--ink-soft)]">{notice.content}</div>
-                  <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
-                    {notice.publishedAt ? new Date(notice.publishedAt).toLocaleDateString('vi-VN') : 'Chưa có ngày đăng'}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-4">
+          {(recentViews.length > 0 || favorites.length > 0) && (
+            <div className="space-y-4">
+              {recentViews.length > 0 && (
+                <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--ink)]">
+                    <Clock3 size={16} className="text-[var(--primary-dark)]" />
+                    Vừa xem gần đây
                   </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
-                Chưa có thông báo nào được xuất bản trong bảng <code>handbook_notices</code>.
+                  <div className="mt-3 space-y-2">
+                    {recentViews.slice(0, 4).map((item) => (
+                      <button
+                        key={`recent-${item.id}`}
+                        type="button"
+                        onClick={() => onOpenNode(item.id, item.section)}
+                        className="flex w-full items-start justify-between gap-3 rounded-[10px] border border-[var(--line)] px-3 py-2 text-left transition hover:bg-[var(--surface-soft)]"
+                      >
+                        <div>
+                          <div className="text-sm font-bold text-[var(--ink)]">{item.title}</div>
+                          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
+                            {SECTION_LABELS[item.section]}
+                            {item.tag ? ` • ${item.tag}` : ''}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {favorites.length > 0 && (
+                <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--ink)]">
+                    <Bookmark size={16} className="text-[var(--primary-dark)]" />
+                    Mục yêu thích
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {favorites.slice(0, 4).map((item) => (
+                      <button
+                        key={`favorite-${item.id}`}
+                        type="button"
+                        onClick={() => onOpenNode(item.id, item.section)}
+                        className="flex w-full items-start justify-between gap-3 rounded-[10px] border border-[var(--line)] px-3 py-2 text-left transition hover:bg-[var(--surface-soft)]"
+                      >
+                        <div>
+                          <div className="text-sm font-bold text-[var(--ink)]">{item.title}</div>
+                          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
+                            {SECTION_LABELS[item.section]}
+                            {item.tag ? ` • ${item.tag}` : ''}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
+          <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
+            <div className="flex items-center gap-2 text-base font-bold text-[var(--ink)]">
+              <FolderOpen size={18} className="text-[var(--primary-dark)]" />
+              Danh mục chính
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {HANDBOOK_QUICK_LINKS.map((item) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={() => onSelectSection(item.section)}
+                  className="rounded-[12px] border border-[var(--line)] px-4 py-3 text-left transition hover:bg-[var(--surface-soft)]"
+                >
+                  <div className="text-sm font-bold text-[var(--primary-dark)]">{item.title}</div>
+                  <div className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">{item.description}</div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
+            <div className="flex items-center gap-2 text-base font-bold text-[var(--ink)]">
+              <Database size={18} className="text-[var(--primary-dark)]" />
+              Thống kê nội dung
+            </div>
+            <div className="mt-3 space-y-2">
+              {summaries.map((item) => (
+                <button
+                  key={item.section}
+                  type="button"
+                  onClick={() => onSelectSection(item.section)}
+                  className="flex w-full items-center justify-between rounded-[10px] border border-[var(--line)] px-3 py-3 text-left transition hover:bg-[var(--surface-soft)]"
+                >
+                  <div className="text-sm font-bold text-[var(--ink)]">{SECTION_LABELS[item.section]}</div>
+                  <div className="text-xl font-extrabold text-[var(--primary-dark)]">{item.count}</div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {feedbackEnabled && onSubmitFeedback ? (
+            <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
+              <div className="flex items-center gap-2 text-base font-bold text-[var(--ink)]">
+                <MessageSquareQuote size={18} className="text-[var(--primary-dark)]" />
+                Góp ý nhanh cho Sổ tay mới
               </div>
-            )}
-          </div>
+              <div className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">
+                {currentUserName ? `Đăng nhập với ${currentUserName}.` : 'Bạn đang đăng nhập và có thể gửi góp ý nhanh.'}
+              </div>
+              <form className="mt-3 space-y-3" onSubmit={handleSubmitFeedback}>
+                <select
+                  value={feedbackRating}
+                  onChange={(event) => setFeedbackRating(event.target.value)}
+                  className="w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                >
+                  <option value="hữu ích">Nội dung hữu ích</option>
+                  <option value="cần bổ sung">Cần bổ sung</option>
+                  <option value="khó tìm">Khó tìm nội dung</option>
+                  <option value="giao diện">Góp ý giao diện</option>
+                </select>
+                <textarea
+                  value={feedbackContent}
+                  onChange={(event) => setFeedbackContent(event.target.value)}
+                  placeholder="Nhập góp ý hoặc nhu cầu chỉnh sửa nội dung..."
+                  className="min-h-[110px] w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-3 text-sm leading-6 outline-none"
+                />
+                {feedbackMessage ? <div className="text-sm font-semibold text-emerald-700">{feedbackMessage}</div> : null}
+                {feedbackError ? <div className="text-sm font-semibold text-[var(--primary-dark)]">{feedbackError}</div> : null}
+                <button type="submit" disabled={feedbackSubmitting || !feedbackContent.trim()} className="primary-btn disabled:cursor-not-allowed disabled:opacity-60">
+                  {feedbackSubmitting ? 'Đang gửi...' : 'Gửi góp ý'}
+                </button>
+              </form>
+            </section>
+          ) : null}
+        </div>
+
+        <div className="space-y-4">
+          <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
+            <div className="flex items-center gap-2 text-base font-bold text-[var(--ink)]">
+              <BellRing size={18} className="text-[var(--primary-dark)]" />
+              Thông báo mới
+            </div>
+            <div className="mt-3 space-y-3">
+              {notices.length > 0 ? (
+                notices.map((notice) => (
+                  <div key={notice.id} className="border-b border-[var(--line)] pb-3 last:border-b-0 last:pb-0">
+                    <div className="text-sm font-bold text-[var(--ink)]">{notice.title}</div>
+                    <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
+                      {notice.publishedAt ? new Date(notice.publishedAt).toLocaleDateString('vi-VN') : 'Chưa công bố ngày'}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">{notice.content}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm leading-6 text-[var(--ink-soft)]">Chưa có thông báo nào trong bảng handbook_notices.</div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
+            <div className="text-sm font-bold text-[var(--ink)]">Lối vào Hệ thống dữ liệu</div>
+            <div className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+              Trên mobile, mục này sẽ đi bằng menu phụ để giữ 5 tab Sổ tay quen thuộc.
+            </div>
+            <button type="button" onClick={onOpenDataSystem} className="secondary-btn mt-3 inline-flex items-center gap-2">
+              <Database size={16} />
+              Vào Hệ thống dữ liệu
+            </button>
+          </section>
 
           <a
             href="https://supabase.com/dashboard/project/taivkgwwinakcoxhquyv/editor"
             target="_blank"
             rel="noreferrer"
-            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary-dark)] hover:underline"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary-dark)] hover:underline"
           >
-            Mở Supabase để cập nhật dữ liệu mẫu
+            Mở Supabase để kiểm tra dữ liệu mẫu
             <ExternalLink size={15} />
           </a>
-        </div>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-2">
-        <div className="panel-card rounded-[28px] p-6 md:p-7">
-          <div className="flex items-center gap-3">
-            <Clock3 size={18} className="text-[var(--primary-dark)]" />
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Vừa xem</div>
-              <div className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">Dành cho người dùng đã đăng nhập</div>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {recentViews.length > 0 ? (
-              recentViews.map((item) => (
-                <button
-                  key={`recent-${item.id}`}
-                  type="button"
-                  onClick={() => onOpenNode(item.id, item.section)}
-                  className="w-full rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-left transition-transform hover:-translate-y-0.5"
-                >
-                  <div className="text-sm font-bold text-[var(--ink)]">{item.title}</div>
-                  <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
-                    {SECTION_LABELS[item.section]} {item.tag ? `• ${item.tag}` : ''}
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
-                Chưa có lịch sử vừa xem. Khi người dùng mở nội dung trong Sổ tay mới, các mục gần đây sẽ xuất hiện ở đây.
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="panel-card rounded-[28px] p-6 md:p-7">
-          <div className="flex items-center gap-3">
-            <Bookmark size={18} className="text-[var(--primary-dark)]" />
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Yêu thích</div>
-              <div className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">Danh sách mục đã đánh dấu</div>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {favorites.length > 0 ? (
-              favorites.map((item) => (
-                <button
-                  key={`favorite-${item.id}`}
-                  type="button"
-                  onClick={() => onOpenNode(item.id, item.section)}
-                  className="w-full rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-left transition-transform hover:-translate-y-0.5"
-                >
-                  <div className="text-sm font-bold text-[var(--ink)]">{item.title}</div>
-                  <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
-                    {SECTION_LABELS[item.section]} {item.tag ? `• ${item.tag}` : ''}
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
-                Chưa có mục yêu thích nào. Người dùng có thể đánh dấu trực tiếp tại màn hình đọc nội dung để lưu lại.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="panel-card rounded-[28px] p-6 md:p-7">
-        <div className="flex items-center gap-3">
-          <MessageSquareQuote size={18} className="text-[var(--primary-dark)]" />
-          <div>
-            <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Góp ý nhanh</div>
-            <div className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">Phản hồi trực tiếp cho handbook mới</div>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <form onSubmit={handleSubmitFeedback} className="space-y-4">
-            <div className="text-sm leading-7 text-[var(--ink-soft)]">
-              {feedbackEnabled
-                ? `Đăng nhập với ${currentUserName || 'tài khoản hiện tại'} để gửi góp ý ngay trong giai đoạn hoàn thiện module handbook mới.`
-                : 'Đăng nhập để gửi góp ý, phản hồi trải nghiệm hoặc đề xuất cải tiến cho handbook mới.'}
-            </div>
-            <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-              <label className="space-y-2">
-                <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">Mức độ</div>
-                <select
-                  value={feedbackRating}
-                  onChange={(event) => setFeedbackRating(event.target.value)}
-                  disabled={!feedbackEnabled || feedbackSubmitting}
-                  className="w-full rounded-[18px] border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--primary)]"
-                >
-                  <option value="hữu ích">Hữu ích</option>
-                  <option value="tạm ổn">Tạm ổn</option>
-                  <option value="cần cải thiện">Cần cải thiện</option>
-                </select>
-              </label>
-              <label className="space-y-2">
-                <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">Nội dung góp ý</div>
-                <textarea
-                  value={feedbackContent}
-                  onChange={(event) => setFeedbackContent(event.target.value)}
-                  disabled={!feedbackEnabled || feedbackSubmitting}
-                  rows={4}
-                  placeholder={feedbackEnabled ? 'Ví dụ: điều hướng mobile nên gọn hơn, tìm kiếm nên ưu tiên theo tiêu đề...' : 'Đăng nhập để gửi góp ý'}
-                  className="w-full rounded-[18px] border border-[var(--line)] bg-white px-4 py-3 text-sm leading-7 outline-none transition focus:border-[var(--primary)] disabled:bg-[var(--surface-soft)]"
-                />
-              </label>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <button type="submit" disabled={!feedbackEnabled || feedbackSubmitting || !feedbackContent.trim()} className="primary-btn">
-                {feedbackSubmitting ? 'Đang gửi...' : 'Gửi góp ý'}
-              </button>
-              {feedbackMessage ? <div className="text-sm font-semibold text-emerald-700">{feedbackMessage}</div> : null}
-              {feedbackError ? <div className="text-sm font-semibold text-[var(--primary-dark)]">{feedbackError}</div> : null}
-            </div>
-          </form>
-
-          <div className="rounded-[24px] border border-[var(--line)] bg-[var(--surface-soft)] p-5">
-            <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">Mục đích</div>
-            <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
-              Kênh này ghi thẳng vào bảng <code>handbook_feedback</code> để admin theo dõi phản hồi trong giai đoạn xây mới, hoàn toàn tách khỏi site sổ tay cũ đang vận hành.
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ export function HandbookBottomNav({
   onSelectSection: (section: HandbookSection) => void;
 }) {
   return (
-    <nav className="panel-card fixed inset-x-4 bottom-4 z-30 rounded-[26px] border px-3 py-2 shadow-[0_18px_42px_rgba(38,31,18,0.16)] md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--line)] bg-white/98 px-1 pb-[env(safe-area-inset-bottom)] pt-1 shadow-[0_-8px_24px_rgba(38,31,18,0.08)] md:hidden">
       <div className="grid grid-cols-5 gap-1">
         {HANDBOOK_NAV_ITEMS.map((item) => {
           const isActive = item.id === activeSection;
@@ -19,7 +19,7 @@ export function HandbookBottomNav({
               key={item.id}
               type="button"
               onClick={() => onSelectSection(item.id)}
-              className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold ${
+              className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-semibold ${
                 isActive ? 'bg-[var(--primary-soft)] text-[var(--primary-dark)]' : 'text-[var(--ink-soft)]'
               }`}
             >

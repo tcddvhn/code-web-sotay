@@ -243,6 +243,27 @@ Tinh trang:
 - Danh sach noi dung trong tung section da co bo loc nhanh va chip tag de scan nhanh hon
 - Cac nhan ky thuat da duoc doi sang ngon ngu than thien voi nguoi dung
 
+### 8. Da pivot giao dien handbook de giong site So tay cu hon
+
+File lien quan:
+
+- [src/handbook/HandbookShell.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/HandbookShell.tsx)
+- [src/handbook/components/HandbookTopBar.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/components/HandbookTopBar.tsx)
+- [src/handbook/components/HandbookBottomNav.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/components/HandbookBottomNav.tsx)
+- [src/handbook/components/HandbookSecondaryMenu.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/components/HandbookSecondaryMenu.tsx)
+- [src/handbook/pages/HomePage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/HomePage.tsx)
+- [src/handbook/pages/SearchPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/SearchPage.tsx)
+- [src/handbook/pages/SectionPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/SectionPage.tsx)
+
+Tinh trang:
+
+- Khong con di theo huong card-heavy nua
+- Header handbook moi da doi ve kieu top bar do co dinh
+- Mobile giu 5 tab duoi man hinh nhu site cu
+- `He thong du lieu` van vao bang menu phu
+- `SectionPage` da doi ve dang danh sach mo rong tung muc, hop hon voi noi dung nghiep vu nhieu chu
+- Day la lop giao dien moi tren nen du lieu Supabase, khong phai copy code cu
+
 ## Nhung gi tuyet doi KHONG duoc lam luc nay
 
 1. Khong sua repo `sotay-dangvien`
@@ -258,6 +279,16 @@ Tinh trang:
    - tao file moi
    - noi vao menu preview
    - khong can thiệp vao logic nghiep vu hien tai
+
+## Viec tiep theo neu user noi "thuc hien tiep 5 buoc tu xuat JSON"
+
+Can hieu day la chuoi sau:
+
+1. Xuat JSON tu site cu phuc vu migrate
+2. Chay `handbook:extract`
+3. Chay `handbook:flatten`
+4. Review output va doi chieu mapping
+5. Import vao Supabase va so sanh handbook moi voi site cu
 3. `sotay-dangvien` hien la SPA DOM thuan, co:
    - Firestore content tree
    - Firebase Auth admin
