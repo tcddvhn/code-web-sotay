@@ -8,6 +8,7 @@ import {
   LogIn,
   LogOut,
   Users,
+  X,
 } from 'lucide-react';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ImportFiles } from './components/ImportFiles';
