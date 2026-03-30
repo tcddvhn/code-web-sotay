@@ -1,6 +1,7 @@
 ﻿import React from 'react';
-import { FileText, Megaphone, Rows3 } from 'lucide-react';
-import { HandbookNoticeItem, HandbookSectionSummary } from '../types';
+import { FileSearch, FileText, Megaphone, MessageSquareQuote, Rows3, Star, TimerReset } from 'lucide-react';
+import { HandbookUsageCounters, HandbookNoticeItem, HandbookSectionSummary } from '../types';
+import { HandbookFeedbackItem } from '../services/handbookFeedback';
 
 const SECTION_LABELS: Record<string, string> = {
   'quy-dinh': 'Quy định',
@@ -12,11 +13,15 @@ const SECTION_LABELS: Record<string, string> = {
 export function AdminDashboardPage({
   summaries,
   notices,
+  feedback,
+  usageCounters,
   onOpenNodes,
   onOpenNotices,
 }: {
   summaries: HandbookSectionSummary[];
   notices: HandbookNoticeItem[];
+  feedback: HandbookFeedbackItem[];
+  usageCounters: HandbookUsageCounters;
   onOpenNodes: () => void;
   onOpenNotices: () => void;
 }) {
@@ -26,13 +31,16 @@ export function AdminDashboardPage({
     <div className="space-y-5">
       <div className="panel-card rounded-[28px] p-6 md:p-7">
         <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Admin handbook</div>
-        <h2 className="mt-2 text-[1.8rem] font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">Bảng điều phối nội dung Sổ tay mới</h2>
+        <h2 className="mt-2 text-[1.8rem] font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">
+          Bảng điều phối nội dung Sổ tay mới
+        </h2>
         <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
-          Đây là khu quản trị riêng cho module handbook mới. Nó chỉ thao tác với các bảng <code>handbook_*</code> trên Supabase và không can thiệp vào 2 hệ thống đang chạy.
+          Đây là khu quản trị riêng cho module handbook mới. Nó chỉ thao tác với các bảng <code>handbook_*</code> trên Supabase
+          và không can thiệp vào 2 hệ thống đang chạy.
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <div className="panel-card rounded-[24px] p-5">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
             <Rows3 size={18} />
@@ -49,10 +57,31 @@ export function AdminDashboardPage({
         </div>
         <div className="panel-card rounded-[24px] p-5">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
-            <FileText size={18} />
+            <FileSearch size={18} />
           </div>
-          <div className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Section đang có</div>
-          <div className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">{summaries.filter((item) => item.count > 0).map((item) => SECTION_LABELS[item.section]).join(', ') || 'Chưa có dữ liệu'}</div>
+          <div className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Search logs</div>
+          <div className="mt-2 text-4xl font-extrabold tracking-[-0.05em] text-[var(--primary-dark)]">{usageCounters.searchLogs}</div>
+        </div>
+        <div className="panel-card rounded-[24px] p-5">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
+            <TimerReset size={18} />
+          </div>
+          <div className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">View logs</div>
+          <div className="mt-2 text-4xl font-extrabold tracking-[-0.05em] text-[var(--primary-dark)]">{usageCounters.viewLogs}</div>
+        </div>
+        <div className="panel-card rounded-[24px] p-5">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
+            <Star size={18} />
+          </div>
+          <div className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Yêu thích</div>
+          <div className="mt-2 text-4xl font-extrabold tracking-[-0.05em] text-[var(--primary-dark)]">{usageCounters.favorites}</div>
+        </div>
+        <div className="panel-card rounded-[24px] p-5">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
+            <MessageSquareQuote size={18} />
+          </div>
+          <div className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Góp ý</div>
+          <div className="mt-2 text-4xl font-extrabold tracking-[-0.05em] text-[var(--primary-dark)]">{feedback.length}</div>
         </div>
       </div>
 
@@ -63,7 +92,9 @@ export function AdminDashboardPage({
               <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Section summary</div>
               <div className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">Phân bố nội dung theo từng section</div>
             </div>
-            <button type="button" onClick={onOpenNodes} className="secondary-btn">Quản lý node</button>
+            <button type="button" onClick={onOpenNodes} className="secondary-btn">
+              Quản lý node
+            </button>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {summaries.map((item) => (
@@ -81,19 +112,71 @@ export function AdminDashboardPage({
               <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Thông báo</div>
               <div className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">Gần đây</div>
             </div>
-            <button type="button" onClick={onOpenNotices} className="secondary-btn">Quản lý thông báo</button>
+            <button type="button" onClick={onOpenNotices} className="secondary-btn">
+              Quản lý thông báo
+            </button>
           </div>
           <div className="mt-4 space-y-3">
-            {notices.length > 0 ? notices.slice(0, 4).map((notice) => (
-              <div key={notice.id} className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                <div className="text-sm font-bold text-[var(--ink)]">{notice.title}</div>
-                <div className="mt-2 line-clamp-3 text-sm leading-7 text-[var(--ink-soft)]">{notice.content}</div>
-              </div>
-            )) : (
+            {notices.length > 0 ? (
+              notices.slice(0, 4).map((notice) => (
+                <div key={notice.id} className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+                  <div className="text-sm font-bold text-[var(--ink)]">{notice.title}</div>
+                  <div className="mt-2 line-clamp-3 text-sm leading-7 text-[var(--ink-soft)]">{notice.content}</div>
+                </div>
+              ))
+            ) : (
               <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
                 Chưa có thông báo nào trong handbook_notices.
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="panel-card rounded-[28px] p-6 md:p-7">
+          <div className="flex items-center gap-3">
+            <MessageSquareQuote size={18} className="text-[var(--primary-dark)]" />
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Góp ý gần đây</div>
+              <div className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">Từ bảng handbook_feedback</div>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {feedback.length > 0 ? (
+              feedback.map((item) => (
+                <div key={item.id} className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">{item.kind}</div>
+                    {item.rating ? <div className="text-xs font-semibold text-[var(--ink-soft)]">Mức độ: {item.rating}</div> : null}
+                  </div>
+                  <div className="mt-2 text-sm leading-7 text-[var(--ink)]">{item.content || 'Không có nội dung.'}</div>
+                  <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                    {item.createdBy || 'Ẩn danh nội bộ'} {item.createdAt ? `• ${new Date(item.createdAt).toLocaleString('vi-VN')}` : ''}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
+                Chưa có góp ý nào trong bảng handbook_feedback.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="panel-card rounded-[28px] p-6 md:p-7">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
+            <FileText size={18} />
+          </div>
+          <div className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Section đang có</div>
+          <div className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
+            {summaries.filter((item) => item.count > 0).map((item) => SECTION_LABELS[item.section]).join(', ') || 'Chưa có dữ liệu'}
+          </div>
+          <div className="mt-5 grid gap-3">
+            <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+              <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">Recent views</div>
+              <div className="mt-2 text-3xl font-extrabold text-[var(--primary-dark)]">{usageCounters.recentViews}</div>
+            </div>
           </div>
         </div>
       </div>

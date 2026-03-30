@@ -1171,6 +1171,7 @@ export default function App() {
         return (
           <HandbookShell
             isAdmin={isAdmin}
+            currentUser={effectiveUserProfile}
             onOpenDataSystem={() => setCurrentView('DASHBOARD')}
             onOpenAdmin={() => setCurrentView(isAdmin ? 'SETTINGS' : 'LOGIN')}
           />
@@ -2496,5 +2497,4 @@ function DashboardOverview({
     </div>
   );
 }
-
 

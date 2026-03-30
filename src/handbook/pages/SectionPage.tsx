@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Download, ExternalLink, FileSearch, FolderKanban } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Download, ExternalLink, FileSearch, FolderKanban } from 'lucide-react';
 import { HandbookNodeOutlineItem } from '../types';
 
 function DetailHtml({ html }: { html?: string | null }) {
@@ -17,6 +17,9 @@ export function SectionPage({
   nodes,
   selectedNodeId,
   onSelectNode,
+  isFavorite = false,
+  canFavorite = false,
+  onToggleFavorite,
 }: {
   eyebrow: string;
   title: string;
@@ -24,6 +27,9 @@ export function SectionPage({
   nodes: HandbookNodeOutlineItem[];
   selectedNodeId?: string | null;
   onSelectNode: (nodeId: string) => void;
+  isFavorite?: boolean;
+  canFavorite?: boolean;
+  onToggleFavorite?: (nodeId: string) => void;
 }) {
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) || nodes[0] || null;
 
@@ -84,6 +90,17 @@ export function SectionPage({
                 <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Nội dung đang xem</div>
                 <h3 className="mt-2 text-[1.8rem] font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">{selectedNode.title}</h3>
                 {selectedNode.tag ? <div className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">Tag: {selectedNode.tag}</div> : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!canFavorite || !onToggleFavorite}
+                  onClick={() => selectedNode && onToggleFavorite?.(selectedNode.id)}
+                  className="secondary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isFavorite ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                  {isFavorite ? 'Đã lưu yêu thích' : canFavorite ? 'Lưu vào yêu thích' : 'Đăng nhập để lưu'}
+                </button>
               </div>
 
               {selectedNode.summaryHtml ? (

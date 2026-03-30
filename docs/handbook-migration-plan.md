@@ -89,6 +89,12 @@ Thuc hien export tu site cu, nhung khong chinh sua code dang deploy.
 Ket qua mong muon:
 
 - 1 file JSON goc chua `treeData`
+- co the la file raw `treeData`
+- hoac la Firestore document export JSON
+
+Script extract trong repo moi:
+
+- `npm run handbook:extract -- <input.json> tmp/handbook-export/treeData.json`
 
 Neu file export da co san duoi dang JSON, script flatten trong repo moi co the chay theo mau:
 

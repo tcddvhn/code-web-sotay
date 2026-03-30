@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Database, ShieldUser, X } from 'lucide-react';
 import { HANDBOOK_NAV_ITEMS } from './config';
 import { HandbookBottomNav } from './components/HandbookBottomNav';
@@ -12,10 +12,30 @@ import { RegulationsPage } from './pages/RegulationsPage';
 import { SearchPage } from './pages/SearchPage';
 import { listHandbookNodesBySection, listHandbookNotices, listHandbookSectionSummaries, searchHandbookNodes } from './services/handbookContent';
 import { deleteHandbookNode, deleteHandbookNotice, listAllHandbookNodesForAdmin, listHandbookNoticesForAdmin, upsertHandbookNode, upsertHandbookNotice } from './services/handbookAdmin';
-import { HandbookContentSection, HandbookNodeOutlineItem, HandbookNodeRecord, HandbookNoticeItem, HandbookSection, HandbookSectionSummary } from './types';
+import {
+  listHandbookFavorites,
+  listHandbookRecentViews,
+  recordHandbookSearchLog,
+  recordHandbookViewLog,
+  toggleHandbookFavorite,
+  upsertHandbookRecentView,
+} from './services/handbookEngagement';
+import { submitHandbookFeedback, type HandbookFeedbackItem } from './services/handbookFeedback';
+import { getHandbookUsageStats } from './services/handbookStats';
+import {
+  HandbookActivityCardItem,
+  HandbookContentSection,
+  HandbookNodeOutlineItem,
+  HandbookNodeRecord,
+  HandbookNoticeItem,
+  HandbookSection,
+  HandbookSectionSummary,
+  HandbookUsageCounters,
+} from './types';
 import { AdminDashboardPage } from './admin/AdminDashboardPage';
 import { HandbookNodesAdminPage } from './admin/HandbookNodesAdminPage';
 import { HandbookNoticesAdminPage } from './admin/HandbookNoticesAdminPage';
+import { UserProfile } from '../types';
 
 type HandbookAdminView = 'dashboard' | 'nodes' | 'notices';
 
@@ -25,6 +45,12 @@ const EMPTY_SUMMARIES: HandbookSectionSummary[] = [
   { section: 'bieu-mau', count: 0 },
   { section: 'tai-lieu', count: 0 },
 ];
+const EMPTY_USAGE_COUNTERS: HandbookUsageCounters = {
+  searchLogs: 0,
+  viewLogs: 0,
+  favorites: 0,
+  recentViews: 0,
+};
 const CONTENT_SECTIONS: HandbookContentSection[] = ['quy-dinh', 'hoi-dap', 'bieu-mau', 'tai-lieu'];
 
 function getSectionTitle(section: HandbookSection) {
@@ -47,11 +73,13 @@ function getSectionTitle(section: HandbookSection) {
 export function HandbookShell({
   initialSection = 'home',
   isAdmin = false,
+  currentUser = null,
   onOpenDataSystem,
   onOpenAdmin,
 }: {
   initialSection?: HandbookSection;
   isAdmin?: boolean;
+  currentUser?: UserProfile | null;
   onOpenDataSystem?: () => void;
   onOpenAdmin?: () => void;
 }) {
@@ -64,12 +92,21 @@ export function HandbookShell({
   const [searchResults, setSearchResults] = useState<HandbookNodeOutlineItem[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<HandbookNodeRecord[]>([]);
+  const [recentViews, setRecentViews] = useState<HandbookNodeRecord[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [engagementError, setEngagementError] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<HandbookSectionSummary[]>(EMPTY_SUMMARIES);
   const [notices, setNotices] = useState<HandbookNoticeItem[]>([]);
   const [shellError, setShellError] = useState<string | null>(null);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [adminNodes, setAdminNodes] = useState<HandbookNodeRecord[]>([]);
   const [adminNotices, setAdminNotices] = useState<HandbookNoticeItem[]>([]);
+  const [adminFeedback, setAdminFeedback] = useState<HandbookFeedbackItem[]>([]);
+  const [usageCounters, setUsageCounters] = useState<HandbookUsageCounters>(EMPTY_USAGE_COUNTERS);
+  const [feedbackStatus, setFeedbackStatus] = useState<string | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [sectionNodes, setSectionNodes] = useState<Record<HandbookContentSection, HandbookNodeOutlineItem[]>>({
     'quy-dinh': [],
     'hoi-dap': [],
@@ -83,11 +120,32 @@ export function HandbookShell({
     'tai-lieu': false,
   });
   const [selectedNodeIds, setSelectedNodeIds] = useState<Partial<Record<HandbookContentSection, string>>>({});
+  const lastLoggedViewRef = useRef<string>('');
+
+  const currentUserEmail = currentUser?.email || null;
+  const currentSection = activeSection === 'home' ? null : (activeSection as HandbookContentSection);
 
   const refreshHomeData = async () => {
     const [summaryData, noticeData] = await Promise.all([listHandbookSectionSummaries(), listHandbookNotices(4)]);
     setSummaries(summaryData);
     setNotices(noticeData);
+  };
+
+  const refreshEngagementData = async () => {
+    if (!currentUserEmail) {
+      setFavorites([]);
+      setRecentViews([]);
+      setFavoriteIds([]);
+      return;
+    }
+
+    const [favoriteData, recentData] = await Promise.all([
+      listHandbookFavorites(currentUserEmail),
+      listHandbookRecentViews(currentUserEmail),
+    ]);
+    setFavorites(favoriteData);
+    setRecentViews(recentData);
+    setFavoriteIds(favoriteData.map((item) => item.id));
   };
 
   const refreshAllSections = async () => {
@@ -112,12 +170,15 @@ export function HandbookShell({
   };
 
   const refreshAdminData = async () => {
-    const [nodes, noticesData] = await Promise.all([
+    const [nodes, noticesData, usageData] = await Promise.all([
       listAllHandbookNodesForAdmin(),
       listHandbookNoticesForAdmin(),
+      getHandbookUsageStats(),
     ]);
     setAdminNodes(nodes);
     setAdminNotices(noticesData);
+    setAdminFeedback(usageData.feedback);
+    setUsageCounters(usageData.counters);
   };
 
   useEffect(() => {
@@ -140,6 +201,27 @@ export function HandbookShell({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    refreshEngagementData()
+      .then(() => {
+        if (!cancelled) {
+          setEngagementError(null);
+        }
+      })
+      .catch((error) => {
+        console.error('Handbook engagement load error:', error);
+        if (!cancelled) {
+          setEngagementError(error instanceof Error ? error.message : 'Không thể tải dữ liệu tương tác của handbook.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserEmail]);
 
   useEffect(() => {
     if (!isAdminOpen || !isAdmin) {
@@ -225,6 +307,16 @@ export function HandbookShell({
           setSearchResults(results);
           setSearchError(null);
         }
+        try {
+          await recordHandbookSearchLog({
+            query: trimmedQuery,
+            section: 'all',
+            resultsCount: results.length,
+            userEmail: currentUserEmail,
+          });
+        } catch (loggingError) {
+          console.warn('Không thể ghi search log handbook:', loggingError);
+        }
       } catch (error) {
         console.error('Handbook search error:', error);
         if (!cancelled) {
@@ -241,12 +333,77 @@ export function HandbookShell({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [isSearchOpen, searchQuery]);
+  }, [currentUserEmail, isSearchOpen, searchQuery]);
+
+  useEffect(() => {
+    if (!currentSection) {
+      return;
+    }
+
+    const selectedNodeId = selectedNodeIds[currentSection];
+    if (!selectedNodeId) {
+      return;
+    }
+
+    const node = sectionNodes[currentSection].find((item) => item.id === selectedNodeId);
+    if (!node) {
+      return;
+    }
+
+    const viewKey = `${node.section}:${node.id}`;
+    if (lastLoggedViewRef.current === viewKey) {
+      return;
+    }
+    lastLoggedViewRef.current = viewKey;
+
+    recordHandbookViewLog({
+      nodeId: node.id,
+      section: node.section,
+    }).catch((error) => {
+      console.warn('Không thể ghi view log handbook:', error);
+    });
+
+    if (currentUserEmail) {
+      upsertHandbookRecentView(currentUserEmail, node.id)
+        .then(() => refreshEngagementData())
+        .catch((error) => {
+          console.warn('Không thể cập nhật recent views handbook:', error);
+        });
+    }
+  }, [currentSection, currentUserEmail, sectionNodes, selectedNodeIds]);
 
   const activeSectionMeta = useMemo(
     () => HANDBOOK_NAV_ITEMS.find((item) => item.id === activeSection) || HANDBOOK_NAV_ITEMS[0],
     [activeSection],
   );
+
+  const activityCards = useMemo(
+    () => ({
+      favorites: favorites.map<HandbookActivityCardItem>((item) => ({
+        id: item.id,
+        title: item.title,
+        section: item.section,
+        tag: item.tag,
+        updatedAt: item.updatedAt,
+      })),
+      recentViews: recentViews.map<HandbookActivityCardItem>((item) => ({
+        id: item.id,
+        title: item.title,
+        section: item.section,
+        tag: item.tag,
+        updatedAt: item.updatedAt,
+      })),
+    }),
+    [favorites, recentViews],
+  );
+
+  const openNode = (nodeId: string, section: HandbookContentSection) => {
+    setSelectedNodeIds((current) => ({
+      ...current,
+      [section]: nodeId,
+    }));
+    setActiveSection(section);
+  };
 
   const renderSection = () => {
     if (shellError) {
@@ -262,7 +419,16 @@ export function HandbookShell({
         <HomePage
           summaries={summaries}
           notices={notices}
+          favorites={activityCards.favorites}
+          recentViews={activityCards.recentViews}
+          currentUserName={currentUser?.fullName || currentUser?.email || null}
+          feedbackEnabled={Boolean(currentUserEmail)}
+          feedbackSubmitting={isSubmittingFeedback}
+          feedbackMessage={feedbackStatus}
+          feedbackError={feedbackError}
+          onSubmitFeedback={handleSubmitFeedback}
           onSelectSection={setActiveSection}
+          onOpenNode={openNode}
           onOpenDataSystem={onOpenDataSystem}
         />
       );
@@ -287,25 +453,104 @@ export function HandbookShell({
 
     switch (activeSection) {
       case 'quy-dinh':
-        return <RegulationsPage nodes={currentNodes} selectedNodeId={currentSelectedNodeId} onSelectNode={setSelectedNode} />;
+        return (
+          <RegulationsPage
+            nodes={currentNodes}
+            selectedNodeId={currentSelectedNodeId}
+            onSelectNode={setSelectedNode}
+            canFavorite={Boolean(currentUserEmail)}
+            isFavorite={currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        );
       case 'hoi-dap':
-        return <FaqPage nodes={currentNodes} selectedNodeId={currentSelectedNodeId} onSelectNode={setSelectedNode} />;
+        return (
+          <FaqPage
+            nodes={currentNodes}
+            selectedNodeId={currentSelectedNodeId}
+            onSelectNode={setSelectedNode}
+            canFavorite={Boolean(currentUserEmail)}
+            isFavorite={currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        );
       case 'bieu-mau':
-        return <FormsPage nodes={currentNodes} selectedNodeId={currentSelectedNodeId} onSelectNode={setSelectedNode} />;
+        return (
+          <FormsPage
+            nodes={currentNodes}
+            selectedNodeId={currentSelectedNodeId}
+            onSelectNode={setSelectedNode}
+            canFavorite={Boolean(currentUserEmail)}
+            isFavorite={currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        );
       case 'tai-lieu':
-        return <DocumentsPage nodes={currentNodes} selectedNodeId={currentSelectedNodeId} onSelectNode={setSelectedNode} />;
+        return (
+          <DocumentsPage
+            nodes={currentNodes}
+            selectedNodeId={currentSelectedNodeId}
+            onSelectNode={setSelectedNode}
+            canFavorite={Boolean(currentUserEmail)}
+            isFavorite={currentSelectedNodeId ? favoriteIds.includes(currentSelectedNodeId) : false}
+            onToggleFavorite={handleToggleFavorite}
+          />
+        );
       default:
         return null;
     }
   };
 
   const handleSelectSearchResult = (item: HandbookNodeOutlineItem) => {
-    setSelectedNodeIds((current) => ({
-      ...current,
-      [item.section]: item.id,
-    }));
-    setActiveSection(item.section);
+    openNode(item.id, item.section);
     setIsSearchOpen(false);
+  };
+
+  const handleToggleFavorite = async (nodeId: string) => {
+    if (!currentUserEmail) {
+      setEngagementError('Cần đăng nhập để sử dụng tính năng yêu thích của Sổ tay mới.');
+      return;
+    }
+
+    try {
+      await toggleHandbookFavorite(currentUserEmail, nodeId);
+      await refreshEngagementData();
+      setEngagementError(null);
+    } catch (error) {
+      console.error('Handbook favorite toggle error:', error);
+      setEngagementError(error instanceof Error ? error.message : 'Không thể cập nhật yêu thích handbook.');
+    }
+  };
+
+  const handleSubmitFeedback = async ({ content, rating }: { content: string; rating?: string | null }) => {
+    if (!currentUserEmail) {
+      setFeedbackStatus(null);
+      setFeedbackError('Cần đăng nhập để gửi góp ý cho Sổ tay mới.');
+      return false;
+    }
+
+    try {
+      setIsSubmittingFeedback(true);
+      setFeedbackStatus(null);
+      setFeedbackError(null);
+      await submitHandbookFeedback({
+        kind: 'feedback',
+        rating: rating || null,
+        content,
+        userEmail: currentUserEmail,
+      });
+      setFeedbackStatus('Đã gửi góp ý. Cảm ơn bạn đã giúp hoàn thiện Sổ tay mới.');
+      if (isAdminOpen && isAdmin) {
+        await refreshAdminData();
+      }
+      return true;
+    } catch (error) {
+      console.error('Handbook feedback submit error:', error);
+      setFeedbackError(error instanceof Error ? error.message : 'Không thể gửi góp ý handbook.');
+      return false;
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
   };
 
   const renderAdminPanel = () => {
@@ -347,6 +592,8 @@ export function HandbookShell({
           <AdminDashboardPage
             summaries={summaries}
             notices={adminNotices}
+            feedback={adminFeedback}
+            usageCounters={usageCounters}
             onOpenNodes={() => setAdminView('nodes')}
             onOpenNotices={() => setAdminView('notices')}
           />
@@ -399,6 +646,12 @@ export function HandbookShell({
         </div>
 
         {renderSection()}
+
+        {engagementError ? (
+          <div className="rounded-[24px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] px-4 py-3 text-sm text-[var(--primary-dark)]">
+            {engagementError}
+          </div>
+        ) : null}
 
         <div className="panel-card rounded-[28px] border p-6 md:p-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -470,13 +723,8 @@ export function HandbookShell({
               results={searchResults}
               isLoading={isSearchLoading}
               onSelectResult={handleSelectSearchResult}
+              error={searchError}
             />
-
-            {searchError ? (
-              <div className="mt-4 rounded-[24px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] px-4 py-3 text-sm text-[var(--primary-dark)]">
-                {searchError}
-              </div>
-            ) : null}
           </div>
         </div>
       )}

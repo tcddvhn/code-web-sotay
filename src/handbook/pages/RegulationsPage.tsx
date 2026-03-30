@@ -2,7 +2,14 @@
 import { SectionPage } from './SectionPage';
 import { HandbookNodeOutlineItem } from '../types';
 
-export function RegulationsPage(props: { nodes: HandbookNodeOutlineItem[]; selectedNodeId?: string | null; onSelectNode: (nodeId: string) => void }) {
+export function RegulationsPage(props: {
+  nodes: HandbookNodeOutlineItem[];
+  selectedNodeId?: string | null;
+  onSelectNode: (nodeId: string) => void;
+  isFavorite?: boolean;
+  canFavorite?: boolean;
+  onToggleFavorite?: (nodeId: string) => void;
+}) {
   return (
     <SectionPage
       eyebrow="Section handbook_nodes"

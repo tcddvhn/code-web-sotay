@@ -77,3 +77,18 @@ export interface HandbookSectionSummary {
   section: HandbookContentSection;
   count: number;
 }
+
+export interface HandbookActivityCardItem {
+  id: string;
+  title: string;
+  section: HandbookContentSection;
+  tag?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface HandbookUsageCounters {
+  searchLogs: number;
+  viewLogs: number;
+  favorites: number;
+  recentViews: number;
+}

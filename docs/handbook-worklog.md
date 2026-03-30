@@ -180,3 +180,67 @@
    - `view_logs`
    - `favorites`
    - `recent_views`
+
+## Cap nhat tiep theo 2026-03-30 - hanh vi nguoi dung cho handbook moi
+
+### Viec moi vua bo sung
+
+1. Tao service tuong tac handbook:
+   - `src/handbook/services/handbookEngagement.ts`
+   - ghi `search_logs`
+   - ghi `view_logs`
+   - quan ly `favorites`
+   - quan ly `recent_views`
+2. Noi `HandbookShell` voi thong tin user hien tai:
+   - `src/App.tsx`
+   - truyen `currentUser` vao handbook moi
+3. Nang cap `HomePage`:
+   - hien khu `Vua xem`
+   - hien khu `Yeu thich`
+4. Nang cap `SectionPage` va cac trang section:
+   - them nut `Luu vao yeu thich`
+   - khong doi cau truc doc noi dung hien co
+5. Nang cap `SearchPage`:
+   - hien loi tim kiem ngay trong panel
+
+### Pham vi an toan da giu dung
+
+- Chi sua `src/handbook/*` va mot diem noi props trong `src/App.tsx`.
+- Khong dong vao site So tay cu.
+- Khong dong vao luong nghiep vu cua He thong du lieu hien hanh.
+
+### Buoc tiep theo de lam tiep
+
+1. Them khu `feedback/gop y` cho handbook moi neu user xac nhan.
+2. Hoac bo sung `thong bao`, `favorites`, `recent views` vao admin dashboard handbook de theo doi du lieu su dung.
+3. Sau do moi chuyen sang pha migrate du lieu that tu site cu.
+
+## Cap nhat tiep theo 2026-03-30 - feedback va migrate an toan
+
+### Viec moi vua bo sung
+
+1. Tao service `src/handbook/services/handbookFeedback.ts` de gui/lay du lieu tu bang `handbook_feedback`.
+2. Nang cap `HandbookShell` de:
+   - gui feedback handbook moi
+   - load usage stats cho admin dashboard
+   - refresh admin dashboard sau khi gui feedback neu admin dang mo panel
+3. Nang cap `HomePage`:
+   - them form `Gop y nhanh`
+   - hien thong bao thanh cong/that bai
+4. Nang cap `AdminDashboardPage`:
+   - hien search logs
+   - view logs
+   - favorites
+   - recent views
+   - danh sach gop y gan day
+5. Tao script `scripts/extract-handbook-tree.ts`
+   - chap nhan file raw `treeData`
+   - hoac Firestore document export JSON
+6. Tao tai lieu:
+   - `docs/handbook-legacy-export-guide.md`
+
+### Y nghia cua dot nay
+
+- Handbook moi da co vong phan hoi nguoi dung co ban.
+- Admin handbook da co dashboard de nhin usage + gop y.
+- Pipeline migrate da ro hon: `extract -> flatten -> review -> import`.

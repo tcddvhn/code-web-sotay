@@ -14,6 +14,12 @@ Tai lieu nay mo ta quy trinh an toan de lay du lieu So tay tu file export `treeD
 
 Can 1 file JSON chua `treeData` tu he cu.
 
+Neu file dau vao la Firestore document export JSON, can extract truoc:
+
+```bash
+npm run handbook:extract -- /duong-dan/export.json tmp/handbook-source/treeData.json
+```
+
 Vi du:
 
 - `tmp/handbook-source/treeData.json`
@@ -106,6 +112,7 @@ Kiem tra:
 ## File lien quan
 
 - `scripts/flatten-handbook-export.ts`
+- `scripts/extract-handbook-tree.ts`
 - `scripts/import-handbook-flat.ts`
 - `supabase/handbook_schema.sql`
 - `docs/handbook-migration-plan.md`

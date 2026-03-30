@@ -8,12 +8,14 @@ export function SearchPage({
   results,
   onSelectResult,
   isLoading,
+  error,
 }: {
   query: string;
   onQueryChange: (value: string) => void;
   results: HandbookNodeOutlineItem[];
   onSelectResult: (item: HandbookNodeOutlineItem) => void;
   isLoading: boolean;
+  error?: string | null;
 }) {
   return (
     <div className="panel-card rounded-[28px] border p-5 md:p-6">
@@ -31,6 +33,8 @@ export function SearchPage({
       <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto pr-1">
         {isLoading ? (
           <div className="text-sm text-[var(--ink-soft)]">Đang tìm kiếm dữ liệu handbook...</div>
+        ) : error ? (
+          <div className="text-sm text-[var(--primary-dark)]">{error}</div>
         ) : results.length > 0 ? (
           results.map((item) => (
             <button

@@ -78,6 +78,8 @@ Route admin de xuat:
 
 2. Ke hoach migrate:
 - [docs/handbook-migration-plan.md](/Users/tranhau/Documents/GitHub/code-web-sotay/docs/handbook-migration-plan.md)
+3. Huong dan xuat du lieu cu:
+- [docs/handbook-legacy-export-guide.md](/Users/tranhau/Documents/GitHub/code-web-sotay/docs/handbook-legacy-export-guide.md)
 
 ## Nhung gi da tao trong repo moi
 
@@ -174,6 +176,54 @@ Luu y:
 
 - May hien tai khong co `node/npm` trong PATH nen chua chay thu duoc
 
+### 5. Da bo sung hanh vi nguoi dung cho handbook moi
+
+Da noi cac tinh nang:
+
+- `search_logs`
+- `view_logs`
+- `favorites`
+- `recent_views`
+
+File lien quan:
+
+- [src/handbook/services/handbookEngagement.ts](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/services/handbookEngagement.ts)
+- [src/handbook/HandbookShell.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/HandbookShell.tsx)
+- [src/handbook/pages/HomePage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/HomePage.tsx)
+- [src/handbook/pages/SectionPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/SectionPage.tsx)
+- [src/handbook/pages/SearchPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/SearchPage.tsx)
+- [src/App.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/App.tsx)
+
+Tinh trang:
+
+- Da co `Vua xem` va `Yeu thich` tren Trang chu handbook moi
+- Da co nut luu yeu thich trong trang doc section
+- Da ghi log tim kiem va xem noi dung vao cac bang `handbook_*`
+- Van chua dong vao site So tay cu
+
+### 6. Da bo sung feedback va pipeline extract an toan
+
+File lien quan:
+
+- [src/handbook/services/handbookFeedback.ts](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/services/handbookFeedback.ts)
+- [src/handbook/admin/AdminDashboardPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/admin/AdminDashboardPage.tsx)
+- [src/handbook/pages/HomePage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/HomePage.tsx)
+- [src/handbook/HandbookShell.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/HandbookShell.tsx)
+- [scripts/extract-handbook-tree.ts](/Users/tranhau/Documents/GitHub/code-web-sotay/scripts/extract-handbook-tree.ts)
+- [docs/handbook-legacy-export-guide.md](/Users/tranhau/Documents/GitHub/code-web-sotay/docs/handbook-legacy-export-guide.md)
+
+Tinh trang:
+
+- Da co form `Gop y nhanh` tren Trang chu handbook moi
+- Admin dashboard da co usage counters va gop y gan day
+- Da co lenh:
+
+```bash
+npm run handbook:extract -- <input.json> tmp/handbook-export/treeData.json
+```
+
+- Lenh nay khong dong vao site cu, chi xu ly file export dau vao
+
 ## Nhung gi tuyet doi KHONG duoc lam luc nay
 
 1. Khong sua repo `sotay-dangvien`
@@ -256,12 +306,32 @@ Rà cac file:
    - roi `Hoi dap`
    - roi `Bieu mau`
    - roi `Tai lieu`
-
 6. Sau khi doc noi dung on moi lam admin editor
-   - CRUD node
-   - move/reorder
-   - publish/unpublish
-   - file/pdf refs
+7. Sau nhom admin CRUD, bo sung:
+   - `search_logs`
+   - `view_logs`
+   - `favorites`
+   - `recent_views`
+
+## Tinh trang hien tai sau cap nhat moi nhat
+
+- Buoc 5, 6 va 7 o tren da duoc thuc hien mot phan lon.
+- Shell handbook moi hien da:
+  - doc du lieu section
+  - tim kiem
+  - quan tri co ban
+  - ghi log tim kiem/xem
+  - luu yeu thich
+  - luu vua xem
+
+## Buoc tiep theo hop ly nhat luc nay
+
+1. Xuat `treeData` tu he cu thanh file JSON.
+2. Chay `handbook:extract`.
+3. Chay `handbook:flatten`.
+4. Review file output.
+5. Chay import vao Supabase.
+6. Doi chieu giao dien handbook moi voi site cu.
 
 ## Cap nhat moi nhat 2026-03-30 cuoi ngay
 
