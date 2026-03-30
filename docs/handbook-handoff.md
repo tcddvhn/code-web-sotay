@@ -495,3 +495,13 @@ thi hieu dung la:
 3. `handbook:flatten`
 4. review output
 5. import vao Supabase
+
+### Luu y cap nhat moi
+
+- Da bo khoi "Loi vao He thong du lieu" o cuoi handbook de giao dien bam site cu hon.
+- Da co duong xuat JSON khong dong site cu:
+  - [scripts/legacy-handbook-browser-export.js](/Users/tranhau/Documents/GitHub/code-web-sotay/scripts/legacy-handbook-browser-export.js)
+  - [docs/handbook-browser-export-guide.md](/Users/tranhau/Documents/GitHub/code-web-sotay/docs/handbook-browser-export-guide.md)
+- Tinh den luc nay, chuoi migrate chua duoc chay thuc te vi:
+  - repo chua co file export JSON that
+  - may hien tai khong co `node/npm`

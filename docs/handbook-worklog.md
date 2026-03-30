@@ -368,3 +368,19 @@
 - Handbook moi da chuyen tu huong "the card hien dai" sang huong "vo giao dien sotay cu".
 - Chua build/lint duoc vi may hien tai khong co `node/npm`.
 - Moc tiep theo van khong doi: khi user noi "thuc hien tiep 5 buoc tu xuat JSON" thi quay lai nhanh migrate du lieu that.
+
+## Cap nhat tiep theo 2026-03-30 - chuan bi xuat JSON khong dong site cu
+
+### Viec moi vua bo sung
+
+1. Bo luon khoi "Loi vao He thong du lieu" o cuoi handbook de bam site cu hon.
+2. Tao snippet browser export:
+   - [scripts/legacy-handbook-browser-export.js](/Users/tranhau/Documents/GitHub/code-web-sotay/scripts/legacy-handbook-browser-export.js)
+3. Tao tai lieu huong dan xuat nhanh:
+   - [docs/handbook-browser-export-guide.md](/Users/tranhau/Documents/GitHub/code-web-sotay/docs/handbook-browser-export-guide.md)
+
+### Giai thich
+
+- Buoc 1 trong chuoi migrate can file JSON thuc te, nhung repo hien tai chua co file export nao.
+- May hien tai cung chua co `node/npm`, nen khong the chay tiep `handbook:extract`, `handbook:flatten`, `handbook:import` ngay tai day.
+- Vi vay da bo sung duong xuat JSON an toan nhat: mo site cu, paste snippet vao Console, tai file JSON ve.

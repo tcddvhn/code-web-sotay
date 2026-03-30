@@ -624,21 +624,17 @@ export function HandbookShell({
             </div>
           ) : null}
 
-          <div className="legacy-recent-box mt-4">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="legacy-recent-title !mb-2 !border-b-0 !pb-0">Lối vào Hệ thống dữ liệu</div>
-                <div className="mt-2 text-sm leading-6 text-[var(--legacy-text-muted)]">
-                  Mobile dùng menu phụ để giữ 5 tab Sổ tay gọn như site cũ. Desktop có thể chuyển thẳng sang hệ thống dữ liệu bất cứ lúc nào.
+          {isAdmin ? (
+            <div className="legacy-recent-box mt-4">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="legacy-recent-title !mb-2 !border-b-0 !pb-0">Quản trị handbook mới</div>
+                  <div className="mt-2 text-sm leading-6 text-[var(--legacy-text-muted)]">
+                    Khu quản trị này chỉ phục vụ xây mới handbook trên nền Supabase, không làm ảnh hưởng site sổ tay cũ đang hoạt động.
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={onOpenDataSystem} className="primary-btn inline-flex items-center gap-2">
-                  <Database size={16} />
-                  Hệ thống dữ liệu
-                </button>
-                {isAdmin && (
+                <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -650,10 +646,10 @@ export function HandbookShell({
                     <ShieldUser size={16} />
                     Quản trị handbook mới
                   </button>
-                )}
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BellRing, Bookmark, BookOpen, Clock3, Database, Folder, LibraryBig, MessageSquareQuote, Search } from 'lucide-react';
+import { BellRing, Bookmark, BookOpen, Clock3, Database, Folder, LibraryBig, MessageSquareQuote } from 'lucide-react';
 import { HANDBOOK_QUICK_LINKS } from '../config';
 import { HandbookActivityCardItem, HandbookNoticeItem, HandbookSectionSummary } from '../types';
 
@@ -238,21 +238,6 @@ export function HomePage({
         </div>
       ) : null}
 
-      <div className="legacy-recent-box">
-        <div className="legacy-recent-title">
-          <Database size={18} />
-          Hệ thống dữ liệu
-        </div>
-        <div className="text-sm text-[var(--legacy-text-muted)]">
-          Truy cập khu quản trị dữ liệu, tiếp nhận file và báo cáo tổng hợp.
-        </div>
-        <div className="mt-4">
-          <button type="button" className="legacy-action-btn-flat legacy-feedback-btn max-w-[220px]" onClick={onOpenDataSystem}>
-            <Database size={20} />
-            <span>VÀO HỆ THỐNG DỮ LIỆU</span>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
