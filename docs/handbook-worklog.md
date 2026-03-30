@@ -130,3 +130,10 @@
 - test search handbook
 - test admin handbook rieng
 - van giu nguyen nguyen tac khong dong vao 2 he thong dang chay
+
+## Luu y bo sung 2026-03-30
+
+- Truoc khi chay `supabase/handbook_seed_sample.sql`, bat buoc phai chay `supabase/handbook_schema.sql` de tao cac bang `handbook_*`.
+- Neu chua chay schema truoc, Supabase se bao loi `relation "handbook_nodes" does not exist`.
+- Dot nay da sua triệt để lỗi font/mojibake cho Dashboard, Login và Cài đặt của Hệ thống dữ liệu hiện hành trong `src/App.tsx` theo yêu cầu của user.
+- Viec sua nay da duoc user phe duyet truoc khi thuc hien vi co anh huong den he thong dang chay.

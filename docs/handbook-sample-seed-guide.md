@@ -24,11 +24,11 @@ Khong ghi vao:
 
 ## Cach nap seed
 
-1. Mo Supabase project.
-2. Vao `SQL Editor`.
-3. Tao `New query`.
-4. Copy toan bo noi dung file `supabase/handbook_seed_sample.sql`.
-5. Bam `Run`.
+1. Chạy trước file `supabase/handbook_schema.sql` trong `SQL Editor` để tạo toàn bộ bảng `handbook_*`.\r\n2. Mở Supabase project.
+3. Vào `SQL Editor`.
+4. Tạo `New query`.
+5. Copy toàn bộ nội dung file `supabase/handbook_seed_sample.sql`.
+6. Bấm `Run`.
 
 ## Ket qua mong doi
 
@@ -65,3 +65,4 @@ Hoac viet query xoa rieng theo tien to `sample_`.
   1. `npm run handbook:flatten`
   2. review file review
   3. `npm run handbook:import`
+

@@ -81,7 +81,7 @@ type UnitLog = {
 };
 
 type UnitStatusFilter = 'ALL' | 'SUBMITTED' | 'PENDING';
-const GLOBAL_ASSIGNMENT_PROJECT_NAME = 'THá»NG KÃŠ Sá» LIá»†U SÆ  Káº¾T NQ21';
+const GLOBAL_ASSIGNMENT_PROJECT_NAME = 'THỐNG KÊ SỐ LIỆU SƠ KẾT NQ21';
 
 function normalizeProjectName(value: string) {
   return value
@@ -205,7 +205,7 @@ export default function App() {
         if (!active) {
           return;
         }
-        setAuthError('PhiÃªn Supabase hiá»‡n khÃ´ng cÃ³ email há»£p lá»‡.');
+        setAuthError('Phiên Supabase hiện không có email hợp lệ.');
         setUser(null);
         setUserProfile(null);
         setCurrentView('LOGIN');
@@ -216,7 +216,7 @@ export default function App() {
       try {
         const profile = await getUserProfileByEmail(nextUser.email);
         if (!profile) {
-          setAuthError('TÃ i khoáº£n nÃ y chÆ°a Ä‘Æ°á»£c cáº¥p quyá»n truy cáº­p trong báº£ng user_profiles cá»§a Supabase.');
+          setAuthError('Tài khoản này chưa được cấp quyền truy cập trong bảng user_profiles của Supabase.');
           try {
             await logoutSupabase();
           } catch (error) {
@@ -261,7 +261,7 @@ export default function App() {
         if (!active) {
           return;
         }
-        setAuthError(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ táº£i há»“ sÆ¡ tÃ i khoáº£n tá»« Supabase.');
+        setAuthError(error instanceof Error ? error.message : 'Không thể tải hồ sơ tài khoản từ Supabase.');
         setUser(null);
         setUserProfile(null);
         setCurrentView('LOGIN');
@@ -278,7 +278,7 @@ export default function App() {
         if (!active) {
           return;
         }
-        setAuthError('KhÃ´ng thá»ƒ khá»Ÿi táº¡o phiÃªn Ä‘Äƒng nháº­p tá»« Supabase.');
+        setAuthError('Không thể khởi tạo phiên đăng nhập từ Supabase.');
         setUser(null);
         setIsAuthReady(true);
       });
@@ -499,7 +499,7 @@ export default function App() {
               try {
                 await replaceGlobalAssignmentsInSupabase(sourceRows);
               } catch (bootstrapError) {
-                console.warn('KhÃ´ng thá»ƒ tá»± bootstrap global_assignments tá»« dá»¯ liá»‡u cÅ©:', bootstrapError);
+                console.warn('Không thể tự bootstrap global_assignments từ dữ liệu cũ:', bootstrapError);
               }
             }
           }
@@ -652,7 +652,7 @@ export default function App() {
         try {
           await deleteFolderByPath(prefix);
         } catch (error) {
-          console.warn(`KhÃ´ng thá»ƒ dá»n thÆ° má»¥c lÆ°u trá»¯ ${prefix}:`, error);
+          console.warn(`Không thể dọn thư mục lưu trữ ${prefix}:`, error);
         }
       }
       const projectTemplates = await listTemplatesFromSupabase(projectId);
@@ -702,7 +702,7 @@ export default function App() {
     const duplicateProject = projects.find((project) => normalizeProjectName(project.name) === normalizedName);
 
     if (duplicateProject) {
-      throw new Error(`TÃªn dá»± Ã¡n "${payload.name.trim()}" Ä‘Ã£ tá»“n táº¡i. Vui lÃ²ng chá»n tÃªn khÃ¡c.`);
+      throw new Error(`Tên dự án "${payload.name.trim()}" đã tồn tại. Vui lòng chọn tên khác.`);
     }
 
     const project: Project = {
@@ -727,7 +727,7 @@ export default function App() {
     );
 
     if (duplicateProject) {
-      throw new Error(`TÃªn dá»± Ã¡n "${payload.name.trim()}" Ä‘Ã£ tá»“n táº¡i. Vui lÃ²ng chá»n tÃªn khÃ¡c.`);
+      throw new Error(`Tên dự án "${payload.name.trim()}" đã tồn tại. Vui lòng chọn tên khác.`);
     }
 
     const nextProject: Project = {
@@ -903,14 +903,14 @@ export default function App() {
 
       if (remainingRowsForYear > 0 || remainingDataFilesForYear > 0) {
         throw new Error(
-          `Há»‡ thá»‘ng chÆ°a xÃ³a háº¿t dá»¯ liá»‡u nÄƒm ${year}. CÃ²n ${remainingRowsForYear} dÃ²ng dá»¯ liá»‡u vÃ  ${remainingDataFilesForYear} file metadata.`,
+          `Hệ thống chưa xóa hết dữ liệu năm ${year}. Còn ${remainingRowsForYear} dòng dữ liệu và ${remainingDataFilesForYear} file metadata.`,
         );
       }
 
       return rowsBeforeDelete;
     } catch (error) {
       console.error('Delete year rows error:', error);
-      throw error instanceof Error ? error : new Error('KhÃ´ng thá»ƒ xÃ³a dá»¯ liá»‡u theo nÄƒm.');
+      throw error instanceof Error ? error : new Error('Không thể xóa dữ liệu theo năm.');
     }
   };
 
@@ -922,7 +922,7 @@ export default function App() {
     const normalizedAssigneeKey = getAssignmentKey(assigneeKey);
     const assignmentUser = assignmentUsers.find((item) => item.id === normalizedAssigneeKey);
     if (!assignmentUser) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i theo dÃµi Ä‘á»ƒ lÆ°u phÃ¢n cÃ´ng.');
+      throw new Error('Không tìm thấy người theo dõi để lưu phân công.');
     }
 
     const orderedUnitCodes = UNITS.filter((unit) => unitCodes.includes(unit.code)).map((unit) => unit.code);
@@ -990,7 +990,7 @@ export default function App() {
 
     try {
       await upsertSettingsToSupabase(settings);
-      alert('ÄÃ£ lÆ°u cÃ i Ä‘áº·t!');
+      alert('Đã lưu cài đặt!');
     } catch (error) {
       console.error('Save settings error:', error);
     }
@@ -1003,12 +1003,12 @@ export default function App() {
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('TÃªn Ä‘Æ¡n vá»‹ khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+      throw new Error('Tên đơn vị không được để trống.');
     }
 
     const duplicate = allUnits.find((unit) => unit.name.trim().toLowerCase() === trimmedName.toLowerCase());
     if (duplicate) {
-      throw new Error('TÃªn Ä‘Æ¡n vá»‹ Ä‘Ã£ tá»“n táº¡i trong danh má»¥c.');
+      throw new Error('Tên đơn vị đã tồn tại trong danh mục.');
     }
 
     const maxUnitNumber = allUnits.reduce((maxValue, unit) => {
@@ -1035,7 +1035,7 @@ export default function App() {
 
     const targetUnit = allUnits.find((unit) => unit.code === unitCode);
     if (!targetUnit) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n vá»‹ cáº§n xÃ³a.');
+      throw new Error('Không tìm thấy đơn vị cần xóa.');
     }
 
     await upsertUnitToSupabase({
@@ -1059,7 +1059,7 @@ export default function App() {
 
     const targetUnit = allUnits.find((unit) => unit.code === unitCode);
     if (!targetUnit) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n vá»‹ cáº§n khÃ´i phá»¥c.');
+      throw new Error('Không tìm thấy đơn vị cần khôi phục.');
     }
 
     await upsertUnitToSupabase({
@@ -1079,19 +1079,19 @@ export default function App() {
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('TÃªn Ä‘Æ¡n vá»‹ khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+      throw new Error('Tên đơn vị không được để trống.');
     }
 
     const targetUnit = allUnits.find((unit) => unit.code === unitCode);
     if (!targetUnit) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n vá»‹ cáº§n cáº­p nháº­t.');
+      throw new Error('Không tìm thấy đơn vị cần cập nhật.');
     }
 
     const duplicate = allUnits.find(
       (unit) => unit.code !== unitCode && unit.name.trim().toLowerCase() === trimmedName.toLowerCase(),
     );
     if (duplicate) {
-      throw new Error('TÃªn Ä‘Æ¡n vá»‹ Ä‘Ã£ tá»“n táº¡i trong danh má»¥c.');
+      throw new Error('Tên đơn vị đã tồn tại trong danh mục.');
     }
 
     await upsertUnitToSupabase({
@@ -1108,7 +1108,7 @@ export default function App() {
     }
 
     const confirmed = window.confirm(
-      'XÃ³a toÃ n bá»™ dá»± Ã¡n, biá»ƒu máº«u, dá»¯ liá»‡u tiáº¿p nháº­n, phÃ¢n cÃ´ng vÃ  lá»‹ch sá»­ xuáº¥t bÃ¡o cÃ¡o trÃªn há»‡ thá»‘ng? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.',
+      'Xóa toàn bộ dự án, biểu mẫu, dữ liệu tiếp nhận, phân công và lịch sử xuất báo cáo trên hệ thống? Hành động này không thể hoàn tác.',
     );
     if (!confirmed) {
       return;
@@ -1123,7 +1123,7 @@ export default function App() {
 
       setSelectedProjectId('');
       setCurrentView('DASHBOARD');
-      alert('ÄÃ£ xÃ³a sáº¡ch toÃ n bá»™ dá»¯ liá»‡u há»‡ thá»‘ng.');
+      alert('Đã xóa sạch toàn bộ dữ liệu hệ thống.');
     } catch (error) {
       console.error('Reset system error:', error);
     }
@@ -1322,15 +1322,15 @@ export default function App() {
         }
         return (
           <div className="p-6 md:p-8">
-            <h2 className="page-title">CÃ i Ä‘áº·t há»‡ thá»‘ng</h2>
+            <h2 className="page-title">Cài đặt hệ thống</h2>
             <p className="page-subtitle mt-2 max-w-3xl text-sm">
-              Cáº¥u hÃ¬nh nguá»“n lÆ°u trá»¯ vÃ  Ä‘Æ°á»ng dáº«n tiáº¿p nháº­n dá»¯ liá»‡u táº­p trung cho toÃ n há»‡ thá»‘ng.
+              Cấu hình nguồn lưu trữ và đường dẫn tiếp nhận dữ liệu tập trung cho toàn hệ thống.
             </p>
 
             <div className="mt-8 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_320px] xl:grid-cols-[minmax(0,1.45fr)_300px]">
               <div className="space-y-6">
                 <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Link OneDrive (lÆ°u trá»¯ trá»±c tuyáº¿n)</label>
+                <label className="col-header block mb-3">Link OneDrive (lưu trữ trực tuyến)</label>
                 <div className="flex gap-3">
                   <LinkIcon size={18} className="mt-3 text-[var(--primary)]" />
                   <input
@@ -1344,7 +1344,7 @@ export default function App() {
                 </div>
 
                 <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">ThÆ° má»¥c lÆ°u trá»¯ file gá»‘c</label>
+                <label className="col-header block mb-3">Thư mục lưu trữ file gốc</label>
                 <input
                   type="text"
                   value={settings.storagePath}
@@ -1355,7 +1355,7 @@ export default function App() {
                 </div>
 
                 <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">ThÆ° má»¥c lÆ°u trá»¯ file Ä‘Ã£ tiáº¿p nháº­n</label>
+                <label className="col-header block mb-3">Thư mục lưu trữ file đã tiếp nhận</label>
                 <input
                   type="text"
                   value={settings.receivedPath}
@@ -1378,10 +1378,10 @@ export default function App() {
                 {isAdmin && (
                   <div className="flex flex-wrap gap-3">
                     <button onClick={handleSaveSettings} className="primary-btn">
-                      LÆ°u cáº¥u hÃ¬nh
+                      Lưu cấu hình
                     </button>
                     <button onClick={handleDeleteAllSystemData} className="secondary-btn">
-                      XÃ³a sáº¡ch dá»¯ liá»‡u há»‡ thá»‘ng
+                      Xóa sạch dữ liệu hệ thống
                     </button>
                   </div>
                 )}
@@ -1390,36 +1390,36 @@ export default function App() {
               <div className="space-y-4 xl:max-w-[320px] 2xl:max-w-[340px]">
                 <div className="panel-card rounded-[24px] p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="section-title text-[1.08rem] leading-6">CÃ¡c má»¥c cÃ i Ä‘áº·t dÃ¹ng Ä‘á»ƒ lÃ m gÃ¬?</h3>
+                    <h3 className="section-title text-[1.08rem] leading-6">Các mục cài đặt dùng để làm gì?</h3>
                     <button
                       type="button"
                       onClick={() => setIsSettingsHelpExpanded((current) => !current)}
                       className="secondary-btn px-4 py-2 text-[10px]"
                     >
-                      {isSettingsHelpExpanded ? 'áº¨n hÆ°á»›ng dáº«n' : 'Xem hÆ°á»›ng dáº«n'}
+                      {isSettingsHelpExpanded ? 'Ẩn hướng dẫn' : 'Xem hướng dẫn'}
                     </button>
                   </div>
                   {isSettingsHelpExpanded && (
                   <div className="mt-3 space-y-3 text-[13px] leading-6 text-[var(--ink-soft)]">
                     <p>
-                      <strong className="text-[var(--ink)]">Link OneDrive</strong> dÃ¹ng Ä‘á»ƒ lÆ°u Ä‘Æ°á»ng dáº«n truy cáº­p kho tÃ i liá»‡u trá»±c tuyáº¿n,
-                      giÃºp ngÆ°á»i váº­n hÃ nh má»Ÿ nhanh nÆ¡i chá»©a file máº«u hoáº·c file gá»‘c dÃ¹ng chung.
+                      <strong className="text-[var(--ink)]">Link OneDrive</strong> dùng để lưu đường dẫn truy cập kho tài liệu trực tuyến,
+                      giúp người vận hành mở nhanh nơi chứa file mẫu hoặc file gốc dùng chung.
                     </p>
                     <p>
-                      <strong className="text-[var(--ink)]">ThÆ° má»¥c lÆ°u trá»¯ file gá»‘c</strong> lÃ  nÆ¡i quy Æ°á»›c chá»©a cÃ¡c file Excel ban Ä‘áº§u do
-                      Ä‘Æ¡n vá»‹ gá»­i lÃªn trÆ°á»›c khi chuáº©n hÃ³a hoáº·c nháº­p dá»¯ liá»‡u vÃ o há»‡ thá»‘ng.
+                      <strong className="text-[var(--ink)]">Thư mục lưu trữ file gốc</strong> là nơi quy ước chứa các file Excel ban đầu do
+                      đơn vị gửi lên trước khi chuẩn hóa hoặc nhập dữ liệu vào hệ thống.
                     </p>
                     <p>
-                      <strong className="text-[var(--ink)]">ThÆ° má»¥c lÆ°u trá»¯ file Ä‘Ã£ tiáº¿p nháº­n</strong> lÃ  nÆ¡i quy Æ°á»›c lÆ°u cÃ¡c file Ä‘Ã£ Ä‘Æ°á»£c kiá»ƒm tra,
-                      tiáº¿p nháº­n vÃ  sáºµn sÃ ng Ä‘á»‘i chiáº¿u vá»›i dá»¯ liá»‡u Ä‘Ã£ nháº­p.
+                      <strong className="text-[var(--ink)]">Thư mục lưu trữ file đã tiếp nhận</strong> là nơi quy ước lưu các file đã được kiểm tra,
+                      tiếp nhận và sẵn sàng đối chiếu với dữ liệu đã nhập.
                     </p>
                     <p>
-                      <strong className="text-[var(--ink)]">Quáº£n lÃ½ danh sÃ¡ch Ä‘Æ¡n vá»‹</strong> dÃ¹ng Ä‘á»ƒ váº­n hÃ nh danh má»¥c 132 Ä‘Æ¡n vá»‹ toÃ n há»‡ thá»‘ng.
-                      Khi xÃ³a má»m má»™t Ä‘Æ¡n vá»‹, dá»± Ã¡n cÅ© váº«n giá»¯ nguyÃªn dá»¯ liá»‡u lá»‹ch sá»­, cÃ²n dá»± Ã¡n táº¡o má»›i sau thá»i Ä‘iá»ƒm xÃ³a sáº½ khÃ´ng cÃ²n nhÃ¬n tháº¥y Ä‘Æ¡n vá»‹ Ä‘Ã³.
+                      <strong className="text-[var(--ink)]">Quản lý danh sách đơn vị</strong> dùng để vận hành danh mục 132 đơn vị toàn hệ thống.
+                      Khi xóa mềm một đơn vị, dự án cũ vẫn giữ nguyên dữ liệu lịch sử, còn dự án tạo mới sau thời điểm xóa sẽ không còn nhìn thấy đơn vị đó.
                     </p>
                     <p>
-                      <strong className="text-[var(--ink)]">XÃ³a sáº¡ch dá»¯ liá»‡u há»‡ thá»‘ng</strong> lÃ  thao tÃ¡c quáº£n trá»‹ cao nháº¥t, dÃ¹ng khi cáº§n lÃ m sáº¡ch
-                      toÃ n bá»™ dá»¯ liá»‡u dá»± Ã¡n, biá»ƒu máº«u, tiáº¿p nháº­n vÃ  lá»‹ch sá»­ xuáº¥t bÃ¡o cÃ¡o.
+                      <strong className="text-[var(--ink)]">Xóa sạch dữ liệu hệ thống</strong> là thao tác quản trị cao nhất, dùng khi cần làm sạch
+                      toàn bộ dữ liệu dự án, biểu mẫu, tiếp nhận và lịch sử xuất báo cáo.
                     </p>
                   </div>
                   )}
@@ -1427,7 +1427,7 @@ export default function App() {
 
                 {!isAdmin && (
                   <div className="panel-card rounded-[24px] p-5 text-sm text-[var(--ink-soft)]">
-                    Chá»‰ tÃ i khoáº£n Admin má»›i Ä‘Æ°á»£c phÃ©p thay Ä‘á»•i cáº¥u hÃ¬nh há»‡ thá»‘ng vÃ  quáº£n lÃ½ danh má»¥c Ä‘Æ¡n vá»‹.
+                    Chỉ tài khoản Admin mới được phép thay đổi cấu hình hệ thống và quản lý danh mục đơn vị.
                   </div>
                 )}
               </div>
@@ -1493,9 +1493,9 @@ function SystemSettingsUnitsPanel({
     try {
       await onAddUnit(newUnitName);
       setNewUnitName('');
-      setMessage('ÄÃ£ thÃªm Ä‘Æ¡n vá»‹ má»›i vÃ o danh má»¥c há»‡ thá»‘ng.');
+      setMessage('Đã thêm đơn vị mới vào danh mục hệ thống.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ thÃªm Ä‘Æ¡n vá»‹ má»›i.');
+      setMessage(error instanceof Error ? error.message : 'Không thể thêm đơn vị mới.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1503,7 +1503,7 @@ function SystemSettingsUnitsPanel({
 
   const deleteUnit = async (unit: ManagedUnit) => {
     const confirmed = window.confirm(
-      `ÄÃ¡nh dáº¥u xÃ³a má»m Ä‘Æ¡n vá»‹ "${unit.name}" (${unit.code})? ÄÆ¡n vá»‹ sáº½ bá»‹ áº©n á»Ÿ cÃ¡c dá»± Ã¡n táº¡o má»›i sau thá»i Ä‘iá»ƒm xÃ³a.`,
+      `Đánh dấu xóa mềm đơn vị "${unit.name}" (${unit.code})? Đơn vị sẽ bị ẩn ở các dự án tạo mới sau thời điểm xóa.`,
     );
     if (!confirmed) {
       return;
@@ -1514,16 +1514,16 @@ function SystemSettingsUnitsPanel({
 
     try {
       await onSoftDeleteUnit(unit.code);
-      setMessage(`ÄÃ£ Ä‘Ã¡nh dáº¥u xÃ³a má»m Ä‘Æ¡n vá»‹ ${unit.name}.`);
+      setMessage(`Đã đánh dấu xóa mềm đơn vị ${unit.name}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a má»m Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể xóa mềm đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const restoreUnit = async (unit: ManagedUnit) => {
-    const confirmed = window.confirm(`KhÃ´i phá»¥c Ä‘Æ¡n vá»‹ "${unit.name}" (${unit.code}) vÃ o danh má»¥c sá»­ dá»¥ng?`);
+    const confirmed = window.confirm(`Khôi phục đơn vị "${unit.name}" (${unit.code}) vào danh mục sử dụng?`);
     if (!confirmed) {
       return;
     }
@@ -1533,9 +1533,9 @@ function SystemSettingsUnitsPanel({
 
     try {
       await onRestoreUnit(unit.code);
-      setMessage(`ÄÃ£ khÃ´i phá»¥c Ä‘Æ¡n vá»‹ ${unit.name}.`);
+      setMessage(`Đã khôi phục đơn vị ${unit.name}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ khÃ´i phá»¥c Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể khôi phục đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1558,10 +1558,10 @@ function SystemSettingsUnitsPanel({
 
     try {
       await onRenameUnit(unit.code, editingUnitName);
-      setMessage(`ÄÃ£ cáº­p nháº­t tÃªn Ä‘Æ¡n vá»‹ ${unit.code}.`);
+      setMessage(`Đã cập nhật tên đơn vị ${unit.code}.`);
       cancelEditUnit();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ cáº­p nháº­t tÃªn Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật tên đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1571,13 +1571,13 @@ function SystemSettingsUnitsPanel({
     <div className="panel-card rounded-[24px] p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h3 className="section-title">Quáº£n lÃ½ danh sÃ¡ch Ä‘Æ¡n vá»‹</h3>
+          <h3 className="section-title">Quản lý danh sách đơn vị</h3>
           <p className="page-subtitle mt-2 text-sm">
-            Danh má»¥c ná»n cá»§a toÃ n há»‡ thá»‘ng. MÃ£ Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c tá»± sinh theo sá»‘ lá»›n nháº¥t hiá»‡n cÃ³.
+            Danh mục nền của toàn hệ thống. Mã đơn vị được tự sinh theo số lớn nhất hiện có.
           </p>
         </div>
         <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-          Äang hoáº¡t Ä‘á»™ng {activeUnits.length} Ä‘Æ¡n vá»‹
+          Đang hoạt động {activeUnits.length} đơn vị
         </div>
       </div>
 
@@ -1586,14 +1586,14 @@ function SystemSettingsUnitsPanel({
           value={newUnitName}
           onChange={(event) => setNewUnitName(event.target.value)}
           className="field-input"
-          placeholder="Nháº­p tÃªn Ä‘Æ¡n vá»‹ má»›i"
+          placeholder="Nhập tên đơn vị mới"
         />
         <button
           onClick={submitNewUnit}
           disabled={isSubmitting || !newUnitName.trim()}
           className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
         >
-          ThÃªm Ä‘Æ¡n vá»‹
+          Thêm đơn vị
         </button>
       </div>
 
@@ -1601,7 +1601,7 @@ function SystemSettingsUnitsPanel({
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div>
-          <p className="col-header mb-3">ÄÆ¡n vá»‹ Ä‘ang sá»­ dá»¥ng</p>
+          <p className="col-header mb-3">Đơn vị đang sử dụng</p>
           <div className="max-h-[420px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
             {activeUnits.map((unit) => (
               <div
@@ -1614,7 +1614,7 @@ function SystemSettingsUnitsPanel({
                       value={editingUnitName}
                       onChange={(event) => setEditingUnitName(event.target.value)}
                       className="field-input h-11 py-2 text-sm"
-                      placeholder="Nháº­p tÃªn Ä‘Æ¡n vá»‹"
+                      placeholder="Nhập tên đơn vị"
                     />
                   ) : (
                     <p className="break-words text-sm font-semibold leading-5 text-[var(--ink)]">{unit.name}</p>
@@ -1629,14 +1629,14 @@ function SystemSettingsUnitsPanel({
                         disabled={isSubmitting || !editingUnitName.trim()}
                         className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        LÆ°u tÃªn
+                        Lưu tên
                       </button>
                       <button
                         onClick={cancelEditUnit}
                         disabled={isSubmitting}
                         className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Há»§y
+                        Hủy
                       </button>
                     </>
                   ) : (
@@ -1646,14 +1646,14 @@ function SystemSettingsUnitsPanel({
                         disabled={isSubmitting}
                         className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Äá»•i tÃªn
+                        Đổi tên
                       </button>
                       <button
                         onClick={() => deleteUnit(unit)}
                         disabled={isSubmitting}
                         className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        XÃ³a má»m
+                        Xóa mềm
                       </button>
                     </>
                   )}
@@ -1664,7 +1664,7 @@ function SystemSettingsUnitsPanel({
         </div>
 
         <div>
-          <p className="col-header mb-3">ÄÆ¡n vá»‹ Ä‘Ã£ xÃ³a má»m</p>
+          <p className="col-header mb-3">Đơn vị đã xóa mềm</p>
           <div className="max-h-[420px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
             {deletedUnits.length > 0 ? (
               deletedUnits.map((unit) => (
@@ -1681,13 +1681,13 @@ function SystemSettingsUnitsPanel({
                     disabled={isSubmitting}
                     className="secondary-btn w-full self-start px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40 lg:w-[128px]"
                   >
-                    KhÃ´i phá»¥c
+                    Khôi phục
                   </button>
                 </div>
               ))
             ) : (
               <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--ink-soft)]">
-                ChÆ°a cÃ³ Ä‘Æ¡n vá»‹ nÃ o bá»‹ xÃ³a má»m.
+                Chưa có đơn vị nào bị xóa mềm.
               </div>
             )}
           </div>
@@ -1711,13 +1711,13 @@ function LoginView({
   const submitEmailLogin = async () => {
     setError(null);
     if (!email || !password) {
-      setError('Vui lÃ²ng nháº­p email vÃ  máº­t kháº©u.');
+      setError('Vui lòng nhập email và mật khẩu.');
       return;
     }
     try {
       await onLoginWithEmail(email.trim(), password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'KhÃ´ng thá»ƒ Ä‘Äƒng nháº­p báº±ng tÃ i khoáº£n nÃ y.');
+      setError(err instanceof Error ? err.message : 'Không thể đăng nhập bằng tài khoản này.');
     }
   };
 
@@ -1727,8 +1727,8 @@ function LoginView({
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
           <Lock size={30} />
         </div>
-        <h2 className="section-title">ÄÄƒng nháº­p há»‡ thá»‘ng</h2>
-        <p className="page-subtitle mt-3 text-sm">DÃ nh cho cÃ¡c tÃ i khoáº£n Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t trong Supabase.</p>
+        <h2 className="section-title">Đăng nhập hệ thống</h2>
+        <p className="page-subtitle mt-3 text-sm">Dành cho các tài khoản đã được kích hoạt trong Supabase.</p>
 
         <div className="mt-8 space-y-4">
           <div className="panel-soft rounded-[20px] p-4 text-left">
@@ -1740,23 +1740,23 @@ function LoginView({
               className="field-input"
               placeholder="email@domain.com"
             />
-            <label className="col-header block mt-4 mb-2">Máº­t kháº©u</label>
+            <label className="col-header block mt-4 mb-2">Mật khẩu</label>
             <input
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="field-input"
-              placeholder="Nháº­p máº­t kháº©u"
+              placeholder="Nhập mật khẩu"
             />
             <button onClick={submitEmailLogin} className="primary-btn mt-4 w-full">
-              ÄÄƒng nháº­p báº±ng tÃ i khoáº£n
+              Đăng nhập bằng tài khoản
             </button>
             <p className="mt-3 text-[12px] leading-5 text-[var(--ink-soft)]">
-              TÃ i khoáº£n vÃ  máº­t kháº©u Ä‘Æ°á»£c quáº£n trá»‹ viÃªn cáº¥p sáºµn trÃªn Supabase.
+              Tài khoản và mật khẩu được quản trị viên cấp sẵn trên Supabase.
             </p>
           </div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--ink-soft)]">
-            Chá»‰ tÃ i khoáº£n Ä‘Æ°á»£c cáº¥p quyá»n má»›i cÃ³ thá»ƒ tiáº¿p nháº­n dá»¯ liá»‡u
+            Chỉ tài khoản được cấp quyền mới có thể tiếp nhận dữ liệu
           </p>
           {authError && <p className="text-xs text-red-600">{authError}</p>}
           {error && <p className="text-xs text-red-600">{error}</p>}
@@ -1829,10 +1829,10 @@ function DashboardOverview({
         return;
       }
       const time = row.updatedAt?.toDate ? row.updatedAt.toDate().getTime() : 0;
-      const label = row.updatedBy.displayName || row.updatedBy.email || 'Há»‡ thá»‘ng';
+      const label = row.updatedBy.displayName || row.updatedBy.email || 'Hệ thống';
       const existing = map.get(row.unitCode);
       if (!existing || time > existing.at) {
-        map.set(row.unitCode, { name: label || 'Há»‡ thá»‘ng', at: time });
+        map.set(row.unitCode, { name: label || 'Hệ thống', at: time });
       }
     });
     return map;
@@ -1842,7 +1842,7 @@ function DashboardOverview({
     const map = new Map<string, string>();
     Object.entries(assignments).forEach(([userId, unitCodes]) => {
       const user = assignmentUsers.find((u) => u.id === userId);
-      const name = user?.displayName || user?.email || 'ChÆ°a rÃµ';
+      const name = user?.displayName || user?.email || 'Chưa rõ';
       unitCodes.forEach((code) => {
         map.set(code, name);
       });
@@ -1943,16 +1943,16 @@ function DashboardOverview({
   }, [currentAssignmentKey, shouldLockToCurrentUserAssignments]);
 
   const stats = [
-    { label: 'Tá»•ng Ä‘Æ¡n vá»‹', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
+    { label: 'Tổng đơn vị', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
     {
-      label: 'ÄÆ¡n vá»‹ Ä‘Ã£ tiáº¿p nháº­n',
+      label: 'Đơn vị đã tiếp nhận',
       value: `${submittedCount}/${totalUnits}`,
       icon: FileBarChart,
       iconColor: 'text-[var(--success)]',
       tone: 'bg-[rgba(47,110,73,0.12)]',
     },
     {
-      label: 'Tá»· lá»‡ hoÃ n thÃ nh',
+      label: 'Tỷ lệ hoàn thành',
       value: `${completionRate}%`,
       icon: Activity,
       iconColor: 'text-[var(--primary-dark)]',
@@ -1961,8 +1961,8 @@ function DashboardOverview({
   ];
 
   const pieData = [
-    { name: 'ÄÃ£ tiáº¿p nháº­n', value: submittedCount },
-    { name: 'ChÆ°a tiáº¿p nháº­n', value: totalUnits - submittedCount },
+    { name: 'Đã tiếp nhận', value: submittedCount },
+    { name: 'Chưa tiếp nhận', value: totalUnits - submittedCount },
   ];
 
   const previewLogs = unitLogs.slice(0, 8);
@@ -1987,20 +1987,20 @@ function DashboardOverview({
           type="button"
           onClick={isAuthenticated ? () => void onLogout() : onOpenLogin}
           className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm md:hidden"
-          title={isAuthenticated ? 'ÄÄƒng xuáº¥t' : 'ÄÄƒng nháº­p'}
+          title={isAuthenticated ? 'Đăng xuất' : 'Đăng nhập'}
         >
           {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
         </button>
         <div>
-          <div className="surface-tag">NÄƒm tá»•ng há»£p {dashboardYear}</div>
-          <h2 className="page-title mt-4">Há»† THá»NG QUáº¢N TRá»Š Dá»® LIá»†U TCÄ, ÄV Táº¬P TRUNG</h2>
+          <div className="surface-tag">Năm tổng hợp {dashboardYear}</div>
+          <h2 className="page-title mt-4">HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG</h2>
           {currentUser && (
             <p className="mt-3 text-sm font-bold text-[var(--primary-dark)]">
-              TÃ i khoáº£n Ä‘ang Ä‘Äƒng nháº­p: {currentUser.displayName || currentUser.email || 'ChÆ°a xÃ¡c Ä‘á»‹nh'}
+              Tài khoản đang đăng nhập: {currentUser.displayName || currentUser.email || 'Chưa xác định'}
             </p>
           )}
           <p className="page-subtitle mt-3 max-w-3xl text-sm">
-            Theo dÃµi nhanh tÃ¬nh hÃ¬nh tiáº¿p nháº­n dá»¯ liá»‡u cá»§a cÃ¡c Ä‘Æ¡n vá»‹, sá»‘ biá»ƒu Ä‘Ã£ nháº­p vÃ  má»©c Ä‘á»™ hoÃ n thÃ nh tá»•ng há»£p trÃªn toÃ n há»‡ thá»‘ng.
+            Theo dõi nhanh tình hình tiếp nhận dữ liệu của các đơn vị, số biểu đã nhập và mức độ hoàn thành tổng hợp trên toàn hệ thống.
           </p>
         </div>
       </header>
@@ -2008,7 +2008,7 @@ function DashboardOverview({
       <div className="panel-card rounded-[24px] p-5 md:hidden">
         <div className="space-y-4">
           <div>
-            <p className="col-header mb-2">Chá»n dá»± Ã¡n</p>
+            <p className="col-header mb-2">Chọn dự án</p>
             <select
               value={selectedProjectId}
               onChange={(event) => onSelectProject(event.target.value)}
@@ -2023,7 +2023,7 @@ function DashboardOverview({
           <div className="border-t border-[var(--line)]" />
 
           <div>
-            <p className="col-header mb-2">Chá»n nÄƒm</p>
+            <p className="col-header mb-2">Chọn năm</p>
             <select
               value={dashboardYear}
               onChange={(event) => setDashboardYear(event.target.value)}
@@ -2046,19 +2046,19 @@ function DashboardOverview({
       </div>
 
       <div className="mt-6 panel-card rounded-[24px] p-5 md:hidden">
-        <h3 className="section-title text-base">Tiáº¿n Ä‘á»™ tiáº¿p nháº­n</h3>
+        <h3 className="section-title text-base">Tiến độ tiếp nhận</h3>
         <div className="mt-3 space-y-1.5 text-sm leading-tight text-[var(--ink)]">
-          <p>- Dá»± Ã¡n Ä‘ang cháº¡y: <span className="font-semibold">{activeProjects}</span></p>
-          <p>- Dá»± Ã¡n hoÃ n thÃ nh: <span className="font-semibold">{completedProjects}</span></p>
-          <p>- Tá»•ng sá»‘ Ä‘Æ¡n vá»‹: <span className="font-semibold">{totalUnits}</span></p>
-          <p>- ÄÆ¡n vá»‹ Ä‘Ã£ tiáº¿p nháº­n: <span className="font-semibold">{submittedCount}/{totalUnits}</span></p>
-          <p>- Tá»· lá»‡ hoÃ n thÃ nh: <span className="font-semibold text-[var(--primary-dark)]">{completionRate}%</span></p>
+          <p>- Dự án đang chạy: <span className="font-semibold">{activeProjects}</span></p>
+          <p>- Dự án hoàn thành: <span className="font-semibold">{completedProjects}</span></p>
+          <p>- Tổng số đơn vị: <span className="font-semibold">{totalUnits}</span></p>
+          <p>- Đơn vị đã tiếp nhận: <span className="font-semibold">{submittedCount}/{totalUnits}</span></p>
+          <p>- Tỷ lệ hoàn thành: <span className="font-semibold text-[var(--primary-dark)]">{completionRate}%</span></p>
         </div>
       </div>
 
       <div className="mt-6 hidden grid-cols-1 gap-6 md:grid md:grid-cols-2 xl:grid-cols-4">
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Chá»n dá»± Ã¡n</p>
+          <p className="col-header mb-2">Chọn dự án</p>
           <select
             value={selectedProjectId}
             onChange={(event) => onSelectProject(event.target.value)}
@@ -2074,7 +2074,7 @@ function DashboardOverview({
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Chá»n nÄƒm</p>
+          <p className="col-header mb-2">Chọn năm</p>
           <select
             value={dashboardYear}
             onChange={(event) => setDashboardYear(event.target.value)}
@@ -2087,20 +2087,20 @@ function DashboardOverview({
             ))}
           </select>
           <p className="mt-3 text-xs text-[var(--ink-soft)]">
-            Tiáº¿n Ä‘á»™ vÃ  nháº­t kÃ½ bÃªn dÆ°á»›i sáº½ Ä‘Æ°á»£c lá»c theo Ä‘Ãºng dá»± Ã¡n vÃ  nÄƒm báº¡n Ä‘ang chá»n.
+            Tiến độ và nhật ký bên dưới sẽ được lọc theo đúng dự án và năm bạn đang chọn.
           </p>
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Dá»± Ã¡n Ä‘ang cháº¡y</p>
+          <p className="col-header mb-2">Dự án đang chạy</p>
           <p className="data-value text-3xl font-bold text-[var(--ink)]">{activeProjects}</p>
-          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dá»± Ã¡n chÆ°a káº¿t thÃºc</p>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dự án chưa kết thúc</p>
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Dá»± Ã¡n hoÃ n thÃ nh</p>
+          <p className="col-header mb-2">Dự án hoàn thành</p>
           <p className="data-value text-3xl font-bold text-[var(--ink)]">{completedProjects}</p>
-          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dá»± Ã¡n Ä‘Ã£ Ä‘Ã³ng</p>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dự án đã đóng</p>
         </div>
       </div>
 
@@ -2135,25 +2135,25 @@ function DashboardOverview({
         <div className="mt-6 panel-card rounded-[28px] p-5 md:hidden">
           <div className="flex flex-col gap-3">
             <div>
-              <h3 className="section-title text-base">Nháº­t kÃ½ tiáº¿p nháº­n Ä‘Æ¡n vá»‹</h3>
-              <p className="page-subtitle mt-2 text-sm">Má»Ÿ nhanh danh sÃ¡ch Ä‘Ã£ tiáº¿p nháº­n hoáº·c chÆ°a tiáº¿p nháº­n.</p>
+              <h3 className="section-title text-base">Nhật ký tiếp nhận đơn vị</h3>
+              <p className="page-subtitle mt-2 text-sm">Mở nhanh danh sách đã tiếp nhận hoặc chưa tiếp nhận.</p>
             </div>
             <button
               type="button"
               onClick={() => openLogView('SUBMITTED')}
               className="status-pill status-pill-submitted w-full justify-center"
             >
-              ÄÃ£ tiáº¿p nháº­n
+              Đã tiếp nhận
             </button>
             <button
               type="button"
               onClick={() => openLogView('PENDING')}
               className="status-pill status-pill-pending w-full justify-center"
             >
-              ChÆ°a tiáº¿p nháº­n
+              Chưa tiếp nhận
             </button>
             <button onClick={() => openLogView()} className="primary-btn w-full">
-              Xem táº¥t cáº£ nháº­t kÃ½
+              Xem tất cả nhật ký
             </button>
           </div>
         </div>
@@ -2162,10 +2162,10 @@ function DashboardOverview({
       <div className="mt-6 panel-card rounded-[28px] p-6 md:hidden">
         <div className="flex flex-col gap-3">
           <div>
-            <h3 className="section-title">Biá»ƒu Ä‘á»“ tiáº¿p nháº­n dá»¯ liá»‡u</h3>
-            <p className="page-subtitle mt-2 text-sm">Tá»· lá»‡ Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p dá»¯ liá»‡u so vá»›i tá»•ng sá»‘ Ä‘Æ¡n vá»‹ trong nÄƒm {dashboardYear}.</p>
+            <h3 className="section-title">Biểu đồ tiếp nhận dữ liệu</h3>
+            <p className="page-subtitle mt-2 text-sm">Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm {dashboardYear}.</p>
           </div>
-          <div className="status-pill status-pill-submitted self-start">{submittedCount} Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p</div>
+          <div className="status-pill status-pill-submitted self-start">{submittedCount} đơn vị đã nộp</div>
         </div>
 
         <div className="mt-8 h-[280px] w-full">
@@ -2192,7 +2192,7 @@ function DashboardOverview({
 
         <div className="mt-2 text-center">
           <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Má»©c Ä‘á»™ hoÃ n thÃ nh tiáº¿p nháº­n</p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Mức độ hoàn thành tiếp nhận</p>
         </div>
       </div>
 
@@ -2200,10 +2200,10 @@ function DashboardOverview({
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Biá»ƒu Ä‘á»“ tiáº¿p nháº­n dá»¯ liá»‡u</h3>
-              <p className="page-subtitle mt-2 text-sm">Tá»· lá»‡ Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p dá»¯ liá»‡u so vá»›i tá»•ng sá»‘ Ä‘Æ¡n vá»‹ trong nÄƒm {dashboardYear}.</p>
+              <h3 className="section-title">Biểu đồ tiếp nhận dữ liệu</h3>
+              <p className="page-subtitle mt-2 text-sm">Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm {dashboardYear}.</p>
             </div>
-            <div className="status-pill status-pill-submitted">{submittedCount} Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p</div>
+            <div className="status-pill status-pill-submitted">{submittedCount} đơn vị đã nộp</div>
           </div>
 
           <div className="mt-8 h-[300px] w-full">
@@ -2230,7 +2230,7 @@ function DashboardOverview({
 
           <div className="mt-2 text-center">
             <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Má»©c Ä‘á»™ hoÃ n thÃ nh tiáº¿p nháº­n</p>
+            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Mức độ hoàn thành tiếp nhận</p>
           </div>
         </div>
 
@@ -2238,8 +2238,8 @@ function DashboardOverview({
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Tráº¡ng thÃ¡i tiáº¿p nháº­n Ä‘Æ¡n vá»‹</h3>
-              <p className="page-subtitle mt-2 text-sm">Danh sÃ¡ch Ä‘Æ°á»£c láº¥y tá»« dá»¯ liá»‡u tháº­t Ä‘Ã£ lÆ°u.</p>
+              <h3 className="section-title">Trạng thái tiếp nhận đơn vị</h3>
+              <p className="page-subtitle mt-2 text-sm">Danh sách được lấy từ dữ liệu thật đã lưu.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -2247,14 +2247,14 @@ function DashboardOverview({
                 onClick={() => setStatusFilter((prev) => (prev === 'SUBMITTED' ? 'ALL' : 'SUBMITTED'))}
                 className={statusFilter === 'SUBMITTED' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}
               >
-                ÄÃ£ tiáº¿p nháº­n
+                Đã tiếp nhận
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter((prev) => (prev === 'PENDING' ? 'ALL' : 'PENDING'))}
                 className={statusFilter === 'PENDING' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}
               >
-                ChÆ°a tiáº¿p nháº­n
+                Chưa tiếp nhận
               </button>
             </div>
           </div>
@@ -2269,14 +2269,14 @@ function DashboardOverview({
                   <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
                   <p className="mt-1 text-xs text-[var(--ink-soft)]">
                     {unit.isSubmitted
-                      ? `ÄÃ£ nháº­p ${unit.importedSheets.length}/${projectTemplates.length} biá»ƒu`
-                      : 'ChÆ°a tiáº¿p nháº­n dá»¯ liá»‡u'}
+                      ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} biểu`
+                      : 'Chưa tiếp nhận dữ liệu'}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3 self-start md:self-auto">
                   <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                    {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'ChÆ°a tiáº¿p nháº­n'}
+                    {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                   </span>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
                 </div>
@@ -2286,7 +2286,7 @@ function DashboardOverview({
 
           <div className="mt-6">
             <button onClick={() => openLogView()} className="primary-btn w-full">
-              Xem táº¥t cáº£ nháº­t kÃ½
+              Xem tất cả nhật ký
             </button>
           </div>
         </div>
@@ -2298,9 +2298,9 @@ function DashboardOverview({
           <div className="panel-card w-full max-w-md rounded-[28px] p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="section-title">Báº N Cáº¦N ÄÄ‚NG NHáº¬P Äá»‚ XEM CHI TIáº¾T</h3>
+                <h3 className="section-title">BẠN CẦN ĐĂNG NHẬP ĐỂ XEM CHI TIẾT</h3>
                 <p className="page-subtitle mt-2 text-sm">
-                  HÃ£y Ä‘Äƒng nháº­p Ä‘á»ƒ xem nháº­t kÃ½ chi tiáº¿t vÃ  danh sÃ¡ch Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n cÃ´ng cho tÃ i khoáº£n cá»§a báº¡n.
+                  Hãy đăng nhập để xem nhật ký chi tiết và danh sách đơn vị được phân công cho tài khoản của bạn.
                 </p>
               </div>
               <button
@@ -2318,7 +2318,7 @@ function DashboardOverview({
                 onClick={() => setIsLoginPromptOpen(false)}
                 className="secondary-btn px-5 py-3"
               >
-                ÄÃ³ng
+                Đóng
               </button>
               <button
                 type="button"
@@ -2328,7 +2328,7 @@ function DashboardOverview({
                 }}
                 className="primary-btn px-5 py-3"
               >
-                ÄÄƒng nháº­p
+                Đăng nhập
               </button>
             </div>
           </div>
@@ -2340,12 +2340,12 @@ function DashboardOverview({
           <div className="panel-card flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[30px]">
             <div className="relative flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="surface-tag hidden md:inline-flex">{totalUnits} Ä‘Æ¡n vá»‹ toÃ n há»‡ thá»‘ng</div>
+                <div className="surface-tag hidden md:inline-flex">{totalUnits} đơn vị toàn hệ thống</div>
                 <h3 className="mt-3 text-[1.6rem] font-black leading-tight tracking-[-0.02em] text-[var(--primary-dark)] md:text-[2.3rem]">
-                  NHáº¬T KÃ NÄ‚M {dashboardYear}
+                  NHẬT KÝ NĂM {dashboardYear}
                 </h3>
                 <p className="page-subtitle mt-2 hidden text-sm md:block">
-                  Hiá»ƒn thá»‹ Ä‘áº§y Ä‘á»§ tráº¡ng thÃ¡i cá»§a tá»«ng Ä‘Æ¡n vá»‹ cÃ¹ng sá»‘ biá»ƒu Ä‘Ã£ Ä‘Æ°á»£c nháº­p vÃ o há»‡ thá»‘ng táº­p trung.
+                  Hiển thị đầy đủ trạng thái của từng đơn vị cùng số biểu đã được nhập vào hệ thống tập trung.
                 </p>
               </div>
 
@@ -2353,14 +2353,14 @@ function DashboardOverview({
                 {isAdmin && assignees.length > 0 && (
                   <div className="panel-soft rounded-full px-3 py-2">
                     <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--ink-soft)]">
-                      Lá»c theo ngÆ°á»i theo dÃµi
+                      Lọc theo người theo dõi
                     </label>
                     <select
                       value={selectedAssignee}
                       onChange={(event) => setSelectedAssignee(event.target.value)}
                       className="mt-1 w-full bg-transparent text-xs font-semibold text-[var(--ink)] focus:outline-none"
                     >
-                      <option value="ALL">Táº¥t cáº£ ngÆ°á»i theo dÃµi</option>
+                      <option value="ALL">Tất cả người theo dõi</option>
                       {assignees.map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.displayName || user.email}
@@ -2371,7 +2371,7 @@ function DashboardOverview({
                 )}
                 {shouldLockToCurrentUserAssignments && (
                   <div className="panel-soft rounded-full px-3 py-2 text-xs font-semibold text-[var(--primary-dark)]">
-                    Äang xem Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n cÃ´ng cho {currentUser?.displayName || currentUser?.email || 'báº¡n'}
+                    Đang xem đơn vị được phân công cho {currentUser?.displayName || currentUser?.email || 'bạn'}
                   </div>
                 )}
                 <button
@@ -2379,7 +2379,7 @@ function DashboardOverview({
                   className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/85 text-[var(--primary-dark)] md:static md:h-auto md:w-auto md:gap-2 md:self-start md:rounded-[18px] md:px-4 md:py-3"
                 >
                   <X size={16} />
-                  <span className="hidden md:inline">ÄÃ³ng</span>
+                  <span className="hidden md:inline">Đóng</span>
                 </button>
               </div>
             </div>
@@ -2387,27 +2387,27 @@ function DashboardOverview({
             <div className="border-b border-[var(--line)] bg-[var(--primary-soft)] px-6 py-4">
               <div className="space-y-1 text-sm leading-tight text-[var(--ink)] md:hidden">
                 <p>
-                  - Dá»± Ã¡n: <span className="font-semibold">{selectedProject.name}</span>
+                  - Dự án: <span className="font-semibold">{selectedProject.name}</span>
                 </p>
                 <p>
-                  - ÄÃ£ tiáº¿p nháº­n: <span className="font-semibold text-[var(--success)]">{submittedCount}</span>
+                  - Đã tiếp nhận: <span className="font-semibold text-[var(--success)]">{submittedCount}</span>
                 </p>
                 <p>
-                  - ChÆ°a tiáº¿p nháº­n: <span className="font-semibold text-[var(--warning)]">{totalUnits - submittedCount}</span>
+                  - Chưa tiếp nhận: <span className="font-semibold text-[var(--warning)]">{totalUnits - submittedCount}</span>
                 </p>
               </div>
 
               <div className="hidden grid-cols-3 gap-4 md:grid">
                 <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <p className="col-header mb-1">Tá»•ng Ä‘Æ¡n vá»‹</p>
+                  <p className="col-header mb-1">Tổng đơn vị</p>
                   <p className="data-value text-2xl font-bold">{totalUnits}</p>
                 </div>
                 <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <p className="col-header mb-1">ÄÃ£ tiáº¿p nháº­n</p>
+                  <p className="col-header mb-1">Đã tiếp nhận</p>
                   <p className="data-value text-2xl font-bold text-[var(--success)]">{submittedCount}</p>
                 </div>
                 <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <p className="col-header mb-1">ChÆ°a tiáº¿p nháº­n</p>
+                  <p className="col-header mb-1">Chưa tiếp nhận</p>
                   <p className="data-value text-2xl font-bold text-[var(--warning)]">{totalUnits - submittedCount}</p>
                 </div>
               </div>
@@ -2418,8 +2418,8 @@ function DashboardOverview({
                 {unitLogs.length === 0 && (
                   <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-5 text-sm text-[var(--ink-soft)]">
                     {isAuthenticated && !isAdmin
-                      ? 'TÃ i khoáº£n cá»§a báº¡n hiá»‡n chÆ°a Ä‘Æ°á»£c phÃ¢n cÃ´ng Ä‘Æ¡n vá»‹ nÃ o trong dá»± Ã¡n nÃ y.'
-                      : 'ChÆ°a cÃ³ Ä‘Æ¡n vá»‹ nÃ o phÃ¹ há»£p vá»›i bá»™ lá»c hiá»‡n táº¡i.'}
+                      ? 'Tài khoản của bạn hiện chưa được phân công đơn vị nào trong dự án này.'
+                      : 'Chưa có đơn vị nào phù hợp với bộ lọc hiện tại.'}
                   </div>
                 )}
                 {unitLogs.map((unit, index) => (
@@ -2429,8 +2429,8 @@ function DashboardOverview({
                   >
                     <div className="flex items-center justify-between gap-3 md:hidden">
                       <p className="min-w-0 text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
-                      <span className={unit.isSubmitted ? 'status-pill status-pill-submitted shrink-0' : 'status-pill status-pill-pending shrink-0'}>
-                        {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'ChÆ°a tiáº¿p nháº­n'}
+                    <span className={unit.isSubmitted ? 'status-pill status-pill-submitted shrink-0' : 'status-pill status-pill-pending shrink-0'}>
+                        {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                       </span>
                     </div>
 
@@ -2446,26 +2446,26 @@ function DashboardOverview({
                         </div>
                         <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">
                           {unit.isSubmitted
-                            ? `ÄÃ£ lÆ°u ${unit.rowCount.toLocaleString('vi-VN')} dÃ²ng dá»¯ liá»‡u.`
-                            : 'Hiá»‡n chÆ°a cÃ³ dá»¯ liá»‡u nÃ o Ä‘Æ°á»£c tiáº¿p nháº­n trong nÄƒm nÃ y.'}
+                            ? `Đã lưu ${unit.rowCount.toLocaleString('vi-VN')} dòng dữ liệu.`
+                            : 'Hiện chưa có dữ liệu nào được tiếp nhận trong năm này.'}
                         </p>
                         <div className="mt-2 text-[11px] text-[var(--ink-soft)]">
-                          {isAdmin && <p>NgÆ°á»i theo dÃµi: {unit.assignedTo || 'ChÆ°a phÃ¢n cÃ´ng'}</p>}
-                          <p>Cáº­p nháº­t gáº§n nháº¥t: {unit.lastUpdatedBy || 'ChÆ°a cÃ³'}</p>
+                          {isAdmin && <p>Người theo dõi: {unit.assignedTo || 'Chưa phân công'}</p>}
+                          <p>Cập nhật gần nhất: {unit.lastUpdatedBy || 'Chưa có'}</p>
                         </div>
                       </div>
 
                       <div className="min-w-0">
-                        <p className="col-header mb-2">Biá»ƒu Ä‘Ã£ nháº­p</p>
+                        <p className="col-header mb-2">Biểu đã nhập</p>
                         <p className="truncate text-sm text-[var(--ink)]">
-                          {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'ChÆ°a cÃ³ biá»ƒu nÃ o'}
+                          {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'Chưa có biểu nào'}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-2 self-start md:self-auto">
                         {unit.isSubmitted && <CheckCircle2 size={16} className="text-[var(--success)]" />}
                         <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                          {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'ChÆ°a tiáº¿p nháº­n'}
+                          {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                         </span>
                       </div>
                     </div>
