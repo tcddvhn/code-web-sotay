@@ -137,3 +137,11 @@
 - Neu chua chay schema truoc, Supabase se bao loi `relation "handbook_nodes" does not exist`.
 - Dot nay da sua triệt để lỗi font/mojibake cho Dashboard, Login và Cài đặt của Hệ thống dữ liệu hiện hành trong `src/App.tsx` theo yêu cầu của user.
 - Viec sua nay da duoc user phe duyet truoc khi thuc hien vi co anh huong den he thong dang chay.
+
+## Cap nhat bo sung 2026-03-30 - sua loi he thong du lieu hien hanh da duoc phe duyet
+
+- User da phe duyet cho phep sua He thong du lieu hien hanh de xu ly 2 nhom loi:
+  1. loi mojibake/font o Dashboard va Cai dat
+  2. sai logic Dashboard o nhat ky theo doi don vi tiep nhan giua admin va contributor
+- Da tach log ky thuat rieng tai `docs/system-data-maintenance-log.md` de tiep tuc theo doi cac thay doi da duoc phe duyet tren he thong du lieu hien hanh.
+- Da bo sung script `npm run check:encoding` de canh bao som loi ma hoa tieng Viet truoc khi commit.

@@ -1,4 +1,4 @@
-import { AssignmentUser, UserProfile } from './types';
+﻿import { AssignmentUser, UserProfile } from './types';
 
 export function getAssignmentKey(email?: string | null) {
   return email?.trim().toLowerCase() || '';
@@ -21,3 +21,4 @@ export function buildAssignmentUsers(userProfiles: UserProfile[]): AssignmentUse
       return (left.displayName || left.email).localeCompare(right.displayName || right.email, 'vi');
     });
 }
+

@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "check:encoding": "node scripts/check-encoding.mjs",
     "handbook:flatten": "tsx scripts/flatten-handbook-export.ts",
     "handbook:import": "tsx scripts/import-handbook-flat.ts"
   },
@@ -39,5 +40,3 @@
     "vite": "^6.2.0"
   }
 }
-
-

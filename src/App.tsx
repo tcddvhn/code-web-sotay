@@ -464,7 +464,7 @@ export default function App() {
   }, [isAuthenticated, isAdmin, isAuthReady]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isAdmin) {
+    if (!isAuthenticated) {
       setAssignments({});
       return;
     }
@@ -478,7 +478,7 @@ export default function App() {
 
         let sourceRows = rows;
 
-        if (sourceRows.length === 0) {
+        if (sourceRows.length === 0 && isAdmin) {
           const legacySourceProject = projects.find(
             (project) => normalizeProjectName(project.name) === normalizeProjectName(GLOBAL_ASSIGNMENT_PROJECT_NAME),
           );
@@ -513,6 +513,10 @@ export default function App() {
       })
       .catch((error) => {
         console.error('Supabase global assignments load error:', error);
+        if (!isAdmin) {
+          return;
+        }
+
         const legacySourceProject = projects.find(
           (project) => normalizeProjectName(project.name) === normalizeProjectName(GLOBAL_ASSIGNMENT_PROJECT_NAME),
         );
@@ -1925,8 +1929,16 @@ function DashboardOverview({
     return assigneeFilteredLogs;
   }, [allUnitLogs, assignments, currentAssignedUnitCodes, isAdmin, isAuthenticated, selectedAssignee, statusFilter]);
 
-  const submittedCount = allUnitLogs.filter((unit) => unit.isSubmitted).length;
-  const totalUnits = units.length;
+  const dashboardScopeLogs = useMemo<UnitLog[]>(() => {
+    if (isAuthenticated && !isAdmin) {
+      return allUnitLogs.filter((unit) => currentAssignedUnitCodes.includes(unit.code));
+    }
+
+    return allUnitLogs;
+  }, [allUnitLogs, currentAssignedUnitCodes, isAdmin, isAuthenticated]);
+
+  const submittedCount = dashboardScopeLogs.filter((unit) => unit.isSubmitted).length;
+  const totalUnits = dashboardScopeLogs.length;
   const completionRate = totalUnits === 0 ? '0.0' : ((submittedCount / totalUnits) * 100).toFixed(1);
 
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
