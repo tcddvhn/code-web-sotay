@@ -1,5 +1,5 @@
-﻿import React, { useState } from 'react';
-import { BellRing, Bookmark, Clock3, Database, ExternalLink, FolderOpen, MessageSquareQuote, Search } from 'lucide-react';
+import React, { useState } from 'react';
+import { BellRing, Bookmark, BookOpen, Clock3, Database, Folder, LibraryBig, MessageSquareQuote, Search } from 'lucide-react';
 import { HANDBOOK_QUICK_LINKS } from '../config';
 import { HandbookActivityCardItem, HandbookNoticeItem, HandbookSectionSummary } from '../types';
 
@@ -44,6 +44,8 @@ export function HomePage({
   const [feedbackContent, setFeedbackContent] = useState('');
   const [feedbackRating, setFeedbackRating] = useState('hữu ích');
 
+  const totalContent = summaries.reduce((sum, item) => sum + item.count, 0);
+
   const handleSubmitFeedback = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!onSubmitFeedback || !feedbackContent.trim()) {
@@ -60,223 +62,195 @@ export function HomePage({
   };
 
   return (
-    <div className="space-y-5">
-      <section
-        className="rounded-[16px] px-4 py-5 text-white shadow-[0_18px_34px_rgba(125,7,9,0.2)] md:px-6 md:py-6"
-        style={{
-          background: 'linear-gradient(135deg, rgba(179,15,20,0.96), rgba(141,17,19,0.92))',
-        }}
-      >
-        <h2 className="font-['Times_New_Roman'] text-[1.45rem] font-extrabold md:text-[1.75rem]">
-          Bạn cần tôi giúp gì hôm nay?
-        </h2>
-        <p className="mt-1 text-sm leading-6 text-white/85">
-          Tra cứu nhanh quy định, câu hỏi, biểu mẫu và tài liệu theo đúng ngôn ngữ người dùng.
-        </p>
-        <button
-          type="button"
-          onClick={onOpenSearch}
-          className="mt-4 flex w-full items-center gap-3 rounded-[12px] bg-white px-3 py-2 text-left text-[var(--ink)]"
-        >
-          <Search size={18} className="text-[var(--primary-dark)]" />
-          <div className="min-w-0">
-            <div className="text-sm font-bold">Nhập từ khóa để tìm trong toàn bộ Sổ tay</div>
-            <div className="text-xs text-[var(--ink-soft)]">Ví dụ: mất thẻ đảng, miễn sinh hoạt, kết nạp, chuyển sinh hoạt...</div>
-          </div>
-        </button>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {['Mất thẻ đảng', 'Chuyển sinh hoạt', 'Mẫu báo cáo', 'Tài liệu gốc'].map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={onOpenSearch}
-              className="rounded-full border border-white/30 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
-            >
-              {item}
+    <div>
+      <div className="legacy-hero-search">
+        <h2>Bạn cần tôi giúp gì hôm nay?</h2>
+        <p>Tra cứu nhanh nội dung nghiệp vụ, câu hỏi, biểu mẫu và tài liệu theo đúng cách gọi quen thuộc.</p>
+        <div className="legacy-hero-search-box">
+          <input
+            type="text"
+            placeholder="Nhập từ khóa (mất thẻ đảng...)"
+            readOnly
+            onClick={onOpenSearch}
+          />
+          <button type="button" onClick={onOpenSearch}>TÌM</button>
+        </div>
+        <div className="legacy-hero-search-actions">
+          <button type="button" className="legacy-chip" onClick={onOpenSearch}>Hỏi AI</button>
+        </div>
+        <div className="legacy-chip-row mt-3">
+          {['mất thẻ đảng', 'chuyển sinh hoạt', 'miễn sinh hoạt', 'mẫu báo cáo'].map((chip) => (
+            <button key={chip} type="button" className="legacy-chip" onClick={onOpenSearch}>
+              {chip}
             </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
-          {(recentViews.length > 0 || favorites.length > 0) && (
-            <div className="space-y-4">
-              {recentViews.length > 0 && (
-                <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
-                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--ink)]">
-                    <Clock3 size={16} className="text-[var(--primary-dark)]" />
-                    Vừa xem gần đây
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {recentViews.slice(0, 4).map((item) => (
-                      <button
-                        key={`recent-${item.id}`}
-                        type="button"
-                        onClick={() => onOpenNode(item.id, item.section)}
-                        className="flex w-full items-start justify-between gap-3 rounded-[10px] border border-[var(--line)] px-3 py-2 text-left transition hover:bg-[var(--surface-soft)]"
-                      >
-                        <div>
-                          <div className="text-sm font-bold text-[var(--ink)]">{item.title}</div>
-                          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
-                            {SECTION_LABELS[item.section]}
-                            {item.tag ? ` • ${item.tag}` : ''}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {favorites.length > 0 && (
-                <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
-                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--ink)]">
-                    <Bookmark size={16} className="text-[var(--primary-dark)]" />
-                    Mục yêu thích
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {favorites.slice(0, 4).map((item) => (
-                      <button
-                        key={`favorite-${item.id}`}
-                        type="button"
-                        onClick={() => onOpenNode(item.id, item.section)}
-                        className="flex w-full items-start justify-between gap-3 rounded-[10px] border border-[var(--line)] px-3 py-2 text-left transition hover:bg-[var(--surface-soft)]"
-                      >
-                        <div>
-                          <div className="text-sm font-bold text-[var(--ink)]">{item.title}</div>
-                          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
-                            {SECTION_LABELS[item.section]}
-                            {item.tag ? ` • ${item.tag}` : ''}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
-          )}
-
-          <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
-            <div className="flex items-center gap-2 text-base font-bold text-[var(--ink)]">
-              <FolderOpen size={18} className="text-[var(--primary-dark)]" />
-              Danh mục chính
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {HANDBOOK_QUICK_LINKS.map((item) => (
-                <button
-                  key={item.title}
-                  type="button"
-                  onClick={() => onSelectSection(item.section)}
-                  className="rounded-[12px] border border-[var(--line)] px-4 py-3 text-left transition hover:bg-[var(--surface-soft)]"
-                >
-                  <div className="text-sm font-bold text-[var(--primary-dark)]">{item.title}</div>
-                  <div className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">{item.description}</div>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
-            <div className="flex items-center gap-2 text-base font-bold text-[var(--ink)]">
-              <Database size={18} className="text-[var(--primary-dark)]" />
-              Thống kê nội dung
-            </div>
-            <div className="mt-3 space-y-2">
-              {summaries.map((item) => (
-                <button
-                  key={item.section}
-                  type="button"
-                  onClick={() => onSelectSection(item.section)}
-                  className="flex w-full items-center justify-between rounded-[10px] border border-[var(--line)] px-3 py-3 text-left transition hover:bg-[var(--surface-soft)]"
-                >
-                  <div className="text-sm font-bold text-[var(--ink)]">{SECTION_LABELS[item.section]}</div>
-                  <div className="text-xl font-extrabold text-[var(--primary-dark)]">{item.count}</div>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {feedbackEnabled && onSubmitFeedback ? (
-            <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
-              <div className="flex items-center gap-2 text-base font-bold text-[var(--ink)]">
-                <MessageSquareQuote size={18} className="text-[var(--primary-dark)]" />
-                Góp ý nhanh cho Sổ tay mới
-              </div>
-              <div className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">
-                {currentUserName ? `Đăng nhập với ${currentUserName}.` : 'Bạn đang đăng nhập và có thể gửi góp ý nhanh.'}
-              </div>
-              <form className="mt-3 space-y-3" onSubmit={handleSubmitFeedback}>
-                <select
-                  value={feedbackRating}
-                  onChange={(event) => setFeedbackRating(event.target.value)}
-                  className="w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
-                >
-                  <option value="hữu ích">Nội dung hữu ích</option>
-                  <option value="cần bổ sung">Cần bổ sung</option>
-                  <option value="khó tìm">Khó tìm nội dung</option>
-                  <option value="giao diện">Góp ý giao diện</option>
-                </select>
-                <textarea
-                  value={feedbackContent}
-                  onChange={(event) => setFeedbackContent(event.target.value)}
-                  placeholder="Nhập góp ý hoặc nhu cầu chỉnh sửa nội dung..."
-                  className="min-h-[110px] w-full rounded-[10px] border border-[var(--line)] bg-white px-3 py-3 text-sm leading-6 outline-none"
-                />
-                {feedbackMessage ? <div className="text-sm font-semibold text-emerald-700">{feedbackMessage}</div> : null}
-                {feedbackError ? <div className="text-sm font-semibold text-[var(--primary-dark)]">{feedbackError}</div> : null}
-                <button type="submit" disabled={feedbackSubmitting || !feedbackContent.trim()} className="primary-btn disabled:cursor-not-allowed disabled:opacity-60">
-                  {feedbackSubmitting ? 'Đang gửi...' : 'Gửi góp ý'}
-                </button>
-              </form>
-            </section>
-          ) : null}
+      {recentViews[0] ? (
+        <div className="legacy-continue-banner">
+          <div className="legacy-continue-text">Tiếp tục đọc mục:</div>
+          <div className="legacy-continue-title">{recentViews[0].title}</div>
+          <button type="button" className="legacy-btn-mini legacy-btn-mini-detail" onClick={() => onOpenNode(recentViews[0].id, recentViews[0].section)}>
+            Mở lại
+          </button>
         </div>
+      ) : null}
 
-        <div className="space-y-4">
-          <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
-            <div className="flex items-center gap-2 text-base font-bold text-[var(--ink)]">
-              <BellRing size={18} className="text-[var(--primary-dark)]" />
-              Thông báo mới
-            </div>
-            <div className="mt-3 space-y-3">
-              {notices.length > 0 ? (
-                notices.map((notice) => (
-                  <div key={notice.id} className="border-b border-[var(--line)] pb-3 last:border-b-0 last:pb-0">
-                    <div className="text-sm font-bold text-[var(--ink)]">{notice.title}</div>
-                    <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
-                      {notice.publishedAt ? new Date(notice.publishedAt).toLocaleDateString('vi-VN') : 'Chưa công bố ngày'}
-                    </div>
-                    <div className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">{notice.content}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm leading-6 text-[var(--ink-soft)]">Chưa có thông báo nào trong bảng handbook_notices.</div>
-              )}
-            </div>
-          </section>
+      {favorites.length > 0 ? (
+        <div className="legacy-recent-box">
+          <div className="legacy-recent-title">
+            <BookOpen size={18} />
+            Mục yêu thích
+          </div>
+          <div>
+            {favorites.slice(0, 6).map((item) => (
+              <button
+                key={`favorite-${item.id}`}
+                type="button"
+                onClick={() => onOpenNode(item.id, item.section)}
+                className="legacy-favorite-item"
+              >
+                <Bookmark size={16} className="shrink-0 text-[var(--legacy-primary)]" />
+                <span className="truncate">{item.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
-          <section className="rounded-[14px] border border-[var(--line)] bg-white px-4 py-4">
-            <div className="text-sm font-bold text-[var(--ink)]">Lối vào Hệ thống dữ liệu</div>
-            <div className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-              Trên mobile, mục này sẽ đi bằng menu phụ để giữ 5 tab Sổ tay quen thuộc.
-            </div>
-            <button type="button" onClick={onOpenDataSystem} className="secondary-btn mt-3 inline-flex items-center gap-2">
-              <Database size={16} />
-              Vào Hệ thống dữ liệu
+      {recentViews.length > 0 ? (
+        <div className="legacy-recent-box">
+          <div className="legacy-recent-title">
+            <Clock3 size={18} />
+            Vừa xem gần đây
+          </div>
+          <div>
+            {recentViews.slice(0, 6).map((item) => (
+              <button
+                key={`recent-${item.id}`}
+                type="button"
+                onClick={() => onOpenNode(item.id, item.section)}
+                className="legacy-recent-list-item"
+              >
+                <Clock3 size={16} className="shrink-0 text-[var(--legacy-text-muted)]" />
+                <span className="truncate">{item.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="legacy-recent-title" style={{ border: 'none', color: 'var(--legacy-text-main)', fontSize: '1.1rem', marginTop: '25px' }}>
+        <Folder size={20} color="var(--legacy-primary)" />
+        Danh mục Quy định chính
+      </div>
+      <div className="legacy-home-grid">
+        {HANDBOOK_QUICK_LINKS.map((item) => {
+          const Icon = item.section === 'quy-dinh' ? LibraryBig : item.section === 'hoi-dap' ? MessageSquareQuote : item.section === 'bieu-mau' ? Bookmark : BellRing;
+          return (
+            <button key={item.title} type="button" className="legacy-home-card" onClick={() => onSelectSection(item.section)}>
+              <div className="legacy-card-icon">
+                <Icon size={28} />
+              </div>
+              <div className="legacy-card-title">{item.title}</div>
             </button>
-          </section>
+          );
+        })}
+      </div>
 
-          <a
-            href="https://supabase.com/dashboard/project/taivkgwwinakcoxhquyv/editor"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary-dark)] hover:underline"
-          >
-            Mở Supabase để kiểm tra dữ liệu mẫu
-            <ExternalLink size={15} />
-          </a>
+      <div className="legacy-recent-title" style={{ border: 'none', color: 'var(--legacy-text-main)', fontSize: '1.1rem', marginTop: '35px' }}>
+        <Database size={20} color="var(--legacy-primary)" />
+        Thống kê truy cập
+      </div>
+      <div className="legacy-stats-box">
+        <div className="legacy-stat-row">
+          <span>Tổng số nội dung Sổ tay</span>
+          <b>{totalContent}</b>
+        </div>
+        {summaries.map((item) => (
+          <div key={item.section} className="legacy-stat-row">
+            <span>{SECTION_LABELS[item.section]}</span>
+            <b>{item.count}</b>
+          </div>
+        ))}
+        <div className="legacy-stat-row">
+          <span>Lượt yêu thích gần đây</span>
+          <b>{favorites.length}</b>
+        </div>
+      </div>
+
+      {feedbackEnabled && onSubmitFeedback ? (
+        <div className="legacy-action-group">
+          <form className="legacy-recent-box" onSubmit={handleSubmitFeedback}>
+            <div className="legacy-recent-title">
+              <MessageSquareQuote size={18} />
+              Đóng góp ý kiến
+            </div>
+            <div className="mb-3 text-sm text-[var(--legacy-text-muted)]">
+              {currentUserName ? `Đăng nhập với ${currentUserName}.` : 'Bạn đang đăng nhập và có thể gửi góp ý nhanh.'}
+            </div>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {['hữu ích', 'cần bổ sung', 'khó tìm', 'giao diện'].map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setFeedbackRating(item)}
+                  className="legacy-chip"
+                  style={feedbackRating === item ? { borderColor: 'var(--legacy-primary)', color: 'var(--legacy-primary)' } : undefined}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={feedbackContent}
+              onChange={(event) => setFeedbackContent(event.target.value)}
+              placeholder="Nhập góp ý hoặc nhu cầu chỉnh sửa nội dung..."
+              className="min-h-[120px] w-full rounded-[4px] border border-[var(--legacy-border)] bg-[var(--legacy-bg-box)] px-3 py-3 text-[0.95rem] outline-none"
+            />
+            {feedbackMessage ? <div className="mt-3 text-sm font-semibold text-emerald-700">{feedbackMessage}</div> : null}
+            {feedbackError ? <div className="mt-3 text-sm font-semibold text-[var(--legacy-primary-dark)]">{feedbackError}</div> : null}
+            <div className="mt-4 flex gap-3">
+              <button type="submit" disabled={feedbackSubmitting || !feedbackContent.trim()} className="legacy-action-btn-flat legacy-feedback-btn max-w-[220px] disabled:cursor-not-allowed disabled:opacity-60">
+                <MessageSquareQuote size={20} />
+                <span>{feedbackSubmitting ? 'ĐANG GỬI...' : 'ĐÓNG GÓP Ý KIẾN'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {notices.length > 0 ? (
+        <div className="legacy-recent-box">
+          <div className="legacy-recent-title">
+            <BellRing size={18} />
+            Thông báo mới
+          </div>
+          <div className="space-y-3">
+            {notices.map((notice) => (
+              <div key={notice.id} className="border-b border-[var(--legacy-border-light)] pb-3 last:border-b-0 last:pb-0">
+                <div className="font-bold text-[var(--legacy-text-main)]">{notice.title}</div>
+                <div className="mt-1 text-sm text-[var(--legacy-text-muted)]">{notice.content}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="legacy-recent-box">
+        <div className="legacy-recent-title">
+          <Database size={18} />
+          Hệ thống dữ liệu
+        </div>
+        <div className="text-sm text-[var(--legacy-text-muted)]">
+          Truy cập khu quản trị dữ liệu, tiếp nhận file và báo cáo tổng hợp.
+        </div>
+        <div className="mt-4">
+          <button type="button" className="legacy-action-btn-flat legacy-feedback-btn max-w-[220px]" onClick={onOpenDataSystem}>
+            <Database size={20} />
+            <span>VÀO HỆ THỐNG DỮ LIỆU</span>
+          </button>
         </div>
       </div>
     </div>

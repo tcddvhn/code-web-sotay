@@ -19,7 +19,7 @@ export function HandbookTopBar({
       className="fixed inset-x-0 top-0 z-40 border-b border-[rgba(255,255,255,0.18)] text-white shadow-[0_14px_30px_rgba(125,7,9,0.22)]"
       style={{
         background:
-          'linear-gradient(rgba(179,15,20,0.9), rgba(179,15,20,0.9)), radial-gradient(circle at top left, rgba(255,255,255,0.22), transparent 40%)',
+          "linear-gradient(rgba(204, 0, 0, 0.85), rgba(204, 0, 0, 0.85)), url('https://i.postimg.cc/zf6J3RQ8/img_5_hinh_nen_powerpoint_trong_dong.jpg') center/cover",
       }}
     >
       <div className="mx-auto flex h-[72px] max-w-[1520px] items-center gap-2 px-3 md:h-[74px] md:px-6 xl:px-8">

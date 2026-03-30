@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { SectionPage } from './SectionPage';
+import React from 'react';
+import { LegacyListSectionPage } from './LegacyListSectionPage';
 import { HandbookNodeOutlineItem } from '../types';
 
 export function DocumentsPage(props: {
@@ -11,11 +11,10 @@ export function DocumentsPage(props: {
   onToggleFavorite?: (nodeId: string) => void;
 }) {
   return (
-    <SectionPage
-      eyebrow="Đối chiếu và tham khảo"
-      title="Tài liệu"
-      description="Kho tài liệu tham khảo, văn bản nền và các tham chiếu PDF. Đây là khu dành cho người dùng đọc, tải và đối chiếu tài liệu gốc."
-      helperText="Phù hợp cho tài liệu dài, văn bản gốc và các PDF cần đối chiếu nhiều lần."
+    <LegacyListSectionPage
+      section="tai-lieu"
+      title="Danh mục Tài liệu"
+      description="Tổng hợp các văn bản, hướng dẫn và tài liệu tham khảo để tra cứu nhanh."
       {...props}
     />
   );

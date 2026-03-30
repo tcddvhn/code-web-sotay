@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Database, ShieldUser, X } from 'lucide-react';
 import { HANDBOOK_NAV_ITEMS } from './config';
+import './handbookLegacySkin.css';
 import { HandbookBottomNav } from './components/HandbookBottomNav';
 import { HandbookSecondaryMenu } from './components/HandbookSecondaryMenu';
 import { HandbookTopBar } from './components/HandbookTopBar';
@@ -576,7 +577,7 @@ export function HandbookShell({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--surface-alt)]">
+    <div className="handbook-legacy min-h-screen bg-[var(--surface-alt)]">
       <HandbookTopBar
         title={getSectionTitle(activeSection)}
         onToggleMenu={() => setIsSecondaryMenuOpen(true)}
@@ -593,7 +594,7 @@ export function HandbookShell({
       />
 
       <div className="mx-auto flex max-w-[1520px] gap-6 px-4 pb-24 pt-[88px] md:px-6 md:pb-8 md:pt-[98px] xl:px-8">
-        <aside className="sticky top-[98px] hidden h-[calc(100vh-122px)] w-[88px] shrink-0 rounded-[18px] border border-[var(--line)] bg-white md:block">
+        <aside className="sticky top-[98px] hidden h-[calc(100vh-122px)] w-[210px] shrink-0 border border-[var(--legacy-border)] bg-[var(--legacy-bg-box)] md:block">
           <div className="flex h-full flex-col items-stretch py-3">
             {HANDBOOK_NAV_ITEMS.map((item) => {
               const isActive = item.id === activeSection;
@@ -602,12 +603,12 @@ export function HandbookShell({
                   key={item.id}
                   type="button"
                   onClick={() => setActiveSection(item.id)}
-                  className={`mx-2 mb-2 flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-[14px] px-2 py-3 text-center text-[11px] font-semibold transition ${
-                    isActive ? 'bg-[var(--primary-soft)] text-[var(--primary-dark)]' : 'text-[var(--ink-soft)] hover:bg-[var(--surface-soft)]'
+                  className={`mx-2 mb-2 flex min-h-[58px] items-center gap-3 px-4 py-3 text-left text-[13px] font-semibold transition ${
+                    isActive ? 'bg-[var(--legacy-bg-soft)] text-[var(--legacy-primary-dark)]' : 'text-[var(--legacy-text-muted)] hover:bg-[var(--legacy-bg-hover)] hover:text-[var(--legacy-primary)]'
                   }`}
                 >
                   <item.icon size={18} />
-                  <span>{item.shortLabel}</span>
+                  <span>{item.label}</span>
                 </button>
               );
             })}
@@ -623,11 +624,11 @@ export function HandbookShell({
             </div>
           ) : null}
 
-          <div className="mt-4 rounded-[14px] border border-[var(--line)] bg-white px-4 py-4 md:px-5">
+          <div className="legacy-recent-box mt-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="text-sm font-bold text-[var(--ink)]">Lối vào Hệ thống dữ liệu</div>
-                <div className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                <div className="legacy-recent-title !mb-2 !border-b-0 !pb-0">Lối vào Hệ thống dữ liệu</div>
+                <div className="mt-2 text-sm leading-6 text-[var(--legacy-text-muted)]">
                   Mobile dùng menu phụ để giữ 5 tab Sổ tay gọn như site cũ. Desktop có thể chuyển thẳng sang hệ thống dữ liệu bất cứ lúc nào.
                 </div>
               </div>

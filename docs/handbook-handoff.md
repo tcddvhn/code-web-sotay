@@ -456,3 +456,42 @@ Neu mo lai o may khac, uu tien cao nhat la:
 1. Khong dong vao site cu
 2. Khong lam rung he thong du lieu hien tai
 3. Bat dau tu du lieu migrate va shell handbook moi
+
+## Cap nhat them - UI handbook da pivot sau hon ve site So tay cu
+
+Neu agent moi tiep tuc o may khac, can biet rang giao dien handbook hien da di tiep 1 buoc nua:
+
+- Khong chi giu "phong cach" site cu, ma da bat dau port ca cau truc hien thi cua tung muc
+- Da them stylesheet rieng:
+  - [src/handbook/handbookLegacySkin.css](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/handbookLegacySkin.css)
+- Da doi:
+  - [src/handbook/pages/HomePage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/HomePage.tsx)
+  - [src/handbook/pages/RegulationsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/RegulationsPage.tsx)
+  - [src/handbook/pages/FaqPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/FaqPage.tsx)
+  - [src/handbook/pages/FormsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/FormsPage.tsx)
+  - [src/handbook/pages/DocumentsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/DocumentsPage.tsx)
+  - [src/handbook/pages/SearchPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/SearchPage.tsx)
+  - [src/handbook/pages/LegacyListSectionPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/LegacyListSectionPage.tsx)
+  - [src/handbook/HandbookShell.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/HandbookShell.tsx)
+  - [src/handbook/components/HandbookTopBar.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/components/HandbookTopBar.tsx)
+  - [src/handbook/components/HandbookBottomNav.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/components/HandbookBottomNav.tsx)
+
+### Y nghia cua moc nay
+
+- Handbook moi dang duoc chuyen theo huong "vo giao dien sotay cu, loi Supabase moi"
+- Chua duoc build/lint do may hien tai khong co `node/npm`
+- Chua quay sang chuoi migrate du lieu that
+
+### Lenh nho tiep theo
+
+Khi user noi:
+
+`thuc hien tiep 5 buoc tu xuat JSON`
+
+thi hieu dung la:
+
+1. xuat JSON tu he cu
+2. `handbook:extract`
+3. `handbook:flatten`
+4. review output
+5. import vao Supabase

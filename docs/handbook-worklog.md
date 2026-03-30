@@ -336,3 +336,35 @@
 - de quet noi dung
 - nhan than thien, tranh lo ten ky thuat
 - giu lai cam giac 5 tab mobile cua site cu, nhung nang kha nang tra cuu len
+
+## Cap nhat tiep theo 2026-03-30 - port sau giao dien 5 muc ve dung kieu site cu
+
+### Viec moi vua bo sung
+
+1. Tao stylesheet rieng [src/handbook/handbookLegacySkin.css](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/handbookLegacySkin.css) de port cac class hien thi cua site cu.
+2. Viet lai [src/handbook/pages/HomePage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/HomePage.tsx) theo cau truc home cu:
+   - hero search
+   - continue banner
+   - muc yeu thich
+   - vua xem gan day
+   - danh muc quy dinh chinh
+   - thong ke
+   - dong gop y kien
+   - loi vao He thong du lieu
+3. Viet lai [src/handbook/pages/RegulationsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/RegulationsPage.tsx) theo kieu:
+   - breadcrumb
+   - top controls
+   - toc panel
+   - nested `step-box`
+4. Tao [src/handbook/pages/LegacyListSectionPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/LegacyListSectionPage.tsx) de dung lai giao dien `list-view-item + list-sub-group` cho:
+   - [src/handbook/pages/FaqPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/FaqPage.tsx)
+   - [src/handbook/pages/FormsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/FormsPage.tsx)
+   - [src/handbook/pages/DocumentsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/DocumentsPage.tsx)
+5. Viet lai [src/handbook/pages/SearchPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/SearchPage.tsx) de gan hon modal search cua site cu.
+6. Noi CSS moi vao [src/handbook/HandbookShell.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/HandbookShell.tsx) va doi desktop nav/bottom nav gan site cu hon.
+
+### Trang thai hien tai
+
+- Handbook moi da chuyen tu huong "the card hien dai" sang huong "vo giao dien sotay cu".
+- Chua build/lint duoc vi may hien tai khong co `node/npm`.
+- Moc tiep theo van khong doi: khi user noi "thuc hien tiep 5 buoc tu xuat JSON" thi quay lai nhanh migrate du lieu that.
