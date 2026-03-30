@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "handbook:flatten": "tsx scripts/flatten-handbook-export.ts"
+    "handbook:flatten": "tsx scripts/flatten-handbook-export.ts",
+    "handbook:import": "tsx scripts/import-handbook-flat.ts"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",
@@ -38,3 +39,5 @@
     "vite": "^6.2.0"
   }
 }
+
+

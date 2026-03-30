@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Database, Settings, ShieldCheck, X } from 'lucide-react';
 
 export function HandbookSecondaryMenu({
@@ -76,7 +76,7 @@ export function HandbookSecondaryMenu({
             <div>
               <div className="font-bold text-[var(--ink)]">Ghi chú triển khai</div>
               <div className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">
-                Module So tay đang được chuẩn bị sẵn trong repo mới và chua gan vao runtime chinh de tranh rung he thong dang van hanh.
+                Module Sổ tay đang được chuẩn bị sẵn trong repo mới và chưa gắn vào runtime chính để tránh rung hệ thống đang vận hành.
               </div>
             </div>
           </div>
@@ -85,4 +85,3 @@ export function HandbookSecondaryMenu({
     </div>
   );
 }
-

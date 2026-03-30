@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { HANDBOOK_NAV_ITEMS } from '../config';
 import { HandbookSection } from '../types';
 
@@ -32,4 +32,3 @@ export function HandbookBottomNav({
     </nav>
   );
 }
-

@@ -1,4 +1,6 @@
-export type HandbookSection = 'home' | 'quy-dinh' | 'hoi-dap' | 'bieu-mau' | 'tai-lieu';
+﻿export type HandbookSection = 'home' | 'quy-dinh' | 'hoi-dap' | 'bieu-mau' | 'tai-lieu';
+
+export type HandbookContentSection = Exclude<HandbookSection, 'home'>;
 
 export type HandbookAdminSection =
   | 'admin-home'
@@ -18,7 +20,7 @@ export interface HandbookNavItem {
 export interface HandbookQuickLink {
   title: string;
   description: string;
-  section: HandbookSection;
+  section: HandbookContentSection;
 }
 
 export interface HandbookNoticePreview {
@@ -28,3 +30,50 @@ export interface HandbookNoticePreview {
   publishedAt: string;
 }
 
+export interface HandbookPdfRef {
+  doc: string;
+  page: number;
+}
+
+export interface HandbookNodeRecord {
+  id: string;
+  legacyId?: string | null;
+  parentId?: string | null;
+  section: HandbookContentSection;
+  title: string;
+  slug?: string | null;
+  tag?: string | null;
+  summaryHtml?: string | null;
+  detailHtml?: string | null;
+  sortOrder: number;
+  level: number;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  pdfRefs: HandbookPdfRef[];
+  forceAccordion: boolean;
+  isPublished: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface HandbookNodeOutlineItem extends HandbookNodeRecord {
+  depth: number;
+  childrenCount: number;
+}
+
+export interface HandbookNoticeItem {
+  id: string;
+  title: string;
+  content: string;
+  publishedAt?: string | null;
+  isPublished: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  createdBy?: string | null;
+}
+
+export interface HandbookSectionSummary {
+  section: HandbookContentSection;
+  count: number;
+}

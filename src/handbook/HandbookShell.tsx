@@ -1,10 +1,30 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowRight, Database, Search, ShieldUser } from 'lucide-react';
-import { HANDBOOK_NAV_ITEMS, HANDBOOK_NOTICE_PREVIEWS, HANDBOOK_QUICK_LINKS } from './config';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { Database, ShieldUser, X } from 'lucide-react';
+import { HANDBOOK_NAV_ITEMS } from './config';
 import { HandbookBottomNav } from './components/HandbookBottomNav';
 import { HandbookSecondaryMenu } from './components/HandbookSecondaryMenu';
 import { HandbookTopBar } from './components/HandbookTopBar';
-import { HandbookSection } from './types';
+import { DocumentsPage } from './pages/DocumentsPage';
+import { FaqPage } from './pages/FaqPage';
+import { FormsPage } from './pages/FormsPage';
+import { HomePage } from './pages/HomePage';
+import { RegulationsPage } from './pages/RegulationsPage';
+import { SearchPage } from './pages/SearchPage';
+import { listHandbookNodesBySection, listHandbookNotices, listHandbookSectionSummaries, searchHandbookNodes } from './services/handbookContent';
+import { deleteHandbookNode, deleteHandbookNotice, listAllHandbookNodesForAdmin, listHandbookNoticesForAdmin, upsertHandbookNode, upsertHandbookNotice } from './services/handbookAdmin';
+import { HandbookContentSection, HandbookNodeOutlineItem, HandbookNodeRecord, HandbookNoticeItem, HandbookSection, HandbookSectionSummary } from './types';
+import { AdminDashboardPage } from './admin/AdminDashboardPage';
+import { HandbookNodesAdminPage } from './admin/HandbookNodesAdminPage';
+import { HandbookNoticesAdminPage } from './admin/HandbookNoticesAdminPage';
+
+type HandbookAdminView = 'dashboard' | 'nodes' | 'notices';
+
+const EMPTY_SUMMARIES: HandbookSectionSummary[] = [
+  { section: 'quy-dinh', count: 0 },
+  { section: 'hoi-dap', count: 0 },
+  { section: 'bieu-mau', count: 0 },
+  { section: 'tai-lieu', count: 0 },
+];
 
 function getSectionTitle(section: HandbookSection) {
   switch (section) {
@@ -23,47 +43,6 @@ function getSectionTitle(section: HandbookSection) {
   }
 }
 
-function SectionPlaceholder({
-  title,
-  description,
-  bullets,
-}: {
-  title: string;
-  description: string;
-  bullets: string[];
-}) {
-  return (
-    <div className="space-y-6">
-      <div className="panel-card rounded-[28px] p-6 md:p-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--primary)]">Module So tay moi</div>
-        <h2 className="mt-3 text-[2rem] font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">{title}</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">{description}</p>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_340px]">
-        <div className="panel-card rounded-[28px] p-6 md:p-7">
-          <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Nhung viec se xay ra o pha tiep theo</div>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-[var(--ink)]">
-            {bullets.map((bullet) => (
-              <div key={bullet} className="flex items-start gap-3">
-                <span className="mt-2 h-2 w-2 rounded-full bg-[var(--primary)]" />
-                <span>{bullet}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel-card rounded-[28px] p-6 md:p-7">
-          <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Trang thai hien tai</div>
-          <div className="mt-4 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
-            Day la khung giao dien moi duoc dung san trong repo `code-web-sotay`. No chua thay the site cu va cung chua duoc noi vao runtime chinh.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function HandbookShell({
   initialSection = 'home',
   isAdmin = false,
@@ -77,6 +56,170 @@ export function HandbookShell({
 }) {
   const [activeSection, setActiveSection] = useState<HandbookSection>(initialSection);
   const [isSecondaryMenuOpen, setIsSecondaryMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [adminView, setAdminView] = useState<HandbookAdminView>('dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<HandbookNodeOutlineItem[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [summaries, setSummaries] = useState<HandbookSectionSummary[]>(EMPTY_SUMMARIES);
+  const [notices, setNotices] = useState<HandbookNoticeItem[]>([]);
+  const [shellError, setShellError] = useState<string | null>(null);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [adminNodes, setAdminNodes] = useState<HandbookNodeRecord[]>([]);
+  const [adminNotices, setAdminNotices] = useState<HandbookNoticeItem[]>([]);
+  const [sectionNodes, setSectionNodes] = useState<Record<HandbookContentSection, HandbookNodeOutlineItem[]>>({
+    'quy-dinh': [],
+    'hoi-dap': [],
+    'bieu-mau': [],
+    'tai-lieu': [],
+  });
+  const [sectionLoading, setSectionLoading] = useState<Record<HandbookContentSection, boolean>>({
+    'quy-dinh': false,
+    'hoi-dap': false,
+    'bieu-mau': false,
+    'tai-lieu': false,
+  });
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Partial<Record<HandbookContentSection, string>>>({});
+
+  const refreshHomeData = async () => {
+    const [summaryData, noticeData] = await Promise.all([listHandbookSectionSummaries(), listHandbookNotices(4)]);
+    setSummaries(summaryData);
+    setNotices(noticeData);
+  };
+
+  const refreshAdminData = async () => {
+    const [nodes, noticesData] = await Promise.all([
+      listAllHandbookNodesForAdmin(),
+      listHandbookNoticesForAdmin(),
+    ]);
+    setAdminNodes(nodes);
+    setAdminNotices(noticesData);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    refreshHomeData()
+      .then(() => {
+        if (!cancelled) {
+          setShellError(null);
+        }
+      })
+      .catch((error) => {
+        console.error('Handbook home load error:', error);
+        if (!cancelled) {
+          setShellError(error instanceof Error ? error.message : 'Không thể tải dữ liệu homepage của Sổ tay.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAdminOpen || !isAdmin) {
+      return;
+    }
+
+    let cancelled = false;
+    refreshAdminData()
+      .then(() => {
+        if (!cancelled) {
+          setAdminError(null);
+        }
+      })
+      .catch((error) => {
+        console.error('Handbook admin load error:', error);
+        if (!cancelled) {
+          setAdminError(error instanceof Error ? error.message : 'Không thể tải dữ liệu admin handbook.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminOpen, isAdmin]);
+
+  useEffect(() => {
+    if (activeSection === 'home') {
+      return;
+    }
+
+    let cancelled = false;
+    const targetSection = activeSection as HandbookContentSection;
+    setSectionLoading((current) => ({ ...current, [targetSection]: true }));
+
+    listHandbookNodesBySection(targetSection)
+      .then((nodes) => {
+        if (cancelled) {
+          return;
+        }
+        setSectionNodes((current) => ({ ...current, [targetSection]: nodes }));
+        setSelectedNodeIds((current) => ({
+          ...current,
+          [targetSection]: current[targetSection] && nodes.some((node) => node.id === current[targetSection])
+            ? current[targetSection]
+            : nodes[0]?.id,
+        }));
+      })
+      .catch((error) => {
+        console.error(`Handbook section load error (${targetSection}):`, error);
+        if (!cancelled) {
+          setShellError(error instanceof Error ? error.message : 'Không thể tải dữ liệu section handbook.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSectionLoading((current) => ({ ...current, [targetSection]: false }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (!isSearchOpen) {
+      return;
+    }
+
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery) {
+      setSearchResults([]);
+      setSearchError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        setIsSearchLoading(true);
+        const results = await searchHandbookNodes(trimmedQuery);
+        if (!cancelled) {
+          setSearchResults(results);
+          setSearchError(null);
+        }
+      } catch (error) {
+        console.error('Handbook search error:', error);
+        if (!cancelled) {
+          setSearchError(error instanceof Error ? error.message : 'Không thể tìm kiếm dữ liệu handbook.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSearchLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isSearchOpen, searchQuery]);
 
   const activeSectionMeta = useMemo(
     () => HANDBOOK_NAV_ITEMS.find((item) => item.id === activeSection) || HANDBOOK_NAV_ITEMS[0],
@@ -84,163 +227,108 @@ export function HandbookShell({
   );
 
   const renderSection = () => {
+    if (shellError) {
+      return (
+        <div className="panel-card rounded-[28px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] p-6 text-sm leading-7 text-[var(--primary-dark)]">
+          {shellError}
+        </div>
+      );
+    }
+
+    if (activeSection === 'home') {
+      return (
+        <HomePage
+          summaries={summaries}
+          notices={notices}
+          onSelectSection={setActiveSection}
+          onOpenDataSystem={onOpenDataSystem}
+        />
+      );
+    }
+
+    const currentNodes = sectionNodes[activeSection as HandbookContentSection] || [];
+    const currentSelectedNodeId = selectedNodeIds[activeSection as HandbookContentSection] || null;
+    const setSelectedNode = (nodeId: string) => {
+      setSelectedNodeIds((current) => ({
+        ...current,
+        [activeSection as HandbookContentSection]: nodeId,
+      }));
+    };
+
+    if (sectionLoading[activeSection as HandbookContentSection]) {
+      return (
+        <div className="panel-card rounded-[28px] p-6 text-sm leading-7 text-[var(--ink-soft)]">
+          Đang tải dữ liệu section <strong>{activeSectionMeta.label}</strong> từ Supabase...
+        </div>
+      );
+    }
+
     switch (activeSection) {
-      case 'home':
-        return (
-          <div className="space-y-6">
-            <div className="panel-card overflow-hidden rounded-[32px] border">
-              <div className="grid gap-8 p-6 md:p-8 xl:grid-cols-[minmax(0,1.2fr)_380px]">
-                <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(179,15,20,0.18)] bg-[var(--primary-soft)] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--primary-dark)]">
-                    Xay moi So tay nghiep vu
-                  </div>
-                  <h1 className="mt-5 text-[2.2rem] font-extrabold leading-[1.02] tracking-[-0.05em] text-[var(--primary-dark)] md:text-[3rem]">
-                    Cong thong tin thong nhat cho So tay nghiep vu va He thong du lieu
-                  </h1>
-                  <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--ink-soft)] md:text-[15px]">
-                    Day la shell giao dien dau tien cua phan So tay moi duoc dung tren nen `code-web-sotay`. Muc tieu la giu
-                    thoi quen 5 tab mobile cua site cu, dong thoi dua `He thong du lieu` vao cung mot he thong thong nhat.
-                  </p>
-
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setActiveSection('quy-dinh')}
-                      className="primary-btn inline-flex items-center gap-2"
-                    >
-                      Tra cuu So tay
-                      <ArrowRight size={16} />
-                    </button>
-                    <button type="button" onClick={onOpenDataSystem} className="secondary-btn inline-flex items-center gap-2">
-                      <Database size={16} />
-                      Vao He thong du lieu
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                  <div className="panel-soft rounded-[24px] p-5">
-                    <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">Nguyen tac</div>
-                    <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
-                      Khong dong vao repo/site cu `sotay-dangvien` trong suot qua trinh xay moi. Chi xuat du lieu tu site cu de migrate sang Supabase.
-                    </div>
-                  </div>
-                  <div className="panel-soft rounded-[24px] p-5">
-                    <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">Mobile</div>
-                    <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
-                      Mobile giu 5 tab So tay quen thuoc. `He thong du lieu` duoc dua vao menu phu de khong lam roi bottom nav.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {HANDBOOK_QUICK_LINKS.map((item) => (
-                <button
-                  key={item.title}
-                  type="button"
-                  onClick={() => setActiveSection(item.section)}
-                  className="panel-card rounded-[26px] p-5 text-left transition-transform hover:-translate-y-0.5"
-                >
-                  <div className="text-sm font-extrabold text-[var(--primary-dark)]">{item.title}</div>
-                  <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{item.description}</div>
-                </button>
-              ))}
-            </div>
-
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_360px]">
-              <div className="panel-card rounded-[28px] p-6 md:p-7">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Cau truc dieu huong</div>
-                    <div className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-[var(--primary-dark)]">6 muc chinh cua he thong moi</div>
-                  </div>
-                  <Search size={18} className="text-[var(--primary-dark)]" />
-                </div>
-
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  {HANDBOOK_NAV_ITEMS.map((item) => (
-                    <div key={item.id} className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
-                          <item.icon size={18} />
-                        </div>
-                        <div className="font-bold text-[var(--ink)]">{item.label}</div>
-                      </div>
-                      <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{item.description}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="panel-card rounded-[28px] p-6 md:p-7">
-                <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Cap nhat moi</div>
-                <div className="mt-4 space-y-4">
-                  {HANDBOOK_NOTICE_PREVIEWS.map((notice) => (
-                    <div key={notice.id} className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                      <div className="text-sm font-bold text-[var(--ink)]">{notice.title}</div>
-                      <div className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">{notice.summary}</div>
-                      <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
-                        {notice.publishedAt}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
       case 'quy-dinh':
-        return (
-          <SectionPlaceholder
-            title="Quy định"
-            description="Khu nay se nhan du lieu migrate tu cay noi dung Firestore cu, nhung duoc render lai tren nen React + Supabase de de tim kiem, de quan tri va on dinh hon."
-            bullets={[
-              'Doc danh sach node section = quy-dinh tu Supabase.',
-              'Dung lai trai nghiem breadcrumb, expand/collapse va doc tap trung cua site cu.',
-              'Cho phep mo nhanh PDF can cu va nhay ve tai lieu goc.',
-            ]}
-          />
-        );
+        return <RegulationsPage nodes={currentNodes} selectedNodeId={currentSelectedNodeId} onSelectNode={setSelectedNode} />;
       case 'hoi-dap':
-        return (
-          <SectionPlaceholder
-            title="Hỏi đáp"
-            description="Khu tong hop tinh huong nghiep vu, cau hoi thuong gap va cau tra loi ngan. Muc tieu la giu trai nghiem nhanh, de tim va nhin dung ngu canh."
-            bullets={[
-              'Map tag cu co chua hoi dap sang section hoi-dap.',
-              'Tim kiem uu tien theo tieu de, tag va tom tat.',
-              'Co the mo rong them luong AI tra cuu sau pha dich chuyen noi dung.',
-            ]}
-          />
-        );
+        return <FaqPage nodes={currentNodes} selectedNodeId={currentSelectedNodeId} onSelectNode={setSelectedNode} />;
       case 'bieu-mau':
+        return <FormsPage nodes={currentNodes} selectedNodeId={currentSelectedNodeId} onSelectNode={setSelectedNode} />;
+      case 'tai-lieu':
+        return <DocumentsPage nodes={currentNodes} selectedNodeId={currentSelectedNodeId} onSelectNode={setSelectedNode} />;
+      default:
+        return null;
+    }
+  };
+
+  const handleSelectSearchResult = (item: HandbookNodeOutlineItem) => {
+    setSelectedNodeIds((current) => ({
+      ...current,
+      [item.section]: item.id,
+    }));
+    setActiveSection(item.section);
+    setIsSearchOpen(false);
+  };
+
+  const renderAdminPanel = () => {
+    if (adminError) {
+      return <div className="rounded-[22px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] p-4 text-sm text-[var(--primary-dark)]">{adminError}</div>;
+    }
+
+    switch (adminView) {
+      case 'nodes':
         return (
-          <SectionPlaceholder
-            title="Biểu mẫu"
-            description="Day la khu tai ve bieu mau cua So tay, khac voi module hoc bieu/bao cao trong He thong du lieu. No se tap trung vao kho file, phan loai va tra cuu nhanh."
-            bullets={[
-              'Map node co tag bieu mau hoac co fileUrl sang section bieu-mau.',
-              'Ho tro tai file nhanh va mo file goc.',
-              'Co the lien ket cheo sang He thong du lieu khi can thao tac nhap/tong hop.',
-            ]}
+          <HandbookNodesAdminPage
+            nodes={adminNodes}
+            onSave={async (node) => {
+              await upsertHandbookNode(node);
+              await Promise.all([refreshAdminData(), refreshHomeData()]);
+            }}
+            onDelete={async (nodeId) => {
+              await deleteHandbookNode(nodeId);
+              await Promise.all([refreshAdminData(), refreshHomeData()]);
+            }}
           />
         );
-      case 'tai-lieu':
+      case 'notices':
         return (
-          <SectionPlaceholder
-            title="Tài liệu"
-            description="Kho van ban, huong dan, PDF tham khao va tai lieu nen. Day cung la noi se tiep tuc dung PDF viewer va co bo loc theo loai noi dung."
-            bullets={[
-              'Map tag tai lieu sang section tai-lieu.',
-              'Chuan hoa file_url, file_name va pdf_refs.',
-              'Bo sung bo loc theo loai tai lieu va thong ke luot mo.',
-            ]}
+          <HandbookNoticesAdminPage
+            notices={adminNotices}
+            onSave={async (notice) => {
+              await upsertHandbookNotice(notice);
+              await Promise.all([refreshAdminData(), refreshHomeData()]);
+            }}
+            onDelete={async (noticeId) => {
+              await deleteHandbookNotice(noticeId);
+              await Promise.all([refreshAdminData(), refreshHomeData()]);
+            }}
           />
         );
       default:
-        return null;
+        return (
+          <AdminDashboardPage
+            summaries={summaries}
+            notices={adminNotices}
+            onOpenNodes={() => setAdminView('nodes')}
+            onOpenNotices={() => setAdminView('notices')}
+          />
+        );
     }
   };
 
@@ -250,9 +338,16 @@ export function HandbookShell({
         <HandbookTopBar
           title={getSectionTitle(activeSection)}
           onToggleMenu={() => setIsSecondaryMenuOpen(true)}
-          onOpenSearch={() => setActiveSection('home')}
+          onOpenSearch={() => setIsSearchOpen(true)}
           onOpenNotices={() => setActiveSection('home')}
-          onOpenAdmin={onOpenAdmin}
+          onOpenAdmin={() => {
+            if (isAdmin) {
+              setIsAdminOpen(true);
+              setAdminView('dashboard');
+              return;
+            }
+            onOpenAdmin?.();
+          }}
         />
 
         <div className="hidden grid-cols-5 gap-3 md:grid">
@@ -286,22 +381,29 @@ export function HandbookShell({
         <div className="panel-card rounded-[28px] border p-6 md:p-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Loi vao He thong du lieu</div>
+              <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Lối vào Hệ thống dữ liệu</div>
               <div className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-[var(--primary-dark)]">Menu phụ trên mobile, mục chính trên desktop</div>
               <div className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">
-                Theo quyet dinh da chot, `He thong du lieu` se duoc dua vao menu phu tren mobile de giu 5 tab So tay gon va quen thuoc.
+                Theo quyết định đã chốt, <code>Hệ thống dữ liệu</code> sẽ được đưa vào menu phụ trên mobile để giữ 5 tab Sổ tay gọn và quen thuộc.
               </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <button type="button" onClick={onOpenDataSystem} className="primary-btn inline-flex items-center gap-2">
                 <Database size={16} />
-                He thong du lieu
+                Hệ thống dữ liệu
               </button>
               {isAdmin && (
-                <button type="button" onClick={onOpenAdmin} className="secondary-btn inline-flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAdminOpen(true);
+                    setAdminView('dashboard');
+                  }}
+                  className="secondary-btn inline-flex items-center gap-2"
+                >
                   <ShieldUser size={16} />
-                  Quan tri chung
+                  Quản trị handbook mới
                 </button>
               )}
             </div>
@@ -319,11 +421,68 @@ export function HandbookShell({
         }}
         onOpenAdmin={() => {
           setIsSecondaryMenuOpen(false);
-          onOpenAdmin?.();
+          if (isAdmin) {
+            setIsAdminOpen(true);
+            setAdminView('dashboard');
+          }
         }}
       />
+
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-50 bg-[rgba(19,15,12,0.36)] px-4 py-6">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="secondary-btn flex h-11 w-11 items-center justify-center !rounded-full !p-0"
+                aria-label="Đóng tìm kiếm"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <SearchPage
+              query={searchQuery}
+              onQueryChange={setSearchQuery}
+              results={searchResults}
+              isLoading={isSearchLoading}
+              onSelectResult={handleSelectSearchResult}
+            />
+
+            {searchError ? (
+              <div className="mt-4 rounded-[24px] border border-[rgba(179,15,20,0.2)] bg-[rgba(179,15,20,0.05)] px-4 py-3 text-sm text-[var(--primary-dark)]">
+                {searchError}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {isAdminOpen && isAdmin && (
+        <div className="fixed inset-0 z-50 bg-[rgba(19,15,12,0.42)] px-4 py-6">
+          <div className="mx-auto max-w-[1500px]">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-[0.22em] text-white/80">Admin handbook riêng</div>
+                <div className="text-2xl font-extrabold text-white">Khu quản trị cho module Sổ tay mới</div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setAdminView('dashboard')} className="secondary-btn">Tổng quan</button>
+                <button type="button" onClick={() => setAdminView('nodes')} className="secondary-btn">Nodes</button>
+                <button type="button" onClick={() => setAdminView('notices')} className="secondary-btn">Thông báo</button>
+                <button type="button" onClick={() => setIsAdminOpen(false)} className="secondary-btn flex h-11 w-11 items-center justify-center !rounded-full !p-0">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            {renderAdminPanel()}
+          </div>
+        </div>
+      )}
 
       <HandbookBottomNav activeSection={activeSection} onSelectSection={setActiveSection} />
     </div>
   );
 }
+

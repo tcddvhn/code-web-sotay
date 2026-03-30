@@ -1,4 +1,4 @@
-import { FileText, Files, HelpCircle, Home, LibraryBig, type LucideIcon } from 'lucide-react';
+﻿import { FileText, Files, HelpCircle, Home, LibraryBig, type LucideIcon } from 'lucide-react';
 import { HandbookNavItem, HandbookNoticePreview, HandbookQuickLink } from './types';
 
 export const HANDBOOK_NAV_ITEMS: Array<HandbookNavItem & { icon: LucideIcon }> = [
@@ -76,4 +76,3 @@ export const HANDBOOK_NOTICE_PREVIEWS: HandbookNoticePreview[] = [
     publishedAt: '2026-03-29',
   },
 ];
-
