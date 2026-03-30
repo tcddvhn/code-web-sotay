@@ -1184,108 +1184,110 @@ export function ImportFiles({
         </div>
 
         <div className="space-y-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="panel-card min-w-0 flex-1 rounded-[24px] p-5">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0">
-                  <p className="col-header">1. Dự án</p>
-                  <p className="page-subtitle mt-2 text-sm">
-                    Chọn đúng dự án để hệ thống lọc đơn vị chưa tiếp nhận và các biểu mẫu đã chốt tương ứng.
-                  </p>
-                </div>
-                {currentProject && (
-                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                    {currentProject.status === 'ACTIVE' ? 'Đang hoạt động' : 'Đã hoàn thành'}
-                  </div>
-                )}
-              </div>
-
-              <div className="-mx-1 mt-4 flex flex-wrap gap-2 overflow-x-auto px-1 pb-1">
-                {projects.map((project) => {
-                  const isActive = project.id === selectedProjectId;
-                  return (
-                    <button
-                      key={project.id}
-                      type="button"
-                      onClick={() => onSelectProject(project.id)}
-                      className={`min-w-[220px] max-w-full rounded-[18px] border px-4 py-3 text-left transition ${
-                        isActive
-                          ? 'border-[var(--brand)] bg-[var(--primary-soft)] shadow-[0_12px_30px_rgba(122,44,46,0.10)]'
-                          : 'border-[var(--line)] bg-white hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
-                      }`}
-                    >
-                      <p className="truncate text-sm font-semibold text-[var(--ink)]">{project.name}</p>
-                      <p className="mt-1 line-clamp-2 text-xs text-[var(--ink-soft)]">
-                        {project.description || 'Chưa có mô tả dự án.'}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                      Đơn vị chưa tiếp nhận
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                      {pendingUnits.length} đơn vị
+          <div className="panel-card min-w-0 rounded-[24px] p-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <p className="col-header">1. Dự án</p>
+                    <p className="page-subtitle mt-2 text-sm">
+                      Chọn đúng dự án để hệ thống lọc đơn vị chưa tiếp nhận và các biểu mẫu đã chốt tương ứng.
                     </p>
                   </div>
-                  <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
-                    {selectedYear}
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-[var(--ink-soft)]">
-                  Danh sách này dùng cùng logic với Nhật ký và tự lọc theo dự án, năm và phân quyền theo dõi.
-                </p>
-                <div className="mt-3 max-h-52 space-y-2 overflow-auto pr-1">
-                  {pendingUnits.length > 0 ? (
-                    pendingUnits.map((unit) => (
-                      <div
-                        key={unit.code}
-                        className="flex items-center justify-between rounded-[16px] border border-[var(--line)] bg-white px-3 py-2"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
-                          <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                            {unit.code}
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
-                          Chưa tiếp nhận
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-[16px] border border-dashed border-[var(--line)] bg-white px-3 py-4 text-sm text-[var(--ink-soft)]">
-                      {!isAdmin && currentAssignedUnitCodes.length === 0
-                        ? 'Tài khoản này chưa được phân công đơn vị theo dõi cho luồng tiếp nhận.'
-                        : 'Không còn đơn vị nào chưa tiếp nhận trong dự án/năm đang chọn.'}
+                  {currentProject && (
+                    <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                      {currentProject.status === 'ACTIVE' ? 'Đang hoạt động' : 'Đã hoàn thành'}
                     </div>
                   )}
                 </div>
               </div>
+
+              <div className="w-full md:max-w-[320px]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--brand)]">Năm tổng hợp</p>
+                <select
+                  value={selectedYear}
+                  onChange={(event) => handleYearChange(event.target.value)}
+                  className="mt-2 h-11 w-full border-0 border-b-2 border-[var(--brand)] bg-transparent px-0 text-right text-3xl font-semibold text-[var(--ink)] focus:outline-none"
+                >
+                  {YEARS.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <label className="mt-3 flex items-center justify-end gap-2 text-sm text-[var(--ink-soft)]">
+                  <input type="checkbox" checked={pinnedYear === selectedYear} onChange={togglePinnedYear} />
+                  <span>Ghim năm này cho lần nhập sau</span>
+                </label>
+              </div>
             </div>
 
-            <div className="panel-card w-full rounded-[24px] p-5 xl:max-w-[320px]">
-              <p className="col-header mb-3">Năm tổng hợp</p>
-              <select
-                value={selectedYear}
-                onChange={(event) => handleYearChange(event.target.value)}
-                className="field-input h-11 text-base font-semibold"
-              >
-                {YEARS.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-              <label className="mt-4 flex items-center gap-2 text-sm text-[var(--ink-soft)]">
-                <input type="checkbox" checked={pinnedYear === selectedYear} onChange={togglePinnedYear} />
-                <span>Ghim năm này cho lần nhập sau</span>
-              </label>
+            <div className="-mx-1 mt-4 flex flex-wrap gap-2 overflow-x-auto px-1 pb-1">
+              {projects.map((project) => {
+                const isActive = project.id === selectedProjectId;
+                return (
+                  <button
+                    key={project.id}
+                    type="button"
+                    onClick={() => onSelectProject(project.id)}
+                    className={`min-w-[220px] max-w-full rounded-[18px] border px-4 py-3 text-left transition ${
+                      isActive
+                        ? 'border-[var(--brand)] bg-[var(--primary-soft)] shadow-[0_12px_30px_rgba(122,44,46,0.10)]'
+                        : 'border-[var(--line)] bg-white hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
+                    }`}
+                  >
+                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{project.name}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-[var(--ink-soft)]">
+                      {project.description || 'Chưa có mô tả dự án.'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                    Đơn vị chưa tiếp nhận
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                    {pendingUnits.length} đơn vị
+                  </p>
+                </div>
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
+                  {selectedYear}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-[var(--ink-soft)]">
+                Danh sách này dùng cùng logic với Nhật ký và tự lọc theo dự án, năm và phân quyền theo dõi.
+              </p>
+              <div className="mt-3 max-h-52 space-y-2 overflow-auto pr-1">
+                {pendingUnits.length > 0 ? (
+                  pendingUnits.map((unit) => (
+                    <div
+                      key={unit.code}
+                      className="flex items-center justify-between rounded-[16px] border border-[var(--line)] bg-white px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                        <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                          {unit.code}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
+                        Chưa tiếp nhận
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-[16px] border border-dashed border-[var(--line)] bg-white px-3 py-4 text-sm text-[var(--ink-soft)]">
+                    {!isAdmin && currentAssignedUnitCodes.length === 0
+                      ? 'Tài khoản này chưa được phân công đơn vị theo dõi cho luồng tiếp nhận.'
+                      : 'Không còn đơn vị nào chưa tiếp nhận trong dự án/năm đang chọn.'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1320,13 +1322,18 @@ export function ImportFiles({
                     key={template.id}
                     type="button"
                     onClick={() => setSelectedTemplateId(template.id)}
-                    className={`min-w-[220px] max-w-full rounded-[18px] border px-4 py-3 text-left transition ${
+                    className={`relative min-w-[220px] max-w-full rounded-[18px] border px-4 py-3 text-left transition ${
                       isActive
-                        ? 'border-[var(--brand)] bg-[var(--primary-soft)] shadow-[0_12px_30px_rgba(122,44,46,0.10)]'
+                        ? 'border-[var(--brand)] bg-[var(--brand)]/10 shadow-[0_12px_30px_rgba(122,44,46,0.16)]'
                         : 'border-[var(--line)] bg-white hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
                     }`}
                   >
-                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{template.name}</p>
+                    {isActive && (
+                      <span className="absolute right-3 top-3 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand)] text-white">
+                        <CheckCircle2 size={14} />
+                      </span>
+                    )}
+                    <p className={`truncate text-sm font-semibold ${isActive ? 'text-[var(--primary-dark)]' : 'text-[var(--ink)]'}`}>{template.name}</p>
                     <p className="mt-1 text-xs text-[var(--ink-soft)]">{template.sheetName}</p>
                   </button>
                 );

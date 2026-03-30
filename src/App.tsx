@@ -2018,15 +2018,24 @@ function DashboardOverview({
         >
           {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
         </button>
-        <div>
-          <div className="surface-tag">Năm tổng hợp {dashboardYear}</div>
-          <h2 className="page-title mt-4">HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG</h2>
+        <div
+          className="overflow-hidden rounded-[28px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
+          style={{
+            backgroundColor: '#8f1115',
+            backgroundImage:
+              'radial-gradient(circle at 24px 24px, rgba(201,167,92,0.16) 0, rgba(201,167,92,0.16) 2px, transparent 2px), radial-gradient(circle at 0 0, rgba(201,167,92,0.08) 0, rgba(201,167,92,0.08) 1px, transparent 1px), linear-gradient(135deg, rgba(255,255,255,0.06), transparent 40%)',
+            backgroundSize: '48px 48px, 24px 24px, auto',
+          }}
+        >
+          <h2 className="text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
+            HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG
+          </h2>
           {currentUser && (
-            <p className="mt-3 text-sm font-bold text-[var(--primary-dark)]">
+            <p className="mt-3 text-sm font-bold text-white/90">
               Tài khoản đang đăng nhập: {currentUser.displayName || currentUser.email || 'Chưa xác định'}
             </p>
           )}
-          <p className="page-subtitle mt-3 max-w-3xl text-sm">
+          <p className="mt-3 max-w-3xl text-sm text-white/80">
             Theo dõi nhanh tình hình tiếp nhận dữ liệu của các đơn vị, số biểu đã nhập và mức độ hoàn thành tổng hợp trên toàn hệ thống.
           </p>
         </div>
