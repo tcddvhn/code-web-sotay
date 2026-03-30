@@ -1264,11 +1264,16 @@ export default function App() {
             onDeleteProjectData={handleDeleteProjectData}
             projects={projects}
             data={data}
+            dataFiles={dataFiles}
             units={availableUnitsForProject}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             templates={templates}
             canManageData={isAdmin}
+            isAuthenticated={isAuthenticated}
+            isAdmin={isAdmin}
+            assignments={assignments}
+            currentUser={effectiveUserProfile}
           />
         ) : (
           <DashboardOverview
