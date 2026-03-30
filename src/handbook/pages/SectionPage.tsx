@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { Bookmark, BookmarkCheck, Download, ExternalLink, FileSearch, FolderKanban } from 'lucide-react';
+﻿import React, { useMemo, useState } from 'react';
+import { Bookmark, BookmarkCheck, Download, ExternalLink, FileSearch, Filter, FolderKanban } from 'lucide-react';
 import { HandbookNodeOutlineItem } from '../types';
 
 function DetailHtml({ html }: { html?: string | null }) {
@@ -14,6 +14,7 @@ export function SectionPage({
   eyebrow,
   title,
   description,
+  helperText,
   nodes,
   selectedNodeId,
   onSelectNode,
@@ -24,6 +25,7 @@ export function SectionPage({
   eyebrow: string;
   title: string;
   description: string;
+  helperText?: string;
   nodes: HandbookNodeOutlineItem[];
   selectedNodeId?: string | null;
   onSelectNode: (nodeId: string) => void;
@@ -31,7 +33,42 @@ export function SectionPage({
   canFavorite?: boolean;
   onToggleFavorite?: (nodeId: string) => void;
 }) {
-  const selectedNode = nodes.find((node) => node.id === selectedNodeId) || nodes[0] || null;
+  const [filterQuery, setFilterQuery] = useState('');
+
+  const filteredNodes = useMemo(() => {
+    const normalizedQuery = filterQuery.trim().toLocaleLowerCase('vi-VN');
+    if (!normalizedQuery) {
+      return nodes;
+    }
+
+    return nodes.filter((node) => {
+      const titleMatch = node.title.toLocaleLowerCase('vi-VN').includes(normalizedQuery);
+      const tagMatch = node.tag?.toLocaleLowerCase('vi-VN').includes(normalizedQuery);
+      return titleMatch || Boolean(tagMatch);
+    });
+  }, [filterQuery, nodes]);
+
+  const selectedNode = filteredNodes.find((node) => node.id === selectedNodeId)
+    || nodes.find((node) => node.id === selectedNodeId)
+    || filteredNodes[0]
+    || nodes[0]
+    || null;
+
+  const topTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    nodes.forEach((node) => {
+      const tag = node.tag?.trim();
+      if (!tag) {
+        return;
+      }
+      counts.set(tag, (counts.get(tag) || 0) + 1);
+    });
+
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'vi'))
+      .slice(0, 6)
+      .map(([tag]) => tag);
+  }, [nodes]);
 
   return (
     <div className="space-y-6">
@@ -39,6 +76,22 @@ export function SectionPage({
         <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--primary)]">{eyebrow}</div>
         <h2 className="mt-3 text-[2rem] font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">{title}</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--ink-soft)]">{description}</p>
+        {helperText ? <div className="mt-3 text-sm font-semibold text-[var(--primary-dark)]">{helperText}</div> : null}
+
+        {topTags.length > 0 ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {topTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setFilterQuery(tag)}
+                className="rounded-full border border-[var(--line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--primary-dark)] transition hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
@@ -46,14 +99,28 @@ export function SectionPage({
           <div className="flex items-center justify-between gap-3 px-2 pb-3">
             <div>
               <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Danh sách nội dung</div>
-              <div className="mt-1 text-sm text-[var(--ink-soft)]">{nodes.length} mục đang xuất bản</div>
+              <div className="mt-1 text-sm text-[var(--ink-soft)]">
+                {filteredNodes.length === nodes.length ? `${nodes.length} mục đang xuất bản` : `${filteredNodes.length}/${nodes.length} mục khớp bộ lọc`}
+              </div>
             </div>
             <FolderKanban size={18} className="text-[var(--primary-dark)]" />
           </div>
 
+          <div className="px-2 pb-3">
+            <div className="flex items-center gap-3 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
+              <Filter size={16} className="text-[var(--primary-dark)]" />
+              <input
+                value={filterQuery}
+                onChange={(event) => setFilterQuery(event.target.value)}
+                placeholder="Lọc nhanh theo tên mục hoặc tag..."
+                className="w-full bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-soft)]"
+              />
+            </div>
+          </div>
+
           <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
-            {nodes.length > 0 ? (
-              nodes.map((node) => {
+            {filteredNodes.length > 0 ? (
+              filteredNodes.map((node) => {
                 const isActive = node.id === selectedNode?.id;
                 return (
                   <button
@@ -77,7 +144,9 @@ export function SectionPage({
               })
             ) : (
               <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm leading-7 text-[var(--ink-soft)]">
-                Chưa có dữ liệu nào trong section này. Bạn có thể import dữ liệu handbook vào Supabase rồi tải lại trang để xem.
+                {nodes.length > 0
+                  ? 'Không có mục nào khớp từ khóa lọc hiện tại.'
+                  : 'Chưa có dữ liệu nào trong section này. Bạn có thể import dữ liệu handbook vào Supabase rồi tải lại trang để xem.'}
               </div>
             )}
           </div>
@@ -91,6 +160,28 @@ export function SectionPage({
                 <h3 className="mt-2 text-[1.8rem] font-extrabold tracking-[-0.04em] text-[var(--primary-dark)]">{selectedNode.title}</h3>
                 {selectedNode.tag ? <div className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">Tag: {selectedNode.tag}</div> : null}
               </div>
+
+              <div className="flex flex-wrap gap-2">
+                <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
+                  Cấp nội dung: {selectedNode.level + 1}
+                </div>
+                {selectedNode.childrenCount > 0 ? (
+                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
+                    {selectedNode.childrenCount} mục con
+                  </div>
+                ) : null}
+                {selectedNode.fileUrl ? (
+                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
+                    Có file đính kèm
+                  </div>
+                ) : null}
+                {selectedNode.pdfRefs.length > 0 ? (
+                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-soft)]">
+                    {selectedNode.pdfRefs.length} tham chiếu PDF
+                  </div>
+                ) : null}
+              </div>
+
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"

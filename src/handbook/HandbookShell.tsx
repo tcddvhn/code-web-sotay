@@ -429,6 +429,7 @@ export function HandbookShell({
           onSubmitFeedback={handleSubmitFeedback}
           onSelectSection={setActiveSection}
           onOpenNode={openNode}
+          onOpenSearch={() => setIsSearchOpen(true)}
           onOpenDataSystem={onOpenDataSystem}
         />
       );

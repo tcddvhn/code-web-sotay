@@ -1,12 +1,14 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  BookOpenText,
   CheckCircle2,
   FileBarChart,
   Link as LinkIcon,
   Lock,
   LogIn,
   LogOut,
+  Menu,
   Users,
   X,
 } from 'lucide-react';
@@ -146,6 +148,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSettingsHelpExpanded, setIsSettingsHelpExpanded] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [units, setUnits] = useState<ManagedUnit[]>([]);
@@ -1148,6 +1151,7 @@ export default function App() {
       setAuthError(null);
       await logoutSupabase();
       setCurrentView('DASHBOARD');
+      setIsMobileNavOpen(false);
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -1449,21 +1453,132 @@ export default function App() {
     }
   };
 
+  const mobileMenuItems = [
+    { id: 'HANDBOOK' as ViewMode, label: 'Sổ tay mới', icon: BookOpenText, visible: true },
+    { id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: Activity, visible: true },
+    { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileBarChart, visible: true },
+    { id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: CheckCircle2, visible: isAuthenticated },
+    { id: 'PROJECTS' as ViewMode, label: 'Dự án', icon: Users, visible: isAdmin },
+    { id: 'LEARN_FORM' as ViewMode, label: 'Biểu mẫu', icon: BookOpenText, visible: isAdmin },
+    { id: 'SETTINGS' as ViewMode, label: 'Cài đặt', icon: Lock, visible: isAdmin },
+  ].filter((item) => item.visible);
+
   return (
     <div className="app-shell flex h-screen overflow-hidden">
-      <Sidebar
-        currentView={currentView}
-        onViewChange={setCurrentView}
-        isAuthenticated={isAuthenticated}
-        isAdmin={isAdmin}
-        onLogout={handleLogout}
-        user={user}
-        userProfile={effectiveUserProfile}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-        isMobile={isMobile}
-      />
+      {!isMobile && (
+        <Sidebar
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          isAuthenticated={isAuthenticated}
+          isAdmin={isAdmin}
+          onLogout={handleLogout}
+          user={user}
+          userProfile={effectiveUserProfile}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+          isMobile={isMobile}
+        />
+      )}
       <main className="app-main flex-1 overflow-auto">{renderContent()}</main>
+
+      {isMobile && (
+        <>
+          <button
+            type="button"
+            onClick={() => setIsMobileNavOpen(true)}
+            className="fixed right-4 top-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(179,15,20,0.2)] bg-white text-[var(--primary-dark)] shadow-[0_18px_40px_rgba(38,31,18,0.18)]"
+            aria-label="Mở menu ứng dụng"
+          >
+            <Menu size={20} />
+          </button>
+
+          {isMobileNavOpen && (
+            <div className="fixed inset-0 z-[60] bg-[rgba(19,15,12,0.45)] px-4 py-6">
+              <div className="mx-auto max-w-md">
+                <div className="rounded-[28px] border border-[var(--line)] bg-white p-5 shadow-[0_24px_60px_rgba(38,31,18,0.22)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Điều hướng nhanh</div>
+                      <div className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-[var(--primary-dark)]">
+                        Mở Sổ tay hoặc Hệ thống dữ liệu
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsMobileNavOpen(false)}
+                      className="secondary-btn flex h-11 w-11 items-center justify-center !rounded-full !p-0"
+                      aria-label="Đóng menu ứng dụng"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="mt-5 grid gap-3">
+                    {mobileMenuItems.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setCurrentView(item.id);
+                          setIsMobileNavOpen(false);
+                        }}
+                        className={`flex items-center gap-3 rounded-[22px] border px-4 py-4 text-left transition ${
+                          currentView === item.id
+                            ? 'border-[var(--primary)] bg-[var(--primary-soft)]'
+                            : 'border-[var(--line)] bg-[var(--surface-soft)]'
+                        }`}
+                      >
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[var(--primary-dark)] shadow-[0_8px_18px_rgba(38,31,18,0.08)]">
+                          <item.icon size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-[var(--ink)]">{item.label}</div>
+                          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
+                            {currentView === item.id ? 'Đang mở' : 'Nhấn để chuyển'}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-5 border-t border-[var(--line)] pt-4">
+                    {user ? (
+                      <div className="space-y-3">
+                        <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
+                          <div className="text-sm font-bold text-[var(--ink)]">
+                            {effectiveUserProfile?.displayName || user.displayName || 'Người dùng'}
+                          </div>
+                          <div className="mt-1 text-xs text-[var(--ink-soft)]">{user.email}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="secondary-btn flex w-full items-center justify-center gap-2"
+                        >
+                          <LogOut size={16} />
+                          Đăng xuất
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentView('LOGIN');
+                          setIsMobileNavOpen(false);
+                        }}
+                        className="primary-btn flex w-full items-center justify-center gap-2"
+                      >
+                        <LogIn size={16} />
+                        Đăng nhập
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -2497,4 +2612,3 @@ function DashboardOverview({
     </div>
   );
 }
-

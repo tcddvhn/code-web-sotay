@@ -12,9 +12,10 @@ export function RegulationsPage(props: {
 }) {
   return (
     <SectionPage
-      eyebrow="Section handbook_nodes"
+      eyebrow="Tra cứu nền tảng"
       title="Quy định"
-      description="Khu tra cứu quy định, điều lệ và hướng dẫn nền tảng. Dữ liệu được đọc trực tiếp từ bảng handbook_nodes trên Supabase."
+      description="Khu tra cứu điều lệ, hướng dẫn và quy định nền tảng. Phù hợp khi cần tìm nhanh văn bản gốc, quy tắc thực hiện và các mốc nghiệp vụ quan trọng."
+      helperText="Ưu tiên tìm theo tên văn bản, số hiệu, chủ đề hoặc từ khóa nghiệp vụ."
       {...props}
     />
   );

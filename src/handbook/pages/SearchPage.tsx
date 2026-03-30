@@ -1,6 +1,13 @@
-﻿import React from 'react';
+import React from 'react';
 import { Search } from 'lucide-react';
 import { HandbookNodeOutlineItem } from '../types';
+
+const SECTION_LABELS: Record<string, string> = {
+  'quy-dinh': 'Quy định',
+  'hoi-dap': 'Hỏi đáp',
+  'bieu-mau': 'Biểu mẫu',
+  'tai-lieu': 'Tài liệu',
+};
 
 export function SearchPage({
   query,
@@ -20,12 +27,15 @@ export function SearchPage({
   return (
     <div className="panel-card rounded-[28px] border p-5 md:p-6">
       <div className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--primary)]">Tra cứu toàn bộ Sổ tay</div>
+      <div className="mt-2 text-sm leading-7 text-[var(--ink-soft)]">
+        Ưu tiên gõ theo tên văn bản, câu hỏi, tag hoặc tên biểu mẫu để ra kết quả nhanh hơn.
+      </div>
       <div className="mt-3 flex items-center gap-3 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
         <Search size={18} className="text-[var(--primary-dark)]" />
         <input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Nhập tiêu đề, tag hoặc đoạn nội dung cần tìm..."
+          placeholder="Nhập tên văn bản, câu hỏi, tag hoặc biểu mẫu..."
           className="w-full bg-transparent text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-soft)]"
         />
       </div>
@@ -45,7 +55,7 @@ export function SearchPage({
             >
               <div className="text-sm font-bold text-[var(--ink)]">{item.title}</div>
               <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
-                {item.section} {item.tag ? `• ${item.tag}` : ''}
+                {(SECTION_LABELS[item.section] || item.section)} {item.tag ? `• ${item.tag}` : ''}
               </div>
             </button>
           ))

@@ -244,3 +244,31 @@
 - Handbook moi da co vong phan hoi nguoi dung co ban.
 - Admin handbook da co dashboard de nhin usage + gop y.
 - Pipeline migrate da ro hon: `extract -> flatten -> review -> import`.
+
+## Cap nhat tiep theo 2026-03-30 - tang toc UX doc noi dung
+
+### Viec moi vua bo sung
+
+1. Nang cap `Trang chu` handbook:
+   - them khoi `Tim nhanh` noi bat
+   - them chip dieu huong theo nhu cau thuc te
+2. Viet lai cau chu trong `src/handbook/config.ts` theo huong gan ngon ngu nguoi dung hon.
+3. Nang cap `SearchPage`:
+   - bo sung huong dan go tu khoa
+   - hien ten section than thien thay vi ma ky thuat
+4. Nang cap `SectionPage`:
+   - them bo loc nhanh theo tieu de/tag
+   - them chip tag pho bien
+   - bo sung metadata gon de de scan: cap noi dung, muc con, file dinh kem, PDF refs
+5. Doi lai eyebrow/helper text cho 4 section:
+   - `Quy dinh`
+   - `Hoi dap`
+   - `Bieu mau`
+   - `Tai lieu`
+
+### Dinh huong UX dang ap dung
+
+- uu tien tim nhanh
+- de quet noi dung
+- nhan than thien, tranh lo ten ky thuat
+- giu lai cam giac 5 tab mobile cua site cu, nhung nang kha nang tra cuu len

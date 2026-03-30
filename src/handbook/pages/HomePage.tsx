@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { BellRing, Bookmark, Clock3, Database, ExternalLink, FolderOpen, MessageSquareQuote, Sparkles } from 'lucide-react';
+import { BellRing, Bookmark, Clock3, Database, ExternalLink, FolderOpen, MessageSquareQuote, Search, Sparkles } from 'lucide-react';
 import { HANDBOOK_QUICK_LINKS } from '../config';
 import { HandbookActivityCardItem, HandbookNoticeItem, HandbookSectionSummary } from '../types';
 
@@ -23,6 +23,7 @@ export function HomePage({
   onSubmitFeedback,
   onSelectSection,
   onOpenNode,
+  onOpenSearch,
   onOpenDataSystem,
 }: {
   summaries: HandbookSectionSummary[];
@@ -37,6 +38,7 @@ export function HomePage({
   onSubmitFeedback?: (payload: { content: string; rating?: string | null }) => Promise<boolean>;
   onSelectSection: (section: 'quy-dinh' | 'hoi-dap' | 'bieu-mau' | 'tai-lieu') => void;
   onOpenNode: (nodeId: string, section: 'quy-dinh' | 'hoi-dap' | 'bieu-mau' | 'tai-lieu') => void;
+  onOpenSearch?: () => void;
   onOpenDataSystem?: () => void;
 }) {
   const [feedbackContent, setFeedbackContent] = useState('');
@@ -72,6 +74,20 @@ export function HomePage({
               Module Sổ tay mới đang được đọc trực tiếp từ dữ liệu Supabase. Giao diện giữ thói quen 5 tab mobile của hệ cũ,
               đồng thời chuẩn bị sẵn cấu trúc để quản trị nội dung tập trung trong các pha tiếp theo.
             </p>
+
+            <button
+              type="button"
+              onClick={onOpenSearch}
+              className="mt-6 flex w-full items-center gap-3 rounded-[24px] border border-[var(--line)] bg-white px-4 py-4 text-left shadow-[0_12px_28px_rgba(38,31,18,0.08)] transition hover:-translate-y-0.5 md:max-w-[680px]"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
+                <Search size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-[var(--ink)]">Tìm nhanh quy định, câu hỏi, biểu mẫu, tài liệu</div>
+                <div className="mt-1 text-sm text-[var(--ink-soft)]">Gõ theo tên văn bản, từ khóa nghiệp vụ hoặc tên biểu mẫu để tra cứu nhanh.</div>
+              </div>
+            </button>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <button type="button" onClick={() => onSelectSection('quy-dinh')} className="primary-btn inline-flex items-center gap-2">
@@ -112,6 +128,24 @@ export function HomePage({
           >
             <div className="text-sm font-extrabold text-[var(--primary-dark)]">{item.title}</div>
             <div className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{item.description}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {[
+          { label: 'Điều lệ, hướng dẫn', section: 'quy-dinh' as const },
+          { label: 'Tình huống thường gặp', section: 'hoi-dap' as const },
+          { label: 'Biểu mẫu tải về', section: 'bieu-mau' as const },
+          { label: 'PDF, văn bản gốc', section: 'tai-lieu' as const },
+        ].map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => onSelectSection(item.section)}
+            className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm font-semibold text-[var(--primary-dark)] transition hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]"
+          >
+            {item.label}
           </button>
         ))}
       </div>

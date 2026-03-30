@@ -224,6 +224,25 @@ npm run handbook:extract -- <input.json> tmp/handbook-export/treeData.json
 
 - Lenh nay khong dong vao site cu, chi xu ly file export dau vao
 
+### 7. Da nang cap UX tang toc cho handbook moi
+
+File lien quan:
+
+- [src/handbook/config.ts](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/config.ts)
+- [src/handbook/pages/HomePage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/HomePage.tsx)
+- [src/handbook/pages/SearchPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/SearchPage.tsx)
+- [src/handbook/pages/SectionPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/SectionPage.tsx)
+- [src/handbook/pages/RegulationsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/RegulationsPage.tsx)
+- [src/handbook/pages/FaqPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/FaqPage.tsx)
+- [src/handbook/pages/FormsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/FormsPage.tsx)
+- [src/handbook/pages/DocumentsPage.tsx](/Users/tranhau/Documents/GitHub/code-web-sotay/src/handbook/pages/DocumentsPage.tsx)
+
+Tinh trang:
+
+- Search da duoc day len thanh diem vao noi bat tren Trang chu
+- Danh sach noi dung trong tung section da co bo loc nhanh va chip tag de scan nhanh hon
+- Cac nhan ky thuat da duoc doi sang ngon ngu than thien voi nguoi dung
+
 ## Nhung gi tuyet doi KHONG duoc lam luc nay
 
 1. Khong sua repo `sotay-dangvien`

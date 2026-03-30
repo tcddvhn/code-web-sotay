@@ -6,58 +6,58 @@ export const HANDBOOK_NAV_ITEMS: Array<HandbookNavItem & { icon: LucideIcon }> =
     id: 'home',
     label: 'Trang chủ',
     shortLabel: 'Trang chủ',
-    description: 'Trang điều hướng chung của Sổ tay nghiệp vụ.',
+    description: 'Lối vào nhanh để tra cứu, xem cập nhật và mở hệ thống dữ liệu.',
     icon: Home,
   },
   {
     id: 'quy-dinh',
     label: 'Quy định',
     shortLabel: 'Quy định',
-    description: 'Tra cứu hệ thống quy định và hướng dẫn nền tảng.',
+    description: 'Điều lệ, hướng dẫn và quy định nền tảng cần tra cứu thường xuyên.',
     icon: LibraryBig,
   },
   {
     id: 'hoi-dap',
     label: 'Hỏi đáp',
     shortLabel: 'Hỏi đáp',
-    description: 'Tổng hợp các tình huống và câu hỏi nghiệp vụ thường gặp.',
+    description: 'Câu hỏi ngắn, tình huống thực tế và cách xử lý nhanh.',
     icon: HelpCircle,
   },
   {
     id: 'bieu-mau',
     label: 'Biểu mẫu',
     shortLabel: 'Biểu mẫu',
-    description: 'Danh mục biểu mẫu tải về và tài liệu thao tác nhanh.',
+    description: 'Biểu mẫu tải về, file dùng chung và hướng dẫn thao tác nhanh.',
     icon: Files,
   },
   {
     id: 'tai-lieu',
     label: 'Tài liệu',
     shortLabel: 'Tài liệu',
-    description: 'Kho tài liệu tham khảo, văn bản và PDF gốc.',
+    description: 'Tài liệu tham khảo, văn bản gốc và các PDF nền.',
     icon: FileText,
   },
 ];
 
 export const HANDBOOK_QUICK_LINKS: HandbookQuickLink[] = [
   {
-    title: 'Tra cứu quy định theo chuyên đề',
-    description: 'Dùng cho điều lệ, hướng dẫn, quy định và các mốc nghiệp vụ quan trọng.',
+    title: 'Tra cứu điều lệ và quy định',
+    description: 'Mở nhanh các quy định cốt lõi, hướng dẫn nền tảng và mốc nghiệp vụ quan trọng.',
     section: 'quy-dinh',
   },
   {
     title: 'Mở nhanh kho Hỏi đáp',
-    description: 'Dành cho tình huống xử lý thực tế, tra câu trả lời ngắn và nhanh.',
+    description: 'Tra câu trả lời ngắn cho các tình huống thường gặp và lỗi phát sinh trong thực tế.',
     section: 'hoi-dap',
   },
   {
     title: 'Tải biểu mẫu dùng chung',
-    description: 'Tổng hợp các biểu mẫu, file đính kèm và đường dẫn tải về.',
+    description: 'Tìm đúng biểu mẫu, file đính kèm và đường dẫn tải về theo nhu cầu thực tế.',
     section: 'bieu-mau',
   },
   {
     title: 'Mở thư viện tài liệu',
-    description: 'Xem tài liệu gốc, văn bản tham khảo và các bản PDF nền.',
+    description: 'Xem tài liệu gốc, văn bản tham khảo và các PDF nền theo chủ đề.',
     section: 'tai-lieu',
   },
 ];

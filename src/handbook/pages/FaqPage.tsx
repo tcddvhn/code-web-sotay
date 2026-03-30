@@ -12,9 +12,10 @@ export function FaqPage(props: {
 }) {
   return (
     <SectionPage
-      eyebrow="Section handbook_nodes"
+      eyebrow="Tra cứu nhanh"
       title="Hỏi đáp"
-      description="Khu tổng hợp tình huống nghiệp vụ và câu hỏi thường gặp. Phù hợp cho tra cứu nhanh khi đang xử lý công việc thực tế."
+      description="Khu tổng hợp tình huống nghiệp vụ và câu hỏi thường gặp. Phù hợp cho tra cứu nhanh khi đang xử lý công việc thực tế hoặc cần trả lời ngắn gọn."
+      helperText="Nên ưu tiên câu hỏi ngắn, tiêu đề rõ và bám đúng ngôn ngữ người dùng."
       {...props}
     />
   );
