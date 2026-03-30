@@ -1183,113 +1183,167 @@ export function ImportFiles({
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-          <div className="panel-card rounded-[24px] p-5">
-            <p className="col-header mb-3">1. Dự án</p>
-            <select
-              value={selectedProjectId}
-              onChange={(event) => onSelectProject(event.target.value)}
-              className="field-input h-11 text-base font-semibold"
-            >
-              <option value="">-- Chọn dự án --</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-            {currentProject && (
-              <p className="page-subtitle mt-3 text-sm">
-                {currentProject.description || 'Chưa có mô tả dự án.'}
-              </p>
-            )}
-
-            <div className="mt-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    Đơn vị chưa tiếp nhận
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                    {pendingUnits.length} đơn vị
+        <div className="space-y-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="panel-card min-w-0 flex-1 rounded-[24px] p-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <p className="col-header">1. Dự án</p>
+                  <p className="page-subtitle mt-2 text-sm">
+                    Chọn đúng dự án để hệ thống lọc đơn vị chưa tiếp nhận và các biểu mẫu đã chốt tương ứng.
                   </p>
                 </div>
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
-                  {selectedYear}
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-[var(--ink-soft)]">
-                Danh sách này dùng cùng logic với Nhật ký và tự lọc theo dự án, năm và phân quyền theo dõi.
-              </p>
-              <div className="mt-3 max-h-52 space-y-2 overflow-auto pr-1">
-                {pendingUnits.length > 0 ? (
-                  pendingUnits.map((unit) => (
-                    <div
-                      key={unit.code}
-                      className="flex items-center justify-between rounded-[16px] border border-[var(--line)] bg-white px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
-                        <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                          {unit.code}
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
-                        Chưa tiếp nhận
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-[16px] border border-dashed border-[var(--line)] bg-white px-3 py-4 text-sm text-[var(--ink-soft)]">
-                    {!isAdmin && currentAssignedUnitCodes.length === 0
-                      ? 'Tài khoản này chưa được phân công đơn vị theo dõi cho luồng tiếp nhận.'
-                      : 'Không còn đơn vị nào chưa tiếp nhận trong dự án/năm đang chọn.'}
+                {currentProject && (
+                  <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                    {currentProject.status === 'ACTIVE' ? 'Đang hoạt động' : 'Đã hoàn thành'}
                   </div>
                 )}
               </div>
+
+              <div className="-mx-1 mt-4 flex flex-wrap gap-2 overflow-x-auto px-1 pb-1">
+                {projects.map((project) => {
+                  const isActive = project.id === selectedProjectId;
+                  return (
+                    <button
+                      key={project.id}
+                      type="button"
+                      onClick={() => onSelectProject(project.id)}
+                      className={`min-w-[220px] max-w-full rounded-[18px] border px-4 py-3 text-left transition ${
+                        isActive
+                          ? 'border-[var(--brand)] bg-[var(--primary-soft)] shadow-[0_12px_30px_rgba(122,44,46,0.10)]'
+                          : 'border-[var(--line)] bg-white hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
+                      }`}
+                    >
+                      <p className="truncate text-sm font-semibold text-[var(--ink)]">{project.name}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-[var(--ink-soft)]">
+                        {project.description || 'Chưa có mô tả dự án.'}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Đơn vị chưa tiếp nhận
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                      {pendingUnits.length} đơn vị
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
+                    {selectedYear}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-[var(--ink-soft)]">
+                  Danh sách này dùng cùng logic với Nhật ký và tự lọc theo dự án, năm và phân quyền theo dõi.
+                </p>
+                <div className="mt-3 max-h-52 space-y-2 overflow-auto pr-1">
+                  {pendingUnits.length > 0 ? (
+                    pendingUnits.map((unit) => (
+                      <div
+                        key={unit.code}
+                        className="flex items-center justify-between rounded-[16px] border border-[var(--line)] bg-white px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                          <p className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                            {unit.code}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
+                          Chưa tiếp nhận
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-[16px] border border-dashed border-[var(--line)] bg-white px-3 py-4 text-sm text-[var(--ink-soft)]">
+                      {!isAdmin && currentAssignedUnitCodes.length === 0
+                        ? 'Tài khoản này chưa được phân công đơn vị theo dõi cho luồng tiếp nhận.'
+                        : 'Không còn đơn vị nào chưa tiếp nhận trong dự án/năm đang chọn.'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="panel-card w-full rounded-[24px] p-5 xl:max-w-[320px]">
+              <p className="col-header mb-3">Năm tổng hợp</p>
+              <select
+                value={selectedYear}
+                onChange={(event) => handleYearChange(event.target.value)}
+                className="field-input h-11 text-base font-semibold"
+              >
+                {YEARS.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <label className="mt-4 flex items-center gap-2 text-sm text-[var(--ink-soft)]">
+                <input type="checkbox" checked={pinnedYear === selectedYear} onChange={togglePinnedYear} />
+                <span>Ghim năm này cho lần nhập sau</span>
+              </label>
             </div>
           </div>
 
           <div className="panel-card rounded-[24px] p-5">
-            <p className="col-header mb-3">2. Biểu mẫu</p>
-            <select
-              value={selectedTemplateId}
-              onChange={(event) => setSelectedTemplateId(event.target.value)}
-              className="field-input h-11 text-base font-semibold"
-            >
-              <option value="">-- Chọn biểu mẫu --</option>
-              {publishedTemplates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
-                </option>
-              ))}
-            </select>
-            <p className="page-subtitle mt-3 text-sm">
-              {selectedTemplateId
-                ? 'Hệ thống đang đối chiếu theo biểu mẫu bạn chọn. File chỉ được nhận khi có đúng sheet bắt buộc của biểu này.'
-                : 'Khi tiếp nhận, hệ thống sẽ đối chiếu toàn bộ biểu mẫu đã chốt của dự án. File chỉ được nhận khi đủ 100% sheet bắt buộc; các sheet thừa sẽ tự bỏ qua.'}
-            </p>
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0">
+                <p className="col-header">2. Biểu mẫu</p>
+                <p className="page-subtitle mt-2 text-sm">
+                  {selectedTemplateId
+                    ? 'Hệ thống đang đối chiếu theo biểu mẫu bạn chọn. File chỉ được nhận khi có đúng sheet bắt buộc của biểu này.'
+                    : 'Khi tiếp nhận, hệ thống sẽ đối chiếu toàn bộ biểu mẫu đã chốt của dự án. File chỉ được nhận khi đủ 100% sheet bắt buộc; các sheet thừa sẽ tự bỏ qua.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="-mx-1 mt-4 flex flex-wrap gap-2 overflow-x-auto px-1 pb-1">
+              <button
+                type="button"
+                onClick={() => setSelectedTemplateId('')}
+                className={`rounded-[18px] border px-4 py-3 text-left text-sm font-semibold transition ${
+                  !selectedTemplateId
+                    ? 'border-[var(--brand)] bg-[var(--primary-soft)]'
+                    : 'border-[var(--line)] bg-white hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
+                }`}
+              >
+                Tất cả biểu mẫu đã chốt
+              </button>
+              {publishedTemplates.map((template) => {
+                const isActive = template.id === selectedTemplateId;
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => setSelectedTemplateId(template.id)}
+                    className={`min-w-[220px] max-w-full rounded-[18px] border px-4 py-3 text-left transition ${
+                      isActive
+                        ? 'border-[var(--brand)] bg-[var(--primary-soft)] shadow-[0_12px_30px_rgba(122,44,46,0.10)]'
+                        : 'border-[var(--line)] bg-white hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
+                    }`}
+                  >
+                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{template.name}</p>
+                    <p className="mt-1 text-xs text-[var(--ink-soft)]">{template.sheetName}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {publishedTemplates.length === 0 && (
+              <div className="mt-4 rounded-[16px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">
+                Dự án này chưa có biểu mẫu đã chốt để tiếp nhận dữ liệu.
+              </div>
+            )}
           </div>
 
-          <div className="panel-card rounded-[24px] p-5">
-            <p className="col-header mb-3">3. Năm tổng hợp</p>
-            <select value={selectedYear} onChange={(event) => handleYearChange(event.target.value)} className="field-input h-11 text-base font-semibold">
-              {YEARS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-            <label className="mt-4 flex items-center gap-2 text-sm text-[var(--ink-soft)]">
-              <input type="checkbox" checked={pinnedYear === selectedYear} onChange={togglePinnedYear} />
-              <span>Ghim năm này cho lần nhập sau</span>
-            </label>
-          </div>
-
-          <div className="panel-card rounded-[24px] p-5">
-            <p className="col-header mb-3">4. Quản trị dữ liệu theo năm</p>
-            {canManageData ? (
-              <div className="space-y-3">
+          {canManageData && (
+            <div className="panel-card rounded-[24px] p-5">
+              <p className="col-header mb-3">3. Quản trị dữ liệu theo năm</p>
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
                 <select
                   value={selectedUnitToDelete}
                   onChange={(event) => setSelectedUnitToDelete(event.target.value)}
@@ -1302,22 +1356,33 @@ export function ImportFiles({
                     </option>
                   ))}
                 </select>
-                <div className="grid grid-cols-1 gap-2">
-                  <button onClick={handleDeleteUnit} disabled={isManagingData || !selectedUnitToDelete} className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40">
+
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                  <button
+                    onClick={handleDeleteUnit}
+                    disabled={isManagingData || !selectedUnitToDelete}
+                    className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
+                  >
                     Xóa dữ liệu theo đơn vị
                   </button>
-                  <button onClick={handleDeleteYear} disabled={isManagingData} className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40">
+                  <button
+                    onClick={handleDeleteYear}
+                    disabled={isManagingData}
+                    className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
+                  >
                     Xóa dữ liệu theo năm
                   </button>
-                  <button onClick={handleDeleteProject} disabled={isManagingData || !currentProject} className="primary-btn disabled:cursor-not-allowed disabled:opacity-40">
+                  <button
+                    onClick={handleDeleteProject}
+                    disabled={isManagingData || !currentProject}
+                    className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+                  >
                     Xóa toàn bộ dự án hiện tại
                   </button>
                 </div>
               </div>
-            ) : (
-              <p className="page-subtitle text-sm">Chức năng này chỉ dành cho tài khoản quản trị.</p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="panel-card rounded-[28px] border border-dashed border-[var(--line)] p-4">
