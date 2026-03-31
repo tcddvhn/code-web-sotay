@@ -64,6 +64,40 @@ function readWorksheetText(worksheet: XLSX.WorkSheet, row: number, col: string) 
   return value === undefined || value === null ? '' : String(value).trim();
 }
 
+function readWorksheetTextInColumnRange(worksheet: XLSX.WorkSheet, row: number, startCol: string, endCol: string) {
+  const labelRangeStartIndex = Math.min(columnLetterToIndex(startCol), columnLetterToIndex(endCol));
+  const labelRangeEndIndex = Math.max(columnLetterToIndex(startCol), columnLetterToIndex(endCol));
+
+  for (let colIndex = labelRangeStartIndex; colIndex <= labelRangeEndIndex; colIndex += 1) {
+    const value = readWorksheetText(worksheet, row, columnIndexToLetter(colIndex));
+    if (value) {
+      return value;
+    }
+  }
+
+  return '';
+}
+
+function readBlockTitle(
+  worksheet: XLSX.WorkSheet,
+  headerLayout: HeaderLayout | undefined,
+  fallbackLabelColumnStart: string,
+  fallbackLabelColumnEnd: string,
+) {
+  if (headerLayout) {
+    const startCol = columnIndexToLetter(headerLayout.startCol);
+    const endCol = columnIndexToLetter(headerLayout.endCol);
+    for (let row = headerLayout.startRow; row <= headerLayout.endRow; row += 1) {
+      const value = readWorksheetTextInColumnRange(worksheet, row, startCol, endCol);
+      if (value) {
+        return value;
+      }
+    }
+  }
+
+  return readWorksheetTextInColumnRange(worksheet, 1, fallbackLabelColumnStart, fallbackLabelColumnEnd);
+}
+
 function readWorksheetRowLabel(worksheet: XLSX.WorkSheet, row: number, template: FormTemplate) {
   const primaryLabelColumn =
     template.columnMapping.primaryLabelColumn ||
@@ -77,14 +111,9 @@ function readWorksheetRowLabel(worksheet: XLSX.WorkSheet, row: number, template:
 
   const startLabelColumn = template.columnMapping.labelColumnStart || template.columnMapping.labelColumn || primaryLabelColumn;
   const endLabelColumn = template.columnMapping.labelColumnEnd || template.columnMapping.labelColumn || primaryLabelColumn;
-  const labelRangeStartIndex = Math.min(columnLetterToIndex(startLabelColumn), columnLetterToIndex(endLabelColumn));
-  const labelRangeEndIndex = Math.max(columnLetterToIndex(startLabelColumn), columnLetterToIndex(endLabelColumn));
-
-  for (let colIndex = labelRangeStartIndex; colIndex <= labelRangeEndIndex; colIndex += 1) {
-    const value = readWorksheetText(worksheet, row, columnIndexToLetter(colIndex));
-    if (value) {
-      return value;
-    }
+  const rangeLabel = readWorksheetTextInColumnRange(worksheet, row, startLabelColumn, endLabelColumn);
+  if (rangeLabel) {
+    return rangeLabel;
   }
 
   const worksheetRef = worksheet['!ref'];
@@ -197,7 +226,7 @@ export async function resolveTemplateHeaderLayout(template: FormTemplate) {
       const endRow = template.headerLayout?.endRow ?? Math.max(startRow, template.columnMapping.startRow - 1);
       const startCol = template.headerLayout
         ? columnIndexToLetter(template.headerLayout.startCol)
-        : template.columnMapping.labelColumn;
+        : template.columnMapping.labelColumnStart || template.columnMapping.labelColumn;
       const endCol = template.headerLayout
         ? columnIndexToLetter(template.headerLayout.endCol)
         : template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] ||
@@ -218,6 +247,48 @@ export async function resolveTemplateRowLabels(template: FormTemplate) {
     const worksheet = getWorksheetForTemplate(workbook, template);
     if (!worksheet) {
       return [] as Array<{ sourceRow: number; label: string }>;
+    }
+
+    const configuredBlocks = template.columnMapping.blocks || [];
+    if (configuredBlocks.length > 0) {
+      const rows = configuredBlocks.flatMap((block) => {
+        const blockSpecialRows = new Set(block.specialRows || []);
+        const blockTitle =
+          readBlockTitle(
+            worksheet,
+            block.headerLayout,
+            block.labelColumnStart || template.columnMapping.labelColumnStart || template.columnMapping.labelColumn,
+            block.labelColumnEnd || template.columnMapping.labelColumnEnd || template.columnMapping.labelColumn,
+          ) || block.name;
+
+        const blockRows: Array<{ sourceRow: number; label: string }> = [];
+        for (let sourceRow = block.startRow; sourceRow <= block.endRow; sourceRow += 1) {
+          if (blockSpecialRows.has(sourceRow)) {
+            continue;
+          }
+
+          const directLabel = readWorksheetText(
+            worksheet,
+            sourceRow,
+            block.primaryLabelColumn || template.columnMapping.primaryLabelColumn || template.columnMapping.labelColumn,
+          );
+          const rangeLabel = readWorksheetTextInColumnRange(
+            worksheet,
+            sourceRow,
+            block.labelColumnStart || template.columnMapping.labelColumnStart || template.columnMapping.labelColumn,
+            block.labelColumnEnd || template.columnMapping.labelColumnEnd || template.columnMapping.labelColumn,
+          );
+
+          blockRows.push({
+            sourceRow,
+            label: directLabel || rangeLabel || blockTitle,
+          });
+        }
+
+        return blockRows;
+      });
+
+      return rows;
     }
 
     const effectiveEndRow = resolveTemplateEffectiveEndRowFromWorksheet(worksheet, template);

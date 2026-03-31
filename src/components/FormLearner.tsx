@@ -679,7 +679,7 @@ export function FormLearner({
     return {
       startRow: template.columnMapping.startRow,
       endRow: Math.max(template.columnMapping.startRow, template.columnMapping.startRow + 4),
-      startCol: template.columnMapping.labelColumn,
+      startCol: template.columnMapping.labelColumnStart || template.columnMapping.labelColumn,
       endCol: template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] || template.columnMapping.labelColumn,
     };
   };
@@ -774,7 +774,7 @@ export function FormLearner({
           ({
             startRow: template.columnMapping.startRow,
             endRow: Math.max(template.columnMapping.startRow, template.columnMapping.startRow + 4),
-            startCol: columnLetterToIndex(template.columnMapping.labelColumn),
+            startCol: columnLetterToIndex(template.columnMapping.labelColumnStart || template.columnMapping.labelColumn),
             endCol: columnLetterToIndex(
               template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] ||
                 template.columnMapping.labelColumn,
@@ -1484,7 +1484,7 @@ export function FormLearner({
             worksheet,
             Math.min(Number(manualForm.verticalHeaderStartRow), Number(manualForm.horizontalHeaderStartRow)),
             Math.max(Number(manualForm.verticalHeaderEndRow), Number(manualForm.horizontalHeaderEndRow)),
-            manualForm.labelColumn.toUpperCase(),
+            (manualForm.labelColumnStart || manualForm.labelColumn).toUpperCase(),
             dataColumns[dataColumns.length - 1] || manualForm.labelColumn.toUpperCase(),
           ),
         };
