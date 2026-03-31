@@ -147,7 +147,7 @@ function normalizeTemplateBlocks(blocks: ManualFormBlock[]) {
 
       return {
         id: block.id || buildManualBlockId(),
-        name: block.name.trim() || `Block ${blocks.indexOf(block) + 1}`,
+        name: block.name.trim() || `Khối ${blocks.indexOf(block) + 1}`,
         labelColumnStart: normalizeColumnValue(block.labelColumnStart || 'A'),
         labelColumnEnd: normalizeColumnValue(block.labelColumnEnd || block.labelColumnStart || 'A'),
         primaryLabelColumn: normalizeColumnValue(block.primaryLabelColumn || block.labelColumnStart || 'A'),
@@ -322,7 +322,7 @@ export function FormLearner({
 
         const nextBlock: TemplateBlockConfig = {
           id: buildManualBlockId(),
-          name: `Block ${(template.columnMapping.blocks || []).length + 1}`,
+          name: `Khối ${(template.columnMapping.blocks || []).length + 1}`,
           labelColumnStart: template.columnMapping.labelColumnStart || template.columnMapping.labelColumn || 'A',
           labelColumnEnd: template.columnMapping.labelColumnEnd || template.columnMapping.labelColumn || 'A',
           primaryLabelColumn: template.columnMapping.primaryLabelColumn || template.columnMapping.labelColumn || 'A',
@@ -399,7 +399,7 @@ export function FormLearner({
         enableAdvancedStructure: false,
         blocks: [],
       }));
-      setNotice('Đã điền sẵn cấu hình tham khảo cho sheet B1. Bạn kiểm tra lại tên sheet và tên cột hiển thị trước khi lưu.');
+      setNotice('Đã điền sẵn cấu hình tham khảo cho sheet B1. Bạn kiểm tra lại tên sheet và lưu khi thấy đúng.');
       setError(null);
       return;
     }
@@ -422,7 +422,7 @@ export function FormLearner({
       enableAdvancedStructure: true,
       blocks: createPresetB2Blocks(),
     }));
-    setNotice('Đã điền sẵn cấu hình tham khảo cho sheet B2 với 3 block dữ liệu độc lập. Bạn kiểm tra lại tên sheet trước khi lưu.');
+    setNotice('Đã điền sẵn cấu hình tham khảo cho sheet B2 với 3 khối tiêu đề - dữ liệu độc lập. Bạn kiểm tra lại tên sheet trước khi lưu.');
     setError(null);
   };
 
@@ -846,7 +846,7 @@ export function FormLearner({
     }
 
     if ((template.columnMapping.blocks || []).some((block) => block.endRow < block.startRow)) {
-      return 'Có block dữ liệu có dòng kết thúc nhỏ hơn dòng bắt đầu.';
+      return 'Có khối dữ liệu có dòng kết thúc nhỏ hơn dòng bắt đầu.';
     }
 
     return null;
@@ -876,7 +876,7 @@ export function FormLearner({
         blocks: (template.columnMapping.blocks || []).map((block, index) => ({
           ...block,
           id: block.id || buildManualBlockId(),
-          name: block.name.trim() || `Block ${index + 1}`,
+          name: block.name.trim() || `Khối ${index + 1}`,
           labelColumnStart: normalizeColumnValue(block.labelColumnStart),
           labelColumnEnd: normalizeColumnValue(block.labelColumnEnd),
           primaryLabelColumn: normalizeColumnValue(block.primaryLabelColumn),
@@ -2005,53 +2005,15 @@ export function FormLearner({
         <div className="grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-6">
           <div className="panel-card rounded-[24px] p-6">
-            <h3 className="section-title mb-4">Tạo biểu mẫu thủ công</h3>
-            <div className="mb-5 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    Mẫu cấu hình tham khảo
-                  </p>
-                  <p className="mt-2 text-sm text-[var(--ink-soft)]">
-                    Dùng để điền nhanh giao diện cho các sheet phức tạp. Đây là cấu hình gợi ý ban đầu, bạn vẫn có thể chỉnh lại trước khi lưu.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => applyManualPreset('B1')} className="secondary-btn">
-                    Điền mẫu B1
-                  </button>
-                  <button type="button" onClick={() => applyManualPreset('B2')} className="secondary-btn">
-                    Điền mẫu B2
-                  </button>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <div className="rounded-[16px] border border-[var(--line)] bg-white p-4">
-                  <p className="text-sm font-semibold text-[var(--ink)]">Tham khảo B1</p>
-                  <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">
-                    Tên sheet: <code>B1</code>
-                    <br />
-                    Tiêu chí dọc: <code>A:B</code>, nhãn chính <code>B</code>
-                    <br />
-                    Header ngang: dòng <code>7-8</code>
-                    <br />
-                    Dữ liệu: cột <code>C-E</code>, dòng <code>9-19</code>
-                  </p>
-                </div>
-                <div className="rounded-[16px] border border-[var(--line)] bg-white p-4">
-                  <p className="text-sm font-semibold text-[var(--ink)]">Tham khảo B2</p>
-                  <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">
-                    Tên sheet: <code>B2</code>
-                    <br />
-                    Tiêu chí dọc: <code>A</code>
-                    <br />
-                    Block 1: header <code>A7:I9</code>, dữ liệu dòng <code>10</code>
-                    <br />
-                    Block 2: header <code>A11:I13</code>, dữ liệu dòng <code>14</code>
-                    <br />
-                    Block 3: header <code>A15:I17</code>, dữ liệu dòng <code>18</code>
-                  </p>
-                </div>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <h3 className="section-title">Tạo biểu mẫu thủ công</h3>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => applyManualPreset('B1')} className="secondary-btn">
+                  Điền nhanh B1
+                </button>
+                <button type="button" onClick={() => applyManualPreset('B2')} className="secondary-btn">
+                  Điền nhanh B2
+                </button>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
@@ -2128,19 +2090,19 @@ export function FormLearner({
                     <div className="grid grid-cols-3 gap-3">
                       <input
                         className="field-input"
-                        placeholder="Cột bắt đầu"
+                        placeholder="Cột tiêu chí bắt đầu"
                         value={manualForm.labelColumnStart}
                         onChange={(e) => setManualForm({ ...manualForm, labelColumnStart: e.target.value.toUpperCase() })}
                       />
                       <input
                         className="field-input"
-                        placeholder="Cột kết thúc"
+                        placeholder="Cột tiêu chí kết thúc"
                         value={manualForm.labelColumnEnd}
                         onChange={(e) => setManualForm({ ...manualForm, labelColumnEnd: e.target.value.toUpperCase() })}
                       />
                       <input
                         className="field-input"
-                        placeholder="Cột nhãn chính"
+                        placeholder="Cột chứa tên tiêu chí chính"
                         value={manualForm.primaryLabelColumn}
                         onChange={(e) => setManualForm({ ...manualForm, primaryLabelColumn: e.target.value.toUpperCase() })}
                       />
@@ -2153,7 +2115,7 @@ export function FormLearner({
                       <input
                         className="field-input"
                         type="number"
-                        placeholder="Dòng bắt đầu tiêu đề"
+                        placeholder="Tiêu đề dọc bắt đầu từ dòng"
                         value={manualForm.verticalHeaderStartRow}
                         onChange={(e) =>
                           setManualForm({ ...manualForm, verticalHeaderStartRow: Number(e.target.value) })
@@ -2162,7 +2124,7 @@ export function FormLearner({
                       <input
                         className="field-input"
                         type="number"
-                        placeholder="Dòng kết thúc tiêu đề"
+                        placeholder="Tiêu đề dọc kết thúc ở dòng"
                         value={manualForm.verticalHeaderEndRow}
                         onChange={(e) =>
                           setManualForm({ ...manualForm, verticalHeaderEndRow: Number(e.target.value) })
@@ -2180,7 +2142,7 @@ export function FormLearner({
                     <input
                       className="field-input"
                       type="number"
-                      placeholder="Dòng bắt đầu tiêu đề"
+                      placeholder="Tiêu đề trên bắt đầu từ dòng"
                       value={manualForm.horizontalHeaderStartRow}
                       onChange={(e) =>
                         setManualForm({ ...manualForm, horizontalHeaderStartRow: Number(e.target.value) })
@@ -2189,7 +2151,7 @@ export function FormLearner({
                     <input
                       className="field-input"
                       type="number"
-                      placeholder="Dòng kết thúc tiêu đề"
+                      placeholder="Tiêu đề dưới kết thúc ở dòng"
                       value={manualForm.horizontalHeaderEndRow}
                       onChange={(e) =>
                         setManualForm({ ...manualForm, horizontalHeaderEndRow: Number(e.target.value) })
@@ -2240,10 +2202,10 @@ export function FormLearner({
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    4. Cấu hình nâng cao theo block
+                    4. Cấu hình nâng cao theo khối tiêu đề - dữ liệu
                   </p>
                   <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
-                    Dùng cho biểu như <strong>B2</strong> khi trong cùng một sheet có nhiều vùng header và nhiều vùng dữ liệu độc lập.
+                    Dùng cho biểu như <strong>B2</strong> khi trong cùng một sheet có nhiều vùng tiêu đề ngang và nhiều vùng số liệu độc lập.
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-sm font-medium text-[var(--ink)]">
@@ -2258,7 +2220,7 @@ export function FormLearner({
                       }))
                     }
                   />
-                  Bật cấu hình nhiều block
+                  Bật cấu hình nhiều khối
                 </label>
               </div>
 
@@ -2268,9 +2230,9 @@ export function FormLearner({
                     <div key={block.id} className="rounded-[18px] border border-[var(--line)] bg-white p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-[var(--ink)]">Block {index + 1}</p>
+                          <p className="text-sm font-semibold text-[var(--ink)]">Khối {index + 1}</p>
                           <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
-                            Mỗi block có header riêng, vùng dữ liệu riêng và có thể dùng lại cho một khối độc lập trong cùng sheet.
+                            Mỗi khối có vùng tiêu đề riêng và vùng số liệu riêng, phù hợp với sheet có nhiều phần tách biệt trong cùng một trang.
                           </p>
                         </div>
                         <button
@@ -2279,13 +2241,13 @@ export function FormLearner({
                           className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)]"
                         >
                           <Trash2 size={14} />
-                          Bỏ block
+                          Xóa khối
                         </button>
                       </div>
 
                       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Tên block
+                          Tên khối
                           <input
                             className="field-input mt-2"
                             value={block.name}
@@ -2303,7 +2265,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Dòng header bắt đầu
+                          Tiêu đề trên bắt đầu từ dòng
                           <input
                             type="number"
                             className="field-input mt-2"
@@ -2312,7 +2274,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Dòng header kết thúc
+                          Tiêu đề dưới kết thúc ở dòng
                           <input
                             type="number"
                             className="field-input mt-2"
@@ -2321,7 +2283,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột header bắt đầu
+                          Tiêu đề ngang bắt đầu từ cột
                           <input
                             className="field-input mt-2"
                             value={block.headerStartCol}
@@ -2329,7 +2291,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột header kết thúc
+                          Tiêu đề ngang kết thúc ở cột
                           <input
                             className="field-input mt-2"
                             value={block.headerEndCol}
@@ -2337,7 +2299,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột tiêu chí bắt đầu
+                          Cột tiêu chí dọc bắt đầu
                           <input
                             className="field-input mt-2"
                             value={block.labelColumnStart}
@@ -2345,7 +2307,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột tiêu chí kết thúc
+                          Cột tiêu chí dọc kết thúc
                           <input
                             className="field-input mt-2"
                             value={block.labelColumnEnd}
@@ -2353,7 +2315,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột nhãn chính
+                          Cột chứa tên tiêu chí chính
                           <input
                             className="field-input mt-2"
                             value={block.primaryLabelColumn}
@@ -2361,7 +2323,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Dòng bắt đầu dữ liệu
+                          Dòng chứa số liệu bắt đầu
                           <input
                             type="number"
                             className="field-input mt-2"
@@ -2370,7 +2332,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Dòng kết thúc dữ liệu
+                          Dòng chứa số liệu kết thúc
                           <input
                             type="number"
                             className="field-input mt-2"
@@ -2388,7 +2350,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
-                          Tên cột của block (tùy chọn)
+                          Tên cột của khối (tùy chọn)
                           <input
                             className="field-input mt-2"
                             value={block.columnHeaders}
@@ -2402,7 +2364,7 @@ export function FormLearner({
 
                   <button type="button" onClick={addManualBlock} className="secondary-btn inline-flex items-center gap-2">
                     <Plus size={14} />
-                    Thêm block dữ liệu
+                    Thêm khối tiêu đề - dữ liệu
                   </button>
                 </div>
               )}
@@ -2626,10 +2588,10 @@ export function FormLearner({
                     <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cấu hình block nâng cao
+                          Cấu hình khối tiêu đề - dữ liệu
                         </p>
                         <p className="mt-1 text-[11px] leading-5 text-[var(--ink-soft)]">
-                          Dùng cho các biểu nhiều vùng header/dữ liệu độc lập như B2.
+                          Dùng cho các biểu nhiều vùng tiêu đề và vùng số liệu độc lập như B2.
                         </p>
                       </div>
                       <button
@@ -2638,7 +2600,7 @@ export function FormLearner({
                         className="secondary-btn inline-flex items-center gap-2"
                       >
                         <Plus size={14} />
-                        Thêm block
+                        Thêm khối
                       </button>
                     </div>
 
@@ -2647,20 +2609,20 @@ export function FormLearner({
                         {(tpl.columnMapping.blocks || []).map((block, index) => (
                           <div key={block.id} className="rounded-[16px] border border-[var(--line)] bg-white p-4">
                             <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                              <p className="text-sm font-semibold text-[var(--ink)]">Block {index + 1}</p>
+                              <p className="text-sm font-semibold text-[var(--ink)]">Khối {index + 1}</p>
                               <button
                                 type="button"
                                 onClick={() => removeStoredTemplateBlock(tpl.id, block.id)}
                                 className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)]"
                               >
                                 <Trash2 size={14} />
-                                Xóa block
+                                Xóa khối
                               </button>
                             </div>
 
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Tên block
+                                Tên khối
                                 <input
                                   className="field-input mt-2"
                                   value={block.name}
@@ -2678,7 +2640,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Dòng header bắt đầu
+                                Tiêu đề trên bắt đầu từ dòng
                                 <input
                                   type="number"
                                   className="field-input mt-2"
@@ -2701,7 +2663,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Dòng header kết thúc
+                                Tiêu đề dưới kết thúc ở dòng
                                 <input
                                   type="number"
                                   className="field-input mt-2"
@@ -2724,7 +2686,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Cột header bắt đầu
+                                Tiêu đề ngang bắt đầu từ cột
                                 <input
                                   className="field-input mt-2"
                                   value={block.headerLayout ? XLSX.utils.encode_col(block.headerLayout.startCol - 1) : 'A'}
@@ -2746,7 +2708,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Cột header kết thúc
+                                Tiêu đề ngang kết thúc ở cột
                                 <input
                                   className="field-input mt-2"
                                   value={block.headerLayout ? XLSX.utils.encode_col(block.headerLayout.endCol - 1) : 'A'}
@@ -2768,7 +2730,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Cột tiêu chí bắt đầu
+                                Cột tiêu chí dọc bắt đầu
                                 <input
                                   className="field-input mt-2"
                                   value={block.labelColumnStart}
@@ -2778,7 +2740,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Cột tiêu chí kết thúc
+                                Cột tiêu chí dọc kết thúc
                                 <input
                                   className="field-input mt-2"
                                   value={block.labelColumnEnd}
@@ -2788,7 +2750,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Cột nhãn chính
+                                Cột chứa tên tiêu chí chính
                                 <input
                                   className="field-input mt-2"
                                   value={block.primaryLabelColumn}
@@ -2798,7 +2760,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Dòng bắt đầu dữ liệu
+                                Dòng chứa số liệu bắt đầu
                                 <input
                                   type="number"
                                   className="field-input mt-2"
@@ -2807,7 +2769,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Dòng kết thúc dữ liệu
+                                Dòng chứa số liệu kết thúc
                                 <input
                                   type="number"
                                   className="field-input mt-2"
@@ -2826,7 +2788,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
-                                Tên cột của block
+                                Tên cột của khối
                                 <input
                                   className="field-input mt-2"
                                   value={(block.columnHeaders || []).join(', ')}
@@ -2843,7 +2805,7 @@ export function FormLearner({
                       </div>
                     ) : (
                       <div className="rounded-[16px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">
-                        Chưa có block nâng cao nào. Chỉ cần dùng khi sheet có nhiều vùng header hoặc nhiều vùng dữ liệu độc lập.
+                        Chưa có khối tiêu đề - dữ liệu nào. Chỉ cần dùng khi sheet có nhiều vùng tiêu đề hoặc nhiều vùng số liệu độc lập.
                       </div>
                     )}
                   </div>
