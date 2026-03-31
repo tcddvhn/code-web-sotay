@@ -125,6 +125,20 @@ export interface HeaderLayout {
   merges: HeaderMerge[];
 }
 
+export interface TemplateBlockConfig {
+  id: string;
+  name: string;
+  labelColumnStart: string;
+  labelColumnEnd: string;
+  primaryLabelColumn: string;
+  dataColumns: string[];
+  columnHeaders?: string[];
+  startRow: number;
+  endRow: number;
+  specialRows?: number[];
+  headerLayout?: HeaderLayout;
+}
+
 export interface FormTemplate {
   id: string;
   projectId: string;
@@ -134,10 +148,14 @@ export interface FormTemplate {
   columnHeaders: string[];
   columnMapping: {
     labelColumn: string;
+    labelColumnStart?: string;
+    labelColumnEnd?: string;
+    primaryLabelColumn?: string;
     dataColumns: string[];
     startRow: number;
     endRow: number;
     specialRows?: number[];
+    blocks?: TemplateBlockConfig[];
   };
   headerLayout?: HeaderLayout;
   mode: TemplateMode;

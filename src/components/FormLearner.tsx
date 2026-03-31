@@ -3,20 +3,117 @@ import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
 import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock, X } from 'lucide-react';
 import { uploadFile } from '../supabase';
-import { FormTemplate, HeaderLayout, Project } from '../types';
+import { FormTemplate, HeaderLayout, Project, TemplateBlockConfig } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
 import { expandColumnSelection, expandRowSelection } from '../utils/workbookUtils';
 import { listTemplates as listTemplatesFromSupabase, upsertTemplate } from '../supabaseStore';
 
 type Mode = 'AI' | 'MANUAL';
 
+type ManualFormBlock = {
+  id: string;
+  name: string;
+  headerStartRow: number;
+  headerEndRow: number;
+  headerStartCol: string;
+  headerEndCol: string;
+  labelColumnStart: string;
+  labelColumnEnd: string;
+  primaryLabelColumn: string;
+  dataColumns: string;
+  columnHeaders: string;
+  specialRows: string;
+  startRow: number;
+  endRow: number;
+};
+
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
 const STORAGE_OPERATION_TIMEOUT_MS = 25000;
 const MAX_AI_SHEETS_PER_RUN = 3;
+
+function buildManualBlockId() {
+  return `block_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createDefaultManualBlock(): ManualFormBlock {
+  return {
+    id: buildManualBlockId(),
+    name: '',
+    headerStartRow: 1,
+    headerEndRow: 1,
+    headerStartCol: 'A',
+    headerEndCol: 'A',
+    labelColumnStart: 'A',
+    labelColumnEnd: 'A',
+    primaryLabelColumn: 'A',
+    dataColumns: '',
+    columnHeaders: '',
+    specialRows: '',
+    startRow: 1,
+    endRow: 1,
+  };
+}
+
+function createPresetB2Blocks(): ManualFormBlock[] {
+  return [
+    {
+      id: buildManualBlockId(),
+      name: 'Khối 1',
+      headerStartRow: 7,
+      headerEndRow: 9,
+      headerStartCol: 'A',
+      headerEndCol: 'I',
+      labelColumnStart: 'A',
+      labelColumnEnd: 'A',
+      primaryLabelColumn: 'A',
+      dataColumns: 'B-I',
+      columnHeaders: '',
+      specialRows: '',
+      startRow: 10,
+      endRow: 10,
+    },
+    {
+      id: buildManualBlockId(),
+      name: 'Khối 2',
+      headerStartRow: 11,
+      headerEndRow: 13,
+      headerStartCol: 'A',
+      headerEndCol: 'I',
+      labelColumnStart: 'A',
+      labelColumnEnd: 'A',
+      primaryLabelColumn: 'A',
+      dataColumns: 'B-I',
+      columnHeaders: '',
+      specialRows: '',
+      startRow: 14,
+      endRow: 14,
+    },
+    {
+      id: buildManualBlockId(),
+      name: 'Khối 3',
+      headerStartRow: 15,
+      headerEndRow: 17,
+      headerStartCol: 'A',
+      headerEndCol: 'I',
+      labelColumnStart: 'A',
+      labelColumnEnd: 'A',
+      primaryLabelColumn: 'A',
+      dataColumns: 'B-I',
+      columnHeaders: '',
+      specialRows: '',
+      startRow: 18,
+      endRow: 18,
+    },
+  ];
+}
+
 const DEFAULT_MANUAL_FORM = {
   name: '',
   sheetName: '',
   labelColumn: 'A',
+  labelColumnStart: 'A',
+  labelColumnEnd: 'A',
+  primaryLabelColumn: 'A',
   dataColumns: '',
   specialRows: '',
   columnHeaders: '',
@@ -26,10 +123,50 @@ const DEFAULT_MANUAL_FORM = {
   verticalHeaderEndRow: 1,
   horizontalHeaderStartRow: 1,
   horizontalHeaderEndRow: 1,
+  enableAdvancedStructure: false,
+  blocks: [] as ManualFormBlock[],
 };
 
 function buildTemplateId() {
   return `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function normalizeColumnValue(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function normalizeTemplateBlocks(blocks: ManualFormBlock[]) {
+  return blocks
+    .map((block) => {
+      const normalizedDataColumns = expandColumnSelection(block.dataColumns);
+      const normalizedSpecialRows = expandRowSelection(block.specialRows);
+      const normalizedColumnHeaders = block.columnHeaders
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+      return {
+        id: block.id || buildManualBlockId(),
+        name: block.name.trim() || `Block ${blocks.indexOf(block) + 1}`,
+        labelColumnStart: normalizeColumnValue(block.labelColumnStart || 'A'),
+        labelColumnEnd: normalizeColumnValue(block.labelColumnEnd || block.labelColumnStart || 'A'),
+        primaryLabelColumn: normalizeColumnValue(block.primaryLabelColumn || block.labelColumnStart || 'A'),
+        dataColumns: normalizedDataColumns,
+        columnHeaders: normalizedColumnHeaders.length > 0 ? normalizedColumnHeaders : undefined,
+        startRow: Number(block.startRow),
+        endRow: Number(block.endRow),
+        specialRows: normalizedSpecialRows,
+        headerLayout: {
+          startRow: Number(block.headerStartRow),
+          endRow: Number(block.headerEndRow),
+          startCol: Math.max(1, columnLetterToIndex(normalizeColumnValue(block.headerStartCol || 'A'))),
+          endCol: Math.max(1, columnLetterToIndex(normalizeColumnValue(block.headerEndCol || block.headerStartCol || 'A'))),
+          cells: [],
+          merges: [],
+        },
+      } satisfies TemplateBlockConfig;
+    })
+    .filter((block) => block.dataColumns.length > 0);
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
@@ -133,6 +270,161 @@ export function FormLearner({
     : configuredGeminiApiKey
       ? 'Đã có key từ cấu hình hệ thống'
       : 'Chưa có key Gemini trong cấu hình';
+
+  const updateManualBlock = (blockId: string, updates: Partial<ManualFormBlock>) => {
+    setManualForm((prev) => ({
+      ...prev,
+      blocks: prev.blocks.map((block) => (block.id === blockId ? { ...block, ...updates } : block)),
+    }));
+  };
+
+  const addManualBlock = () => {
+    setManualForm((prev) => ({
+      ...prev,
+      enableAdvancedStructure: true,
+      blocks: [...prev.blocks, createDefaultManualBlock()],
+    }));
+  };
+
+  const removeManualBlock = (blockId: string) => {
+    setManualForm((prev) => ({
+      ...prev,
+      blocks: prev.blocks.filter((block) => block.id !== blockId),
+    }));
+  };
+
+  const updateStoredTemplateBlock = (templateId: string, blockId: string, updates: Partial<TemplateBlockConfig>) => {
+    setManualTemplates((prev) =>
+      prev.map((template) => {
+        if (template.id !== templateId) {
+          return template;
+        }
+
+        return {
+          ...template,
+          columnMapping: {
+            ...template.columnMapping,
+            blocks: (template.columnMapping.blocks || []).map((block) =>
+              block.id === blockId ? { ...block, ...updates } : block,
+            ),
+          },
+        };
+      }),
+    );
+  };
+
+  const addStoredTemplateBlock = (templateId: string) => {
+    setManualTemplates((prev) =>
+      prev.map((template) => {
+        if (template.id !== templateId) {
+          return template;
+        }
+
+        const nextBlock: TemplateBlockConfig = {
+          id: buildManualBlockId(),
+          name: `Block ${(template.columnMapping.blocks || []).length + 1}`,
+          labelColumnStart: template.columnMapping.labelColumnStart || template.columnMapping.labelColumn || 'A',
+          labelColumnEnd: template.columnMapping.labelColumnEnd || template.columnMapping.labelColumn || 'A',
+          primaryLabelColumn: template.columnMapping.primaryLabelColumn || template.columnMapping.labelColumn || 'A',
+          dataColumns: [...template.columnMapping.dataColumns],
+          startRow: template.columnMapping.startRow,
+          endRow: template.columnMapping.endRow,
+          specialRows: [],
+          headerLayout: template.headerLayout
+            ? { ...template.headerLayout, cells: [], merges: [] }
+            : {
+                startRow: template.columnMapping.startRow,
+                endRow: Math.max(template.columnMapping.startRow, template.columnMapping.startRow + 2),
+                startCol: Math.max(1, columnLetterToIndex(template.columnMapping.labelColumnStart || template.columnMapping.labelColumn || 'A')),
+                endCol: Math.max(
+                  1,
+                  columnLetterToIndex(
+                    template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] ||
+                      template.columnMapping.labelColumnEnd ||
+                      template.columnMapping.labelColumn ||
+                      'A',
+                  ),
+                ),
+                cells: [],
+                merges: [],
+              },
+        };
+
+        return {
+          ...template,
+          columnMapping: {
+            ...template.columnMapping,
+            blocks: [...(template.columnMapping.blocks || []), nextBlock],
+          },
+        };
+      }),
+    );
+  };
+
+  const removeStoredTemplateBlock = (templateId: string, blockId: string) => {
+    setManualTemplates((prev) =>
+      prev.map((template) => {
+        if (template.id !== templateId) {
+          return template;
+        }
+
+        return {
+          ...template,
+          columnMapping: {
+            ...template.columnMapping,
+            blocks: (template.columnMapping.blocks || []).filter((block) => block.id !== blockId),
+          },
+        };
+      }),
+    );
+  };
+
+  const applyManualPreset = (preset: 'B1' | 'B2') => {
+    if (preset === 'B1') {
+      setManualForm((prev) => ({
+        ...prev,
+        name: prev.name || 'Biểu B1',
+        labelColumn: 'B',
+        labelColumnStart: 'A',
+        labelColumnEnd: 'B',
+        primaryLabelColumn: 'B',
+        dataColumns: 'C-E',
+        columnHeaders: '',
+        startRow: 9,
+        endRow: 19,
+        verticalHeaderStartRow: 9,
+        verticalHeaderEndRow: 19,
+        horizontalHeaderStartRow: 7,
+        horizontalHeaderEndRow: 8,
+        enableAdvancedStructure: false,
+        blocks: [],
+      }));
+      setNotice('Đã điền sẵn cấu hình tham khảo cho sheet B1. Bạn kiểm tra lại tên sheet và tên cột hiển thị trước khi lưu.');
+      setError(null);
+      return;
+    }
+
+    setManualForm((prev) => ({
+      ...prev,
+      name: prev.name || 'Biểu B2',
+      labelColumn: 'A',
+      labelColumnStart: 'A',
+      labelColumnEnd: 'A',
+      primaryLabelColumn: 'A',
+      dataColumns: 'B-I',
+      columnHeaders: '',
+      startRow: 10,
+      endRow: 18,
+      verticalHeaderStartRow: 10,
+      verticalHeaderEndRow: 18,
+      horizontalHeaderStartRow: 7,
+      horizontalHeaderEndRow: 17,
+      enableAdvancedStructure: true,
+      blocks: createPresetB2Blocks(),
+    }));
+    setNotice('Đã điền sẵn cấu hình tham khảo cho sheet B2 với 3 block dữ liệu độc lập. Bạn kiểm tra lại tên sheet trước khi lưu.');
+    setError(null);
+  };
 
   useEffect(() => {
     let isCancelled = false;
@@ -522,6 +814,14 @@ export function FormLearner({
       return 'Cột tiêu chí dọc không được để trống.';
     }
 
+    if (
+      template.columnMapping.labelColumnStart &&
+      template.columnMapping.labelColumnEnd &&
+      columnLetterToIndex(template.columnMapping.labelColumnEnd) < columnLetterToIndex(template.columnMapping.labelColumnStart)
+    ) {
+      return 'Vùng tiêu chí dọc nâng cao không hợp lệ.';
+    }
+
     if (!template.columnMapping.dataColumns || template.columnMapping.dataColumns.length === 0) {
       return 'Vui lòng khai báo ít nhất một cột dữ liệu.';
     }
@@ -545,6 +845,10 @@ export function FormLearner({
       return 'Cột bắt đầu và cột kết thúc của vùng tiêu đề không hợp lệ.';
     }
 
+    if ((template.columnMapping.blocks || []).some((block) => block.endRow < block.startRow)) {
+      return 'Có block dữ liệu có dòng kết thúc nhỏ hơn dòng bắt đầu.';
+    }
+
     return null;
   };
 
@@ -557,9 +861,29 @@ export function FormLearner({
       columnHeaders: template.columnHeaders.map((value) => value.trim()).filter(Boolean),
       columnMapping: {
         ...template.columnMapping,
-        labelColumn: template.columnMapping.labelColumn.trim().toUpperCase(),
+        labelColumn: normalizeColumnValue(template.columnMapping.labelColumn),
+        labelColumnStart: template.columnMapping.labelColumnStart
+          ? normalizeColumnValue(template.columnMapping.labelColumnStart)
+          : undefined,
+        labelColumnEnd: template.columnMapping.labelColumnEnd
+          ? normalizeColumnValue(template.columnMapping.labelColumnEnd)
+          : undefined,
+        primaryLabelColumn: template.columnMapping.primaryLabelColumn
+          ? normalizeColumnValue(template.columnMapping.primaryLabelColumn)
+          : undefined,
         dataColumns: expandColumnSelection(template.columnMapping.dataColumns.join(',')),
         specialRows: expandRowSelection((template.columnMapping.specialRows || []).join(',')),
+        blocks: (template.columnMapping.blocks || []).map((block, index) => ({
+          ...block,
+          id: block.id || buildManualBlockId(),
+          name: block.name.trim() || `Block ${index + 1}`,
+          labelColumnStart: normalizeColumnValue(block.labelColumnStart),
+          labelColumnEnd: normalizeColumnValue(block.labelColumnEnd),
+          primaryLabelColumn: normalizeColumnValue(block.primaryLabelColumn),
+          dataColumns: expandColumnSelection((block.dataColumns || []).join(',')),
+          specialRows: expandRowSelection((block.specialRows || []).join(',')),
+          columnHeaders: (block.columnHeaders || []).map((value) => value.trim()).filter(Boolean),
+        })),
       },
     };
 
@@ -1113,6 +1437,7 @@ export function FormLearner({
 
     const dataColumns = expandColumnSelection(manualForm.dataColumns);
     const specialRows = expandRowSelection(manualForm.specialRows);
+    const blocks = manualForm.enableAdvancedStructure ? normalizeTemplateBlocks(manualForm.blocks) : [];
     if (dataColumns.length === 0) {
       setError('Vùng cột dữ liệu không hợp lệ. Ví dụ đúng: A-C, F hoặc B,D,G.');
       setNotice(null);
@@ -1132,11 +1457,15 @@ export function FormLearner({
       isPublished: false,
       columnHeaders,
       columnMapping: {
-        labelColumn: manualForm.labelColumn.toUpperCase(),
+        labelColumn: normalizeColumnValue(manualForm.labelColumn),
+        labelColumnStart: normalizeColumnValue(manualForm.labelColumnStart || manualForm.labelColumn),
+        labelColumnEnd: normalizeColumnValue(manualForm.labelColumnEnd || manualForm.labelColumn),
+        primaryLabelColumn: normalizeColumnValue(manualForm.primaryLabelColumn || manualForm.labelColumn),
         dataColumns,
         startRow: Number(manualForm.startRow),
         endRow: Number(manualForm.endRow),
         specialRows,
+        blocks,
       },
       mode: 'MANUAL',
       createdAt: new Date().toISOString(),
@@ -1166,6 +1495,9 @@ export function FormLearner({
       setManualForm((prev) => ({
         ...DEFAULT_MANUAL_FORM,
         labelColumn: prev.labelColumn,
+        labelColumnStart: prev.labelColumnStart,
+        labelColumnEnd: prev.labelColumnEnd,
+        primaryLabelColumn: prev.primaryLabelColumn,
         dataColumns: prev.dataColumns,
         specialRows: prev.specialRows,
         startRow: prev.startRow,
@@ -1174,6 +1506,8 @@ export function FormLearner({
         verticalHeaderEndRow: prev.verticalHeaderEndRow,
         horizontalHeaderStartRow: prev.horizontalHeaderStartRow,
         horizontalHeaderEndRow: prev.horizontalHeaderEndRow,
+        enableAdvancedStructure: prev.enableAdvancedStructure,
+        blocks: prev.enableAdvancedStructure ? prev.blocks : [],
         sheetName: nextSheetName,
       }));
       setError(null);
@@ -1672,6 +2006,54 @@ export function FormLearner({
           <div className="space-y-6">
           <div className="panel-card rounded-[24px] p-6">
             <h3 className="section-title mb-4">Tạo biểu mẫu thủ công</h3>
+            <div className="mb-5 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                    Mẫu cấu hình tham khảo
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--ink-soft)]">
+                    Dùng để điền nhanh giao diện cho các sheet phức tạp. Đây là cấu hình gợi ý ban đầu, bạn vẫn có thể chỉnh lại trước khi lưu.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => applyManualPreset('B1')} className="secondary-btn">
+                    Điền mẫu B1
+                  </button>
+                  <button type="button" onClick={() => applyManualPreset('B2')} className="secondary-btn">
+                    Điền mẫu B2
+                  </button>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="rounded-[16px] border border-[var(--line)] bg-white p-4">
+                  <p className="text-sm font-semibold text-[var(--ink)]">Tham khảo B1</p>
+                  <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">
+                    Tên sheet: <code>B1</code>
+                    <br />
+                    Tiêu chí dọc: <code>A:B</code>, nhãn chính <code>B</code>
+                    <br />
+                    Header ngang: dòng <code>7-8</code>
+                    <br />
+                    Dữ liệu: cột <code>C-E</code>, dòng <code>9-19</code>
+                  </p>
+                </div>
+                <div className="rounded-[16px] border border-[var(--line)] bg-white p-4">
+                  <p className="text-sm font-semibold text-[var(--ink)]">Tham khảo B2</p>
+                  <p className="mt-2 text-xs leading-6 text-[var(--ink-soft)]">
+                    Tên sheet: <code>B2</code>
+                    <br />
+                    Tiêu chí dọc: <code>A</code>
+                    <br />
+                    Block 1: header <code>A7:I9</code>, dữ liệu dòng <code>10</code>
+                    <br />
+                    Block 2: header <code>A11:I13</code>, dữ liệu dòng <code>14</code>
+                    <br />
+                    Block 3: header <code>A15:I17</code>, dữ liệu dòng <code>18</code>
+                  </p>
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
               <input
                 className="field-input"
@@ -1739,10 +2121,34 @@ export function FormLearner({
                   <div className="space-y-3">
                     <input
                       className="field-input"
-                      placeholder="Cột tiêu chí dọc (VD: A)"
+                      placeholder="Cột tiêu chí dọc mặc định (VD: A)"
                       value={manualForm.labelColumn}
                       onChange={(e) => setManualForm({ ...manualForm, labelColumn: e.target.value.toUpperCase() })}
                     />
+                    <div className="grid grid-cols-3 gap-3">
+                      <input
+                        className="field-input"
+                        placeholder="Cột bắt đầu"
+                        value={manualForm.labelColumnStart}
+                        onChange={(e) => setManualForm({ ...manualForm, labelColumnStart: e.target.value.toUpperCase() })}
+                      />
+                      <input
+                        className="field-input"
+                        placeholder="Cột kết thúc"
+                        value={manualForm.labelColumnEnd}
+                        onChange={(e) => setManualForm({ ...manualForm, labelColumnEnd: e.target.value.toUpperCase() })}
+                      />
+                      <input
+                        className="field-input"
+                        placeholder="Cột nhãn chính"
+                        value={manualForm.primaryLabelColumn}
+                        onChange={(e) => setManualForm({ ...manualForm, primaryLabelColumn: e.target.value.toUpperCase() })}
+                      />
+                    </div>
+                    <p className="text-[11px] leading-5 text-[var(--ink-soft)]">
+                      Dùng cho biểu như <strong>B1</strong> khi tiêu chí dọc trải trên nhiều cột, ví dụ vùng
+                      <code className="mx-1">A:B</code> nhưng nhãn chính nằm ở <code>B</code>.
+                    </p>
                     <div className="grid grid-cols-2 gap-3">
                       <input
                         className="field-input"
@@ -1828,6 +2234,178 @@ export function FormLearner({
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 panel-soft rounded-[18px] p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                    4. Cấu hình nâng cao theo block
+                  </p>
+                  <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
+                    Dùng cho biểu như <strong>B2</strong> khi trong cùng một sheet có nhiều vùng header và nhiều vùng dữ liệu độc lập.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm font-medium text-[var(--ink)]">
+                  <input
+                    type="checkbox"
+                    checked={manualForm.enableAdvancedStructure}
+                    onChange={(e) =>
+                      setManualForm((prev) => ({
+                        ...prev,
+                        enableAdvancedStructure: e.target.checked,
+                        blocks: e.target.checked && prev.blocks.length === 0 ? [createDefaultManualBlock()] : prev.blocks,
+                      }))
+                    }
+                  />
+                  Bật cấu hình nhiều block
+                </label>
+              </div>
+
+              {manualForm.enableAdvancedStructure && (
+                <div className="mt-4 space-y-4">
+                  {manualForm.blocks.map((block, index) => (
+                    <div key={block.id} className="rounded-[18px] border border-[var(--line)] bg-white p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--ink)]">Block {index + 1}</p>
+                          <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
+                            Mỗi block có header riêng, vùng dữ liệu riêng và có thể dùng lại cho một khối độc lập trong cùng sheet.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeManualBlock(block.id)}
+                          className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)]"
+                        >
+                          <Trash2 size={14} />
+                          Bỏ block
+                        </button>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Tên block
+                          <input
+                            className="field-input mt-2"
+                            value={block.name}
+                            onChange={(e) => updateManualBlock(block.id, { name: e.target.value })}
+                            placeholder="Ví dụ: Khối 1"
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Cột dữ liệu
+                          <input
+                            className="field-input mt-2"
+                            value={block.dataColumns}
+                            onChange={(e) => updateManualBlock(block.id, { dataColumns: e.target.value.toUpperCase() })}
+                            placeholder="VD: B-I hoặc C,D,E"
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Dòng header bắt đầu
+                          <input
+                            type="number"
+                            className="field-input mt-2"
+                            value={block.headerStartRow}
+                            onChange={(e) => updateManualBlock(block.id, { headerStartRow: Number(e.target.value) })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Dòng header kết thúc
+                          <input
+                            type="number"
+                            className="field-input mt-2"
+                            value={block.headerEndRow}
+                            onChange={(e) => updateManualBlock(block.id, { headerEndRow: Number(e.target.value) })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Cột header bắt đầu
+                          <input
+                            className="field-input mt-2"
+                            value={block.headerStartCol}
+                            onChange={(e) => updateManualBlock(block.id, { headerStartCol: e.target.value.toUpperCase() })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Cột header kết thúc
+                          <input
+                            className="field-input mt-2"
+                            value={block.headerEndCol}
+                            onChange={(e) => updateManualBlock(block.id, { headerEndCol: e.target.value.toUpperCase() })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Cột tiêu chí bắt đầu
+                          <input
+                            className="field-input mt-2"
+                            value={block.labelColumnStart}
+                            onChange={(e) => updateManualBlock(block.id, { labelColumnStart: e.target.value.toUpperCase() })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Cột tiêu chí kết thúc
+                          <input
+                            className="field-input mt-2"
+                            value={block.labelColumnEnd}
+                            onChange={(e) => updateManualBlock(block.id, { labelColumnEnd: e.target.value.toUpperCase() })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Cột nhãn chính
+                          <input
+                            className="field-input mt-2"
+                            value={block.primaryLabelColumn}
+                            onChange={(e) => updateManualBlock(block.id, { primaryLabelColumn: e.target.value.toUpperCase() })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Dòng bắt đầu dữ liệu
+                          <input
+                            type="number"
+                            className="field-input mt-2"
+                            value={block.startRow}
+                            onChange={(e) => updateManualBlock(block.id, { startRow: Number(e.target.value) })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Dòng kết thúc dữ liệu
+                          <input
+                            type="number"
+                            className="field-input mt-2"
+                            value={block.endRow}
+                            onChange={(e) => updateManualBlock(block.id, { endRow: Number(e.target.value) })}
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Dòng đặc biệt
+                          <input
+                            className="field-input mt-2"
+                            value={block.specialRows}
+                            onChange={(e) => updateManualBlock(block.id, { specialRows: e.target.value })}
+                            placeholder="VD: 34 hoặc 34,56-58"
+                          />
+                        </label>
+                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
+                          Tên cột của block (tùy chọn)
+                          <input
+                            className="field-input mt-2"
+                            value={block.columnHeaders}
+                            onChange={(e) => updateManualBlock(block.id, { columnHeaders: e.target.value })}
+                            placeholder="VD: Tổng số, Nam, Nữ"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button type="button" onClick={addManualBlock} className="secondary-btn inline-flex items-center gap-2">
+                    <Plus size={14} />
+                    Thêm block dữ liệu
+                  </button>
+                </div>
+              )}
             </div>
 
             <button
@@ -1958,6 +2536,36 @@ export function FormLearner({
                       />
                     </label>
                     <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Cột tiêu chí bắt đầu
+                      <input
+                        className="field-input mt-2"
+                        value={tpl.columnMapping.labelColumnStart || tpl.columnMapping.labelColumn}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, { labelColumnStart: e.target.value.toUpperCase() })
+                        }
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Cột tiêu chí kết thúc
+                      <input
+                        className="field-input mt-2"
+                        value={tpl.columnMapping.labelColumnEnd || tpl.columnMapping.labelColumn}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, { labelColumnEnd: e.target.value.toUpperCase() })
+                        }
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Cột nhãn chính
+                      <input
+                        className="field-input mt-2"
+                        value={tpl.columnMapping.primaryLabelColumn || tpl.columnMapping.labelColumn}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, { primaryLabelColumn: e.target.value.toUpperCase() })
+                        }
+                      />
+                    </label>
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                       Cột dữ liệu
                       <input
                         className="field-input mt-2"
@@ -2012,6 +2620,232 @@ export function FormLearner({
                         }
                       />
                     </label>
+                  </div>
+
+                  <div className="mt-4 rounded-[18px] border border-[var(--line)] bg-white/70 p-4">
+                    <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Cấu hình block nâng cao
+                        </p>
+                        <p className="mt-1 text-[11px] leading-5 text-[var(--ink-soft)]">
+                          Dùng cho các biểu nhiều vùng header/dữ liệu độc lập như B2.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addStoredTemplateBlock(tpl.id)}
+                        className="secondary-btn inline-flex items-center gap-2"
+                      >
+                        <Plus size={14} />
+                        Thêm block
+                      </button>
+                    </div>
+
+                    {(tpl.columnMapping.blocks || []).length > 0 ? (
+                      <div className="space-y-4">
+                        {(tpl.columnMapping.blocks || []).map((block, index) => (
+                          <div key={block.id} className="rounded-[16px] border border-[var(--line)] bg-white p-4">
+                            <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                              <p className="text-sm font-semibold text-[var(--ink)]">Block {index + 1}</p>
+                              <button
+                                type="button"
+                                onClick={() => removeStoredTemplateBlock(tpl.id, block.id)}
+                                className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)]"
+                              >
+                                <Trash2 size={14} />
+                                Xóa block
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Tên block
+                                <input
+                                  className="field-input mt-2"
+                                  value={block.name}
+                                  onChange={(e) => updateStoredTemplateBlock(tpl.id, block.id, { name: e.target.value })}
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Cột dữ liệu
+                                <input
+                                  className="field-input mt-2"
+                                  value={block.dataColumns.join(', ')}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, { dataColumns: expandColumnSelection(e.target.value) })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Dòng header bắt đầu
+                                <input
+                                  type="number"
+                                  className="field-input mt-2"
+                                  value={block.headerLayout?.startRow || block.startRow}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, {
+                                      headerLayout: {
+                                        ...(block.headerLayout || {
+                                          startRow: block.startRow,
+                                          endRow: block.startRow,
+                                          startCol: 1,
+                                          endCol: 1,
+                                          cells: [],
+                                          merges: [],
+                                        }),
+                                        startRow: Number(e.target.value),
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Dòng header kết thúc
+                                <input
+                                  type="number"
+                                  className="field-input mt-2"
+                                  value={block.headerLayout?.endRow || block.endRow}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, {
+                                      headerLayout: {
+                                        ...(block.headerLayout || {
+                                          startRow: block.startRow,
+                                          endRow: block.endRow,
+                                          startCol: 1,
+                                          endCol: 1,
+                                          cells: [],
+                                          merges: [],
+                                        }),
+                                        endRow: Number(e.target.value),
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Cột header bắt đầu
+                                <input
+                                  className="field-input mt-2"
+                                  value={block.headerLayout ? XLSX.utils.encode_col(block.headerLayout.startCol - 1) : 'A'}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, {
+                                      headerLayout: {
+                                        ...(block.headerLayout || {
+                                          startRow: block.startRow,
+                                          endRow: block.endRow,
+                                          startCol: 1,
+                                          endCol: 1,
+                                          cells: [],
+                                          merges: [],
+                                        }),
+                                        startCol: Math.max(1, columnLetterToIndex(e.target.value.toUpperCase())),
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Cột header kết thúc
+                                <input
+                                  className="field-input mt-2"
+                                  value={block.headerLayout ? XLSX.utils.encode_col(block.headerLayout.endCol - 1) : 'A'}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, {
+                                      headerLayout: {
+                                        ...(block.headerLayout || {
+                                          startRow: block.startRow,
+                                          endRow: block.endRow,
+                                          startCol: 1,
+                                          endCol: 1,
+                                          cells: [],
+                                          merges: [],
+                                        }),
+                                        endCol: Math.max(1, columnLetterToIndex(e.target.value.toUpperCase())),
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Cột tiêu chí bắt đầu
+                                <input
+                                  className="field-input mt-2"
+                                  value={block.labelColumnStart}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, { labelColumnStart: e.target.value.toUpperCase() })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Cột tiêu chí kết thúc
+                                <input
+                                  className="field-input mt-2"
+                                  value={block.labelColumnEnd}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, { labelColumnEnd: e.target.value.toUpperCase() })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Cột nhãn chính
+                                <input
+                                  className="field-input mt-2"
+                                  value={block.primaryLabelColumn}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, { primaryLabelColumn: e.target.value.toUpperCase() })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Dòng bắt đầu dữ liệu
+                                <input
+                                  type="number"
+                                  className="field-input mt-2"
+                                  value={block.startRow}
+                                  onChange={(e) => updateStoredTemplateBlock(tpl.id, block.id, { startRow: Number(e.target.value) })}
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Dòng kết thúc dữ liệu
+                                <input
+                                  type="number"
+                                  className="field-input mt-2"
+                                  value={block.endRow}
+                                  onChange={(e) => updateStoredTemplateBlock(tpl.id, block.id, { endRow: Number(e.target.value) })}
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                                Dòng đặc biệt
+                                <input
+                                  className="field-input mt-2"
+                                  value={(block.specialRows || []).join(', ')}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, { specialRows: expandRowSelection(e.target.value) })
+                                  }
+                                />
+                              </label>
+                              <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
+                                Tên cột của block
+                                <input
+                                  className="field-input mt-2"
+                                  value={(block.columnHeaders || []).join(', ')}
+                                  onChange={(e) =>
+                                    updateStoredTemplateBlock(tpl.id, block.id, {
+                                      columnHeaders: e.target.value.split(',').map((value) => value.trim()).filter(Boolean),
+                                    })
+                                  }
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-[16px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">
+                        Chưa có block nâng cao nào. Chỉ cần dùng khi sheet có nhiều vùng header hoặc nhiều vùng dữ liệu độc lập.
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-4 rounded-[18px] border border-[var(--line)] bg-white/70 p-4">
