@@ -24,6 +24,7 @@ import {
   resolveTemplateHeaderLayout,
   resolveTemplateRowLabels,
 } from '../utils/templateWorkbook';
+import { columnLetterToIndex } from '../utils/columnUtils';
 
 interface ReportViewProps {
   data: ConsolidatedData;
