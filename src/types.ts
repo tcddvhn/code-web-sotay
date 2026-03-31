@@ -62,8 +62,7 @@ export type ViewMode =
   | 'DASHBOARD'
   | 'LOGIN'
   | 'PROJECTS'
-  | 'LEARN_FORM'
-  | 'HANDBOOK';
+  | 'LEARN_FORM';
 
 export interface AppSettings {
   oneDriveLink: string;

@@ -9,10 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "check:encoding": "node scripts/check-encoding.mjs",
-    "handbook:extract": "tsx scripts/extract-handbook-tree.ts",
-    "handbook:flatten": "tsx scripts/flatten-handbook-export.ts",
-    "handbook:import": "tsx scripts/import-handbook-flat.ts"
+    "check:encoding": "node scripts/check-encoding.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",
