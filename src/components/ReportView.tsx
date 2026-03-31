@@ -365,6 +365,7 @@ export function ReportView({
   const [supabaseAggregatedRows, setSupabaseAggregatedRows] = useState<AggregatedReportRow[]>([]);
   const [isSupabaseLoadingRows, setIsSupabaseLoadingRows] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const unitNameByCode = useMemo(() => new Map(units.map((unit) => [unit.code, unit.name])), [units]);
 
   const projectTemplates = useMemo(
     () => templates.filter((template) => template.projectId === selectedProjectId),
@@ -550,6 +551,50 @@ export function ReportView({
 
   const visibleRows = aggregatedRows.slice(0, visibleRowCount);
   const hasMoreRows = visibleRowCount < aggregatedRows.length;
+  const tableColSpan = useMemo(() => {
+    if (!selectedTemplate) {
+      return 0;
+    }
+
+    if (resolvedHeaderLayout && headerRows) {
+      return resolvedHeaderLayout.endCol - resolvedHeaderLayout.startCol + 1;
+    }
+
+    return 1 + columnHeaders.length;
+  }, [columnHeaders.length, headerRows, resolvedHeaderLayout, selectedTemplate]);
+  const tableColumnWidths = useMemo(() => {
+    if (tableColSpan <= 0) {
+      return [] as number[];
+    }
+
+    return Array.from({ length: tableColSpan }, (_, index) => {
+      if (index === 0) {
+        return estimateReportColumnWidth(index, 'Tiêu chí', tableColSpan);
+      }
+
+      return estimateReportColumnWidth(index, columnHeaders[index - 1] || `Cột ${index}`, tableColSpan);
+    });
+  }, [columnHeaders, tableColSpan]);
+  const sortedDetailItems = useMemo(() => {
+    if (!activeCellDetail) {
+      return [] as CellDetailItem[];
+    }
+
+    return [...activeCellDetail.items]
+      .filter((item) => item.value !== 0)
+      .sort((left, right) => {
+        const codeCompare = left.unitCode.localeCompare(right.unitCode, 'vi', {
+          numeric: true,
+          sensitivity: 'base',
+        });
+        if (codeCompare !== 0) {
+          return codeCompare;
+        }
+
+        return left.unitName.localeCompare(right.unitName, 'vi');
+      });
+  }, [activeCellDetail]);
+  const contributingUnitCount = sortedDetailItems.length;
 
   const persistExportRecord = async (
     workbook: XLSX.WorkBook,
@@ -726,7 +771,7 @@ export function ReportView({
           ...current,
           items: details.map((item) => ({
             unitCode: item.unit_code,
-            unitName: item.unit_name,
+            unitName: item.unit_name || unitNameByCode.get(item.unit_code) || item.unit_code,
             value: item.value,
           })),
         };
@@ -740,36 +785,31 @@ export function ReportView({
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-black uppercase tracking-tight text-[#8B0000] md:text-5xl">
-            Báo cáo tổng hợp
-          </h1>
-          <p className="max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
-            Truy xuất dữ liệu đã tổng hợp theo dự án, biểu mẫu và đơn vị. Khi chọn Đảng bộ Thành phố,
-            hệ thống sẽ ưu tiên dùng đúng file mẫu đã tải lên lúc tạo biểu mẫu để ghi số liệu tổng hợp 132 đơn vị.
-          </p>
+    <div className="p-6 md:p-8">
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h2 className="page-title">Báo cáo tổng hợp</h2>
+          <p className="page-subtitle mt-2 text-sm">Truy xuất dữ liệu theo đúng biểu mẫu, dự án, năm và đơn vị.</p>
         </div>
-
-        <button
-          type="button"
-          onClick={exportAllTemplates}
-          disabled={isExporting || projectTemplates.length === 0}
-          className="inline-flex items-center justify-center gap-3 rounded-2xl bg-[#b43434] px-6 py-4 text-sm font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#8B0000] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isExporting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Xuất toàn bộ biểu
-        </button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            onClick={exportAllTemplates}
+            disabled={isExporting || projectTemplates.length === 0}
+            className="secondary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isExporting ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}
+            Xuất toàn bộ biểu
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <label className="rounded-[28px] border border-[#d8c6b6] bg-white px-5 py-5 shadow-[0_10px_35px_rgba(139,0,0,0.08)]">
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B0000]">1. Chọn dự án</span>
+      <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
+        <div className="panel-card rounded-[20px] p-4">
+          <label className="col-header mb-2 block">1. Chọn dự án</label>
           <select
             value={selectedProjectId}
             onChange={(event) => onSelectProject(event.target.value)}
-            className="mt-3 w-full border-0 border-b border-[#d8c6b6] bg-transparent px-0 pb-3 text-lg font-medium text-slate-800 outline-none"
+            className="field-select text-sm font-bold"
           >
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
@@ -777,14 +817,14 @@ export function ReportView({
               </option>
             ))}
           </select>
-        </label>
+        </div>
 
-        <label className="rounded-[28px] border border-[#d8c6b6] bg-white px-5 py-5 shadow-[0_10px_35px_rgba(139,0,0,0.08)]">
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B0000]">2. Chọn năm</span>
+        <div className="panel-card rounded-[20px] p-4">
+          <label className="col-header mb-2 block">2. Chọn năm</label>
           <select
             value={selectedYear}
             onChange={(event) => setSelectedYear(event.target.value)}
-            className="mt-3 w-full border-0 border-b border-[#d8c6b6] bg-transparent px-0 pb-3 text-lg font-medium text-slate-800 outline-none"
+            className="field-select text-sm font-bold"
           >
             {YEARS.map((year) => (
               <option key={year} value={year}>
@@ -792,14 +832,14 @@ export function ReportView({
               </option>
             ))}
           </select>
-        </label>
+        </div>
 
-        <label className="rounded-[28px] border border-[#d8c6b6] bg-white px-5 py-5 shadow-[0_10px_35px_rgba(139,0,0,0.08)]">
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B0000]">3. Chọn đơn vị</span>
+        <div className="panel-card rounded-[20px] p-4">
+          <label className="col-header mb-2 block">3. Chọn đơn vị</label>
           <select
             value={selectedUnitCode}
             onChange={(event) => setSelectedUnitCode(event.target.value)}
-            className="mt-3 w-full border-0 border-b border-[#d8c6b6] bg-transparent px-0 pb-3 text-lg font-medium text-slate-800 outline-none"
+            className="field-select text-sm font-bold"
           >
             {reportUnitOptions.map((unit) => (
               <option key={unit.code} value={unit.code}>
@@ -807,78 +847,87 @@ export function ReportView({
               </option>
             ))}
           </select>
-        </label>
+        </div>
+
+        <div className="panel-card rounded-[20px] p-4">
+          <label className="col-header mb-2 block">4. Tìm kiếm tiêu chí</label>
+          <div className="flex items-center gap-2 border-b border-[var(--line-strong)] py-2">
+            <Search size={16} className="text-[var(--ink-soft)]" />
+            <input
+              type="text"
+              placeholder="Tên tiêu chí..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="w-full bg-transparent text-sm font-medium focus:outline-none"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-[30px] border border-[#d8c6b6] bg-white p-5 shadow-[0_10px_35px_rgba(139,0,0,0.08)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {projectTemplates.map((template) => {
-                const isActive = template.id === selectedTemplateId;
-                return (
-                  <button
-                    key={template.id}
-                    type="button"
-                    onClick={() => setSelectedTemplateId(template.id)}
-                    className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
-                      isActive
-                        ? 'border-[#8B0000] bg-[#8B0000] text-white'
-                        : 'border-[#d8c6b6] bg-[#fff8f3] text-[#8B0000] hover:border-[#8B0000]'
-                    }`}
-                  >
-                    {template.name}
-                  </button>
-                );
-              })}
-            </div>
+      {projectTemplates.length > 0 && (
+        <div className="mb-6 overflow-x-auto pb-2">
+          <div className="flex w-max gap-3 pl-1">
+            {projectTemplates.map((template) => {
+              const isActive = selectedTemplateId === template.id;
 
-            <label className="flex w-full items-center gap-3 rounded-2xl border border-[#d8c6b6] bg-[#fffaf6] px-4 py-3 lg:max-w-[320px]">
-              <Search className="h-4 w-4 text-[#8B0000]" />
-              <input
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Tìm kiếm chỉ tiêu..."
-                className="w-full bg-transparent text-sm text-slate-700 outline-none"
-              />
-            </label>
+              return (
+                <button
+                  key={template.id}
+                  onClick={() => setSelectedTemplateId(template.id)}
+                  className={`h-11 min-w-[120px] rounded-[14px] border px-4 text-[12px] font-bold uppercase tracking-[0.04em] transition-colors ${
+                    isActive
+                      ? 'border-[rgba(67,122,87,0.35)] bg-[rgba(232,241,233,1)] text-[var(--success)]'
+                      : 'border-[rgba(214,171,96,0.45)] bg-[rgba(255,249,236,1)] text-[rgba(145,94,15,0.95)] hover:bg-[rgba(252,240,215,1)]'
+                  }`}
+                >
+                  <span className="whitespace-nowrap">{template.name}</span>
+                </button>
+              );
+            })}
           </div>
+        </div>
+      )}
 
-          <div className="mt-5 overflow-auto rounded-[24px] border border-[#d8c6b6]">
-            <table className="min-w-full border-collapse text-sm">
-              <thead className="bg-[#8B0000] text-white">
-                {headerRows && headerRows.length > 0 ? (
-                  <>
-                    {headerRows.map((row, rowIndex) => (
-                      <tr key={`header-${rowIndex}`}>
+      {!selectedTemplate ? (
+        <div className="panel-card rounded-[24px] p-10 text-center opacity-60">
+          Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
+        </div>
+      ) : (
+        <div className="table-shell overflow-hidden rounded-[24px] border border-[var(--line-strong)] bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-max min-w-full border-separate border-spacing-0 table-auto bg-white">
+              <colgroup>
+                {tableColumnWidths.map((width, index) => (
+                  <col key={`report-col-${index}`} style={{ width: `${width}px`, minWidth: `${width}px` }} />
+                ))}
+              </colgroup>
+              <thead>
+                {headerRows ? (
+                  headerRows.map((row, rowIndex) => (
+                    <tr key={`hdr-${rowIndex}`}>
+                      {row.map((cell, cellIndex) => (
                         <th
-                          rowSpan={headerRows.length}
-                          className="min-w-[260px] border border-[#c86b6b] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]"
+                          key={`hdr-${rowIndex}-${cellIndex}`}
+                          colSpan={cell.colSpan}
+                          rowSpan={cell.rowSpan}
+                          className={`border-b border-r border-[var(--line-strong)] bg-[#faf8f4] px-2.5 py-2 text-center align-middle text-[13px] leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere] ${
+                            rowIndex === 0 ? 'border-t' : ''
+                          } ${cellIndex === 0 ? 'sticky left-0 z-10 bg-[#f8f6f1] text-[14px] font-bold' : 'font-semibold'}`}
                         >
-                          Chỉ tiêu dọc
+                          {cell.text || '\u00A0'}
                         </th>
-                        {row.map((cell, cellIndex) => (
-                          <th
-                            key={`header-cell-${rowIndex}-${cellIndex}`}
-                            rowSpan={cell.rowSpan}
-                            colSpan={cell.colSpan}
-                            className="border border-[#c86b6b] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.14em]"
-                          >
-                            {cell.text}
-                          </th>
-                        ))}
-                      </tr>
-                    ))}
-                  </>
+                      ))}
+                    </tr>
+                  ))
                 ) : (
                   <tr>
-                    <th className="min-w-[260px] border border-[#c86b6b] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">
-                      Chỉ tiêu dọc
+                    <th className="sticky left-0 top-0 z-10 border-b border-r border-t border-[var(--line-strong)] bg-[#f8f6f1] px-3 py-2 text-[14px] font-bold leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere]">
+                      Tiêu chí
                     </th>
                     {columnHeaders.map((header, index) => (
                       <th
-                        key={header}
-                        style={{ minWidth: `${estimateReportColumnWidth(index + 1, header, columnHeaders.length)}px` }}
-                        className="border border-[#c86b6b] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.14em]"
+                        key={header || index}
+                        className="border-b border-r border-t border-[var(--line-strong)] bg-[#faf8f4] px-2.5 py-2 text-center text-[13px] font-semibold leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere]"
                       >
                         {header}
                       </th>
@@ -886,113 +935,137 @@ export function ReportView({
                   </tr>
                 )}
               </thead>
-
               <tbody>
                 {isSupabaseLoadingRows ? (
                   <tr>
-                    <td colSpan={Math.max(2, columnHeaders.length + 1)} className="px-4 py-10 text-center text-slate-500">
-                      <div className="inline-flex items-center gap-3">
-                        <LoaderCircle className="h-5 w-5 animate-spin text-[#8B0000]" />
-                        Đang tải dữ liệu báo cáo...
-                      </div>
+                    <td colSpan={tableColSpan || Math.max(2, columnHeaders.length + 1)} className="p-12 text-center italic opacity-60">
+                      Đang tải dữ liệu báo cáo...
                     </td>
                   </tr>
-                ) : visibleRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={Math.max(2, columnHeaders.length + 1)} className="px-4 py-10 text-center text-slate-500">
-                      Không có dữ liệu phù hợp.
-                    </td>
-                  </tr>
-                ) : (
-                  visibleRows.map((row) => (
-                    <tr key={row.key} className="odd:bg-white even:bg-[#fffaf6]">
-                      <td className="border border-[#ead8ca] px-4 py-3 text-[15px] font-semibold text-slate-800">
-                        {row.label}
-                      </td>
-                      {row.values.map((value, columnIndex) => (
-                        <td key={`${row.key}-${columnIndex}`} className="border border-[#ead8ca] px-3 py-3 text-center text-slate-700">
-                          <button
-                            type="button"
-                            onClick={() => openCellDetail(row, columnIndex)}
-                            className="w-full rounded-lg px-2 py-1 hover:bg-[#fbe9dc]"
-                          >
-                            {formatReportValue(value)}
-                          </button>
+                ) : aggregatedRows.length > 0 ? (
+                  aggregatedRows.slice(0, visibleRowCount).map((row) =>
+                    row.isSpecial ? (
+                      <tr key={row.key} className="bg-[#eef3ff]">
+                        <td
+                          colSpan={tableColSpan}
+                          className="border-b border-r border-[var(--line)] px-3 py-2 text-center text-[13px] font-bold leading-[1.45] text-[var(--ink)]"
+                        >
+                          {row.label || `Dòng ${row.sourceRow}`}
                         </td>
-                      ))}
-                    </tr>
-                  ))
+                      </tr>
+                    ) : (
+                      <tr key={row.key} className="bg-white hover:bg-[#faf7f2]">
+                        <td className="sticky left-0 z-10 border-b border-r border-[var(--line)] bg-white px-3 py-1.5 text-[13px] font-semibold leading-[1.45] text-[var(--ink)] [overflow-wrap:anywhere]">
+                          {row.label}
+                        </td>
+                        {row.values.map((value, index) => (
+                          <td key={`${row.key}-${index}`} className="border-b border-r border-[var(--line)] p-0">
+                            <button
+                              type="button"
+                              onClick={() => openCellDetail(row, index)}
+                              className="h-full min-h-[42px] w-full px-2 py-1.5 text-center text-[13px] font-medium leading-[1.35] text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
+                              title="Xem chi tiết theo đơn vị"
+                            >
+                              {formatReportValue(value)}
+                            </button>
+                          </td>
+                        ))}
+                      </tr>
+                    ),
+                  )
+                ) : (
+                  <tr>
+                    <td colSpan={tableColSpan || Math.max(2, columnHeaders.length + 1)} className="p-12 text-center italic opacity-40">
+                      Không tìm thấy dữ liệu cho tiêu chí này.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
-
-          {hasMoreRows && (
-            <div className="mt-4 flex justify-center">
+          {visibleRowCount < aggregatedRows.length && (
+            <div className="flex items-center justify-center gap-2 border-t border-[var(--line)] p-4">
+              <span className="text-xs text-[var(--ink-soft)]">
+                Đang hiển thị {Math.min(visibleRowCount, aggregatedRows.length)} / {aggregatedRows.length} dòng
+              </span>
               <button
                 type="button"
-                onClick={() => setVisibleRowCount((current) => current + VISIBLE_ROW_STEP)}
-                className="rounded-2xl border border-[#d8c6b6] bg-[#fff8f3] px-5 py-3 text-sm font-semibold text-[#8B0000]"
+                onClick={() => setVisibleRowCount((prev) => Math.min(prev + 40, aggregatedRows.length))}
+                className="secondary-btn text-xs"
               >
-                Tải thêm dòng
+                Tải thêm
               </button>
             </div>
           )}
-      </div>
+        </div>
+      )}
 
       {activeCellDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[30px] border border-[#d8c6b6] bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-[#ead8ca] px-6 py-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(44,62,80,0.45)] p-4 backdrop-blur-sm md:p-8">
+          <div className="panel-card flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-[30px]">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8B0000]">Chi tiết ô dữ liệu</p>
-                <h3 className="mt-2 text-xl font-bold text-slate-900">{activeCellDetail.rowLabel}</h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  {activeCellDetail.columnLabel} - Tổng giá trị: {formatReportValue(activeCellDetail.totalValue) || '0'}
+                <div className="surface-tag">{activeCellDetail.columnLabel}</div>
+                <h3 className="section-title mt-3">Chi tiết đơn vị theo ô dữ liệu</h3>
+                <p className="page-subtitle mt-2 text-sm">{activeCellDetail.rowLabel}</p>
+                <p className="mt-3 text-sm font-semibold text-[var(--primary-dark)]">
+                  Tổng cộng: {activeCellDetail.totalValue.toLocaleString('vi-VN')}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-[var(--ink-soft)]">
+                  Có số liệu: {contributingUnitCount.toLocaleString('vi-VN')} đơn vị
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveCellDetail(null)}
-                className="rounded-full border border-[#d8c6b6] p-2 text-slate-500 hover:text-[#8B0000]"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex flex-col items-end gap-3">
+                <div className="panel-soft rounded-full px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--ink-soft)]">
+                  Sắp theo mã đơn vị tăng dần
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveCellDetail(null)}
+                  className="secondary-btn flex items-center gap-2"
+                >
+                  <X size={16} />
+                  Đóng
+                </button>
+              </div>
             </div>
 
-            <div className="max-h-[70vh] overflow-auto px-6 py-5">
+            <div className="flex-1 overflow-auto p-4 md:p-6">
               {isDetailLoading ? (
-                <div className="flex items-center gap-3 text-slate-500">
-                  <LoaderCircle className="h-5 w-5 animate-spin text-[#8B0000]" />
-                  Đang tải chi tiết...
+                <div className="flex h-40 flex-col items-center justify-center gap-3 text-sm text-[var(--ink-soft)]">
+                  <LoaderCircle size={22} className="animate-spin text-[var(--brand)]" />
+                  <span>Đang tải chi tiết đơn vị...</span>
                 </div>
               ) : detailLoadError ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center text-sm text-[var(--danger)]">
                   {detailLoadError}
                 </div>
-              ) : activeCellDetail.items.length === 0 ? (
-                <div className="rounded-2xl border border-[#ead8ca] bg-[#fffaf6] px-4 py-4 text-sm text-slate-500">
-                  Không có chi tiết đơn vị cho ô dữ liệu này.
+              ) : sortedDetailItems.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {sortedDetailItems.map((item) => (
+                    <div
+                      key={`${item.unitCode}-${item.unitName}`}
+                      className="grid gap-3 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] px-4 py-4 md:grid-cols-[minmax(0,1fr)_140px] md:items-center"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[var(--ink)]">{item.unitName}</p>
+                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          {item.unitCode}
+                        </p>
+                      </div>
+                      <div className="text-left md:text-right">
+                        <p className="col-header mb-1">Giá trị</p>
+                        <p className="data-value text-lg font-bold text-[var(--primary-dark)]">
+                          {item.value.toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-[#8B0000] text-white">
-                      <th className="border border-[#c86b6b] px-4 py-3 text-left">Mã đơn vị</th>
-                      <th className="border border-[#c86b6b] px-4 py-3 text-left">Tên đơn vị</th>
-                      <th className="border border-[#c86b6b] px-4 py-3 text-right">Giá trị</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeCellDetail.items.map((item, index) => (
-                      <tr key={`${item.unitCode}-${item.value}-${index}`} className="odd:bg-white even:bg-[#fffaf6]">
-                        <td className="border border-[#ead8ca] px-4 py-3 font-medium text-slate-700">{item.unitCode}</td>
-                        <td className="border border-[#ead8ca] px-4 py-3 text-slate-700">{item.unitName}</td>
-                        <td className="border border-[#ead8ca] px-4 py-3 text-right text-slate-700">{formatReportValue(item.value)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-8 text-center text-sm text-[var(--ink-soft)]">
+                  Không có đơn vị nào đóng góp dữ liệu cho ô này.
+                </div>
               )}
             </div>
           </div>

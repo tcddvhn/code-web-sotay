@@ -92,3 +92,21 @@ Yeu cau duoc user phe duyet:
 Thuc hien:
 - Cap nhat `src/components/ReportView.tsx` de bo cot thong tin ben phai.
 - Giu lai duy nhat khu bang bao cao va nut `Xuat toan bo bieu`.
+
+### Khoi phuc cach hien thi bieu trong man Bao cao theo file doi chieu user cung cap
+
+Yeu cau duoc user phe duyet:
+- Giu nguyen cach the hien bieu trong man Bao cao nhu truoc khi sua logic xuat.
+- Chi cho phep thay doi luong export, khong lam thay doi bo cuc bang bao cao dang dung.
+
+Thuc hien:
+- Doi chieu file `D:\ReportView.tsx` user cung cap.
+- Khoi phuc lai bo cuc chon du an / nam / don vi / tim kiem, cum tab bieu, table shell, sticky cot dau, modal chi tiet o du lieu.
+- Van giu logic export moi:
+  - bo `Xuat bieu dang chon`
+  - giu `Xuat toan bo bieu`
+  - ho tro workbook mau bat buoc cho lua chon `Dang bo Thanh pho`.
+
+Xac nhan ky thuat:
+- `npm run lint`: pass
+- `npm run build`: pass
