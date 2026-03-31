@@ -810,8 +810,7 @@ export function ReportView({
         </label>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-[30px] border border-[#d8c6b6] bg-white p-5 shadow-[0_10px_35px_rgba(139,0,0,0.08)]">
+      <div className="rounded-[30px] border border-[#d8c6b6] bg-white p-5 shadow-[0_10px_35px_rgba(139,0,0,0.08)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">
               {projectTemplates.map((template) => {
@@ -939,22 +938,6 @@ export function ReportView({
               </button>
             </div>
           )}
-        </div>
-
-        <div className="space-y-4 rounded-[30px] border border-[#d8c6b6] bg-white p-5 shadow-[0_10px_35px_rgba(139,0,0,0.08)]">
-          <h2 className="text-lg font-bold uppercase tracking-[0.12em] text-[#8B0000]">Thông tin xuất dữ liệu</h2>
-          <div className="space-y-3 text-sm leading-7 text-slate-600">
-            <p><strong>Dự án:</strong> {selectedProject?.name || 'Chưa chọn dự án'}</p>
-            <p><strong>Năm:</strong> {selectedYear}</p>
-            <p><strong>Đơn vị:</strong> {selectedUnitOption?.name || 'Chưa chọn đơn vị'}</p>
-            <p><strong>Biểu hiện tại:</strong> {selectedTemplate?.name || 'Chưa chọn biểu'}</p>
-            <p>
-              Khi chọn <strong>Đảng bộ Thành phố</strong>, hệ thống sẽ lấy dữ liệu tổng hợp của toàn bộ đơn vị
-              và ghi vào đúng workbook mẫu đã tải lên lúc tạo biểu mẫu. Nếu một biểu chưa có file mẫu gốc,
-              hệ thống sẽ dừng xuất và thông báo cụ thể.
-            </p>
-          </div>
-        </div>
       </div>
 
       {activeCellDetail && (

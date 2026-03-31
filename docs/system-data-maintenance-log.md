@@ -83,3 +83,12 @@ Xac nhan ky thuat da chay:
 - `npm run lint`: pass
 - `npm run build`: pass
 - Smoke test local `npm run dev` + HTTP 200: pass
+
+### Dieu chinh giao dien Bao cao theo yeu cau 2026-03-31
+
+Yeu cau duoc user phe duyet:
+- Bo khung `Thong tin xuat du lieu` trong man Bao cao vi khong can thiet.
+
+Thuc hien:
+- Cap nhat `src/components/ReportView.tsx` de bo cot thong tin ben phai.
+- Giu lai duy nhat khu bang bao cao va nut `Xuat toan bo bieu`.
