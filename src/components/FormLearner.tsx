@@ -2079,57 +2079,65 @@ export function FormLearner({
                   <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                     1. Tiêu chí dọc
                   </p>
-                  <div className="space-y-3">
-                    <input
-                      className="field-input"
-                      placeholder="Cột tiêu chí dọc mặc định (VD: A)"
-                      value={manualForm.labelColumn}
-                      onChange={(e) => setManualForm({ ...manualForm, labelColumn: e.target.value.toUpperCase() })}
-                    />
-                    <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Cột tiêu chí mặc định:</span>
                       <input
-                        className="field-input"
-                        placeholder="Cột tiêu chí bắt đầu"
+                        className="field-input h-11 min-w-[110px] flex-1 text-[15px] font-semibold"
+                        placeholder="VD: A"
+                        value={manualForm.labelColumn}
+                        onChange={(e) => setManualForm({ ...manualForm, labelColumn: e.target.value.toUpperCase() })}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Cột tiêu chí dọc từ:</span>
+                      <input
+                        className="field-input h-11 w-[92px] text-[15px] font-semibold"
+                        placeholder="A"
                         value={manualForm.labelColumnStart}
                         onChange={(e) => setManualForm({ ...manualForm, labelColumnStart: e.target.value.toUpperCase() })}
                       />
+                      <span className="text-[15px] font-bold text-[var(--ink-soft)]">-</span>
                       <input
-                        className="field-input"
-                        placeholder="Cột tiêu chí kết thúc"
+                        className="field-input h-11 w-[92px] text-[15px] font-semibold"
+                        placeholder="B"
                         value={manualForm.labelColumnEnd}
                         onChange={(e) => setManualForm({ ...manualForm, labelColumnEnd: e.target.value.toUpperCase() })}
                       />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Cột tiêu chí chính:</span>
                       <input
-                        className="field-input"
-                        placeholder="Cột chứa tên tiêu chí chính"
+                        className="field-input h-11 min-w-[110px] flex-1 text-[15px] font-semibold"
+                        placeholder="VD: B"
                         value={manualForm.primaryLabelColumn}
                         onChange={(e) => setManualForm({ ...manualForm, primaryLabelColumn: e.target.value.toUpperCase() })}
                       />
                     </div>
-                    <p className="text-[11px] leading-5 text-[var(--ink-soft)]">
-                      Dùng cho biểu như <strong>B1</strong> khi tiêu chí dọc trải trên nhiều cột, ví dụ vùng
-                      <code className="mx-1">A:B</code> nhưng nhãn chính nằm ở <code>B</code>.
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
                       <input
-                        className="field-input"
+                        className="field-input h-11 w-[110px] text-[15px] font-semibold"
                         type="number"
-                        placeholder="Tiêu đề dọc bắt đầu từ dòng"
                         value={manualForm.verticalHeaderStartRow}
                         onChange={(e) =>
                           setManualForm({ ...manualForm, verticalHeaderStartRow: Number(e.target.value) })
                         }
                       />
+                      <span className="min-w-[140px] pl-1">- Kết thúc ở dòng:</span>
                       <input
-                        className="field-input"
+                        className="field-input h-11 w-[110px] text-[15px] font-semibold"
                         type="number"
-                        placeholder="Tiêu đề dọc kết thúc ở dòng"
                         value={manualForm.verticalHeaderEndRow}
                         onChange={(e) =>
                           setManualForm({ ...manualForm, verticalHeaderEndRow: Number(e.target.value) })
                         }
                       />
                     </div>
+                    <p className="pt-1 text-[12px] font-medium leading-5 text-[var(--ink-soft)]">
+                      Dùng cho biểu như <strong>B1</strong> khi tiêu chí dọc trải trên nhiều cột, ví dụ
+                      <code className="mx-1">A:B</code> nhưng tên tiêu chí chính nằm ở <code>B</code>.
+                    </p>
                   </div>
                 </div>
 
@@ -2137,25 +2145,32 @@ export function FormLearner({
                   <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                     2. Tiêu chí ngang
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      className="field-input"
-                      type="number"
-                      placeholder="Tiêu đề trên bắt đầu từ dòng"
-                      value={manualForm.horizontalHeaderStartRow}
-                      onChange={(e) =>
-                        setManualForm({ ...manualForm, horizontalHeaderStartRow: Number(e.target.value) })
-                      }
-                    />
-                    <input
-                      className="field-input"
-                      type="number"
-                      placeholder="Tiêu đề dưới kết thúc ở dòng"
-                      value={manualForm.horizontalHeaderEndRow}
-                      onChange={(e) =>
-                        setManualForm({ ...manualForm, horizontalHeaderEndRow: Number(e.target.value) })
-                      }
-                    />
+                  <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
+                      <input
+                        className="field-input h-11 w-[120px] text-[15px] font-semibold"
+                        type="number"
+                        value={manualForm.horizontalHeaderStartRow}
+                        onChange={(e) =>
+                          setManualForm({ ...manualForm, horizontalHeaderStartRow: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Kết thúc ở dòng:</span>
+                      <input
+                        className="field-input h-11 w-[120px] text-[15px] font-semibold"
+                        type="number"
+                        value={manualForm.horizontalHeaderEndRow}
+                        onChange={(e) =>
+                          setManualForm({ ...manualForm, horizontalHeaderEndRow: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+                    <p className="pt-1 text-[12px] font-medium leading-5 text-[var(--ink-soft)]">
+                      Nhập đúng vùng tiêu đề ngang để hệ thống vẽ lại khung biểu giống file Excel gốc.
+                    </p>
                   </div>
                 </div>
 
@@ -2163,31 +2178,37 @@ export function FormLearner({
                   <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                     3. Vùng lấy dữ liệu
                   </p>
-                  <div className="space-y-3">
-                    <input
-                      className="field-input"
-                      placeholder="Cột dữ liệu (VD: A-C, F hoặc B,D,G)"
-                      value={manualForm.dataColumns}
-                      onChange={(e) => setManualForm({ ...manualForm, dataColumns: e.target.value.toUpperCase() })}
-                    />
-                    <input
-                      className="field-input"
-                      placeholder="Dòng đặc biệt bỏ qua khi tổng hợp (VD: 34 hoặc 34,56-58)"
-                      value={manualForm.specialRows}
-                      onChange={(e) => setManualForm({ ...manualForm, specialRows: e.target.value })}
-                    />
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Cột dữ liệu:</span>
                       <input
-                        className="field-input"
+                        className="field-input h-11 min-w-[180px] flex-1 text-[15px] font-semibold"
+                        placeholder="VD: A-C, F hoặc B,D,G"
+                        value={manualForm.dataColumns}
+                        onChange={(e) => setManualForm({ ...manualForm, dataColumns: e.target.value.toUpperCase() })}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Dòng đặc biệt:</span>
+                      <input
+                        className="field-input h-11 min-w-[180px] flex-1 text-[15px] font-semibold"
+                        placeholder="VD: 34 hoặc 34,56-58"
+                        value={manualForm.specialRows}
+                        onChange={(e) => setManualForm({ ...manualForm, specialRows: e.target.value })}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
+                      <input
+                        className="field-input h-11 w-[110px] text-[15px] font-semibold"
                         type="number"
-                        placeholder="Dòng bắt đầu dữ liệu"
                         value={manualForm.startRow}
                         onChange={(e) => setManualForm({ ...manualForm, startRow: Number(e.target.value) })}
                       />
+                      <span className="min-w-[140px] pl-1">- Kết thúc ở dòng:</span>
                       <input
-                        className="field-input"
+                        className="field-input h-11 w-[110px] text-[15px] font-semibold"
                         type="number"
-                        placeholder="Dòng kết thúc dữ liệu"
                         value={manualForm.endRow}
                         onChange={(e) => setManualForm({ ...manualForm, endRow: Number(e.target.value) })}
                       />
