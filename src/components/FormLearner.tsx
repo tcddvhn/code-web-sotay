@@ -2860,6 +2860,7 @@ export function FormLearner({
                 <p className="text-xs text-[var(--ink-soft)]">Chưa có biểu mẫu nào.</p>
               )}
             </div>
+          </div>
         </div>
       )}
     </div>
