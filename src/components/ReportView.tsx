@@ -18,6 +18,7 @@ import { uploadFile } from '../supabase';
 import { createReportExport } from '../supabaseStore';
 import { fetchAggregatedRowsFromSupabase, fetchCellDetailsFromSupabase } from '../supabaseReports';
 import {
+  buildWorksheetLayoutFromWorksheet,
   loadTemplateWorkbook,
   resolveTemplateEffectiveEndRowFromWorksheet,
   resolveTemplateHeaderLayout,
@@ -63,6 +64,23 @@ interface ActiveCellDetail {
   columnLabel: string;
   totalValue: number;
   items: CellDetailItem[];
+}
+
+interface RenderableLayoutCell {
+  text: string;
+  rowSpan: number;
+  colSpan: number;
+  row: number;
+  col: number;
+  isDataCell: boolean;
+  sourceRow?: number;
+  columnIndex?: number;
+}
+
+interface TemplateWorksheetSection {
+  id: string;
+  layout: HeaderLayout;
+  headerEndRow: number;
 }
 
 const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
@@ -127,6 +145,84 @@ function buildHeaderRows(layout: HeaderLayout) {
   }
 
   return rows;
+}
+
+function buildRenderableLayoutRows(
+  layout: HeaderLayout,
+  dataCellMap: Map<string, { sourceRow: number; columnIndex: number }> = new Map(),
+) {
+  const rowCount = layout.endRow - layout.startRow + 1;
+  const colCount = layout.endCol - layout.startCol + 1;
+
+  if (rowCount <= 0 || colCount <= 0) {
+    return null;
+  }
+
+  const cellMap = new Map(layout.cells.map((cell) => [`${cell.row}:${cell.col}`, cell.value]));
+  const mergeMap = new Map((layout.merges || []).map((merge) => [`${merge.startRow}:${merge.startCol}`, merge]));
+  const occupied = Array.from({ length: rowCount }, () => Array(colCount).fill(false));
+  const rows: RenderableLayoutCell[][] = [];
+
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    const rowCells: RenderableLayoutCell[] = [];
+
+    for (let colIndex = 0; colIndex < colCount; colIndex += 1) {
+      if (occupied[rowIndex][colIndex]) {
+        continue;
+      }
+
+      const rowNumber = layout.startRow + rowIndex;
+      const colNumber = layout.startCol + colIndex;
+      const merge = mergeMap.get(`${rowNumber}:${colNumber}`);
+      const rowSpan = merge ? merge.endRow - merge.startRow + 1 : 1;
+      const colSpan = merge ? merge.endCol - merge.startCol + 1 : 1;
+
+      for (let rr = rowIndex; rr < rowIndex + rowSpan; rr += 1) {
+        for (let cc = colIndex; cc < colIndex + colSpan; cc += 1) {
+          if (occupied[rr] && typeof occupied[rr][cc] !== 'undefined') {
+            occupied[rr][cc] = true;
+          }
+        }
+      }
+
+      const meta = dataCellMap.get(`${rowNumber}:${colNumber}`);
+      rowCells.push({
+        text: cellMap.get(`${rowNumber}:${colNumber}`) || '',
+        rowSpan,
+        colSpan,
+        row: rowNumber,
+        col: colNumber,
+        isDataCell: Boolean(meta),
+        sourceRow: meta?.sourceRow,
+        columnIndex: meta?.columnIndex,
+      });
+    }
+
+    rows.push(rowCells);
+  }
+
+  return rows;
+}
+
+function templateHasWorkbookSource(template: FormTemplate | null) {
+  if (!template) {
+    return false;
+  }
+
+  return Boolean(template.sourceWorkbookUrl?.trim() || template.sourceWorkbookPath?.trim());
+}
+
+function templateUsesWorkbookRender(template: FormTemplate | null) {
+  if (!template) {
+    return false;
+  }
+
+  const hasBlocks = (template.columnMapping.blocks || []).length > 0;
+  const hasLabelRange =
+    Boolean(template.columnMapping.labelColumnStart && template.columnMapping.labelColumnEnd) &&
+    template.columnMapping.labelColumnStart !== template.columnMapping.labelColumnEnd;
+
+  return hasBlocks || hasLabelRange;
 }
 
 function estimateReportColumnWidth(columnIndex: number, headerText: string, totalColumns: number) {
@@ -279,6 +375,25 @@ function populateTemplateWorksheet(
     valueMap.set(row.sourceRow, currentValues);
   });
 
+  const configuredBlocks = template.columnMapping.blocks || [];
+  if (configuredBlocks.length > 0) {
+    configuredBlocks.forEach((block) => {
+      const blockSpecialRows = new Set(block.specialRows || []);
+      for (let sourceRow = block.startRow; sourceRow <= block.endRow; sourceRow += 1) {
+        if (blockSpecialRows.has(sourceRow)) {
+          continue;
+        }
+
+        const rowValues = valueMap.get(sourceRow) || new Array(block.dataColumns.length).fill(0);
+        block.dataColumns.forEach((columnLetter, columnIndex) => {
+          const address = `${columnLetter}${sourceRow}`;
+          setWorksheetCellValue(worksheet, address, rowValues[columnIndex] || 0);
+        });
+      }
+    });
+    return;
+  }
+
   const effectiveEndRow = resolveTemplateEffectiveEndRowFromWorksheet(worksheet, template);
   for (let sourceRow = template.columnMapping.startRow; sourceRow <= effectiveEndRow; sourceRow += 1) {
     const rowValues = valueMap.get(sourceRow) || new Array(template.columnMapping.dataColumns.length).fill(0);
@@ -321,6 +436,58 @@ function buildFlatWorksheetForTemplate(
   return worksheet;
 }
 
+function buildWorkbookDisplaySections(worksheet: XLSX.WorkSheet, template: FormTemplate) {
+  const blocks = template.columnMapping.blocks || [];
+
+  if (blocks.length > 0) {
+    return blocks
+      .map((block, index) => {
+        const startColLetter =
+          block.labelColumnStart || XLSX.utils.encode_col((block.headerLayout?.startCol || 1) - 1);
+        const endColLetter =
+          block.dataColumns[block.dataColumns.length - 1] ||
+          XLSX.utils.encode_col((block.headerLayout?.endCol || block.headerLayout?.startCol || 1) - 1);
+        const blockLayout = buildWorksheetLayoutFromWorksheet(
+          worksheet,
+          block.headerLayout?.startRow || block.startRow,
+          block.endRow,
+          startColLetter,
+          endColLetter,
+        );
+
+        return {
+          id: block.id || `block_${index + 1}`,
+          layout: blockLayout,
+          headerEndRow: block.headerLayout?.endRow || block.startRow,
+        } satisfies TemplateWorksheetSection;
+      })
+      .filter((section) => section.layout.cells.length > 0 || section.layout.merges.length > 0);
+  }
+
+  const effectiveEndRow = resolveTemplateEffectiveEndRowFromWorksheet(worksheet, template);
+  const startColLetter = template.columnMapping.labelColumnStart || template.columnMapping.labelColumn;
+  const endColLetter =
+    template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] || template.columnMapping.labelColumn;
+  const fallbackStartRow = template.headerLayout?.startRow ?? Math.max(1, template.columnMapping.startRow - 2);
+  const fallbackHeaderEndRow = template.headerLayout?.endRow ?? Math.max(fallbackStartRow, template.columnMapping.startRow - 1);
+
+  const layout = buildWorksheetLayoutFromWorksheet(
+    worksheet,
+    fallbackStartRow,
+    effectiveEndRow,
+    startColLetter,
+    endColLetter,
+  );
+
+  return [
+    {
+      id: 'primary',
+      layout,
+      headerEndRow: fallbackHeaderEndRow,
+    } satisfies TemplateWorksheetSection,
+  ];
+}
+
 function uniqueSheetName(baseName: string, usedNames: Set<string>) {
   const trimmed = (baseName || 'Sheet').slice(0, 31);
   if (!usedNames.has(trimmed)) {
@@ -361,6 +528,8 @@ export function ReportView({
   const [detailLoadError, setDetailLoadError] = useState<string | null>(null);
   const [resolvedHeaderLayout, setResolvedHeaderLayout] = useState<HeaderLayout | null>(null);
   const [templateRows, setTemplateRows] = useState<TemplateRowDefinition[]>([]);
+  const [advancedSections, setAdvancedSections] = useState<TemplateWorksheetSection[]>([]);
+  const [isWorkbookLayoutLoading, setIsWorkbookLayoutLoading] = useState(false);
   const [visibleRowCount, setVisibleRowCount] = useState(INITIAL_VISIBLE_ROWS);
   const [supabaseAggregatedRows, setSupabaseAggregatedRows] = useState<AggregatedReportRow[]>([]);
   const [isSupabaseLoadingRows, setIsSupabaseLoadingRows] = useState(false);
@@ -372,6 +541,7 @@ export function ReportView({
     [templates, selectedProjectId],
   );
   const selectedTemplate = projectTemplates.find((template) => template.id === selectedTemplateId) || null;
+  const usesWorkbookBasedLayout = templateUsesWorkbookRender(selectedTemplate) && templateHasWorkbookSource(selectedTemplate);
   const selectedProject = projects.find((project) => project.id === selectedProjectId) || null;
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const headerRows = useMemo(
@@ -447,6 +617,7 @@ export function ReportView({
     if (!selectedTemplate) {
       setResolvedHeaderLayout(null);
       setTemplateRows([]);
+      setAdvancedSections([]);
       return;
     }
 
@@ -476,6 +647,51 @@ export function ReportView({
       cancelled = true;
     };
   }, [selectedTemplate]);
+
+  useEffect(() => {
+    if (!selectedTemplate || !usesWorkbookBasedLayout) {
+      setAdvancedSections([]);
+      setIsWorkbookLayoutLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsWorkbookLayoutLoading(true);
+
+    loadTemplateWorkbook(selectedTemplate)
+      .then((workbook) => {
+        if (cancelled) {
+          return;
+        }
+
+        const worksheet = workbook.Sheets[selectedTemplate.sheetName] || workbook.Sheets[workbook.SheetNames[0]];
+        if (!worksheet) {
+          setAdvancedSections([]);
+          return;
+        }
+
+        populateTemplateWorksheet(worksheet, selectedTemplate, data, selectedYear, selectedUnitCode);
+        const sections = buildWorkbookDisplaySections(worksheet, selectedTemplate);
+        if (!cancelled) {
+          setAdvancedSections(sections);
+        }
+      })
+      .catch((error) => {
+        console.error('Không thể dựng layout workbook cho biểu nâng cao:', error);
+        if (!cancelled) {
+          setAdvancedSections([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsWorkbookLayoutLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data, selectedTemplate, selectedUnitCode, selectedYear, usesWorkbookBasedLayout]);
 
   useEffect(() => {
     if (!selectedTemplate || !selectedProjectId) {
@@ -595,6 +811,66 @@ export function ReportView({
       });
   }, [activeCellDetail]);
   const contributingUnitCount = sortedDetailItems.length;
+  const aggregatedRowsBySourceRow = useMemo(
+    () => new Map(aggregatedRows.map((row) => [row.sourceRow, row])),
+    [aggregatedRows],
+  );
+  const advancedRenderedSections = useMemo(() => {
+    if (!selectedTemplate || advancedSections.length === 0) {
+      return [] as Array<{ section: TemplateWorksheetSection; rows: RenderableLayoutCell[][] }>;
+    }
+
+    const configuredBlocks = selectedTemplate.columnMapping.blocks || [];
+    const fallbackSpecialRows = new Set(selectedTemplate.columnMapping.specialRows || []);
+
+    return advancedSections
+      .filter((section) => {
+        if (normalizedSearchTerm === '') {
+          return true;
+        }
+
+        return section.layout.cells.some((cell) => cell.value.toLowerCase().includes(normalizedSearchTerm));
+      })
+      .map((section, index) => {
+        const dataCellMap = new Map<string, { sourceRow: number; columnIndex: number }>();
+        const block = configuredBlocks[index] || null;
+
+        if (block) {
+          const blockSpecialRows = new Set(block.specialRows || []);
+          for (let sourceRow = block.startRow; sourceRow <= block.endRow; sourceRow += 1) {
+            if (blockSpecialRows.has(sourceRow)) {
+              continue;
+            }
+
+            block.dataColumns.forEach((columnLetter, columnIndex) => {
+              dataCellMap.set(`${sourceRow}:${columnLetterToIndex(columnLetter)}`, {
+                sourceRow,
+                columnIndex,
+              });
+            });
+          }
+        } else {
+          const effectiveEndRow = Math.max(selectedTemplate.columnMapping.startRow, selectedTemplate.columnMapping.endRow);
+          for (let sourceRow = selectedTemplate.columnMapping.startRow; sourceRow <= effectiveEndRow; sourceRow += 1) {
+            if (fallbackSpecialRows.has(sourceRow)) {
+              continue;
+            }
+
+            selectedTemplate.columnMapping.dataColumns.forEach((columnLetter, columnIndex) => {
+              dataCellMap.set(`${sourceRow}:${columnLetterToIndex(columnLetter)}`, {
+                sourceRow,
+                columnIndex,
+              });
+            });
+          }
+        }
+
+        return {
+          section,
+          rows: buildRenderableLayoutRows(section.layout, dataCellMap) || [],
+        };
+      });
+  }, [advancedSections, normalizedSearchTerm, selectedTemplate]);
 
   const persistExportRecord = async (
     workbook: XLSX.WorkBook,
@@ -891,6 +1167,75 @@ export function ReportView({
       {!selectedTemplate ? (
         <div className="panel-card rounded-[24px] p-10 text-center opacity-60">
           Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
+        </div>
+      ) : usesWorkbookBasedLayout ? (
+        <div className="table-shell overflow-hidden rounded-[24px] border border-[var(--line-strong)] bg-white">
+          {isWorkbookLayoutLoading ? (
+            <div className="p-12 text-center italic opacity-60">Đang dựng khung biểu theo file mẫu...</div>
+          ) : advancedRenderedSections.length > 0 ? (
+            <div className="space-y-0 overflow-x-auto">
+              {advancedRenderedSections.map(({ section, rows }, sectionIndex) => (
+                <table
+                  key={section.id}
+                  className={`w-max min-w-full border-separate border-spacing-0 table-auto bg-white ${
+                    sectionIndex > 0 ? 'border-t border-[var(--line-strong)]' : ''
+                  }`}
+                >
+                  <tbody>
+                    {rows.map((row, rowIndex) => (
+                      <tr key={`${section.id}-row-${rowIndex}`}>
+                        {row.map((cell, cellIndex) => {
+                          const aggregatedRow = cell.sourceRow ? aggregatedRowsBySourceRow.get(cell.sourceRow) : null;
+                          const cellValue =
+                            cell.isDataCell && aggregatedRow && typeof cell.columnIndex === 'number'
+                              ? aggregatedRow.values[cell.columnIndex] || 0
+                              : null;
+                          const isHeaderZone = cell.row <= section.headerEndRow;
+                          const isPrimaryLabel = cell.col === section.layout.startCol;
+
+                          return (
+                            <td
+                              key={`${section.id}-${rowIndex}-${cellIndex}`}
+                              colSpan={cell.colSpan}
+                              rowSpan={cell.rowSpan}
+                              className={`border-b border-r border-[var(--line)] align-middle ${
+                                rowIndex === 0 ? 'border-t' : ''
+                              } ${
+                                cellIndex === 0 ? 'border-l' : ''
+                              } ${
+                                isHeaderZone
+                                  ? 'bg-[#faf8f4] px-3 py-2 text-center text-[13px] font-semibold leading-[1.35] text-[var(--ink)]'
+                                  : isPrimaryLabel
+                                    ? 'bg-white px-3 py-2 text-[13px] font-semibold leading-[1.45] text-[var(--ink)]'
+                                    : 'bg-white px-0 py-0'
+                              }`}
+                            >
+                              {cell.isDataCell && aggregatedRow && typeof cell.columnIndex === 'number' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openCellDetail(aggregatedRow, cell.columnIndex!)}
+                                  className="h-full min-h-[46px] w-full px-2 py-2 text-center text-[13px] font-medium leading-[1.35] text-[var(--ink)] transition-colors hover:bg-[var(--primary-soft)]"
+                                  title="Xem chi tiết theo đơn vị"
+                                >
+                                  {formatReportValue(cellValue || 0)}
+                                </button>
+                              ) : (
+                                cell.text || '\u00A0'
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 text-center italic opacity-40">
+              Không thể dựng lại khung biểu từ file mẫu. Hãy kiểm tra lại cấu hình khối tiêu đề - dữ liệu.
+            </div>
+          )}
         </div>
       ) : (
         <div className="table-shell overflow-hidden rounded-[24px] border border-[var(--line-strong)] bg-white">

@@ -8,7 +8,7 @@ const TEMPLATE_FETCH_TIMEOUT_MS = 8000;
 
 const cachedTemplateBufferPromises = new Map<string, Promise<ArrayBuffer>>();
 
-function buildHeaderLayoutFromWorksheet(
+export function buildWorksheetLayoutFromWorksheet(
   worksheet: XLSX.WorkSheet,
   startRow: number,
   endRow: number,
@@ -65,9 +65,26 @@ function readWorksheetText(worksheet: XLSX.WorkSheet, row: number, col: string) 
 }
 
 function readWorksheetRowLabel(worksheet: XLSX.WorkSheet, row: number, template: FormTemplate) {
-  const directLabel = readWorksheetText(worksheet, row, template.columnMapping.labelColumn);
+  const primaryLabelColumn =
+    template.columnMapping.primaryLabelColumn ||
+    template.columnMapping.labelColumn ||
+    template.columnMapping.labelColumnStart ||
+    'A';
+  const directLabel = readWorksheetText(worksheet, row, primaryLabelColumn);
   if (directLabel) {
     return directLabel;
+  }
+
+  const startLabelColumn = template.columnMapping.labelColumnStart || template.columnMapping.labelColumn || primaryLabelColumn;
+  const endLabelColumn = template.columnMapping.labelColumnEnd || template.columnMapping.labelColumn || primaryLabelColumn;
+  const labelRangeStartIndex = Math.min(columnLetterToIndex(startLabelColumn), columnLetterToIndex(endLabelColumn));
+  const labelRangeEndIndex = Math.max(columnLetterToIndex(startLabelColumn), columnLetterToIndex(endLabelColumn));
+
+  for (let colIndex = labelRangeStartIndex; colIndex <= labelRangeEndIndex; colIndex += 1) {
+    const value = readWorksheetText(worksheet, row, columnIndexToLetter(colIndex));
+    if (value) {
+      return value;
+    }
   }
 
   const worksheetRef = worksheet['!ref'];
@@ -186,7 +203,7 @@ export async function resolveTemplateHeaderLayout(template: FormTemplate) {
         : template.columnMapping.dataColumns[template.columnMapping.dataColumns.length - 1] ||
           template.columnMapping.labelColumn;
 
-      return buildHeaderLayoutFromWorksheet(worksheet, startRow, endRow, startCol, endCol);
+      return buildWorksheetLayoutFromWorksheet(worksheet, startRow, endRow, startCol, endCol);
     }
   } catch (error) {
     console.warn('Không thể đọc header layout từ workbook mẫu:', error);

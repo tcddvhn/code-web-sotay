@@ -2002,8 +2002,7 @@ export function FormLearner({
       )}
 
       {mode === 'MANUAL' && (
-        <div className="grid max-w-6xl grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="space-y-6">
+        <div className="max-w-6xl space-y-6">
           <div className="panel-card rounded-[24px] p-6">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h3 className="section-title">Tạo biểu mẫu thủ công</h3>
@@ -2220,7 +2219,7 @@ export function FormLearner({
                       }))
                     }
                   />
-                  Bật cấu hình nhiều khối
+                  Bật cấu hình nhiều khối tiêu đề - dữ liệu
                 </label>
               </div>
 
@@ -2241,7 +2240,7 @@ export function FormLearner({
                           className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)]"
                         >
                           <Trash2 size={14} />
-                          Xóa khối
+                          Xóa khối tiêu đề - dữ liệu
                         </button>
                       </div>
 
@@ -2341,7 +2340,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Dòng đặc biệt
+                          Dòng đặc biệt bỏ qua khi tổng hợp
                           <input
                             className="field-input mt-2"
                             value={block.specialRows}
@@ -2350,7 +2349,7 @@ export function FormLearner({
                           />
                         </label>
                         <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
-                          Tên cột của khối (tùy chọn)
+                          Tên cột hiển thị của khối (tùy chọn)
                           <input
                             className="field-input mt-2"
                             value={block.columnHeaders}
@@ -2518,7 +2517,7 @@ export function FormLearner({
                       />
                     </label>
                     <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                      Cột nhãn chính
+                      Cột chứa tên tiêu chí chính
                       <input
                         className="field-input mt-2"
                         value={tpl.columnMapping.primaryLabelColumn || tpl.columnMapping.labelColumn}
@@ -2600,7 +2599,7 @@ export function FormLearner({
                         className="secondary-btn inline-flex items-center gap-2"
                       >
                         <Plus size={14} />
-                        Thêm khối
+                        Thêm khối tiêu đề - dữ liệu
                       </button>
                     </div>
 
@@ -2616,7 +2615,7 @@ export function FormLearner({
                                 className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)]"
                               >
                                 <Trash2 size={14} />
-                                Xóa khối
+                                Xóa khối tiêu đề - dữ liệu
                               </button>
                             </div>
 
@@ -2778,7 +2777,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                Dòng đặc biệt
+                                Dòng đặc biệt bỏ qua khi tổng hợp
                                 <input
                                   className="field-input mt-2"
                                   value={(block.specialRows || []).join(', ')}
@@ -2788,7 +2787,7 @@ export function FormLearner({
                                 />
                               </label>
                               <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
-                                Tên cột của khối
+                                Tên cột hiển thị của khối
                                 <input
                                   className="field-input mt-2"
                                   value={(block.columnHeaders || []).join(', ')}
@@ -2861,35 +2860,6 @@ export function FormLearner({
                 <p className="text-xs text-[var(--ink-soft)]">Chưa có biểu mẫu nào.</p>
               )}
             </div>
-          </div>
-          </div>
-
-          <div className="panel-card h-fit rounded-[24px] p-6 xl:sticky xl:top-6">
-            <h3 className="section-title">Hướng dẫn thiết lập</h3>
-            <div className="mt-4 space-y-4 text-sm leading-6 text-[var(--ink-soft)]">
-              <p>
-                <strong className="text-[var(--ink)]">1. Tải file mẫu</strong> để hệ thống đọc danh sách sheet thực tế trong workbook.
-              </p>
-              <p>
-                <strong className="text-[var(--ink)]">2. Chọn đúng sheet</strong> tương ứng với biểu bạn muốn cấu hình. Mỗi biểu nên gắn với một sheet riêng.
-              </p>
-              <p>
-                <strong className="text-[var(--ink)]">3. Tiêu chí dọc</strong> là cột chứa tên chỉ tiêu hoặc dòng mô tả, ví dụ `A` hoặc `B`.
-              </p>
-              <p>
-                <strong className="text-[var(--ink)]">4. Tiêu chí ngang</strong> là phần đầu bảng nhiều tầng. Hãy nhập đúng hàng bắt đầu và hàng kết thúc của vùng header để báo cáo dựng lại giống file Excel.
-              </p>
-              <p>
-                <strong className="text-[var(--ink)]">5. Vùng lấy dữ liệu</strong> là các cột số liệu thật sự cần tổng hợp, ví dụ `C-H` hoặc `B,D,G`.
-              </p>
-              <p>
-                <strong className="text-[var(--ink)]">6. Dòng đặc biệt</strong> dùng cho các dòng ngắt khối, tiêu đề phụ hoặc dòng merge giữa biểu. Chỉ cần nhập số dòng, ví dụ `34` hoặc `34,56-58`. Hệ thống sẽ giữ dòng đó khi vẽ báo cáo nhưng bỏ qua khi tổng hợp dữ liệu.
-              </p>
-              <p>
-                <strong className="text-[var(--ink)]">7. Sau khi tạo xong</strong>, biểu sẽ lưu ở trạng thái nháp. Bạn nên rà lại, xem thử ở mục báo cáo, rồi mới bấm chốt biểu để đưa vào tiếp nhận dữ liệu.
-              </p>
-            </div>
-          </div>
         </div>
       )}
     </div>
