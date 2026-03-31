@@ -42,3 +42,44 @@ Khuyen nghi quy trinh truoc commit:
 1. `npm run check:encoding`
 2. `npm run lint`
 3. `npm run build`
+
+## Moc ngay 2026-03-31
+
+### Cap nhat xuat bao cao theo workbook mau cua bieu
+
+Yeu cau da duoc user phe duyet truoc khi sua:
+- Bo nut "Xuat bieu dang chon" trong man Bao cao.
+- Giu nut "Xuat toan bo bieu" la duong xuat duy nhat.
+- Khi chon don vi "Dang bo Thanh pho", uu tien dung file mau da upload luc tao bieu mau de do so lieu tong hop 132 don vi vao dung workbook goc.
+
+Huong sua da thuc hien:
+1. Cap nhat `src/components/ReportView.tsx`:
+   - Bo luong xuat rieng cho mot bieu.
+   - Nut `Xuat toan bo bieu` duoc doi thanh nut chinh duy nhat.
+   - Khi `selectedUnitCode = __TOTAL_CITY__`, he thong bat buoc moi bieu trong du an phai doc duoc workbook mau. Neu thieu file mau goc hoac khong doc duoc workbook, he thong dung xuat va thong bao ro ten cac bieu dang thieu.
+   - Neu doc duoc workbook, he thong dung chinh workbook mau do lam nen va ghi so lieu tong hop vao cac o du lieu truoc khi tai ve.
+2. Cap nhat `src/utils/templateWorkbook.ts` + `src/supabase.ts`:
+   - Neu template co `sourceWorkbookUrl` thi dung truc tiep.
+   - Neu chi con `sourceWorkbookPath` thi tu sinh public URL tu Supabase Storage de van tai dung file mau goc.
+
+Luu y nghiep vu:
+- Co che nay chi tac dong den luong xuat trong man Bao cao cua he thong du lieu hien hanh.
+- Khong can thiiep vao So tay hien hanh.
+
+### Hoan tat va xac nhan ky thuat cho thay doi xuat bao cao
+
+Ket qua thuc hien:
+1. Viet lai `src/components/ReportView.tsx` thanh ban sach UTF-8 de loai bo vung mojibake/phat sinh loi parse.
+2. Giu duy nhat nut `Xuat toan bo bieu`.
+3. Loai bo luong `Xuat bieu dang chon` khoi module Bao cao.
+4. Khi chon `Dang bo Thanh pho`, he thong:
+   - bat buoc uu tien workbook mau da upload luc tao bieu
+   - ghi du lieu tong hop cua toan bo don vi vao dung cac o du lieu trong workbook mau
+   - canh bao va dung xuat neu thieu workbook mau o bat ky bieu nao
+5. Van luu lich su xuat bao cao len Supabase sau khi tai file thanh cong.
+
+Xac nhan ky thuat da chay:
+- `npm run check:encoding`: pass
+- `npm run lint`: pass
+- `npm run build`: pass
+- Smoke test local `npm run dev` + HTTP 200: pass

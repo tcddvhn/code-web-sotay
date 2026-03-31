@@ -241,6 +241,21 @@ export async function deleteFolderByPath(storagePath: string) {
   }
 }
 
+export function getPublicUrlByPath(storagePath: string) {
+  const candidates = buildStoragePathCandidates(storagePath);
+  const targetPath = candidates[0];
+
+  if (!targetPath) {
+    return '';
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(targetPath);
+
+  return publicUrl;
+}
+
 export async function logoutSupabase() {
   const { error } = await supabase.auth.signOut();
   if (error) {

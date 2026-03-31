@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { getPublicUrlByPath } from '../supabase';
 import { FormTemplate, HeaderLayout } from '../types';
 import { columnIndexToLetter, columnLetterToIndex } from './columnUtils';
 
@@ -117,7 +118,17 @@ export async function loadTemplateWorkbookBuffer() {
 }
 
 function resolveTemplateWorkbookUrl(template?: FormTemplate | null) {
-  return template?.sourceWorkbookUrl?.trim() || NQ22_TEMPLATE_WORKBOOK_URL;
+  const directUrl = template?.sourceWorkbookUrl?.trim();
+  if (directUrl) {
+    return directUrl;
+  }
+
+  const sourcePath = template?.sourceWorkbookPath?.trim();
+  if (sourcePath) {
+    return getPublicUrlByPath(sourcePath);
+  }
+
+  return NQ22_TEMPLATE_WORKBOOK_URL;
 }
 
 async function loadTemplateWorkbookBufferFromUrl(url: string) {
