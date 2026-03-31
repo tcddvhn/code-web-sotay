@@ -1297,6 +1297,7 @@ export function ImportFiles({
               </div>
             </div>
           </div>
+          </div>
 
           <div className="panel-card rounded-[24px] p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
