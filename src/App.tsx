@@ -2003,15 +2003,15 @@ function DashboardOverview({
           {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
         </button>
         <div
-          className="overflow-hidden rounded-[28px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
+          className="overflow-hidden rounded-[24px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
           style={{
             backgroundColor: '#8f1115',
             backgroundImage:
-              'radial-gradient(circle at 24px 24px, rgba(201,167,92,0.16) 0, rgba(201,167,92,0.16) 2px, transparent 2px), radial-gradient(circle at 0 0, rgba(201,167,92,0.08) 0, rgba(201,167,92,0.08) 1px, transparent 1px), linear-gradient(135deg, rgba(255,255,255,0.06), transparent 40%)',
-            backgroundSize: '48px 48px, 24px 24px, auto',
+              'radial-gradient(circle at 28px 28px, rgba(201,167,92,0.15) 0, rgba(201,167,92,0.15) 2px, transparent 2px), radial-gradient(circle at 0 0, rgba(201,167,92,0.10) 0, rgba(201,167,92,0.10) 1px, transparent 1px), linear-gradient(135deg, rgba(255,255,255,0.06), transparent 40%), linear-gradient(45deg, rgba(201,167,92,0.08) 25%, transparent 25%, transparent 50%, rgba(201,167,92,0.08) 50%, rgba(201,167,92,0.08) 75%, transparent 75%, transparent)',
+            backgroundSize: '56px 56px, 28px 28px, auto, 84px 84px',
           }}
         >
-          <h2 className="text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
+          <h2 className="max-w-5xl text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
             HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG
           </h2>
           {currentUser && (

@@ -1185,42 +1185,49 @@ export function ImportFiles({
 
         <div className="space-y-4">
           <div className="panel-card min-w-0 rounded-[24px] p-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div className="min-w-0">
-                    <p className="col-header">1. Dự án</p>
-                    <p className="page-subtitle mt-2 text-sm">
-                      Chọn đúng dự án để hệ thống lọc đơn vị chưa tiếp nhận và các biểu mẫu đã chốt tương ứng.
-                    </p>
-                  </div>
-                  {currentProject && (
-                    <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                      {currentProject.status === 'ACTIVE' ? 'Đang hoạt động' : 'Đã hoàn thành'}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0">
+                      <p className="col-header">1. Dự án</p>
+                      <p className="page-subtitle mt-2 text-sm">
+                        Chọn đúng dự án để hệ thống lọc đơn vị chưa tiếp nhận và các biểu mẫu đã chốt tương ứng.
+                      </p>
                     </div>
-                  )}
+                    {currentProject && (
+                      <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                        {currentProject.status === 'ACTIVE' ? 'Đang hoạt động' : 'Đã hoàn thành'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="w-full max-w-[360px] self-start lg:ml-6">
+                  <div className="flex items-end justify-end gap-3">
+                    <div className="min-w-[180px]">
+                      <div className="mb-1 text-right text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--brand)]">
+                        Năm
+                      </div>
+                      <select
+                        value={selectedYear}
+                        onChange={(event) => handleYearChange(event.target.value)}
+                        className="h-11 w-full border-0 border-b-2 border-[var(--brand)] bg-transparent px-0 text-right text-2xl font-semibold text-[var(--ink)] focus:outline-none"
+                      >
+                        {YEARS.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <label className="mt-3 flex items-center justify-end gap-2 text-xs text-[var(--ink-soft)]">
+                    <input type="checkbox" checked={pinnedYear === selectedYear} onChange={togglePinnedYear} />
+                    <span>Ghim năm này cho lần nhập sau</span>
+                  </label>
                 </div>
               </div>
-
-              <div className="w-full md:max-w-[320px]">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--brand)]">Năm tổng hợp</p>
-                <select
-                  value={selectedYear}
-                  onChange={(event) => handleYearChange(event.target.value)}
-                  className="mt-2 h-11 w-full border-0 border-b-2 border-[var(--brand)] bg-transparent px-0 text-right text-3xl font-semibold text-[var(--ink)] focus:outline-none"
-                >
-                  {YEARS.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-                <label className="mt-3 flex items-center justify-end gap-2 text-sm text-[var(--ink-soft)]">
-                  <input type="checkbox" checked={pinnedYear === selectedYear} onChange={togglePinnedYear} />
-                  <span>Ghim năm này cho lần nhập sau</span>
-                </label>
-              </div>
-            </div>
 
             <div className="-mx-1 mt-4 flex flex-wrap gap-2 overflow-x-auto px-1 pb-1">
               {projects.map((project) => {
@@ -1307,13 +1314,18 @@ export function ImportFiles({
               <button
                 type="button"
                 onClick={() => setSelectedTemplateId('')}
-                className={`rounded-[18px] border px-4 py-3 text-left text-sm font-semibold transition ${
+                className={`relative rounded-[18px] border px-4 py-3 text-left text-sm font-semibold transition ${
                   !selectedTemplateId
-                    ? 'border-[var(--brand)] bg-[var(--primary-soft)]'
-                    : 'border-[var(--line)] bg-white hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
+                    ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-[0_14px_34px_rgba(122,44,46,0.22)]'
+                    : 'border-[var(--line)] bg-white text-[var(--ink)] hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
                 }`}
               >
-                Tất cả biểu mẫu đã chốt
+                {!selectedTemplateId && (
+                  <span className="absolute right-3 top-3 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[var(--brand)]">
+                    <CheckCircle2 size={14} />
+                  </span>
+                )}
+                <span className="pr-7">Tất cả biểu mẫu đã chốt</span>
               </button>
               {publishedTemplates.map((template) => {
                 const isActive = template.id === selectedTemplateId;
@@ -1324,17 +1336,17 @@ export function ImportFiles({
                     onClick={() => setSelectedTemplateId(template.id)}
                     className={`relative min-w-[220px] max-w-full rounded-[18px] border px-4 py-3 text-left transition ${
                       isActive
-                        ? 'border-[var(--brand)] bg-[var(--brand)]/10 shadow-[0_12px_30px_rgba(122,44,46,0.16)]'
+                        ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-[0_14px_34px_rgba(122,44,46,0.24)]'
                         : 'border-[var(--line)] bg-white hover:border-[var(--brand)] hover:bg-[var(--surface-soft)]'
                     }`}
                   >
                     {isActive && (
-                      <span className="absolute right-3 top-3 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand)] text-white">
+                      <span className="absolute right-3 top-3 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[var(--brand)]">
                         <CheckCircle2 size={14} />
                       </span>
                     )}
-                    <p className={`truncate text-sm font-semibold ${isActive ? 'text-[var(--primary-dark)]' : 'text-[var(--ink)]'}`}>{template.name}</p>
-                    <p className="mt-1 text-xs text-[var(--ink-soft)]">{template.sheetName}</p>
+                    <p className={`truncate pr-7 text-sm font-semibold ${isActive ? 'text-white' : 'text-[var(--ink)]'}`}>{template.name}</p>
+                    <p className={`mt-1 text-xs ${isActive ? 'text-white/80' : 'text-[var(--ink-soft)]'}`}>{template.sheetName}</p>
                   </button>
                 );
               })}
