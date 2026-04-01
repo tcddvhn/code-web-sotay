@@ -1,5 +1,5 @@
 ﻿
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, LoaderCircle, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
@@ -82,6 +82,12 @@ interface TemplateWorksheetSection {
   id: string;
   layout: HeaderLayout;
   headerEndRow: number;
+}
+
+interface HeaderCellMeta {
+  startCol: number;
+  endCol: number;
+  isLeaf: boolean;
 }
 
 const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
@@ -236,6 +242,81 @@ function estimateReportColumnWidth(columnIndex: number, headerText: string, tota
   const dynamicWidth = compactBase + Math.min(normalizedLength * 1.5, totalColumns >= 8 ? 24 : 40);
 
   return Math.max(compactBase, Math.min(dynamicWidth, totalColumns >= 8 ? 148 : 176));
+}
+
+function buildHeaderCellMetadata(headerRows: { text: string; rowSpan: number; colSpan: number }[][]) {
+  const totalRows = headerRows.length;
+  const totalColumns = headerRows.reduce(
+    (max, row) => Math.max(max, row.reduce((sum, cell) => sum + cell.colSpan, 0)),
+    0,
+  );
+  const occupied = Array.from({ length: totalRows }, () => Array(totalColumns).fill(false));
+
+  return headerRows.map((row, rowIndex) => {
+    const rowMeta: HeaderCellMeta[] = [];
+    let searchCol = 0;
+
+    row.forEach((cell) => {
+      while (occupied[rowIndex][searchCol]) {
+        searchCol += 1;
+      }
+
+      const startCol = searchCol;
+      const endCol = startCol + cell.colSpan - 1;
+
+      for (let rr = rowIndex; rr < rowIndex + cell.rowSpan; rr += 1) {
+        for (let cc = startCol; cc <= endCol; cc += 1) {
+          if (occupied[rr] && typeof occupied[rr][cc] !== 'undefined') {
+            occupied[rr][cc] = true;
+          }
+        }
+      }
+
+      rowMeta.push({
+        startCol,
+        endCol,
+        isLeaf: rowIndex + cell.rowSpan === totalRows && cell.colSpan === 1,
+      });
+
+      searchCol = endCol + 1;
+    });
+
+    return rowMeta;
+  });
+}
+
+function buildLeafHeaderTexts(
+  headerRows: { text: string; rowSpan: number; colSpan: number }[][] | null,
+  columnHeaders: string[],
+  totalColumns: number,
+) {
+  if (headerRows && headerRows.length > 0) {
+    const metadata = buildHeaderCellMetadata(headerRows);
+    const leafTexts = new Array<string>(totalColumns).fill('');
+
+    headerRows.forEach((row, rowIndex) => {
+      row.forEach((cell, cellIndex) => {
+        const meta = metadata[rowIndex]?.[cellIndex];
+        if (meta?.isLeaf) {
+          leafTexts[meta.startCol] = cell.text || '';
+        }
+      });
+    });
+
+    return leafTexts.map((text, index) => text || columnHeaders[index - 1] || (index === 0 ? 'Tiêu chí' : `Cột ${index + 1}`));
+  }
+
+  return Array.from({ length: totalColumns }, (_, index) =>
+    index === 0 ? 'Tiêu chí' : columnHeaders[index - 1] || `Cột ${index + 1}`,
+  );
+}
+
+function getMinimumColumnWidth(columnIndex: number, usesWorkbookBasedLayout: boolean) {
+  if (columnIndex === 0) {
+    return usesWorkbookBasedLayout ? 72 : 220;
+  }
+
+  return usesWorkbookBasedLayout ? 72 : 88;
 }
 
 function createRowDefinitions(
@@ -535,6 +616,14 @@ export function ReportView({
   const [supabaseAggregatedRows, setSupabaseAggregatedRows] = useState<AggregatedReportRow[]>([]);
   const [isSupabaseLoadingRows, setIsSupabaseLoadingRows] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [columnWidths, setColumnWidths] = useState<number[]>([]);
+  const [activeResizeColumn, setActiveResizeColumn] = useState<number | null>(null);
+  const resizeStateRef = useRef<{
+    columnIndex: number;
+    startX: number;
+    startWidth: number;
+    minWidth: number;
+  } | null>(null);
   const unitNameByCode = useMemo(() => new Map(units.map((unit) => [unit.code, unit.name])), [units]);
 
   const projectTemplates = useMemo(
@@ -548,6 +637,10 @@ export function ReportView({
   const headerRows = useMemo(
     () => (resolvedHeaderLayout ? buildHeaderRows(resolvedHeaderLayout) : null),
     [resolvedHeaderLayout],
+  );
+  const headerCellMetadata = useMemo(
+    () => (headerRows ? buildHeaderCellMetadata(headerRows) : null),
+    [headerRows],
   );
 
   const reportUnitOptions = useMemo(() => {
@@ -779,19 +872,27 @@ export function ReportView({
 
     return 1 + columnHeaders.length;
   }, [columnHeaders.length, headerRows, resolvedHeaderLayout, selectedTemplate]);
-  const tableColumnWidths = useMemo(() => {
+  const leafHeaderTexts = useMemo(
+    () => buildLeafHeaderTexts(headerRows, columnHeaders, tableColSpan),
+    [columnHeaders, headerRows, tableColSpan],
+  );
+  const defaultColumnWidths = useMemo(() => {
     if (tableColSpan <= 0) {
       return [] as number[];
     }
 
-    return Array.from({ length: tableColSpan }, (_, index) => {
-      if (index === 0) {
-        return estimateReportColumnWidth(index, 'Tiêu chí', tableColSpan);
-      }
+    return Array.from({ length: tableColSpan }, (_, index) =>
+      estimateReportColumnWidth(index, leafHeaderTexts[index] || `Cột ${index + 1}`, tableColSpan),
+    );
+  }, [leafHeaderTexts, tableColSpan]);
+  const effectiveColumnWidths = columnWidths.length === tableColSpan ? columnWidths : defaultColumnWidths;
+  const columnWidthStorageKey = useMemo(() => {
+    if (!selectedProjectId || !selectedTemplateId || tableColSpan <= 0) {
+      return '';
+    }
 
-      return estimateReportColumnWidth(index, columnHeaders[index - 1] || `Cột ${index}`, tableColSpan);
-    });
-  }, [columnHeaders, tableColSpan]);
+    return `report-column-widths:${selectedProjectId}:${selectedTemplateId}:${usesWorkbookBasedLayout ? 'workbook' : 'flat'}`;
+  }, [selectedProjectId, selectedTemplateId, tableColSpan, usesWorkbookBasedLayout]);
   const sortedDetailItems = useMemo(() => {
     if (!activeCellDetail) {
       return [] as CellDetailItem[];
@@ -872,6 +973,109 @@ export function ReportView({
         };
       });
   }, [advancedSections, normalizedSearchTerm, selectedTemplate]);
+
+  useEffect(() => {
+    if (tableColSpan <= 0) {
+      setColumnWidths([]);
+      return;
+    }
+
+    if (!columnWidthStorageKey) {
+      setColumnWidths(defaultColumnWidths);
+      return;
+    }
+
+    try {
+      const persisted = window.localStorage.getItem(columnWidthStorageKey);
+      if (persisted) {
+        const parsed = JSON.parse(persisted);
+        if (
+          Array.isArray(parsed) &&
+          parsed.length === defaultColumnWidths.length &&
+          parsed.every((value) => typeof value === 'number' && Number.isFinite(value))
+        ) {
+          setColumnWidths(parsed);
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('Không thể đọc cấu hình độ rộng cột báo cáo:', error);
+    }
+
+    setColumnWidths(defaultColumnWidths);
+  }, [columnWidthStorageKey, defaultColumnWidths, tableColSpan]);
+
+  useEffect(() => {
+    if (!columnWidthStorageKey || effectiveColumnWidths.length === 0) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(columnWidthStorageKey, JSON.stringify(effectiveColumnWidths));
+    } catch (error) {
+      console.warn('Không thể lưu cấu hình độ rộng cột báo cáo:', error);
+    }
+  }, [columnWidthStorageKey, effectiveColumnWidths]);
+
+  useEffect(() => {
+    if (activeResizeColumn === null) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const resizeState = resizeStateRef.current;
+      if (!resizeState) {
+        return;
+      }
+
+      const nextWidth = Math.max(
+        resizeState.minWidth,
+        Math.round(resizeState.startWidth + (event.clientX - resizeState.startX)),
+      );
+
+      setColumnWidths((previous) => {
+        if (previous.length === 0) {
+          return previous;
+        }
+
+        const next = [...previous];
+        next[resizeState.columnIndex] = nextWidth;
+        return next;
+      });
+    };
+
+    const stopResize = () => {
+      resizeStateRef.current = null;
+      setActiveResizeColumn(null);
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResize);
+
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResize);
+    };
+  }, [activeResizeColumn]);
+
+  const beginColumnResize = (columnIndex: number, clientX: number) => {
+    const currentWidth = effectiveColumnWidths[columnIndex];
+    if (!currentWidth) {
+      return;
+    }
+
+    resizeStateRef.current = {
+      columnIndex,
+      startX: clientX,
+      startWidth: currentWidth,
+      minWidth: getMinimumColumnWidth(columnIndex, usesWorkbookBasedLayout),
+    };
+    setActiveResizeColumn(columnIndex);
+  };
 
   const persistExportRecord = async (
     workbook: XLSX.WorkBook,
@@ -1061,6 +1265,24 @@ export function ReportView({
     }
   };
 
+  const renderResizeHandle = (columnIndex: number, label: string) => (
+    <button
+      type="button"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        beginColumnResize(columnIndex, event.clientX);
+      }}
+      className={`absolute right-0 top-0 h-full w-3 translate-x-1/2 touch-none cursor-col-resize ${
+        activeResizeColumn === columnIndex ? 'bg-[rgba(152,22,22,0.08)]' : 'bg-transparent'
+      }`}
+      title={`Kéo để thay đổi độ rộng cột ${label}`}
+      aria-label={`Kéo để thay đổi độ rộng cột ${label}`}
+    >
+      <span className="pointer-events-none absolute inset-y-1 right-[5px] w-[2px] rounded-full bg-[rgba(145,94,15,0.45)]" />
+    </button>
+  );
+
   return (
     <div className="p-6 md:p-8">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -1175,13 +1397,40 @@ export function ReportView({
             <div className="p-12 text-center italic opacity-60">Đang dựng khung biểu theo file mẫu...</div>
           ) : advancedRenderedSections.length > 0 ? (
             <div className="space-y-0 overflow-x-auto">
+              <table className="w-max min-w-full border-separate border-spacing-0 table-fixed bg-[#faf8f4]">
+                <colgroup>
+                  {effectiveColumnWidths.map((width, index) => (
+                    <col key={`workbook-resize-col-${index}`} style={{ width: `${width}px`, minWidth: `${width}px` }} />
+                  ))}
+                </colgroup>
+                <thead>
+                  <tr>
+                    {effectiveColumnWidths.map((_, index) => (
+                      <th
+                        key={`workbook-resize-header-${index}`}
+                        className={`relative h-8 border-b border-r border-[var(--line-strong)] bg-[#faf8f4] ${
+                          index === 0 ? 'border-l' : ''
+                        }`}
+                      >
+                        <span className="sr-only">{leafHeaderTexts[index] || `Cột ${index + 1}`}</span>
+                        {renderResizeHandle(index, leafHeaderTexts[index] || `Cột ${index + 1}`)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+              </table>
               {advancedRenderedSections.map(({ section, rows }, sectionIndex) => (
                 <table
                   key={section.id}
-                  className={`w-max min-w-full border-separate border-spacing-0 table-auto bg-white ${
+                  className={`w-max min-w-full border-separate border-spacing-0 table-fixed bg-white ${
                     sectionIndex > 0 ? 'border-t border-[var(--line-strong)]' : ''
                   }`}
                 >
+                  <colgroup>
+                    {effectiveColumnWidths.map((width, index) => (
+                      <col key={`${section.id}-col-${index}`} style={{ width: `${width}px`, minWidth: `${width}px` }} />
+                    ))}
+                  </colgroup>
                   <tbody>
                     {rows.map((row, rowIndex) => (
                       <tr key={`${section.id}-row-${rowIndex}`}>
@@ -1241,9 +1490,9 @@ export function ReportView({
       ) : (
         <div className="table-shell overflow-hidden rounded-[24px] border border-[var(--line-strong)] bg-white">
           <div className="overflow-x-auto">
-            <table className="w-max min-w-full border-separate border-spacing-0 table-auto bg-white">
+            <table className="w-max min-w-full border-separate border-spacing-0 table-fixed bg-white">
               <colgroup>
-                {tableColumnWidths.map((width, index) => (
+                {effectiveColumnWidths.map((width, index) => (
                   <col key={`report-col-${index}`} style={{ width: `${width}px`, minWidth: `${width}px` }} />
                 ))}
               </colgroup>
@@ -1252,30 +1501,42 @@ export function ReportView({
                   headerRows.map((row, rowIndex) => (
                     <tr key={`hdr-${rowIndex}`}>
                       {row.map((cell, cellIndex) => (
-                        <th
-                          key={`hdr-${rowIndex}-${cellIndex}`}
-                          colSpan={cell.colSpan}
-                          rowSpan={cell.rowSpan}
-                          className={`border-b border-r border-[var(--line-strong)] bg-[#faf8f4] px-2.5 py-2 text-center align-middle text-[13px] leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere] ${
-                            rowIndex === 0 ? 'border-t' : ''
-                          } ${cellIndex === 0 ? 'sticky left-0 z-10 bg-[#f8f6f1] text-[14px] font-bold' : 'font-semibold'}`}
-                        >
-                          {cell.text || '\u00A0'}
-                        </th>
+                        (() => {
+                          const meta = headerCellMetadata?.[rowIndex]?.[cellIndex];
+                          const leafColumnIndex = meta?.startCol ?? cellIndex;
+                          const isSticky = leafColumnIndex === 0;
+                          const isResizable = Boolean(meta?.isLeaf);
+
+                          return (
+                            <th
+                              key={`hdr-${rowIndex}-${cellIndex}`}
+                              colSpan={cell.colSpan}
+                              rowSpan={cell.rowSpan}
+                              className={`relative border-b border-r border-[var(--line-strong)] bg-[#faf8f4] px-2.5 py-2 text-center align-middle text-[13px] leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere] ${
+                                rowIndex === 0 ? 'border-t' : ''
+                              } ${isSticky ? 'sticky left-0 z-10 bg-[#f8f6f1] text-[14px] font-bold' : 'font-semibold'}`}
+                            >
+                              {cell.text || '\u00A0'}
+                              {isResizable && renderResizeHandle(leafColumnIndex, leafHeaderTexts[leafColumnIndex] || `Cột ${leafColumnIndex + 1}`)}
+                            </th>
+                          );
+                        })()
                       ))}
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <th className="sticky left-0 top-0 z-10 border-b border-r border-t border-[var(--line-strong)] bg-[#f8f6f1] px-3 py-2 text-[14px] font-bold leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere]">
+                    <th className="sticky left-0 top-0 z-10 relative border-b border-r border-t border-[var(--line-strong)] bg-[#f8f6f1] px-3 py-2 text-[14px] font-bold leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere]">
                       Tiêu chí
+                      {renderResizeHandle(0, leafHeaderTexts[0] || 'Tiêu chí')}
                     </th>
                     {columnHeaders.map((header, index) => (
                       <th
                         key={header || index}
-                        className="border-b border-r border-t border-[var(--line-strong)] bg-[#faf8f4] px-2.5 py-2 text-center text-[13px] font-semibold leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere]"
+                        className="relative border-b border-r border-t border-[var(--line-strong)] bg-[#faf8f4] px-2.5 py-2 text-center text-[13px] font-semibold leading-[1.35] text-[var(--ink)] [overflow-wrap:anywhere]"
                       >
                         {header}
+                        {renderResizeHandle(index + 1, leafHeaderTexts[index + 1] || header || `Cột ${index + 2}`)}
                       </th>
                     ))}
                   </tr>

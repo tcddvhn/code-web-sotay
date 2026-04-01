@@ -110,3 +110,26 @@ Thuc hien:
 Xac nhan ky thuat:
 - `npm run lint`: pass
 - `npm run build`: pass
+
+### Chuan hoa tai lieu ban giao ngay 2026-04-01
+
+Thuc hien:
+- Viet lai file `docs/data-system-handoff-2026-04-01.md` ve UTF-8 sach.
+- Rut gon noi dung theo trang thai con hieu luc hien nay de dung tiep o may khac.
+- Giu ro cac nguyen tac, cac thay doi da lam, va quy trinh test/kiem tra truoc commit.
+
+### Bo sung keo thay doi do rong cot trong man Bao cao ngay 2026-04-02
+
+Yeu cau da duoc user phe duyet truoc khi sua:
+- Cho phep keo thay doi do rong cot ngay tren bang bao cao.
+- Giu nguyen man Bao cao dang chay, chi bo sung tay nam keo va khong thay doi logic nghiep vu khac.
+
+Thuc hien:
+- Cap nhat src/components/ReportView.tsx.
+- Bo sung state do rong cot theo tung bieu, luu vao localStorage theo key du an + bieu + kieu render.
+- Nhanh bang thuong: them tay nam keo o mep phai cac cot la trong header va doi 	able-layout sang ixed de do rong cot duoc dieu khien bang colgroup.
+- Nhanh workbook-based: bo sung mot hang dieu khien do rong cot rieng o dau bang, dong bo colgroup cho tat ca section de cac cot merge van thay doi dung theo layout workbook.
+- Su dung pointerdown / pointermove / pointerup thay vi chi mousedown / mousemove / mouseup de tuong thich tot hon voi chuot va touch.
+
+Ghi chu:
+- Thay doi nay chi tac dong den module Bao cao cua he thong du lieu hien hanh va da duoc user phe duyet truoc.

@@ -1,329 +1,200 @@
 # Bàn Giao Hệ Thống Dữ Liệu - 2026-04-01
 
-File này ghi lại toàn bộ lịch sử chỉnh sửa và trạng thái làm việc của nhánh `Hệ thống dữ liệu` kể từ lúc đọc lại dự án ở trạng thái mới nhất cho đến hiện tại, để tiếp tục trên máy khác mà không bị đứt mạch.
+File này ghi lại trạng thái làm việc của nhánh `Hệ thống dữ liệu` để tiếp tục trên máy khác mà không bị đứt mạch.
 
 ## 1. Nguyên tắc hiện tại
 
-- Repo chính đang làm việc: `/Users/tranhau/Documents/GitHub/code-web-sotay`
-- Phần `Sổ tay mới` đã bị ẩn khỏi giao diện desktop và mobile.
-- Không tiếp tục triển khai handbook trừ khi user nói đúng câu: `hãy tiếp tục xây sổ tay mới`
-- Trọng tâm hiện tại là hoàn thiện `Hệ thống dữ liệu`.
+- Không tiếp tục triển khai `Sổ tay mới` nếu không có yêu cầu rõ ràng.
+- Trọng tâm hiện tại là `Hệ thống dữ liệu`.
+- Mọi thay đổi có nguy cơ ảnh hưởng hệ thống đang chạy phải được user phê duyệt trước.
+- Mọi thay đổi phải được ghi lại trong thư mục `docs/`.
 
-## 2. Các thay đổi đã làm sau khi đọc lại dự án
+## 2. Trạng thái tổng quát của dự án
 
-### 2.1. Ẩn toàn bộ `Sổ tay mới`
+- Handbook đã bị gỡ/ẩn khỏi giao diện vận hành.
+- Hệ thống đang tập trung vào các module:
+  - `Dashboard`
+  - `Dự án`
+  - `Biểu mẫu`
+  - `Tiếp nhận dữ liệu`
+  - `Báo cáo`
+  - `Cài đặt`
 
-Đã thực hiện:
-- Ẩn mục `Sổ tay mới` khỏi sidebar desktop
-- Ẩn nút menu nổi mobile dẫn vào handbook
-- Nếu app còn giữ state cũ trỏ vào `HANDBOOK`, tự quay về `DASHBOARD`
+## 3. Các thay đổi đã làm ở hệ thống dữ liệu
 
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/App.tsx`
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/Sidebar.tsx`
-
-Ghi chú:
-- Code handbook vẫn còn trong repo, chỉ bị ẩn khỏi UI
-
-### 2.2. Sửa lỗi crash sau khi ẩn handbook
-
-Đã xử lý:
-- Lỗi `X is not defined` khi mở popup `Nhật ký`
-- Nguyên nhân: icon `X` vẫn dùng trong popup nhưng import bị bỏ
-
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/App.tsx`
-
-### 2.3. Rà soát lại font/Unicode
-
-Đã rà:
-- Chuỗi tiếng Việt ở `src`, `docs`, các file text chính
-- Không còn thấy lỗi vỡ font/mã hóa rõ rệt trong phần đang chạy
-
-## 3. Các thay đổi lớn ở module `Tiếp nhận dữ liệu`
-
-### 3.1. Tái cấu trúc layout chọn dữ liệu đầu màn hình
+### 3.1. Tiếp nhận dữ liệu
 
 Đã làm:
-- `Dự án` chuyển từ dạng hẹp sang bố cục ngang rộng hơn
-- `Biểu mẫu` chuyển sang các thẻ ngang
-- `Năm tổng hợp` đã được đưa vào trong khung `Dự án`
-- `Quản trị dữ liệu theo năm` chỉ hiện cho `admin`
+- Tái cấu trúc layout đầu màn hình để dễ dùng hơn.
+- Thêm danh sách `Đơn vị chưa tiếp nhận`.
+- Thêm filter `Đơn vị đã có dữ liệu`.
+- Thêm popup tiến độ và popup kết quả sau tiếp nhận.
+- Hỗ trợ chọn file / chọn thư mục dữ liệu.
 
 File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ImportFiles.tsx`
+- `src/components/ImportFiles.tsx`
 
-### 3.2. Thêm khối `Đơn vị chưa tiếp nhận`
+### 3.2. Dashboard
 
 Đã làm:
-- Hiển thị danh sách đơn vị chưa tiếp nhận ngay trong module `Tiếp nhận dữ liệu`
-- Logic dữ liệu đồng bộ với `Nhật ký`
-- Contributor chỉ thấy đơn vị thuộc phạm vi phân công theo dõi
+- Sửa logic RBAC để contributor chỉ thấy đúng đơn vị được giao.
+- Đồng bộ số liệu `Đã tiếp nhận / Chưa tiếp nhận` giữa admin và user được phân công.
+- Điều chỉnh UI desktop/mobile ở một số đợt sửa trước.
 
 File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ImportFiles.tsx`
+- `src/App.tsx`
 
-### 3.3. Thêm filter `Đơn vị đã có dữ liệu`
+### 3.3. Dự án
 
 Đã làm:
-- Bổ sung option lọc mới trong `Danh sách file chờ tiếp nhận`
-- Kết hợp với `project + year + RBAC`
+- Chống tạo trùng tên dự án.
+- Cho phép sửa tên dự án và mô tả.
+- Không đổi `projectId`, nên không làm gãy dữ liệu liên quan.
 
 File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ImportFiles.tsx`
+- `src/App.tsx`
+- `src/components/ProjectManager.tsx`
 
-### 3.4. Nâng UX tiến độ và kết quả tiếp nhận
-
-Đã làm ở các lượt trước và vẫn đang có hiệu lực:
-- Popup tiến độ cho:
-  - `Bắt đầu tổng hợp`
-  - `Xóa dữ liệu theo năm`
-  - `Xóa toàn bộ dự án hiện tại`
-- Popup kết quả sau tiếp nhận:
-  - số đơn vị cập nhật thành công
-  - số đơn vị lỗi
-  - danh sách file lỗi và nguyên nhân
-
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ImportFiles.tsx`
-
-## 4. Các thay đổi lớn ở `Dashboard`
-
-### 4.1. Dashboard mobile
+### 3.4. Phân công theo dõi đơn vị
 
 Đã làm:
-- Tối ưu lại nhiều phần hiển thị trên điện thoại
-- Nhật ký mobile gọn hơn
-- Các khối tiến độ và danh sách preview đơn vị đã được rút gọn
-- Với user chưa đăng nhập:
-  - bấm vào `Nhật ký` sẽ hiện popup yêu cầu đăng nhập
-- Với user đã đăng nhập:
-  - chỉ xem chi tiết đơn vị thuộc phạm vi phân công của mình
+- Chuyển sang bảng dùng chung toàn hệ thống.
+- Admin quản lý phân công.
+- Dashboard vẫn hỗ trợ lọc theo người theo dõi.
 
 File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/App.tsx`
+- `src/App.tsx`
+- `src/components/UnitAssignments.tsx`
+- `src/supabaseStore.ts`
+- `supabase/global_assignments_setup.sql`
 
-### 4.2. Dashboard desktop
+### 3.5. Báo cáo
 
 Đã làm:
-- Bỏ dòng `Năm tổng hợp 20xx` trên đầu khung
-- Thêm banner ngang đỏ, chữ trắng đậm:
-  - `HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG`
+- Bộ lọc đơn vị chỉ hiện các đơn vị đã thực sự có dữ liệu theo `dự án + năm`.
+- Popup chi tiết ô dữ liệu:
+  - ẩn các đơn vị có giá trị `0`
+  - thêm thống kê số đơn vị có số liệu
+  - sắp xếp theo mã đơn vị tăng dần
+- Đã đổi logic export:
+  - bỏ `Xuất biểu đang chọn`
+  - chỉ còn `Xuất toàn bộ biểu`
+  - khi chọn `Đảng bộ Thành phố`, hệ thống bắt buộc ưu tiên workbook mẫu đã tải lên lúc tạo biểu
 
 File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/App.tsx`
+- `src/components/ReportView.tsx`
+- `src/utils/templateWorkbook.ts`
+- `src/supabase.ts`
 
-## 5. Các thay đổi ở `Báo cáo`
+## 4. Phần biểu mẫu B1 / B2
 
-### 5.1. Bộ lọc đơn vị
+Đây là cụm thay đổi sâu đã từng làm trước đó để hỗ trợ biểu mẫu phức tạp.
 
-Đã làm:
-- `Chọn đơn vị` chỉ hiện các đơn vị đã thực sự có dữ liệu theo `dự án + năm`
-- Có fallback từ `dataFiles` và dữ liệu tổng hợp
+### 4.1. Yêu cầu nghiệp vụ
 
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ReportView.tsx`
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/App.tsx`
+Case gốc phát sinh từ workbook như `Bieu-4C.xlsx`, trong đó:
 
-### 5.2. Popup chi tiết ô dữ liệu
+- `B1`:
+  - tiêu chí dọc không chỉ nằm trong 1 cột
+  - vùng nhãn thực tế là `A:B`
+  - cột nhãn chính là `B`
 
-Đã làm:
-- Ẩn các đơn vị có giá trị `0`
-- Thêm dòng `Có số liệu: X đơn vị`
-- Sắp xếp theo `mã đơn vị tăng dần`
+- `B2`:
+  - không phải bảng liên tục
+  - có nhiều khối tiêu đề - dữ liệu
 
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ReportView.tsx`
-
-## 6. Các thay đổi ở `Dự án`
-
-### 6.1. Chống tạo trùng tên dự án
-
-Đã làm:
-- Chặn tạo 2 dự án trùng tên
-- So sánh có chuẩn hóa khoảng trắng và không phân biệt hoa/thường
-
-### 6.2. Sửa tên dự án
-
-Đã làm:
-- Cho phép sửa `tên dự án` và `mô tả`
-- Không đổi `projectId`, nên không làm gãy dữ liệu liên quan
-
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/App.tsx`
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ProjectManager.tsx`
-
-## 7. Phân công theo dõi đơn vị
-
-### 7.1. Đã chuyển sang bảng dùng chung toàn hệ thống
-
-Đã làm:
-- Không còn phụ thuộc runtime vào một dự án cụ thể
-- `Dashboard` vẫn giữ bộ lọc theo `người theo dõi`
-- Admin mới thấy phần quản lý phân công
-
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/App.tsx`
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/UnitAssignments.tsx`
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/supabaseStore.ts`
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/supabase/global_assignments_setup.sql`
-
-## 8. Nhánh `Biểu mẫu` - phần đang làm gần nhất
-
-Đây là phần quan trọng nhất của ngày hôm nay.
-
-### 8.1. Bài toán mới từ file `Bieu-4C.xlsx`
-
-File nguồn:
-- `/Users/tranhau/Downloads/Bieu-4C.xlsx`
-
-Hai sheet cần hỗ trợ:
-
-#### `B1`
-- Tiêu chí dọc không còn là 1 cột đơn
-- Vùng nhãn thực tế là `A:B`
-- Cột nhãn chính là `B`
-
-#### `B2`
-- Không phải một bảng liên tục
-- Có 3 `khối tiêu đề - dữ liệu`:
-  - `A7:I9` -> dữ liệu ở dòng `10`
-  - `A11:I13` -> dữ liệu ở dòng `14`
-  - `A15:I17` -> dữ liệu ở dòng `18`
-
-### 8.2. Mở rộng schema cấu hình biểu mẫu
+### 4.2. Đã mở rộng schema cấu hình biểu mẫu
 
 Đã thêm vào `types`:
 - `labelColumnStart`
 - `labelColumnEnd`
 - `primaryLabelColumn`
-- `blocks?: TemplateBlockConfig[]`
+- `blocks`
 
 File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/types.ts`
+- `src/types.ts`
 
-### 8.3. Mở rộng UI `FormLearner`
+### 4.3. Đã mở rộng `FormLearner`
 
 Đã làm:
-- Thêm cấu hình cho vùng tiêu chí dọc nhiều cột
-- Thêm cấu hình `khối tiêu đề - dữ liệu`
-- Có `Điền nhanh B1`
-- Có `Điền nhanh B2`
-- Đổi chữ cho dễ hiểu hơn:
-  - `Cột chứa tên tiêu chí chính`
-  - `Tiêu đề trên bắt đầu từ dòng`
-  - `Tiêu đề dưới kết thúc ở dòng`
-  - `Dòng chứa số liệu bắt đầu`
-  - `Dòng chứa số liệu kết thúc`
-  - `Dòng đặc biệt bỏ qua khi tổng hợp`
-- Đã bỏ khung `Hướng dẫn thiết lập`
-- Đã dọn layout `1. Tiêu chí dọc`, `2. Tiêu chí ngang`, `3. Vùng lấy dữ liệu` sang dạng dòng thông số dễ đọc hơn
+- thêm cấu hình vùng tiêu chí dọc nhiều cột
+- thêm cấu hình `khối tiêu đề - dữ liệu`
+- có cơ chế điền nhanh cho một số mẫu cấu hình
+- dọn lại UI thiết lập biểu mẫu cho dễ đọc hơn
 
 File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/FormLearner.tsx`
+- `src/components/FormLearner.tsx`
 
-### 8.4. Sửa preview/render của `B1/B2`
-
-Đã làm ở `ReportView`:
-- Thêm nhánh render mới cho template nâng cao
-- Nếu template có:
-  - `blocks`
-  - hoặc `labelColumnStart != labelColumnEnd`
-  thì hệ thống sẽ dựng lại layout từ workbook thật thay vì bảng liên tục
-
-Kết quả mong muốn:
-- `B1` hiển thị được vùng nhãn `A:B`
-- `B2` hiển thị thành 3 khối
-- không còn rơi các dòng kiểu `Dòng 10`, `Dòng 14`, `Dòng 18` xuống cuối như trước
-
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ReportView.tsx`
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/utils/templateWorkbook.ts`
-
-### 8.5. Sửa parser cho `B1/B2`
+### 4.4. Đã sửa parser và preview/export cho template nâng cao
 
 Đã làm:
-- `B1`: parser đọc nhãn theo vùng `labelColumnStart -> labelColumnEnd`
-- `B2`: parser đọc theo từng `khối tiêu đề - dữ liệu`
-- Nếu hàng dữ liệu không có nhãn riêng, hệ thống lấy nhãn theo tiêu đề khối thay vì sinh `Dòng X`
+- parser đọc đúng theo vùng nhãn nhiều cột
+- parser đọc đúng theo từng block
+- `ReportView` và export workbook có nhánh xử lý template nâng cao
 
 File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/utils/excelParser.ts`
+- `src/utils/excelParser.ts`
+- `src/utils/templateWorkbook.ts`
+- `src/components/ReportView.tsx`
 
-### 8.6. Sửa export workbook cho template nâng cao
+## 5. Các lỗi đã từng phát sinh và đã xử lý
 
-Đã làm:
-- Khi template có `blocks`, export sẽ ghi giá trị theo từng khối
-- Không còn ép toàn sheet chạy theo một vùng liên tục
+### 5.1. Crash sau khi ẩn handbook
 
-File liên quan:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ReportView.tsx`
-
-## 9. Các lỗi đã phát sinh và đã xử lý
-
-### 9.1. Lỗi build JSX ở `FormLearner`
-
-Đã xử lý:
-- Vercel báo `Expected "}" but found ";"` ở cuối file
-- Nguyên nhân: thiếu `</div>` sau khi bỏ panel hướng dẫn
+Nguyên nhân:
+- import icon `X` bị thiếu trong popup nhật ký
 
 File:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/FormLearner.tsx`
+- `src/App.tsx`
 
-### 9.2. Lỗi runtime `columnLetterToIndex is not defined`
+### 5.2. Lỗi runtime `columnLetterToIndex is not defined`
 
-Đã xử lý:
-- Nguyên nhân: `ReportView` dùng helper này trong nhánh render mới nhưng chưa import
+Nguyên nhân:
+- `ReportView` dùng helper nhưng chưa import
 
 File:
-- `/Users/tranhau/Documents/GitHub/code-web-sotay/src/components/ReportView.tsx`
+- `src/components/ReportView.tsx`
 
-## 10. Những gì chưa thể xác nhận hoàn toàn
+### 5.3. Lỗi build JSX ở `FormLearner`
 
-Vì máy hiện tại không có `node/npm` trong `PATH`, chưa tự chạy được:
-- `npm run build`
-- `npm run dev`
-- `npm run lint`
+Nguyên nhân:
+- thiếu thẻ đóng sau khi bỏ panel hướng dẫn
 
-Vì vậy các thay đổi đã được sửa theo:
-- đọc code
-- đối chiếu workbook thật
-- vá theo logic
-- sửa các lỗi build/runtime do user chụp lại
+File:
+- `src/components/FormLearner.tsx`
 
-## 11. Trạng thái hiện tại cần test trên máy khác
+## 6. Quy trình kiểm tra trước khi commit
 
-Khi sang máy khác, cần test đúng chuỗi sau:
+Luôn chạy theo đúng thứ tự:
 
-1. Vào `Biểu mẫu`
-2. Chọn `Điền nhanh B1`
-3. Chọn `Điền nhanh B2`
-4. Lưu biểu mẫu
-5. Vào `Báo cáo`
-6. Kiểm tra:
-   - `B1` có hiện đúng vùng nhãn nhiều cột không
-   - `B2` có hiện đúng 3 khối không
-   - có còn `Dòng 10 / Dòng 14 / Dòng 18` rơi xuống dưới không
-7. Vào `Tiếp nhận dữ liệu`
-8. Nhập file thật theo biểu đó
-9. Kiểm tra lại `Báo cáo`
-10. Thử `Xuất biểu`
+1. `npm run check:encoding`
+2. `npm run lint`
+3. `npm run build`
 
-## 12. Việc cần làm tiếp nếu còn lỗi
+Mục tiêu:
+- phát hiện sớm lỗi mã hóa tiếng Việt
+- phát hiện lỗi TypeScript
+- phát hiện lỗi build production
 
-Nếu `B2` vẫn chưa đúng hoàn toàn:
+## 7. Những gì cần test trên máy khác
 
-1. Rà lại trực tiếp `resolveTemplateRowLabels()` cho case block
-2. Kiểm tra `openCellDetail()` có map đúng `sourceRow + columnIndex` của từng khối không
-3. Nếu cần, thêm metadata `segmentId/blockId` vào `DataRow`
-4. Sau đó chỉnh tiếp:
-   - `supabaseReports.ts`
-   - `supabaseStore.ts`
-   - và schema DB nếu phải lưu block identity rõ hơn
+Khi sang máy khác, nên test đúng chuỗi sau:
 
-## 13. Cách nhắc lại cho agent ở máy khác
+1. `Biểu mẫu`
+2. `Tiếp nhận dữ liệu`
+3. `Dashboard`
+4. `Báo cáo`
+5. `Xuất toàn bộ biểu`
 
-Khi sang máy khác, chỉ cần nói:
+Riêng với biểu mẫu phức tạp:
 
-`Đọc file docs/data-system-handoff-2026-04-01.md, rà lại src/components/FormLearner.tsx, src/components/ReportView.tsx, src/utils/excelParser.ts, src/utils/templateWorkbook.ts, rồi tiếp tục hoàn thiện B1/B2 nếu còn lỗi. Không động vào handbook mới vì đang tạm ẩn.`
+1. Tạo / lưu biểu mẫu
+2. Nhập file thực tế
+3. Mở lại `Báo cáo`
+4. Kiểm tra preview / chi tiết / export
 
+## 8. Câu nhắc ngắn cho agent ở máy khác
+
+Có thể dùng đúng câu sau:
+
+`Đọc file docs/data-system-handoff-2026-04-01.md và docs/system-data-maintenance-log.md, rà lại các file src/components/FormLearner.tsx, src/components/ImportFiles.tsx, src/components/ReportView.tsx, src/App.tsx, rồi tiếp tục theo nguyên tắc không động vào hệ thống đang chạy nếu chưa được phê duyệt.`
