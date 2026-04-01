@@ -139,6 +139,16 @@ export interface TemplateBlockConfig {
   headerLayout?: HeaderLayout;
 }
 
+export interface SheetSignatureConfig {
+  headerStartRow: number;
+  headerEndRow: number;
+  headerStartCol: string;
+  headerEndCol: string;
+  startRowText?: string;
+  endRowText?: string;
+  middleRowCount?: number;
+}
+
 export interface FormTemplate {
   id: string;
   projectId: string;
@@ -156,6 +166,7 @@ export interface FormTemplate {
     endRow: number;
     specialRows?: number[];
     blocks?: TemplateBlockConfig[];
+    sheetSignature?: SheetSignatureConfig;
   };
   headerLayout?: HeaderLayout;
   mode: TemplateMode;

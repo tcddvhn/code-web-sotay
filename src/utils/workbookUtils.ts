@@ -1,4 +1,5 @@
-import { FormTemplate } from '../types';
+import * as XLSX from 'xlsx';
+import { FormTemplate, SheetSignatureConfig } from '../types';
 import { columnIndexToLetter, columnLetterToIndex } from './columnUtils';
 
 function normalizeColumnToken(token: string) {
@@ -90,6 +91,142 @@ export function validateWorkbookSheetNames(workbookSheetNames: string[], templat
     missingSheets,
     unexpectedSheets,
     isValid: missingSheets.length === 0 && unexpectedSheets.length === 0,
+  };
+}
+
+function normalizeSignatureText(value: string) {
+  return value
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function readWorksheetCellDisplayText(worksheet: XLSX.WorkSheet, rowNumber: number, colNumber: number) {
+  const address = XLSX.utils.encode_cell({ r: rowNumber - 1, c: colNumber - 1 });
+  const cell = worksheet[address];
+  const rawValue = cell?.w ?? cell?.v;
+  return rawValue === undefined || rawValue === null ? '' : String(rawValue).trim();
+}
+
+function readWorksheetRowSignatureText(
+  worksheet: XLSX.WorkSheet,
+  rowNumber: number,
+  startColumn: string,
+  endColumn: string,
+) {
+  const startColIndex = Math.min(columnLetterToIndex(startColumn), columnLetterToIndex(endColumn));
+  const endColIndex = Math.max(columnLetterToIndex(startColumn), columnLetterToIndex(endColumn));
+  const fragments: string[] = [];
+
+  for (let colIndex = startColIndex; colIndex <= endColIndex; colIndex += 1) {
+    const text = readWorksheetCellDisplayText(worksheet, rowNumber, colIndex);
+    if (text) {
+      fragments.push(text);
+    }
+  }
+
+  return normalizeSignatureText(fragments.join(' | '));
+}
+
+export function completeSheetSignatureFromWorksheet(
+  worksheet: XLSX.WorkSheet,
+  signature?: SheetSignatureConfig | null,
+) {
+  if (!signature) {
+    return undefined;
+  }
+
+  const headerStartRow = Number(signature.headerStartRow);
+  const headerEndRow = Number(signature.headerEndRow);
+  const headerStartCol = signature.headerStartCol?.trim().toUpperCase();
+  const headerEndCol = signature.headerEndCol?.trim().toUpperCase();
+
+  if (
+    !worksheet ||
+    !Number.isFinite(headerStartRow) ||
+    !Number.isFinite(headerEndRow) ||
+    headerStartRow <= 0 ||
+    headerEndRow <= 0 ||
+    headerEndRow < headerStartRow ||
+    !headerStartCol ||
+    !headerEndCol
+  ) {
+    return undefined;
+  }
+
+  return {
+    headerStartRow,
+    headerEndRow,
+    headerStartCol,
+    headerEndCol,
+    startRowText: readWorksheetRowSignatureText(worksheet, headerStartRow, headerStartCol, headerEndCol),
+    endRowText: readWorksheetRowSignatureText(worksheet, headerEndRow, headerStartCol, headerEndCol),
+    middleRowCount: Math.max(0, headerEndRow - headerStartRow - 1),
+  } satisfies SheetSignatureConfig;
+}
+
+export function validateTemplateSheetSignature(
+  workbook: XLSX.WorkBook,
+  template: FormTemplate,
+) {
+  const signature = template.columnMapping.sheetSignature;
+  const worksheet = workbook.Sheets[template.sheetName];
+
+  if (!worksheet) {
+    return {
+      isValid: false,
+      reason: `Thiếu sheet ${template.sheetName}.`,
+      actualSignature: undefined,
+    };
+  }
+
+  if (!signature) {
+    return {
+      isValid: true,
+      reason: null,
+      actualSignature: undefined,
+    };
+  }
+
+  const normalizedSignature = completeSheetSignatureFromWorksheet(worksheet, signature);
+  if (!normalizedSignature) {
+    return {
+      isValid: false,
+      reason: `Biểu ${template.name} chưa cấu hình đủ chỉ số khóa để đối chiếu sheet.`,
+      actualSignature: undefined,
+    };
+  }
+
+  if ((signature.startRowText || '') && normalizedSignature.startRowText !== normalizeSignatureText(signature.startRowText || '')) {
+    return {
+      isValid: false,
+      reason: `Sai chỉ số khóa sheet ${template.sheetName}: không khớp hàng tiêu đề đầu.`,
+      actualSignature: normalizedSignature,
+    };
+  }
+
+  if ((signature.endRowText || '') && normalizedSignature.endRowText !== normalizeSignatureText(signature.endRowText || '')) {
+    return {
+      isValid: false,
+      reason: `Sai chỉ số khóa sheet ${template.sheetName}: không khớp hàng tiêu đề cuối.`,
+      actualSignature: normalizedSignature,
+    };
+  }
+
+  const expectedMiddleRowCount = Number(signature.middleRowCount ?? Math.max(0, signature.headerEndRow - signature.headerStartRow - 1));
+  if (normalizedSignature.middleRowCount !== expectedMiddleRowCount) {
+    return {
+      isValid: false,
+      reason: `Sai chỉ số khóa sheet ${template.sheetName}: không khớp số dòng giữa tiêu đề.`,
+      actualSignature: normalizedSignature,
+    };
+  }
+
+  return {
+    isValid: true,
+    reason: null,
+    actualSignature: normalizedSignature,
   };
 }
 

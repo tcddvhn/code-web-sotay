@@ -133,3 +133,39 @@ Thuc hien:
 
 Ghi chu:
 - Thay doi nay chi tac dong den module Bao cao cua he thong du lieu hien hanh va da duoc user phe duyet truoc.
+
+### Nghien cuu phuong an bo sung chi so khoa nhan dien sheet trong Tiep nhan du lieu ngay 2026-04-02
+
+Yeu cau user:
+- Ngoai dieu kien khop ten sheet tuyet doi, bo sung bo chi so khoa de xac dinh sheet co dung bieu mau da chot hay khong.
+- Chi so khoa duoc xac dinh tu hang tieu de chinh dau, hang tieu de chinh cuoi, va so dong nam giua.
+- Neu khong khop, file phai bi danh dau khong hop le va dua vao tong hop loi cuoi dot, gop chung voi cac loi thieu / sai sheet hien co.
+
+Ket qua nghien cuu:
+- src/components/FormLearner.tsx hien da co cac thong so phu hop de dat nen cho bo chi so khoa: sheetName, headerLayout, columnMapping.startRow/endRow, locks, va file mau goc (sourceWorkbookPath/sourceWorkbookUrl).
+- src/components/ImportFiles.tsx hien dang validate theo ten sheet qua alidateWorkbookSheetNames(...), sau do moi parse sheet da khop. Co the mo rong ngay tai lop validate nay ma khong can thay doi co che tong hop thong bao cuoi dot.
+- Phuong an de xuat: luu them tren tung template mot sheetSignature rieng o cap sheet (khong tron vao logic render bao cao), gom headerStartRow, headerEndRow, headerStartCol, headerEndCol, startRowText, endRowText, middleRowCount. Co the tu sinh tu file mau goc va cho phep user dieu chinh/xac nhan trong FormLearner.
+- Khi tiep nhan file: voi moi sheet bat buoc, he thong se kiem tra theo thu tu: (1) khop ten sheet tuyet doi; (2) doc hang dau/cuoi trong vung signature va chuan hoa text de so sanh; (3) kiem tra so dong o giua; neu lech bat ky dieu kien nao thi sheet do duoc danh dau sai mau.
+- File chi duoc tiep nhan khi tat ca bieu bat buoc cua du an deu dat ca ten sheet va chi so khoa. Neu khong, file bi bo qua va dua vao danh sach loi cuoi dot cung voi ly do cu the theo tung sheet.
+- Khong tao loai thong bao moi; chi bo sung them ly do dang Sai chi so khoa sheet ... vao alidation.reason, ailedFiles, va tong ket cuoi dot trong ImportFiles.
+- De tranh anh huong he thong dang chay, nen trien khai theo 2 buoc: (1) bo sung truong signature va UI xac nhan trong FormLearner; (2) mo rong validate workbook trong ImportFiles. Khong can sua logic bao cao hay dashboard.
+
+### Trien khai chi so khoa nhan dien sheet trong Tiep nhan du lieu ngay 2026-04-02
+
+Yeu cau da duoc user phe duyet:
+- Bo sung thong so chi so khoa tren bieu mau de doi chieu hang tieu de dau, hang tieu de cuoi va so dong o giua.
+- Cac bieu mau da tao roi van phai hien va cho phep cau hinh ngay cac thong so nay.
+- Khi tiep nhan file, neu sheet sai chi so khoa thi khong duoc ghi du lieu va phai gop vao thong bao tong ket loi hien co.
+
+Thuc hien:
+- Cap nhat src/types.ts de bo sung SheetSignatureConfig va luu trong columnMapping.sheetSignature cua template.
+- Cap nhat src/utils/workbookUtils.ts de tu dong sinh / hoan thien chi so khoa tu workbook mau va kiem tra lai workbook duoc nop bang alidateTemplateSheetSignature(...).
+- Cap nhat src/components/FormLearner.tsx de hien thong so chi so khoa cho ca bieu mau tao moi va bieu mau da ton tai; khi luu chinh sua se tu dong doc lai workbook mau de tinh startRowText, endRowText va middleRowCount.
+- Cap nhat src/components/ImportFiles.tsx de bo sung lop validate moi: ngoai ten sheet, moi sheet bat buoc con phai dat chi so khoa. Neu sai, file bi danh dau invalid voi ly do gop chung vao alidation.reason, ailedFiles va tong ket cuoi dot.
+
+Xac nhan ky thuat:
+- Se chay 
+pm run check:encoding, 
+pm run lint, 
+pm run build sau khi hoan tat cap nhat logic import.
+

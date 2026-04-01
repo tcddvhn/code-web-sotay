@@ -8,7 +8,7 @@ import { upsertDataFileRecord } from '../supabaseStore';
 import { DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, Project, UserProfile } from '../types';
 import { parseLegacyFromWorkbook, parseTemplateFromWorkbook } from '../utils/excelParser';
 import { getPinnedYearPreference, getPreferredReportingYear, setPinnedYearPreference } from '../utils/reportingYear';
-import { validateWorkbookSheetNames } from '../utils/workbookUtils';
+import { validateTemplateSheetSignature, validateWorkbookSheetNames } from '../utils/workbookUtils';
 
 type FileMatchType = 'CODE' | 'NAME' | 'FUZZY' | 'MANUAL' | 'NONE';
 type FileMatchStatus = 'AUTO_FILLED' | 'NEEDS_CONFIRMATION' | 'MANUAL' | 'UNMATCHED' | 'CONFLICT';
@@ -540,9 +540,8 @@ export function ImportFiles({
           });
 
           const validation = validateWorkbookSheetNames(workbook.SheetNames, activeTemplates);
-          const matchedSheets = activeTemplates
-            .filter((template) => workbook.SheetNames.includes(template.sheetName))
-            .map((template) => template.sheetName);
+          const matchedTemplates = resolveTemplatesForWorkbook(workbook);
+          const matchedSheets = matchedTemplates.map((template) => template.sheetName);
 
           if (validation.missingSheets.length > 0) {
             return [
@@ -556,7 +555,7 @@ export function ImportFiles({
             ] as const;
           }
 
-          if (matchedSheets.length === 0) {
+          if (matchedTemplates.length === 0) {
             return [
               item.id,
               {
@@ -564,6 +563,19 @@ export function ImportFiles({
                 missingSheets: [],
                 matchedSheets: [],
                 reason: 'Không có sheet nào trùng tên biểu mẫu đã chốt.',
+              } satisfies FileValidationState,
+            ] as const;
+          }
+
+          const signatureErrors = collectTemplateSignatureErrors(workbook, matchedTemplates);
+          if (signatureErrors.length > 0) {
+            return [
+              item.id,
+              {
+                status: 'invalid',
+                missingSheets: [],
+                matchedSheets,
+                reason: signatureErrors.map((item) => item.validation.reason).filter(Boolean).join(' | '),
               } satisfies FileValidationState,
             ] as const;
           }
@@ -787,6 +799,14 @@ export function ImportFiles({
   const resolveTemplatesForWorkbook = (workbook: XLSX.WorkBook) =>
     activeTemplates.filter((template) => workbook.SheetNames.includes(template.sheetName));
 
+  const collectTemplateSignatureErrors = (workbook: XLSX.WorkBook, templatesToCheck: FormTemplate[]) =>
+    templatesToCheck
+      .map((template) => ({
+        template,
+        validation: validateTemplateSheetSignature(workbook, template),
+      }))
+      .filter((item) => !item.validation.isValid);
+
   const showProgress = (title: string, description: string, percent: number) => {
     setOperationProgress({
       visible: true,
@@ -932,6 +952,18 @@ export function ImportFiles({
             fileName: fileItem.file.name,
             missingSheets: [],
             reason: 'Không có sheet nào trùng tên biểu mẫu đã chốt.',
+            relativePath: fileItem.relativePath,
+          });
+          continue;
+        }
+
+        const signatureErrors = collectTemplateSignatureErrors(workbook, matchedTemplates);
+        if (signatureErrors.length > 0) {
+          failedFiles.push({
+            unitName,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason: signatureErrors.map((item) => item.validation.reason).filter(Boolean).join(' | '),
             relativePath: fileItem.relativePath,
           });
           continue;

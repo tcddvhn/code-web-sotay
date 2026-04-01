@@ -5,7 +5,7 @@ import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, P
 import { uploadFile } from '../supabase';
 import { FormTemplate, HeaderLayout, Project, TemplateBlockConfig } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
-import { expandColumnSelection, expandRowSelection } from '../utils/workbookUtils';
+import { completeSheetSignatureFromWorksheet, expandColumnSelection, expandRowSelection } from '../utils/workbookUtils';
 import { listTemplates as listTemplatesFromSupabase, upsertTemplate } from '../supabaseStore';
 
 type Mode = 'AI' | 'MANUAL';
@@ -123,6 +123,10 @@ const DEFAULT_MANUAL_FORM = {
   verticalHeaderEndRow: 1,
   horizontalHeaderStartRow: 1,
   horizontalHeaderEndRow: 1,
+  signatureStartRow: 1,
+  signatureEndRow: 1,
+  signatureStartCol: 'A',
+  signatureEndCol: 'A',
   enableAdvancedStructure: false,
   blocks: [] as ManualFormBlock[],
 };
@@ -133,6 +137,20 @@ function buildTemplateId() {
 
 function normalizeColumnValue(value: string) {
   return value.trim().toUpperCase();
+}
+
+function normalizeSheetSignatureDraft(signature: {
+  headerStartRow: number;
+  headerEndRow: number;
+  headerStartCol: string;
+  headerEndCol: string;
+}) {
+  return {
+    headerStartRow: Number(signature.headerStartRow),
+    headerEndRow: Number(signature.headerEndRow),
+    headerStartCol: normalizeColumnValue(signature.headerStartCol || 'A'),
+    headerEndCol: normalizeColumnValue(signature.headerEndCol || signature.headerStartCol || 'A'),
+  };
 }
 
 function normalizeTemplateBlocks(blocks: ManualFormBlock[]) {
@@ -691,6 +709,7 @@ export function FormLearner({
     }
 
     const range = resolveHeaderRange(template);
+    const nextSignature = completeSheetSignatureFromWorksheet(worksheet, template.columnMapping.sheetSignature);
     return {
       ...template,
       headerLayout: buildHeaderLayout(
@@ -700,6 +719,10 @@ export function FormLearner({
         range.startCol.toUpperCase(),
         range.endCol.toUpperCase(),
       ),
+      columnMapping: {
+        ...template.columnMapping,
+        ...(nextSignature ? { sheetSignature: nextSignature } : {}),
+      },
     };
   };
 
@@ -838,6 +861,17 @@ export function FormLearner({
       return 'Vùng tiêu đề phải có dòng kết thúc lớn hơn hoặc bằng dòng bắt đầu.';
     }
 
+    if (template.columnMapping.sheetSignature) {
+      const signature = template.columnMapping.sheetSignature;
+      if (signature.headerEndRow < signature.headerStartRow) {
+        return 'Chỉ số khóa của sheet phải có dòng cuối lớn hơn hoặc bằng dòng đầu.';
+      }
+
+      if (columnLetterToIndex(signature.headerEndCol) < columnLetterToIndex(signature.headerStartCol)) {
+        return 'Chỉ số khóa của sheet phải có cột cuối lớn hơn hoặc bằng cột đầu.';
+      }
+    }
+
     if (
       template.headerLayout &&
       (template.headerLayout.startCol <= 0 || template.headerLayout.endCol <= 0 || template.headerLayout.endCol < template.headerLayout.startCol)
@@ -873,6 +907,9 @@ export function FormLearner({
           : undefined,
         dataColumns: expandColumnSelection(template.columnMapping.dataColumns.join(',')),
         specialRows: expandRowSelection((template.columnMapping.specialRows || []).join(',')),
+        sheetSignature: template.columnMapping.sheetSignature
+          ? normalizeSheetSignatureDraft(template.columnMapping.sheetSignature)
+          : undefined,
         blocks: (template.columnMapping.blocks || []).map((block, index) => ({
           ...block,
           id: block.id || buildManualBlockId(),
@@ -1465,6 +1502,12 @@ export function FormLearner({
         startRow: Number(manualForm.startRow),
         endRow: Number(manualForm.endRow),
         specialRows,
+        sheetSignature: normalizeSheetSignatureDraft({
+          headerStartRow: Number(manualForm.signatureStartRow),
+          headerEndRow: Number(manualForm.signatureEndRow),
+          headerStartCol: manualForm.signatureStartCol,
+          headerEndCol: manualForm.signatureEndCol,
+        }),
         blocks,
       },
       mode: 'MANUAL',
@@ -1506,6 +1549,10 @@ export function FormLearner({
         verticalHeaderEndRow: prev.verticalHeaderEndRow,
         horizontalHeaderStartRow: prev.horizontalHeaderStartRow,
         horizontalHeaderEndRow: prev.horizontalHeaderEndRow,
+        signatureStartRow: prev.signatureStartRow,
+        signatureEndRow: prev.signatureEndRow,
+        signatureStartCol: prev.signatureStartCol,
+        signatureEndCol: prev.signatureEndCol,
         enableAdvancedStructure: prev.enableAdvancedStructure,
         blocks: prev.enableAdvancedStructure ? prev.blocks : [],
         sheetName: nextSheetName,
@@ -2390,6 +2437,50 @@ export function FormLearner({
               )}
             </div>
 
+            <div className="mt-4 panel-soft rounded-[18px] p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                    Chỉ số khóa nhận diện sheet
+                  </p>
+                  <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
+                    Hệ thống dùng hàng đầu, hàng cuối và số dòng ở giữa để kiểm tra file tiếp nhận có đúng mẫu hay không.
+                  </p>
+                </div>
+                <div className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                  Số dòng giữa: {Math.max(0, Number(manualForm.signatureEndRow) - Number(manualForm.signatureStartRow) - 1)}
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <input
+                  type="number"
+                  className="field-input"
+                  placeholder="Dòng đầu"
+                  value={manualForm.signatureStartRow}
+                  onChange={(e) => setManualForm({ ...manualForm, signatureStartRow: Number(e.target.value) })}
+                />
+                <input
+                  type="number"
+                  className="field-input"
+                  placeholder="Dòng cuối"
+                  value={manualForm.signatureEndRow}
+                  onChange={(e) => setManualForm({ ...manualForm, signatureEndRow: Number(e.target.value) })}
+                />
+                <input
+                  className="field-input"
+                  placeholder="Cột đầu"
+                  value={manualForm.signatureStartCol}
+                  onChange={(e) => setManualForm({ ...manualForm, signatureStartCol: e.target.value.toUpperCase() })}
+                />
+                <input
+                  className="field-input"
+                  placeholder="Cột cuối"
+                  value={manualForm.signatureEndCol}
+                  onChange={(e) => setManualForm({ ...manualForm, signatureEndCol: e.target.value.toUpperCase() })}
+                />
+              </div>
+            </div>
+
             <button
               onClick={handleManualCreate}
               disabled={!project || isCreatingManual || isSavingTemplates}
@@ -2602,6 +2693,102 @@ export function FormLearner({
                         }
                       />
                     </label>
+                  </div>
+
+                  <div className="mt-4 rounded-[18px] border border-[var(--line)] bg-white/70 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Chỉ số khóa nhận diện sheet
+                        </p>
+                        <p className="mt-1 text-[11px] leading-5 text-[var(--ink-soft)]">
+                          Thiết lập hàng đầu, hàng cuối và vùng cột để kiểm tra file tiếp nhận đúng mẫu. Hệ thống tự đọc file mẫu gốc khi bạn bấm lưu.
+                        </p>
+                      </div>
+                      <div className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                        Số dòng giữa:{' '}
+                        {Math.max(
+                          0,
+                          Number(tpl.columnMapping.sheetSignature?.headerEndRow || 1) -
+                            Number(tpl.columnMapping.sheetSignature?.headerStartRow || 1) -
+                            1,
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <input
+                        type="number"
+                        className="field-input"
+                        placeholder="Dòng đầu"
+                        value={tpl.columnMapping.sheetSignature?.headerStartRow || 1}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, {
+                            sheetSignature: normalizeSheetSignatureDraft({
+                              headerStartRow: Number(e.target.value),
+                              headerEndRow: tpl.columnMapping.sheetSignature?.headerEndRow || 1,
+                              headerStartCol: tpl.columnMapping.sheetSignature?.headerStartCol || 'A',
+                              headerEndCol: tpl.columnMapping.sheetSignature?.headerEndCol || 'A',
+                            }),
+                          })
+                        }
+                      />
+                      <input
+                        type="number"
+                        className="field-input"
+                        placeholder="Dòng cuối"
+                        value={tpl.columnMapping.sheetSignature?.headerEndRow || 1}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, {
+                            sheetSignature: normalizeSheetSignatureDraft({
+                              headerStartRow: tpl.columnMapping.sheetSignature?.headerStartRow || 1,
+                              headerEndRow: Number(e.target.value),
+                              headerStartCol: tpl.columnMapping.sheetSignature?.headerStartCol || 'A',
+                              headerEndCol: tpl.columnMapping.sheetSignature?.headerEndCol || 'A',
+                            }),
+                          })
+                        }
+                      />
+                      <input
+                        className="field-input"
+                        placeholder="Cột đầu"
+                        value={tpl.columnMapping.sheetSignature?.headerStartCol || 'A'}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, {
+                            sheetSignature: normalizeSheetSignatureDraft({
+                              headerStartRow: tpl.columnMapping.sheetSignature?.headerStartRow || 1,
+                              headerEndRow: tpl.columnMapping.sheetSignature?.headerEndRow || 1,
+                              headerStartCol: e.target.value.toUpperCase(),
+                              headerEndCol: tpl.columnMapping.sheetSignature?.headerEndCol || 'A',
+                            }),
+                          })
+                        }
+                      />
+                      <input
+                        className="field-input"
+                        placeholder="Cột cuối"
+                        value={tpl.columnMapping.sheetSignature?.headerEndCol || 'A'}
+                        onChange={(e) =>
+                          updateStoredTemplateMapping(tpl.id, {
+                            sheetSignature: normalizeSheetSignatureDraft({
+                              headerStartRow: tpl.columnMapping.sheetSignature?.headerStartRow || 1,
+                              headerEndRow: tpl.columnMapping.sheetSignature?.headerEndRow || 1,
+                              headerStartCol: tpl.columnMapping.sheetSignature?.headerStartCol || 'A',
+                              headerEndCol: e.target.value.toUpperCase(),
+                            }),
+                          })
+                        }
+                      />
+                    </div>
+                    {tpl.columnMapping.sheetSignature?.startRowText || tpl.columnMapping.sheetSignature?.endRowText ? (
+                      <div className="mt-3 space-y-1 text-[11px] text-[var(--ink-soft)]">
+                        <p>Hàng đầu đã lưu: {tpl.columnMapping.sheetSignature?.startRowText || '(trống)'}</p>
+                        <p>Hàng cuối đã lưu: {tpl.columnMapping.sheetSignature?.endRowText || '(trống)'}</p>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-[11px] text-[var(--ink-soft)]">
+                        Chưa lưu giá trị đối chiếu. Sau khi nhập các thông số này, bấm <strong>Lưu chỉnh sửa</strong> để hệ thống đọc file mẫu gốc và ghi lại chỉ số khóa.
+                      </p>
+                    )}
                   </div>
 
                   <div className="mt-4 rounded-[18px] border border-[var(--line)] bg-white/70 p-4">
