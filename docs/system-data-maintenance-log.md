@@ -169,3 +169,25 @@ pm run check:encoding,
 pm run lint, 
 pm run build sau khi hoan tat cap nhat logic import.
 
+
+### Tao tai lieu tong hop trung tam cho he thong du lieu ngay 2026-04-02
+
+Yeu cau user:
+- Tao mot van ban trong docs de liet ke, giai trinh toan bo module, luong xu ly va lam noi ghi nho tong hop de tranh sai sot ve sau.
+
+Thuc hien:
+- Tao file docs/system-data-master-ledger.md lam tai lieu tong hop trung tam.
+- Noi dung gom: nguyen tac van hanh, kien truc hien tai, danh sach module, luong xu ly chinh, mo hinh du lieu Supabase, diem nong ky thuat, quy tac ghi lich su, va lich su thay doi muc cao.
+- Quy uoc tu nay moi thay doi lien quan he thong du lieu phai cap nhat toi thieu vao docs/system-data-maintenance-log.md, va neu thay doi anh huong module / luong xu ly / rui ro thi cap nhat them vao docs/system-data-master-ledger.md.
+
+
+### Chuan hoa lai file handoff trong docs ngay 2026-04-02
+
+Yeu cau user:
+- Chuan hoa tiep file docs/data-system-handoff-2026-04-01.md de thong nhat voi bo docs hien tai.
+
+Thuc hien:
+- Viet lai toan bo file docs/data-system-handoff-2026-04-01.md ve UTF-8 sach.
+- Giu noi dung handoff can thiet: nguyen tac, trang thai tong quat, thay doi theo module, cac loi da tung xu ly, quy trinh test va cau nhac ngan cho may khac.
+- Khong thay doi logic he thong; chi chuan hoa tai lieu.
+
