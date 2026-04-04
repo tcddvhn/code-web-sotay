@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Download, FileText, History, Lightbulb, RefreshCcw, Sparkles } from 'lucide-react';
 import { FormTemplate, ManagedUnit, Project } from '../types';
 import { YEARS } from '../constants';
@@ -160,9 +160,7 @@ export function AIAnalysisView({
     [projects],
   );
 
-  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>(
-    activeProjects.slice(0, Math.min(2, activeProjects.length)).map((project) => project.id),
-  );
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState(YEARS[0] || '2026');
   const [selectedScope, setSelectedScope] = useState<AIAnalysisScope>('ALL');
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
@@ -192,6 +190,7 @@ export function AIAnalysisView({
   const [aiInputSnapshot, setAIInputSnapshot] = useState<Record<string, unknown> | null>(null);
   const [generationError, setGenerationError] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const previewSectionRef = useRef<HTMLDivElement | null>(null);
 
   const configuredGeminiApiKey = ((import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined) || '';
   const resolvedGeminiApiKey = geminiApiKey.trim() || configuredGeminiApiKey.trim();
@@ -390,6 +389,9 @@ export function AIAnalysisView({
 
       setAIInputSnapshot(aiInput);
       setAnalysisResult(aiOutput);
+      window.setTimeout(() => {
+        previewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
 
       try {
         await createAIAnalysisReport({
@@ -513,11 +515,12 @@ export function AIAnalysisView({
                         key={project.id}
                         type="button"
                         onClick={() =>
-                          setSelectedProjectIds((current) =>
-                            current.includes(project.id)
-                              ? current.filter((item) => item !== project.id)
-                              : [...current, project.id],
-                          )
+                          setSelectedProjectIds((current) => {
+                            if (current.includes(project.id)) {
+                              return current.filter((item) => item !== project.id);
+                            }
+                            return [...current, project.id];
+                          })
                         }
                         className={`rounded-[22px] border px-4 py-3 text-left transition-all ${
                           isActive
@@ -532,6 +535,18 @@ export function AIAnalysisView({
                       </button>
                     );
                   })}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--ink-soft)]">
+                  <span>Đang chọn {selectedProjectIds.length} dự án</span>
+                  {selectedProjects.map((project) => (
+                    <span
+                      key={`selected_${project.id}`}
+                      className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[11px] text-[var(--ink)]"
+                    >
+                      {project.name}
+                    </span>
+                  ))}
                 </div>
               </div>
 
@@ -811,7 +826,7 @@ export function AIAnalysisView({
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <section ref={previewSectionRef} className="grid grid-cols-1 gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="space-y-6">
             <div className="panel-card rounded-[28px] p-6">
               <div className="flex items-center gap-2">
@@ -865,6 +880,11 @@ export function AIAnalysisView({
                 <p className="page-subtitle mt-2 text-sm">
                   Khung này sẽ hiển thị kết quả phân tích thật sau khi gọi Gemini trên lớp summary đã chọn.
                 </p>
+                {analysisResult && (
+                  <p className="mt-3 text-sm font-semibold text-[var(--primary-dark)]">
+                    Báo cáo đã được tạo và hiển thị ngay tại phần này.
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
