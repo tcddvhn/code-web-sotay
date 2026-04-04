@@ -52,6 +52,58 @@ export interface AIAnalysisReportRecord {
   status?: string;
 }
 
+export interface AIReportBlueprintSection {
+  id: string;
+  title: string;
+  kind: 'opening' | 'metrics_commentary' | 'narrative' | 'risks' | 'recommendations' | 'appendix';
+  instructions: string;
+}
+
+export interface AIReportBlueprintContent {
+  name: string;
+  preferredTone: string;
+  writingRules: string[];
+  requiredTables: string[];
+  sections: AIReportBlueprintSection[];
+}
+
+export interface AIReportBlueprintRecord {
+  id?: string;
+  createdAt?: string | null;
+  createdBy?: {
+    uid?: string | null;
+    email?: string | null;
+    displayName?: string | null;
+  } | null;
+  name: string;
+  sourceFileName?: string | null;
+  sourceFilePath?: string | null;
+  sourceFileUrl?: string | null;
+  sourceMimeType?: string | null;
+  blueprint: AIReportBlueprintContent;
+  status?: 'DRAFT' | 'READY';
+}
+
+export interface AIIndicatorSummary {
+  indicatorKey: string;
+  projectIds: string[];
+  projectNames: string[];
+  templateId: string;
+  templateName: string;
+  sheetName: string;
+  rowLabel: string;
+  columnLabel: string;
+  indicatorLabel: string;
+  unitCount: number;
+  nonZeroUnitCount: number;
+  cellCount: number;
+  totalValue: number;
+  averageValue: number;
+  minValue: number;
+  maxValue: number;
+  topUnits: { unitCode: string; unitName: string; value: number }[];
+}
+
 type ScopeSummaryLike = {
   project_count?: number;
   template_count?: number;
@@ -115,6 +167,21 @@ type SupabaseAIAnalysisReportRow = {
   docx_download_url: string | null;
   status: string;
 };
+
+type SupabaseAIReportBlueprintRow = {
+  id: string;
+  created_at: string | null;
+  created_by: AIReportBlueprintRecord['createdBy'];
+  name: string;
+  source_file_name: string | null;
+  source_file_path: string | null;
+  source_file_url: string | null;
+  source_mime_type: string | null;
+  blueprint: AIReportBlueprintContent;
+  status: string;
+};
+
+const BLUEPRINT_STORAGE_KEY = 'sotay_ai_report_blueprints';
 
 function nowIso() {
   return new Date().toISOString();
@@ -205,6 +272,54 @@ function mapAIAnalysisReport(row: SupabaseAIAnalysisReportRow): AIAnalysisReport
   };
 }
 
+function mapAIReportBlueprint(row: SupabaseAIReportBlueprintRow): AIReportBlueprintRecord {
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    createdBy: row.created_by || null,
+    name: row.name,
+    sourceFileName: row.source_file_name,
+    sourceFilePath: row.source_file_path,
+    sourceFileUrl: row.source_file_url,
+    sourceMimeType: row.source_mime_type,
+    blueprint: row.blueprint,
+    status: (row.status as 'DRAFT' | 'READY') || 'READY',
+  };
+}
+
+function shouldFallbackBlueprintStorage(error: unknown) {
+  return (
+    error instanceof Error &&
+    /ai_report_blueprints|does not exist|Could not find the table|relation .*ai_report_blueprints/i.test(
+      error.message,
+    )
+  );
+}
+
+function readLocalBlueprints(): AIReportBlueprintRecord[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(BLUEPRINT_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as AIReportBlueprintRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalBlueprints(records: AIReportBlueprintRecord[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.localStorage.setItem(BLUEPRINT_STORAGE_KEY, JSON.stringify(records));
+}
+
 export function buildAnalysisCellsFromRows({
   rows,
   templates,
@@ -275,6 +390,125 @@ export function buildAnalysisCellsFromRows({
   });
 
   return cells;
+}
+
+export function buildIndicatorSummariesFromRows({
+  rows,
+  templates,
+  projects,
+  units,
+  dataFiles,
+  maxIndicators = 80,
+  maxUnitsPerIndicator = 5,
+}: {
+  rows: DataRow[];
+  templates: FormTemplate[];
+  projects: Project[];
+  units: ManagedUnit[];
+  dataFiles: DataFileRecordSummary[];
+  maxIndicators?: number;
+  maxUnitsPerIndicator?: number;
+}) {
+  const cells = buildAnalysisCellsFromRows({ rows, templates, projects, units, dataFiles });
+  const buckets = new Map<
+    string,
+    {
+      indicatorKey: string;
+      projectIds: Set<string>;
+      projectNames: Set<string>;
+      templateId: string;
+      templateName: string;
+      sheetName: string;
+      rowLabel: string;
+      columnLabel: string;
+      unitValues: Map<string, { unitCode: string; unitName: string; value: number }>;
+      cellCount: number;
+      totalValue: number;
+      minValue: number;
+      maxValue: number;
+      nonZeroUnitCodes: Set<string>;
+    }
+  >();
+
+  cells.forEach((cell) => {
+    const indicatorKey = [
+      cell.templateId,
+      cell.sheetName || 'sheet',
+      cell.rowLabel || 'row',
+      cell.columnLabel || 'column',
+    ].join('__');
+
+    const current = buckets.get(indicatorKey) || {
+      indicatorKey,
+      projectIds: new Set<string>(),
+      projectNames: new Set<string>(),
+      templateId: cell.templateId,
+      templateName: cell.templateName,
+      sheetName: cell.sheetName,
+      rowLabel: cell.rowLabel,
+      columnLabel: cell.columnLabel,
+      unitValues: new Map<string, { unitCode: string; unitName: string; value: number }>(),
+      cellCount: 0,
+      totalValue: 0,
+      minValue: Number.POSITIVE_INFINITY,
+      maxValue: Number.NEGATIVE_INFINITY,
+      nonZeroUnitCodes: new Set<string>(),
+    };
+
+    current.projectIds.add(cell.projectId);
+    current.projectNames.add(cell.projectName);
+    current.cellCount += 1;
+    current.totalValue += normalizeValue(cell.value);
+    current.minValue = Math.min(current.minValue, normalizeValue(cell.value));
+    current.maxValue = Math.max(current.maxValue, normalizeValue(cell.value));
+    if (normalizeValue(cell.value) !== 0) {
+      current.nonZeroUnitCodes.add(cell.unitCode);
+    }
+
+    const previousUnit = current.unitValues.get(cell.unitCode) || {
+      unitCode: cell.unitCode,
+      unitName: cell.unitName,
+      value: 0,
+    };
+    previousUnit.value += normalizeValue(cell.value);
+    current.unitValues.set(cell.unitCode, previousUnit);
+
+    buckets.set(indicatorKey, current);
+  });
+
+  return Array.from(buckets.values())
+    .map((item) => {
+      const topUnits = Array.from(item.unitValues.values())
+        .sort((left, right) => right.value - left.value)
+        .slice(0, maxUnitsPerIndicator);
+
+      return {
+        indicatorKey: item.indicatorKey,
+        projectIds: Array.from(item.projectIds),
+        projectNames: Array.from(item.projectNames),
+        templateId: item.templateId,
+        templateName: item.templateName,
+        sheetName: item.sheetName,
+        rowLabel: item.rowLabel,
+        columnLabel: item.columnLabel,
+        indicatorLabel: `${item.rowLabel} > ${item.columnLabel}`,
+        unitCount: item.unitValues.size,
+        nonZeroUnitCount: item.nonZeroUnitCodes.size,
+        cellCount: item.cellCount,
+        totalValue: item.totalValue,
+        averageValue: item.cellCount > 0 ? item.totalValue / item.cellCount : 0,
+        minValue: Number.isFinite(item.minValue) ? item.minValue : 0,
+        maxValue: Number.isFinite(item.maxValue) ? item.maxValue : 0,
+        topUnits,
+      } satisfies AIIndicatorSummary;
+    })
+    .sort((left, right) => {
+      if (right.nonZeroUnitCount !== left.nonZeroUnitCount) {
+        return right.nonZeroUnitCount - left.nonZeroUnitCount;
+      }
+      return Math.abs(right.totalValue) - Math.abs(left.totalValue);
+    })
+    .slice(0, maxIndicators);
 }
 
 export async function upsertAnalysisCells(cells: AnalysisCellRecord[]) {
@@ -547,6 +781,69 @@ export async function listRecentAIAnalysisReports(limit = 20) {
   }
 
   return ((data || []) as SupabaseAIAnalysisReportRow[]).map(mapAIAnalysisReport);
+}
+
+export async function listAIReportBlueprints(limit = 20) {
+  try {
+    const { data, error } = await supabase
+      .from('ai_report_blueprints')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw new Error(error.message || 'Không thể tải danh sách mẫu báo cáo AI.');
+    }
+
+    return ((data || []) as SupabaseAIReportBlueprintRow[]).map(mapAIReportBlueprint);
+  } catch (error) {
+    if (!shouldFallbackBlueprintStorage(error)) {
+      throw error;
+    }
+    return readLocalBlueprints().slice(0, limit);
+  }
+}
+
+export async function createAIReportBlueprint(record: AIReportBlueprintRecord) {
+  const payload = {
+    created_at: record.createdAt || nowIso(),
+    created_by: record.createdBy || null,
+    name: record.name,
+    source_file_name: record.sourceFileName || null,
+    source_file_path: record.sourceFilePath || null,
+    source_file_url: record.sourceFileUrl || null,
+    source_mime_type: record.sourceMimeType || null,
+    blueprint: record.blueprint,
+    status: record.status || 'READY',
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from('ai_report_blueprints')
+      .insert(payload)
+      .select('*')
+      .single();
+
+    if (error) {
+      throw new Error(error.message || 'Không thể lưu mẫu báo cáo AI.');
+    }
+
+    return mapAIReportBlueprint(data as SupabaseAIReportBlueprintRow);
+  } catch (error) {
+    if (!shouldFallbackBlueprintStorage(error)) {
+      throw error;
+    }
+
+    const localRecord: AIReportBlueprintRecord = {
+      ...record,
+      id: record.id || `local_blueprint_${Date.now()}`,
+      createdAt: record.createdAt || nowIso(),
+      status: record.status || 'READY',
+    };
+    const current = readLocalBlueprints();
+    writeLocalBlueprints([localRecord, ...current.filter((item) => item.id !== localRecord.id)]);
+    return localRecord;
+  }
 }
 
 export async function fetchAIAnalysisScopeSummary(params: {

@@ -11,6 +11,7 @@ type DocxReport = {
   projectHighlights: { projectName: string; summary: string }[];
   riskItems: { title: string; detail: string }[];
   recommendations: string[];
+  blueprintSections?: { title: string; content: string }[];
   appendixTables: DocxTable[];
 };
 
@@ -119,6 +120,13 @@ function buildDocumentXml(report: DocxReport) {
   if (report.recommendations.length > 0) {
     parts.push(paragraph('V. Kiến nghị', { bold: true, sizeHalfPoints: 28, spacingAfter: 120 }));
     report.recommendations.forEach((item) => parts.push(bulletParagraph(item)));
+  }
+
+  if ((report.blueprintSections || []).length > 0) {
+    report.blueprintSections!.forEach((section) => {
+      parts.push(paragraph(section.title, { bold: true, sizeHalfPoints: 28, spacingAfter: 120 }));
+      parts.push(paragraph(section.content, { spacingAfter: 160 }));
+    });
   }
 
   if (report.appendixTables.length > 0) {

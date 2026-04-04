@@ -415,3 +415,14 @@ Lưu ý vận hành:
 - Để khối summary trong `Phân tích AI` chạy dữ liệu thật, cần chạy đủ:
   1. `supabase/ai_analysis_setup.sql`
   2. `supabase/ai_analysis_rpc.sql`
+
+### Cập nhật thêm ngày 2026-04-04
+
+- `Phân tích AI` hiện đã bắt đầu dùng `row_label + column_label` như chỉ tiêu nghiệp vụ thật, không còn chỉ bám `cell_count` / `row_count`.
+- Đã thêm lớp `indicator summaries` phía client để build đầu vào AI theo tiêu chí thật.
+- Đã thêm hỗ trợ `report blueprint`:
+  - upload báo cáo mẫu
+  - AI đọc mẫu để trích khung báo cáo
+  - lưu blueprint vào `ai_report_blueprints` hoặc fallback `localStorage` nếu bảng chưa sẵn
+- SQL mới cần chạy thêm để persist blueprint thật:
+  3. `supabase/ai_report_blueprints.sql`

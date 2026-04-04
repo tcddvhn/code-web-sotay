@@ -293,3 +293,38 @@ Thuc hien:
 Luu y:
 - Pha nay chua sinh DOCX that
 - Pha nay chua dua them RPC moi cho `year comparison` va `anomalies`; hien dang ket hop summary RPC san co voi tinh toan client-side de tranh anh huong runtime
+
+### Noi blueprint bao cao va tieu chi that vao module Phan tich AI ngay 2026-04-04
+
+Yeu cau user:
+- Cho phep upload bao cao mau de AI doc va sinh khung bao cao.
+- Bao cao AI phai phan tich theo ten tieu chi that, khong chi dua vao tong o du lieu / so dong.
+- Lam den muc van hanh duoc tren du lieu that, nhung khong duoc anh huong cac module dang chay on dinh.
+
+Thuc hien:
+- Tao SQL moi `supabase/ai_report_blueprints.sql` cho bang `ai_report_blueprints`.
+- Mo rong `src/aiAnalysisStore.ts`:
+  - them `AIReportBlueprintRecord`
+  - them `AIReportBlueprintContent`
+  - them `AIIndicatorSummary`
+  - them `buildIndicatorSummariesFromRows(...)`
+  - them `listAIReportBlueprints(...)`
+  - them `createAIReportBlueprint(...)`
+  - neu bang Supabase chua ton tai thi fallback sang `localStorage` de van test duoc UI
+- Mo rong `src/aiAnalysisEngine.ts`:
+  - them `extractReportBlueprintFromSample(...)`
+  - them `indicatorSummariesOverride`
+  - them `reportBlueprint`
+  - AI output co them `blueprintSections`
+  - prompt moi bat AI phan tich theo `row_label + column_label`
+- Cap nhat `src/components/AIAnalysisView.tsx`:
+  - them khu `Mau bao cao`
+  - cho chon / doc / luu blueprint
+  - khi tao phan tich, build indicator summaries that tu du lieu dang chon
+  - doi voi tang `Dang bo Thanh pho`, uu tien row tong hop cap thanh pho neu ton tai
+  - preview va trinh soan thao da hien duoc cac muc viet theo blueprint
+- Cap nhat `src/utils/docxExport.ts` de xuat duoc `blueprintSections`.
+
+Luu y:
+- Muon persist blueprint that tren Supabase thi can chay them `supabase/ai_report_blueprints.sql`.
+- Neu chua chay SQL moi, blueprint van co the test duoc qua `localStorage`, nhung chi luu tren trinh duyet hien tai.

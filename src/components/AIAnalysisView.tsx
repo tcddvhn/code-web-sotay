@@ -3,12 +3,18 @@ import { Bot, Download, FileText, History, Lightbulb, RefreshCcw, Sparkles, X } 
 import { ConsolidatedData, DataFileRecordSummary, FormTemplate, ManagedUnit, Project } from '../types';
 import { YEARS } from '../constants';
 import {
+  AIIndicatorSummary,
+  AIReportBlueprintContent,
+  AIReportBlueprintRecord,
+  buildIndicatorSummariesFromRows,
+  createAIReportBlueprint,
   createAIAnalysisReport,
   fetchAIAnalysisProjectSummary,
   fetchAIAnalysisScopeSummary,
   ScopeSummaryLike,
   SummaryRowLike,
   fetchAIAnalysisTemplateSummary,
+  listAIReportBlueprints,
   listRecentAIAnalysisReports,
   syncAnalysisCellsFromRows,
   updateAIAnalysisReport,
@@ -20,6 +26,7 @@ import {
   AIReportLength,
   AIWritingTone,
   buildAIAnalysisInput,
+  extractReportBlueprintFromSample,
   generateAIAnalysisOutput,
 } from '../aiAnalysisEngine';
 import { uploadFile } from '../supabase';
@@ -164,6 +171,14 @@ function toggleInArray<T>(items: T[], item: T) {
   return items.includes(item) ? items.filter((value) => value !== item) : [...items, item];
 }
 
+function normalizeVietnameseText(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 export function AIAnalysisView({
   projects,
   templates,
@@ -213,6 +228,13 @@ export function AIAnalysisView({
   const [projectSummary, setProjectSummary] = useState<ProjectSummaryRow[]>([]);
   const [templateSummary, setTemplateSummary] = useState<TemplateSummaryRow[]>([]);
   const [recentHistory, setRecentHistory] = useState(MOCK_HISTORY);
+  const [blueprints, setBlueprints] = useState<AIReportBlueprintRecord[]>([]);
+  const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>('');
+  const [blueprintName, setBlueprintName] = useState('');
+  const [blueprintFile, setBlueprintFile] = useState<File | null>(null);
+  const [blueprintPreview, setBlueprintPreview] = useState<AIReportBlueprintContent | null>(null);
+  const [blueprintError, setBlueprintError] = useState('');
+  const [isExtractingBlueprint, setIsExtractingBlueprint] = useState(false);
   const [summaryError, setSummaryError] = useState('');
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AIAnalysisOutput | null>(null);
@@ -259,6 +281,13 @@ export function AIAnalysisView({
     [selectedUnitCodes, units],
   );
 
+  const selectedBlueprint = useMemo(
+    () => blueprints.find((item) => item.id === selectedBlueprintId) || null,
+    [blueprints, selectedBlueprintId],
+  );
+
+  const activeBlueprint = blueprintPreview || selectedBlueprint?.blueprint || null;
+
   const scopedOperationalRows = useMemo(() => {
     const allRows = Object.values(data).flat();
     return allRows.filter((row) => {
@@ -278,6 +307,17 @@ export function AIAnalysisView({
     });
   }, [data, selectedProjectIds, selectedScope, selectedTemplateIds, selectedUnitCodes, selectedYear]);
 
+  const cityAggregateRows = useMemo(() => {
+    const unitNameByCode = new Map(units.map((unit) => [unit.code, unit.name]));
+    const matches = scopedOperationalRows.filter((row) => {
+      const unitName = unitNameByCode.get(row.unitCode) || '';
+      const normalizedUnitName = normalizeVietnameseText(unitName);
+      return normalizedUnitName === 'dang bo thanh pho' || normalizedUnitName.includes('dang bo thanh pho');
+    });
+
+    return matches.length > 0 ? matches : scopedOperationalRows;
+  }, [scopedOperationalRows, units]);
+
   const scopedOperationalFiles = useMemo(() => {
     return dataFiles.filter((file) => {
       if (!selectedProjectIds.includes(file.projectId)) {
@@ -293,15 +333,13 @@ export function AIAnalysisView({
     });
   }, [dataFiles, selectedProjectIds, selectedScope, selectedUnitCodes, selectedYear]);
 
-  const scopedRowsForAI = useMemo(() => {
-    if (analysisLevel === 'CITY') {
-      return [];
-    }
-    return scopedOperationalRows;
-  }, [analysisLevel, scopedOperationalRows]);
+  const scopedRowsForAI = useMemo(
+    () => (analysisLevel === 'CITY' ? cityAggregateRows : scopedOperationalRows),
+    [analysisLevel, cityAggregateRows, scopedOperationalRows],
+  );
 
   const operationalScopeSummary = useMemo<ScopeSummary>(() => {
-    const rowsForSummary = analysisLevel === 'CITY' ? scopedOperationalRows : scopedRowsForAI;
+    const rowsForSummary = scopedRowsForAI;
     const projectIds = new Set(rowsForSummary.map((row) => row.projectId));
     const templateIds = new Set(rowsForSummary.map((row) => row.templateId));
     const unitCodes = new Set(rowsForSummary.map((row) => row.unitCode));
@@ -319,10 +357,10 @@ export function AIAnalysisView({
       total_value: totalValue,
       distinct_source_rows: rowsForSummary.length,
     };
-  }, [analysisLevel, scopedOperationalRows, scopedRowsForAI]);
+  }, [scopedRowsForAI]);
 
   const operationalProjectSummary = useMemo<ProjectSummaryRow[]>(() => {
-    const rowsForSummary = analysisLevel === 'CITY' ? scopedOperationalRows : scopedRowsForAI;
+    const rowsForSummary = scopedRowsForAI;
     const buckets = new Map<
       string,
       {
@@ -362,10 +400,10 @@ export function AIAnalysisView({
       total_value: item.total_value,
       avg_value: item.cell_count > 0 ? item.total_value / item.cell_count : 0,
     }));
-  }, [analysisLevel, projectNameById, scopedOperationalRows, scopedRowsForAI]);
+  }, [projectNameById, scopedRowsForAI]);
 
   const operationalTemplateSummary = useMemo<TemplateSummaryRow[]>(() => {
-    const rowsForSummary = analysisLevel === 'CITY' ? scopedOperationalRows : scopedRowsForAI;
+    const rowsForSummary = scopedRowsForAI;
     const templateNameById = new Map(templates.map((template) => [template.id, template.name]));
     const buckets = new Map<
       string,
@@ -408,7 +446,7 @@ export function AIAnalysisView({
       total_value: item.total_value,
       avg_value: item.cell_count > 0 ? item.total_value / item.cell_count : 0,
     }));
-  }, [analysisLevel, projectNameById, scopedOperationalRows, scopedRowsForAI, templates]);
+  }, [projectNameById, scopedRowsForAI, templates]);
 
   useEffect(() => {
     setSelectedTemplateIds((current) =>
@@ -462,6 +500,25 @@ export function AIAnalysisView({
     units.length,
   ]);
 
+  const previewTocSections = useMemo(() => {
+    if (analysisResult?.blueprintSections?.length) {
+      return analysisResult.blueprintSections.map((section, index) => ({
+        id: `generated_${index}`,
+        title: section.title,
+      }));
+    }
+    if (activeBlueprint?.sections?.length) {
+      return activeBlueprint.sections.map((section) => ({
+        id: section.id,
+        title: section.title,
+      }));
+    }
+    return MOCK_PREVIEW_SECTIONS.map((section) => ({
+      id: section.id,
+      title: section.title,
+    }));
+  }, [activeBlueprint, analysisResult]);
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -474,6 +531,33 @@ export function AIAnalysisView({
 
     window.localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
   }, [geminiApiKey]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadBlueprints = async () => {
+      try {
+        const records = await listAIReportBlueprints(20);
+        if (disposed) {
+          return;
+        }
+        setBlueprints(records);
+        if (!selectedBlueprintId && records[0]?.id) {
+          setSelectedBlueprintId(records[0].id);
+        }
+      } catch (error) {
+        if (!disposed) {
+          console.warn('Không thể tải danh sách blueprint báo cáo AI:', error);
+        }
+      }
+    };
+
+    void loadBlueprints();
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   useEffect(() => {
     let disposed = false;
@@ -560,6 +644,77 @@ export function AIAnalysisView({
   const canGenerate = selectedProjectIds.length > 0;
   const isLargeScope = summary.projectCount >= 4 || summary.templateCount >= 10 || summary.rowCount >= 5000;
 
+  const handleExtractBlueprint = async () => {
+    if (!blueprintFile) {
+      setBlueprintError('Hãy chọn một file báo cáo mẫu trước khi đọc mẫu.');
+      return;
+    }
+
+    if (!resolvedGeminiApiKey) {
+      setBlueprintError('Cần Gemini API key để đọc báo cáo mẫu.');
+      return;
+    }
+
+    setIsExtractingBlueprint(true);
+    setBlueprintError('');
+    setDocxNotice('');
+
+    try {
+      const extractedBlueprint = await extractReportBlueprintFromSample({
+        apiKey: resolvedGeminiApiKey,
+        file: blueprintFile,
+        preferredName: blueprintName.trim() || blueprintFile.name.replace(/\.[^.]+$/, ''),
+        onProgress: ({ label, percent }) => {
+          setIsProgressOpen(true);
+          setProgressLabel(label);
+          if (typeof percent === 'number') {
+            setProgressPercent(percent);
+          }
+        },
+      });
+
+      let uploadedPath: string | null = null;
+      let uploadedUrl: string | null = null;
+      try {
+        const uploadResult = await uploadFile(blueprintFile, {
+          folder: 'ai_report_blueprints',
+          fileName: blueprintFile.name,
+          contentType: blueprintFile.type || undefined,
+        });
+        uploadedPath = uploadResult.path;
+        uploadedUrl = uploadResult.publicUrl;
+      } catch (uploadError) {
+        console.warn('Không thể tải file mẫu báo cáo lên Supabase Storage, sẽ tiếp tục dùng blueprint cục bộ:', uploadError);
+      }
+
+      const savedBlueprint = await createAIReportBlueprint({
+        createdBy: currentUser || null,
+        name: blueprintName.trim() || extractedBlueprint.name || blueprintFile.name.replace(/\.[^.]+$/, ''),
+        sourceFileName: blueprintFile.name,
+        sourceFilePath: uploadedPath,
+        sourceFileUrl: uploadedUrl,
+        sourceMimeType: blueprintFile.type || null,
+        blueprint: extractedBlueprint,
+        status: 'READY',
+      });
+
+      setBlueprintPreview(extractedBlueprint);
+      setSelectedBlueprintId(savedBlueprint.id || '');
+      const records = await listAIReportBlueprints(20);
+      setBlueprints(records);
+      setProgressPercent(100);
+      setProgressLabel('Đã tạo xong blueprint báo cáo mẫu');
+      window.setTimeout(() => setIsProgressOpen(false), 350);
+    } catch (error) {
+      console.error('Blueprint extraction error:', error);
+      setBlueprintError(error instanceof Error ? error.message : 'Không thể đọc báo cáo mẫu.');
+      setProgressPercent(100);
+      setProgressLabel(error instanceof Error ? error.message : 'Không thể đọc báo cáo mẫu');
+    } finally {
+      setIsExtractingBlueprint(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!canGenerate) {
       return;
@@ -592,7 +747,7 @@ export function AIAnalysisView({
       const syncedTemplateIds =
         selectedScope === 'BY_TEMPLATE'
           ? selectedTemplateIds
-          : Array.from(new Set(scopedOperationalRows.map((row) => row.templateId)));
+          : Array.from(new Set(scopedRowsForAI.map((row) => row.templateId)));
       const syncedUnitCodes =
         analysisLevel === 'UNITS' && selectedScope === 'BY_UNIT'
           ? selectedUnitCodes
@@ -612,6 +767,15 @@ export function AIAnalysisView({
         analysisLevel === 'CITY' && operationalTemplateSummary.length > 0
           ? (operationalTemplateSummary as SummaryRowLike[])
           : [];
+      const indicatorSummariesOverride = buildIndicatorSummariesFromRows({
+        rows: scopedRowsForAI,
+        templates,
+        projects,
+        units,
+        dataFiles: scopedOperationalFiles,
+        maxIndicators: analysisLevel === 'CITY' ? 40 : 80,
+        maxUnitsPerIndicator: analysisLevel === 'CITY' ? 3 : 5,
+      });
 
       setProgressPercent(52);
       setProgressLabel(
@@ -637,6 +801,8 @@ export function AIAnalysisView({
         summaryOverride,
         projectSummariesOverride,
         templateSummariesOverride,
+        indicatorSummariesOverride,
+        reportBlueprint: activeBlueprint,
       });
 
       setProgressPercent(78);
@@ -681,6 +847,7 @@ export function AIAnalysisView({
             year: selectedYear,
             scope: selectedScope,
             analysisLevel,
+            blueprintName: activeBlueprint?.name || selectedBlueprint?.name || null,
           },
           aiInput,
           aiOutput,
@@ -1076,6 +1243,7 @@ export function AIAnalysisView({
               )}
               <div className="mt-4 space-y-2 text-sm text-[var(--ink)]">
                 <p>- Tầng phân tích: <span className="font-bold">{analysisLevel === 'CITY' ? 'Đảng bộ Thành phố' : '132 đơn vị'}</span></p>
+                <p>- Blueprint báo cáo: <span className="font-bold">{activeBlueprint?.name || 'Khung mặc định'}</span></p>
                 <p>- Dự án đang chọn: <span className="font-bold">{selectedProjects.length}</span></p>
                 <p>- Dự án có dữ liệu trong phạm vi: <span className="font-bold">{summary.projectCount}</span></p>
                 <p>- Năm phân tích: <span className="font-bold">{selectedYear}</span></p>
@@ -1099,6 +1267,118 @@ export function AIAnalysisView({
                     </span>
                   ))}
                 </div>
+              )}
+            </aside>
+          </div>
+        </section>
+
+        <section className="panel-card rounded-[28px] p-6 md:p-8">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="col-header">1A. Mẫu báo cáo</p>
+              <h3 className="section-title mt-2">Đọc mẫu báo cáo để tạo blueprint</h3>
+              <p className="page-subtitle mt-2 text-sm">
+                Tải một báo cáo mẫu để AI rút ra chương mục, giọng văn và cách trình bày. PDF là lựa chọn tốt nhất.
+              </p>
+            </div>
+            {activeBlueprint && (
+              <div className="rounded-full border border-[rgba(179,15,20,0.18)] bg-[rgba(179,15,20,0.08)] px-4 py-2 text-xs font-semibold text-[var(--primary-dark)]">
+                Đang áp dụng blueprint: {activeBlueprint.name}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <div className="space-y-6">
+              <div className="panel-soft rounded-[24px] p-5">
+                <p className="col-header mb-3">Blueprint đã lưu</p>
+                {blueprints.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {blueprints.map((item) => {
+                      const isSelected = selectedBlueprintId === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedBlueprintId(item.id || '');
+                            setBlueprintPreview(item.blueprint);
+                          }}
+                          className={`rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] transition-all ${
+                            isSelected
+                              ? 'border-[var(--primary-dark)] bg-[rgba(179,15,20,0.08)] text-[var(--primary-dark)]'
+                              : 'border-[var(--line)] bg-white text-[var(--ink-soft)]'
+                          }`}
+                        >
+                          {item.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--ink-soft)]">Chưa có blueprint nào được lưu. Bạn có thể tải mẫu để tạo mới ngay bên dưới.</p>
+                )}
+              </div>
+
+              <div className="panel-soft rounded-[24px] p-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="col-header mb-3">Tên blueprint</p>
+                    <input
+                      value={blueprintName}
+                      onChange={(event) => setBlueprintName(event.target.value)}
+                      className="field-input py-3 text-sm"
+                      placeholder="Ví dụ: Báo cáo sơ kết NQ21"
+                    />
+                  </div>
+                  <div>
+                    <p className="col-header mb-3">File báo cáo mẫu</p>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.doc,.txt,.md"
+                      onChange={(event) => setBlueprintFile(event.target.files?.[0] || null)}
+                      className="field-input py-3 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void handleExtractBlueprint()}
+                    disabled={isExtractingBlueprint}
+                    className="secondary-btn px-4 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Sparkles size={14} />
+                    {isExtractingBlueprint ? 'Đang đọc mẫu...' : 'Đọc mẫu báo cáo'}
+                  </button>
+                  {blueprintError && (
+                    <p className="text-sm font-semibold text-[var(--primary-dark)]">{blueprintError}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <aside className="panel-soft rounded-[24px] p-5">
+              <p className="col-header">Khung mẫu đang áp dụng</p>
+              {activeBlueprint ? (
+                <>
+                  <h4 className="mt-3 text-base font-black text-[var(--primary-dark)]">{activeBlueprint.name}</h4>
+                  <p className="mt-2 text-sm text-[var(--ink-soft)]">
+                    Giọng văn ưu tiên: <strong>{activeBlueprint.preferredTone}</strong>
+                  </p>
+                  <div className="mt-4 space-y-2">
+                    {activeBlueprint.sections.map((section) => (
+                      <div key={section.id} className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+                        <p className="text-sm font-bold text-[var(--ink)]">{section.title}</p>
+                        <p className="mt-1 text-xs text-[var(--ink-soft)]">{section.instructions}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-[var(--ink-soft)]">
+                  Chưa chọn blueprint. Nếu không có mẫu, hệ thống sẽ dùng khung báo cáo mặc định.
+                </p>
               )}
             </aside>
           </div>
@@ -1269,7 +1549,7 @@ export function AIAnalysisView({
                 <h3 className="section-title text-[1.05rem]">Mục lục báo cáo</h3>
               </div>
               <div className="mt-4 space-y-2">
-                {MOCK_PREVIEW_SECTIONS.map((section) => (
+                {previewTocSections.map((section) => (
                   <div key={section.id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--ink)]">
                     {section.title}
                   </div>
@@ -1369,6 +1649,24 @@ export function AIAnalysisView({
               )}
             </div>
 
+            {Array.isArray((aiInputSnapshot as any)?.indicatorSummaries) && (aiInputSnapshot as any).indicatorSummaries.length > 0 && (
+              <section className="mt-6 rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                <h4 className="text-lg font-black text-[var(--primary-dark)]">Tiêu chí dữ liệu AI đang dùng</h4>
+                <div className="mt-4 space-y-3">
+                  {(aiInputSnapshot as any).indicatorSummaries.slice(0, 8).map((item: any, index: number) => (
+                    <div key={`${item.indicatorKey || index}`} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                      <p className="text-sm font-bold text-[var(--ink)]">{item.indicatorLabel || `${item.rowLabel} > ${item.columnLabel}`}</p>
+                      <div className="mt-2 flex flex-wrap gap-3 text-xs text-[var(--ink-soft)]">
+                        <span>Tổng giá trị: <strong className="text-[var(--ink)]">{Number(item.totalValue || 0).toLocaleString('vi-VN')}</strong></span>
+                        <span>Đơn vị có số liệu: <strong className="text-[var(--ink)]">{Number(item.nonZeroUnitCount || 0).toLocaleString('vi-VN')}</strong></span>
+                        <span>Biểu: <strong className="text-[var(--ink)]">{item.templateName || ''}</strong></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {projectSummary.length > 0 && (
               <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
                 <h4 className="text-lg font-black text-[var(--primary-dark)]">Tổng hợp theo dự án</h4>
@@ -1416,6 +1714,20 @@ export function AIAnalysisView({
                     <h4 className="text-lg font-black text-[var(--primary-dark)]">{analysisResult.title}</h4>
                     <p className="mt-3 text-sm leading-7 text-[var(--ink)]">{analysisResult.executiveSummary}</p>
                   </section>
+
+                  {analysisResult.blueprintSections.length > 0 && (
+                    <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                      <h4 className="text-lg font-black text-[var(--primary-dark)]">Các mục viết theo mẫu báo cáo</h4>
+                      <div className="mt-4 space-y-4">
+                        {analysisResult.blueprintSections.map((section, index) => (
+                          <div key={`${section.title}_${index}`} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                            <p className="text-sm font-bold text-[var(--ink)]">{section.title}</p>
+                            <p className="mt-2 text-sm leading-7 text-[var(--ink)]">{section.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
 
                   <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
                     <h4 className="text-lg font-black text-[var(--primary-dark)]">Điểm chính</h4>
@@ -1500,7 +1812,14 @@ export function AIAnalysisView({
                   ))}
                 </>
               ) : (
-                MOCK_PREVIEW_SECTIONS.map((section) => (
+                (activeBlueprint?.sections?.length
+                  ? activeBlueprint.sections.map((section) => ({
+                      id: section.id,
+                      title: section.title,
+                      body: section.instructions,
+                    }))
+                  : MOCK_PREVIEW_SECTIONS
+                ).map((section) => (
                   <section key={section.id} className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
                     <h4 className="text-lg font-black text-[var(--primary-dark)]">{section.title}</h4>
                     <p className="mt-3 text-sm leading-7 text-[var(--ink)]">{section.body}</p>
@@ -1557,6 +1876,7 @@ export function AIAnalysisView({
                   <div className="space-y-2 text-sm">
                     {[
                       'Tóm tắt điều hành',
+                      ...(analysisResult.blueprintSections || []).map((section) => section.title),
                       'Điểm chính',
                       'Nhận xét theo dự án',
                       'Đơn vị / điểm cần lưu ý',
@@ -1617,9 +1937,45 @@ export function AIAnalysisView({
                         </div>
                       </section>
 
+                      {analysisResult.blueprintSections.length > 0 && (
+                        <section>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">III. Các mục theo blueprint</h4>
+                          <div className="mt-3 space-y-4">
+                            {analysisResult.blueprintSections.map((section, index) => (
+                              <div key={`blueprint_section_${index}`} className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                                <input
+                                  value={section.title}
+                                  onChange={(event) =>
+                                    setAnalysisResult((current) => {
+                                      if (!current) return current;
+                                      const next = cloneAnalysisOutput(current);
+                                      next.blueprintSections[index].title = event.target.value;
+                                      return next;
+                                    })
+                                  }
+                                  className="field-input py-3 text-sm font-bold"
+                                />
+                                <textarea
+                                  value={section.content}
+                                  onChange={(event) =>
+                                    setAnalysisResult((current) => {
+                                      if (!current) return current;
+                                      const next = cloneAnalysisOutput(current);
+                                      next.blueprintSections[index].content = event.target.value;
+                                      return next;
+                                    })
+                                  }
+                                  className="field-input mt-3 min-h-[140px] resize-y py-3 text-sm leading-7"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
                       {analysisResult.projectHighlights.length > 0 && (
                         <section>
-                          <h4 className="text-lg font-black text-[var(--primary-dark)]">III. Nhận xét theo dự án</h4>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">IV. Nhận xét theo dự án</h4>
                           <div className="mt-3 space-y-4">
                             {analysisResult.projectHighlights.map((item, index) => (
                               <div key={`project_${item.projectName}_${index}`} className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
@@ -1637,7 +1993,7 @@ export function AIAnalysisView({
 
                       {analysisResult.riskItems.length > 0 && (
                         <section>
-                          <h4 className="text-lg font-black text-[var(--primary-dark)]">IV. Đơn vị / điểm cần lưu ý</h4>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">V. Đơn vị / điểm cần lưu ý</h4>
                           <div className="mt-3 space-y-4">
                             {analysisResult.riskItems.map((item, index) => (
                               <div key={`risk_${item.title}_${index}`} className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
@@ -1655,7 +2011,7 @@ export function AIAnalysisView({
 
                       {analysisResult.recommendations.length > 0 && (
                         <section>
-                          <h4 className="text-lg font-black text-[var(--primary-dark)]">V. Kiến nghị</h4>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">VI. Kiến nghị</h4>
                           <div className="mt-3 space-y-3">
                             {analysisResult.recommendations.map((item, index) => (
                               <textarea
@@ -1678,7 +2034,7 @@ export function AIAnalysisView({
 
                       {analysisResult.appendixTables.length > 0 && (
                         <section>
-                          <h4 className="text-lg font-black text-[var(--primary-dark)]">VI. Phụ lục số liệu</h4>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">VII. Phụ lục số liệu</h4>
                           <div className="mt-4 space-y-5">
                             {analysisResult.appendixTables.map((table) => (
                               <div key={`editor_${table.title}`} className="overflow-x-auto">
@@ -1718,6 +2074,7 @@ export function AIAnalysisView({
                   <p className="col-header mb-4">Nguồn dữ liệu</p>
                   <div className="space-y-2 text-sm text-[var(--ink)]">
                     <p>- Tầng phân tích: <span className="font-semibold">{analysisLevel === 'CITY' ? 'Đảng bộ Thành phố' : '132 đơn vị'}</span></p>
+                    <p>- Blueprint: <span className="font-semibold">{activeBlueprint?.name || 'Khung mặc định'}</span></p>
                     <p>- Dự án đang chọn: <span className="font-semibold">{selectedProjects.length}</span></p>
                     <p>- Dự án có dữ liệu: <span className="font-semibold">{summary.projectCount}</span></p>
                     <p>- Năm: <span className="font-semibold">{selectedYear}</span></p>
