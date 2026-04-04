@@ -223,6 +223,12 @@ export function AIAnalysisView({
     [selectedUnitCodes, units],
   );
 
+  useEffect(() => {
+    setSelectedTemplateIds((current) =>
+      current.filter((templateId) => relatedTemplates.some((template) => template.id === templateId)),
+    );
+  }, [relatedTemplates]);
+
   const summary = useMemo(() => {
     if (scopeSummary) {
       return {
@@ -654,7 +660,8 @@ export function AIAnalysisView({
                 <p className="mt-3 text-xs font-semibold text-[var(--primary-dark)]">{summaryError}</p>
               )}
               <div className="mt-4 space-y-2 text-sm text-[var(--ink)]">
-                <p>- Dự án đã chọn: <span className="font-bold">{summary.projectCount}</span></p>
+                <p>- Dự án đang chọn: <span className="font-bold">{selectedProjects.length}</span></p>
+                <p>- Dự án có dữ liệu trong phạm vi: <span className="font-bold">{summary.projectCount}</span></p>
                 <p>- Năm phân tích: <span className="font-bold">{selectedYear}</span></p>
                 <p>- Biểu mẫu liên quan: <span className="font-bold">{summary.templateCount}</span></p>
                 <p>- Đơn vị có dữ liệu: <span className="font-bold">{summary.unitCount}</span></p>
@@ -916,7 +923,8 @@ export function AIAnalysisView({
             </div>
 
             <div className="mt-6 rounded-[24px] border border-[var(--line)] bg-[var(--surface-soft)] px-5 py-4 text-sm text-[var(--ink)]">
-              <p>- Dự án đã chọn: <span className="font-semibold">{summary.projectCount}</span></p>
+              <p>- Dự án đang chọn: <span className="font-semibold">{selectedProjects.length}</span></p>
+              <p>- Dự án có dữ liệu trong phạm vi: <span className="font-semibold">{summary.projectCount}</span></p>
               <p>- Năm phân tích: <span className="font-semibold">{selectedYear}</span></p>
               <p>- Biểu mẫu liên quan: <span className="font-semibold">{summary.templateCount}</span></p>
               <p>- Đơn vị có dữ liệu: <span className="font-semibold">{summary.unitCount}</span></p>
