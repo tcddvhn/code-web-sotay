@@ -1,8 +1,8 @@
 import { supabase } from './supabase';
 import { DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, Project } from './types';
 import {
-  listDataFilesByProject as listDataFilesByProjectFromSupabase,
-  listRowsByProject as listRowsByProjectFromSupabase,
+  listDataFilesByScope as listDataFilesByScopeFromSupabase,
+  listRowsByScope as listRowsByScopeFromSupabase,
 } from './supabaseStore';
 
 export interface AnalysisCellRecord {
@@ -294,35 +294,21 @@ export async function backfillAnalysisCellsForScope(params: {
 
   for (const projectId of params.projectIds) {
     const [rows, files] = await Promise.all([
-      listRowsByProjectFromSupabase(projectId),
-      listDataFilesByProjectFromSupabase(projectId),
+      listRowsByScopeFromSupabase({
+        projectId,
+        years: params.years,
+        templateIds: params.templateIds,
+        unitCodes: params.unitCodes,
+      }),
+      listDataFilesByScopeFromSupabase({
+        projectId,
+        years: params.years,
+        unitCodes: params.unitCodes,
+      }),
     ]);
 
-    const filteredRows = rows.filter((row) => {
-      if (params.years.length > 0 && !params.years.includes(row.year)) {
-        return false;
-      }
-      if (params.templateIds && params.templateIds.length > 0 && !params.templateIds.includes(row.templateId)) {
-        return false;
-      }
-      if (params.unitCodes && params.unitCodes.length > 0 && !params.unitCodes.includes(row.unitCode)) {
-        return false;
-      }
-      return true;
-    });
-
-    const filteredFiles = files.filter((file) => {
-      if (params.years.length > 0 && !params.years.includes(file.year)) {
-        return false;
-      }
-      if (params.unitCodes && params.unitCodes.length > 0 && !params.unitCodes.includes(file.unitCode)) {
-        return false;
-      }
-      return true;
-    });
-
-    allRows.push(...filteredRows);
-    allFiles.push(...filteredFiles);
+    allRows.push(...rows);
+    allFiles.push(...files);
   }
 
   if (allRows.length === 0) {
@@ -347,28 +333,20 @@ export async function fetchOperationalScopeSummary(params: {
   const allRows: DataRow[] = [];
 
   for (const projectId of params.projectIds) {
-    const rows = await listRowsByProjectFromSupabase(projectId);
+    const rows = await listRowsByScopeFromSupabase({
+      projectId,
+      years: params.years,
+      templateIds: params.templateIds,
+      unitCodes: params.unitCodes,
+    });
     allRows.push(...rows);
   }
 
-  const filteredRows = allRows.filter((row) => {
-    if (params.years.length > 0 && !params.years.includes(row.year)) {
-      return false;
-    }
-    if (params.templateIds && params.templateIds.length > 0 && !params.templateIds.includes(row.templateId)) {
-      return false;
-    }
-    if (params.unitCodes && params.unitCodes.length > 0 && !params.unitCodes.includes(row.unitCode)) {
-      return false;
-    }
-    return true;
-  });
-
-  const projectIds = new Set(filteredRows.map((row) => row.projectId));
-  const templateIds = new Set(filteredRows.map((row) => row.templateId));
-  const unitCodes = new Set(filteredRows.map((row) => row.unitCode));
-  const cellCount = filteredRows.reduce((sum, row) => sum + row.values.length, 0);
-  const totalValue = filteredRows.reduce(
+  const projectIds = new Set(allRows.map((row) => row.projectId));
+  const templateIds = new Set(allRows.map((row) => row.templateId));
+  const unitCodes = new Set(allRows.map((row) => row.unitCode));
+  const cellCount = allRows.reduce((sum, row) => sum + row.values.length, 0);
+  const totalValue = allRows.reduce(
     (sum, row) => sum + row.values.reduce((rowSum, value) => rowSum + normalizeValue(value), 0),
     0,
   );
@@ -379,7 +357,7 @@ export async function fetchOperationalScopeSummary(params: {
     unit_count: unitCodes.size,
     cell_count: cellCount,
     total_value: totalValue,
-    distinct_source_rows: filteredRows.length,
+    distinct_source_rows: allRows.length,
   };
 }
 

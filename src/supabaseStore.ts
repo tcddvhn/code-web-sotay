@@ -506,6 +506,91 @@ export async function listRowsByProject(projectId: string) {
   })) as DataRow[];
 }
 
+export async function listRowsByScope(params: {
+  projectId: string;
+  years?: string[];
+  templateIds?: string[];
+  unitCodes?: string[];
+}) {
+  let countBuilder = supabase
+    .from('consolidated_rows')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', params.projectId);
+
+  if (params.years && params.years.length > 0) {
+    countBuilder = countBuilder.in('year', params.years);
+  }
+  if (params.templateIds && params.templateIds.length > 0) {
+    countBuilder = countBuilder.in('template_id', params.templateIds);
+  }
+  if (params.unitCodes && params.unitCodes.length > 0) {
+    countBuilder = countBuilder.in('unit_code', params.unitCodes);
+  }
+
+  const { count, error: countError } = await countBuilder;
+
+  if (countError) {
+    throw new Error(countError.message || 'Không thể đếm dữ liệu tổng hợp theo phạm vi trên Supabase.');
+  }
+
+  const expectedCount = count || 0;
+  const rows: any[] = [];
+  let from = 0;
+
+  while (true) {
+    let pageBuilder = supabase
+      .from('consolidated_rows')
+      .select('*')
+      .eq('project_id', params.projectId)
+      .order('template_id', { ascending: true })
+      .order('year', { ascending: true })
+      .order('source_row', { ascending: true })
+      .order('unit_code', { ascending: true })
+      .range(from, from + SUPABASE_PAGE_SIZE - 1);
+
+    if (params.years && params.years.length > 0) {
+      pageBuilder = pageBuilder.in('year', params.years);
+    }
+    if (params.templateIds && params.templateIds.length > 0) {
+      pageBuilder = pageBuilder.in('template_id', params.templateIds);
+    }
+    if (params.unitCodes && params.unitCodes.length > 0) {
+      pageBuilder = pageBuilder.in('unit_code', params.unitCodes);
+    }
+
+    const { data, error } = await pageBuilder;
+
+    if (error) {
+      throw new Error(error.message || 'Không thể tải dữ liệu tổng hợp theo phạm vi từ Supabase.');
+    }
+
+    const pageRows = (data || []) as any[];
+    rows.push(...pageRows);
+
+    if (pageRows.length < SUPABASE_PAGE_SIZE) {
+      break;
+    }
+
+    from += SUPABASE_PAGE_SIZE;
+  }
+
+  if (rows.length < expectedCount) {
+    throw new Error(`Chi tai duoc ${rows.length}/${expectedCount} dong du lieu tong hop theo pham vi tu Supabase.`);
+  }
+
+  return rows.map((row) => ({
+    projectId: row.project_id,
+    templateId: row.template_id,
+    unitCode: row.unit_code,
+    year: row.year,
+    sourceRow: row.source_row,
+    label: row.label,
+    values: Array.isArray(row.values) ? row.values.map((value: number) => Number(value) || 0) : [],
+    updatedAt: row.updated_at || null,
+    updatedBy: row.updated_by || undefined,
+  })) as DataRow[];
+}
+
 export async function upsertRows(rows: DataRow[]) {
   if (rows.length === 0) {
     return;
@@ -623,6 +708,43 @@ export async function listDataFilesByProject(projectId: string): Promise<DataFil
 
   if (error) {
     throw new Error(error.message || 'Không thể tải danh sách file dữ liệu từ Supabase.');
+  }
+
+  return ((data || []) as SupabaseDataFileRow[]).map((row) => ({
+    id: row.id,
+    projectId: row.project_id,
+    unitCode: row.unit_code,
+    unitName: row.unit_name,
+    year: row.year,
+    fileName: row.file_name,
+    storagePath: row.storage_path,
+    downloadURL: row.download_url,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function listDataFilesByScope(params: {
+  projectId: string;
+  years?: string[];
+  unitCodes?: string[];
+}): Promise<DataFileRecordSummary[]> {
+  let builder = supabase
+    .from('data_files')
+    .select('*')
+    .eq('project_id', params.projectId)
+    .order('updated_at', { ascending: false });
+
+  if (params.years && params.years.length > 0) {
+    builder = builder.in('year', params.years);
+  }
+  if (params.unitCodes && params.unitCodes.length > 0) {
+    builder = builder.in('unit_code', params.unitCodes);
+  }
+
+  const { data, error } = await builder;
+
+  if (error) {
+    throw new Error(error.message || 'Không thể tải danh sách file dữ liệu theo phạm vi từ Supabase.');
   }
 
   return ((data || []) as SupabaseDataFileRow[]).map((row) => ({
