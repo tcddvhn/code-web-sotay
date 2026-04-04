@@ -6,6 +6,8 @@ import {
   createAIAnalysisReport,
   fetchAIAnalysisProjectSummary,
   fetchAIAnalysisScopeSummary,
+  ScopeSummaryLike,
+  SummaryRowLike,
   fetchAIAnalysisTemplateSummary,
   listRecentAIAnalysisReports,
   syncAnalysisCellsFromRows,
@@ -24,7 +26,6 @@ import { uploadFile } from '../supabase';
 import { buildDocxBlob } from '../utils/docxExport';
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
-const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
 
 const ANALYSIS_TYPE_OPTIONS: { value: AIAnalysisType; label: string }[] = [
   { value: 'QUICK', label: 'Tóm tắt nhanh' },
@@ -140,6 +141,10 @@ type TemplateSummaryRow = {
   total_value: number;
   avg_value: number;
 };
+
+function sumRowValues(values: unknown[]) {
+  return values.reduce((sum, value) => sum + (Number(value) || 0), 0);
+}
 
 function slugifyFileName(value: string) {
   return value
@@ -315,6 +320,95 @@ export function AIAnalysisView({
       distinct_source_rows: rowsForSummary.length,
     };
   }, [analysisLevel, scopedOperationalRows, scopedRowsForAI]);
+
+  const operationalProjectSummary = useMemo<ProjectSummaryRow[]>(() => {
+    const rowsForSummary = analysisLevel === 'CITY' ? scopedOperationalRows : scopedRowsForAI;
+    const buckets = new Map<
+      string,
+      {
+        project_id: string;
+        project_name: string;
+        unitCodes: Set<string>;
+        templateIds: Set<string>;
+        cell_count: number;
+        total_value: number;
+      }
+    >();
+
+    rowsForSummary.forEach((row) => {
+      const projectName = projectNameById.get(row.projectId) || row.projectId;
+      const current = buckets.get(row.projectId) || {
+        project_id: row.projectId,
+        project_name: projectName,
+        unitCodes: new Set<string>(),
+        templateIds: new Set<string>(),
+        cell_count: 0,
+        total_value: 0,
+      };
+
+      current.unitCodes.add(row.unitCode);
+      current.templateIds.add(row.templateId);
+      current.cell_count += row.values.length;
+      current.total_value += sumRowValues(row.values);
+      buckets.set(row.projectId, current);
+    });
+
+    return Array.from(buckets.values()).map((item) => ({
+      project_id: item.project_id,
+      project_name: item.project_name,
+      unit_count: item.unitCodes.size,
+      template_count: item.templateIds.size,
+      cell_count: item.cell_count,
+      total_value: item.total_value,
+      avg_value: item.cell_count > 0 ? item.total_value / item.cell_count : 0,
+    }));
+  }, [analysisLevel, projectNameById, scopedOperationalRows, scopedRowsForAI]);
+
+  const operationalTemplateSummary = useMemo<TemplateSummaryRow[]>(() => {
+    const rowsForSummary = analysisLevel === 'CITY' ? scopedOperationalRows : scopedRowsForAI;
+    const templateNameById = new Map(templates.map((template) => [template.id, template.name]));
+    const buckets = new Map<
+      string,
+      {
+        template_id: string;
+        template_name: string;
+        project_id: string;
+        project_name: string;
+        unitCodes: Set<string>;
+        cell_count: number;
+        total_value: number;
+      }
+    >();
+
+    rowsForSummary.forEach((row) => {
+      const key = `${row.projectId}_${row.templateId}`;
+      const current = buckets.get(key) || {
+        template_id: row.templateId,
+        template_name: templateNameById.get(row.templateId) || row.templateId,
+        project_id: row.projectId,
+        project_name: projectNameById.get(row.projectId) || row.projectId,
+        unitCodes: new Set<string>(),
+        cell_count: 0,
+        total_value: 0,
+      };
+
+      current.unitCodes.add(row.unitCode);
+      current.cell_count += row.values.length;
+      current.total_value += sumRowValues(row.values);
+      buckets.set(key, current);
+    });
+
+    return Array.from(buckets.values()).map((item) => ({
+      template_id: item.template_id,
+      template_name: item.template_name,
+      project_id: item.project_id,
+      project_name: item.project_name,
+      unit_count: item.unitCodes.size,
+      cell_count: item.cell_count,
+      total_value: item.total_value,
+      avg_value: item.cell_count > 0 ? item.total_value / item.cell_count : 0,
+    }));
+  }, [analysisLevel, projectNameById, scopedOperationalRows, scopedRowsForAI, templates]);
 
   useEffect(() => {
     setSelectedTemplateIds((current) =>
@@ -504,7 +598,20 @@ export function AIAnalysisView({
           ? selectedUnitCodes
           : analysisLevel === 'UNITS'
             ? Array.from(new Set(scopedRowsForAI.map((row) => row.unitCode)))
-            : [TOTAL_REPORT_UNIT_CODE];
+            : [];
+
+      const summaryOverride =
+        analysisLevel === 'CITY' && Number(operationalScopeSummary?.cell_count || 0) > 0
+          ? (operationalScopeSummary as ScopeSummaryLike)
+          : null;
+      const projectSummariesOverride =
+        analysisLevel === 'CITY' && operationalProjectSummary.length > 0
+          ? (operationalProjectSummary as SummaryRowLike[])
+          : [];
+      const templateSummariesOverride =
+        analysisLevel === 'CITY' && operationalTemplateSummary.length > 0
+          ? (operationalTemplateSummary as SummaryRowLike[])
+          : [];
 
       setProgressPercent(52);
       setProgressLabel(
@@ -527,6 +634,9 @@ export function AIAnalysisView({
         templates,
         projects,
         units,
+        summaryOverride,
+        projectSummariesOverride,
+        templateSummariesOverride,
       });
 
       setProgressPercent(78);

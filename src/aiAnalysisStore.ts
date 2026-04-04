@@ -52,6 +52,27 @@ export interface AIAnalysisReportRecord {
   status?: string;
 }
 
+type ScopeSummaryLike = {
+  project_count?: number;
+  template_count?: number;
+  unit_count?: number;
+  cell_count?: number;
+  total_value?: number;
+  distinct_source_rows?: number;
+};
+
+type SummaryRowLike = {
+  project_id?: string;
+  project_name?: string;
+  template_id?: string;
+  template_name?: string;
+  unit_count?: number;
+  template_count?: number;
+  cell_count?: number;
+  total_value?: number;
+  avg_value?: number;
+};
+
 type SupabaseAnalysisCellRow = {
   id: string;
   project_id: string;
@@ -261,10 +282,17 @@ export async function upsertAnalysisCells(cells: AnalysisCellRecord[]) {
     return;
   }
 
-  const payload = cells.map(toAnalysisCellPayload);
-  const { error } = await supabase.from('analysis_cells').upsert(payload, { onConflict: 'id' });
-  if (error) {
-    throw new Error(error.message || 'Không thể lưu dữ liệu phân tích AI lên Supabase.');
+  const chunkSize = 1000;
+  for (let start = 0; start < cells.length; start += chunkSize) {
+    const payload = cells.slice(start, start + chunkSize).map(toAnalysisCellPayload);
+    const { error } = await supabase.from('analysis_cells').upsert(payload, { onConflict: 'id' });
+    if (error) {
+      throw new Error(error.message || 'Không thể lưu dữ liệu phân tích AI lên Supabase.');
+    }
+
+    if (start + chunkSize < cells.length) {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    }
   }
 }
 
@@ -580,3 +608,5 @@ export async function fetchAIAnalysisTemplateSummary(params: {
 
   return Array.isArray(data) ? data : [];
 }
+
+export type { ScopeSummaryLike, SummaryRowLike };

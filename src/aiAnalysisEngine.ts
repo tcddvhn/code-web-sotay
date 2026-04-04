@@ -3,6 +3,8 @@ import {
   AnalysisCellRecord,
   fetchAIAnalysisProjectSummary,
   fetchAIAnalysisScopeSummary,
+  ScopeSummaryLike,
+  SummaryRowLike,
   fetchAIAnalysisTemplateSummary,
   listAnalysisCellsByScope,
 } from './aiAnalysisStore';
@@ -34,6 +36,9 @@ export type AIAnalysisBuildParams = {
   projects: Project[];
   templates: FormTemplate[];
   units: ManagedUnit[];
+  summaryOverride?: ScopeSummaryLike | null;
+  projectSummariesOverride?: SummaryRowLike[];
+  templateSummariesOverride?: SummaryRowLike[];
 };
 
 export type AIAnalysisOutput = {
@@ -201,9 +206,9 @@ export async function buildAIAnalysisInput(params: AIAnalysisBuildParams) {
 
   const shouldReadScopedCells =
     params.analysisLevel === 'UNITS' &&
-    params.analysisType === 'ANOMALY' ||
-    (params.analysisLevel === 'UNITS' && params.analysisType === 'FULL') ||
-    (params.analysisLevel === 'UNITS' && params.requestedSections.includes('Đơn vị chậm cập nhật'));
+    (params.analysisType === 'ANOMALY' ||
+      params.analysisType === 'FULL' ||
+      params.requestedSections.includes('Đơn vị chậm cập nhật'));
 
   const [scopeSummary, projectSummary, templateSummary, scopedCells] = await Promise.all([
     fetchAIAnalysisScopeSummary(rpcParams),
@@ -216,6 +221,19 @@ export async function buildAIAnalysisInput(params: AIAnalysisBuildParams) {
         })
       : Promise.resolve([]),
   ]);
+
+  const effectiveScopeSummary =
+    params.summaryOverride && Number(params.summaryOverride.cell_count || 0) > 0
+      ? params.summaryOverride
+      : scopeSummary || {};
+  const effectiveProjectSummary =
+    params.projectSummariesOverride && params.projectSummariesOverride.length > 0
+      ? params.projectSummariesOverride
+      : projectSummary || [];
+  const effectiveTemplateSummary =
+    params.templateSummariesOverride && params.templateSummariesOverride.length > 0
+      ? params.templateSummariesOverride
+      : templateSummary || [];
 
   const previousYear = inferPreviousYear(params.year);
   let yearComparison: Record<string, unknown> | null = null;
@@ -276,14 +294,14 @@ export async function buildAIAnalysisInput(params: AIAnalysisBuildParams) {
       requestedSections: params.requestedSections,
       extraPrompt: params.extraPrompt || '',
     },
-    summary: scopeSummary || {},
-    projectSummaries: projectSummary || [],
-    templateSummaries: templateSummary || [],
+    summary: effectiveScopeSummary,
+    projectSummaries: effectiveProjectSummary,
+    templateSummaries: effectiveTemplateSummary,
     yearComparison,
     anomalies,
     appendixTables: buildAppendixTables({
-      projectSummary: projectSummary || [],
-      templateSummary: templateSummary || [],
+      projectSummary: effectiveProjectSummary as any[],
+      templateSummary: effectiveTemplateSummary as any[],
     }),
   };
 }
