@@ -153,14 +153,21 @@ export async function buildAIAnalysisInput(params: AIAnalysisBuildParams) {
     unitCodes: params.scope === 'BY_UNIT' ? params.selectedUnitCodes : undefined,
   };
 
+  const shouldReadScopedCells =
+    params.analysisType === 'ANOMALY' ||
+    params.analysisType === 'FULL' ||
+    params.requestedSections.includes('Đơn vị chậm cập nhật');
+
   const [scopeSummary, projectSummary, templateSummary, scopedCells] = await Promise.all([
     fetchAIAnalysisScopeSummary(rpcParams),
     fetchAIAnalysisProjectSummary(rpcParams),
     fetchAIAnalysisTemplateSummary(rpcParams),
-    listAnalysisCellsByScope({
-      ...rpcParams,
-      limit: 20000,
-    }),
+    shouldReadScopedCells
+      ? listAnalysisCellsByScope({
+          ...rpcParams,
+          limit: 4000,
+        })
+      : Promise.resolve([]),
   ]);
 
   const previousYear = inferPreviousYear(params.year);

@@ -349,6 +349,7 @@ export function AIAnalysisView({
 
         if (
           Number((scope as any)?.cell_count || 0) === 0 &&
+          Number((operationalScope as any)?.cell_count || 0) === 0 &&
           !backfilledScopeKeysRef.current.has(backfillKey)
         ) {
           backfilledScopeKeysRef.current.add(backfillKey);
@@ -381,6 +382,11 @@ export function AIAnalysisView({
         setOperationalScopeSummary((operationalScope || null) as ScopeSummary);
         setProjectSummary((projectsData || []) as ProjectSummaryRow[]);
         setTemplateSummary((templatesData || []) as TemplateSummaryRow[]);
+        if (Number((scope as any)?.cell_count || 0) === 0 && Number((operationalScope as any)?.cell_count || 0) > 0) {
+          setSummaryError(
+            'Tóm tắt đang dùng trực tiếp dữ liệu vận hành. Khi bấm "Tạo phân tích AI", hệ thống sẽ tự đồng bộ lớp phân tích cho phạm vi này.',
+          );
+        }
         setRecentHistory(
           (history || []).map((item, index) => ({
             id: item.id || `history_fallback_${index}`,
