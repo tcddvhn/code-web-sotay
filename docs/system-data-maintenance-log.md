@@ -191,3 +191,74 @@ Thuc hien:
 - Giu noi dung handoff can thiet: nguyen tac, trang thai tong quat, thay doi theo module, cac loi da tung xu ly, quy trinh test va cau nhac ngan cho may khac.
 - Khong thay doi logic he thong; chi chuan hoa tai lieu.
 
+## Moc ngay 2026-04-04
+
+### Dung giao dien preview cho module Phan tich AI
+
+Yeu cau user phe duyet:
+- Tao truoc giao dien cho module `Phan tich AI`
+- chot trai nghiem nguoi dung truoc khi trien khai schema va AI backend
+- khong duoc anh huong cac module dang chay on dinh
+
+Thuc hien:
+- Them `AI_ANALYSIS` vao view mode.
+- Tao `src/components/AIAnalysisView.tsx`.
+- Noi menu desktop vao `Sidebar`.
+- Bo sung loi vao mobile tu `Dashboard`.
+- Ho tro chon nhieu du an.
+- Neu chon `Theo bieu`, danh sach bieu hien toan bo bieu cua cac du an da chon, kem ten du an de tranh nham.
+
+Luu y:
+- Day moi la UI preview.
+- Chua goi AI that.
+- Chua sua luong `Dashboard`, `Bao cao`, `Tiep nhan du lieu`.
+
+### Tao nen du lieu ky thuat cho Phan tich AI ma chua noi vao runtime
+
+Yeu cau user phe duyet:
+- Tiep tuc theo pha ky thuat sau khi chot giao dien.
+- Van phai giu nguyen he thong du lieu dang chay.
+
+Thuc hien:
+- Tao file SQL rieng `supabase/ai_analysis_setup.sql`.
+- Tao service rieng `src/aiAnalysisStore.ts`.
+- De xuat hai bang moi:
+  - `analysis_cells`
+  - `ai_analysis_reports`
+- Them cac ham:
+  - build / upsert / list / delete `analysis_cells`
+  - create / list `ai_analysis_reports`
+
+Nguyen tac:
+- Chua noi vao luong import hien tai.
+- Chua dong bo tu `consolidated_rows` trong runtime.
+- Chi bo sung lop nen de trien khai tiep o pha sau.
+
+### Noi dong bo `analysis_cells` vao runtime va kich hoat summary that cho Phan tich AI ngay 2026-04-04
+
+Yeu cau user phe duyet:
+- Sau khi da chay buoc 1 tren Supabase, tiep tuc buoc 2 va 3:
+  - dong bo `consolidated_rows -> analysis_cells`
+  - bo sung summary RPC cho module `Phan tich AI`
+- Van phai giu nguyen nguyen tac khong anh huong cac module dang chay on dinh.
+
+Thuc hien:
+- Cap nhat `src/App.tsx`:
+  - sau khi import thanh cong va refresh rows/data_files, goi `syncAnalysisCellsFromRows(...)`
+  - khi xoa theo don vi / nam / bieu / du an, goi xoa tuong ung trong `analysis_cells`
+  - toan bo cac buoc nay deu boc `try/catch` va chi `console.warn` neu lop phan tich loi
+- Cap nhat `src/components/AIAnalysisView.tsx`:
+  - doc `get_ai_analysis_scope_summary`
+  - doc `get_ai_analysis_project_summary`
+  - doc `get_ai_analysis_template_summary`
+  - doc lich su tu `ai_analysis_reports`
+  - neu RPC chua san sang hoac bi loi thi fallback ve so lieu uoc tinh, khong lam sap UI
+- Tao file `supabase/ai_analysis_rpc.sql`:
+  - `get_ai_analysis_scope_summary`
+  - `get_ai_analysis_project_summary`
+  - `get_ai_analysis_template_summary`
+
+Luu y van hanh:
+- De summary that chay du, can chay them `supabase/ai_analysis_rpc.sql`
+- `analysis_cells` hien la lop phan tich phan chieu du lieu van hanh, khong phai nguon du lieu goc
+- Neu lop phan tich loi, luong `Tiep nhan du lieu` va `Xoa du lieu` van phai tiep tuc hoat dong

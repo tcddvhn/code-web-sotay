@@ -63,6 +63,13 @@ import {
   upsertSettings as upsertSettingsToSupabase,
   upsertUnit as upsertUnitToSupabase,
 } from './supabaseStore';
+import {
+  deleteAnalysisCellsByProject,
+  deleteAnalysisCellsByTemplate,
+  deleteAnalysisCellsByUnit,
+  deleteAnalysisCellsByYear,
+  syncAnalysisCellsFromRows,
+} from './aiAnalysisStore';
 
 const DEFAULT_SETTINGS: AppSettings = {
   oneDriveLink: 'https://onedrive.live.com/...',
@@ -637,6 +644,11 @@ export default function App() {
       const deletedAssignments = (await listAssignmentsFromSupabase(projectId)).length;
       const deletedExports = await deleteReportExports(projectId);
       await deleteRowsByProjectFromSupabase(projectId);
+      try {
+        await deleteAnalysisCellsByProject(projectId);
+      } catch (analysisError) {
+        console.warn('Không thể xóa lớp dữ liệu phân tích AI theo dự án:', analysisError);
+      }
       await replaceAssignmentsInSupabase(projectId, []);
       const deletedDataFilePaths = await deleteDataFilesByProject(projectId);
       for (const storagePath of deletedDataFilePaths) {
@@ -774,6 +786,11 @@ export default function App() {
       const deletedDataRows = (Object.values(data).flat() as DataRow[]).filter((row) => row.templateId === template.id).length;
       const deletedExports = await deleteReportExportsByTemplate(template.id);
       await deleteRowsByTemplateFromSupabase(template.id);
+      try {
+        await deleteAnalysisCellsByTemplate(template.id);
+      } catch (analysisError) {
+        console.warn('Không thể xóa lớp dữ liệu phân tích AI theo biểu mẫu:', analysisError);
+      }
       await deleteTemplateFromSupabase(template.id);
 
       if (template.sourceWorkbookPath) {
@@ -824,6 +841,17 @@ export default function App() {
       });
       setData(organized);
       setDataFiles(refreshedDataFiles);
+      try {
+        await syncAnalysisCellsFromRows({
+          rows: refreshedRows,
+          templates,
+          projects,
+          units: allUnits,
+          dataFiles: refreshedDataFiles,
+        });
+      } catch (analysisError) {
+        console.warn('Không thể đồng bộ lớp dữ liệu phân tích AI sau khi nhập dữ liệu:', analysisError);
+      }
     } catch (error) {
       console.error('Import data error:', error);
     }
@@ -841,6 +869,11 @@ export default function App() {
         return 0;
       }
       await deleteRowsByUnitFromSupabase(currentProject.id, year, unitCode);
+      try {
+        await deleteAnalysisCellsByUnit(currentProject.id, year, unitCode);
+      } catch (analysisError) {
+        console.warn('Không thể xóa lớp dữ liệu phân tích AI theo đơn vị:', analysisError);
+      }
       const deletedDataFilePaths = await deleteDataFileByUnit(currentProject.id, year, unitCode);
       for (const storagePath of deletedDataFilePaths) {
         try {
@@ -881,6 +914,11 @@ export default function App() {
       }
 
       await deleteRowsByYearFromSupabase(currentProject.id, year);
+      try {
+        await deleteAnalysisCellsByYear(currentProject.id, year);
+      } catch (analysisError) {
+        console.warn('Không thể xóa lớp dữ liệu phân tích AI theo năm:', analysisError);
+      }
       const deletedDataFilePaths = await deleteDataFilesByYear(currentProject.id, year);
       for (const storagePath of deletedDataFilePaths) {
         try {

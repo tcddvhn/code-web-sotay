@@ -186,6 +186,29 @@ File chính:
 - `C:\CODE_APPWEB\src\components\UnitAssignments.tsx`
 - `C:\CODE_APPWEB\src\App.tsx`
 
+### 3.8. Phân tích AI
+
+Vai trò:
+
+- chọn nhiều dự án / năm / biểu / đơn vị để phân tích
+- tạo preview báo cáo AI
+- xuất `DOCX` chuẩn văn phòng
+
+Trạng thái hiện tại:
+
+- đã có UI preview trong app
+- chưa nối AI thật
+- chưa can thiệp luồng vận hành hiện tại
+
+File chính:
+
+- `C:\CODE_APPWEB\src\components\AIAnalysisView.tsx`
+- `C:\CODE_APPWEB\src\aiAnalysisStore.ts`
+
+SQL nền:
+
+- `C:\CODE_APPWEB\supabase\ai_analysis_setup.sql`
+
 ## 4. Luồng xử lý chính
 
 ### 4.1. Luồng tạo biểu mẫu
@@ -236,6 +259,16 @@ File chính:
    - dùng `Xuất toàn bộ biểu`
    - nếu là `Đảng bộ Thành phố`, dùng workbook mẫu làm nền
 
+### 4.5. Luồng phân tích AI (giai đoạn thiết kế)
+
+1. Người dùng vào `Phân tích AI`
+2. Chọn nhiều dự án / năm / phạm vi
+3. Chọn loại phân tích, giọng văn, độ dài
+4. Hệ thống sẽ dùng lớp dữ liệu phân tích riêng
+5. AI sinh JSON kết quả
+6. Hệ thống render preview
+7. Hệ thống xuất `DOCX`
+
 ## 5. Mô hình dữ liệu Supabase
 
 Các bảng chính:
@@ -250,6 +283,8 @@ Các bảng chính:
 - `consolidated_rows`
 - `data_files`
 - `report_exports`
+- `analysis_cells`
+- `ai_analysis_reports`
 
 SQL liên quan:
 
@@ -258,6 +293,7 @@ SQL liên quan:
 - `C:\CODE_APPWEB\supabase\report_rpc.sql`
 - `C:\CODE_APPWEB\supabase\rls_hardening.sql`
 - `C:\CODE_APPWEB\supabase\storage_setup.sql`
+- `C:\CODE_APPWEB\supabase\ai_analysis_setup.sql`
 - `C:\CODE_APPWEB\supabase\user_profiles_setup.sql`
 
 ## 6. Điểm nóng kỹ thuật cần tránh
@@ -345,3 +381,31 @@ Khi tiếp tục ở máy khác hoặc ở phiên khác:
 2. đọc tiếp `C:\CODE_APPWEB\docs\system-data-maintenance-log.md`
 3. rà file code đúng module sắp sửa
 4. chỉ sửa sau khi đã xác nhận phạm vi ảnh hưởng
+
+## 10. Tiến độ hiện tại của module Phân tích AI
+
+Đến mốc `2026-04-04`, module `Phân tích AI` đang ở trạng thái:
+
+- đã có UI riêng trong app
+- đã có bảng nền:
+  - `analysis_cells`
+  - `ai_analysis_reports`
+- đã có lớp service:
+  - `src/aiAnalysisStore.ts`
+- đã nối đồng bộ `analysis_cells` theo kiểu `best-effort` vào các luồng:
+  - nhập dữ liệu
+  - xóa theo đơn vị
+  - xóa theo năm
+  - xóa theo biểu
+  - xóa theo dự án
+- đã có RPC summary riêng cho AI trong:
+  - `supabase/ai_analysis_rpc.sql`
+- UI `Phân tích AI` đã đọc summary thật nếu RPC sẵn sàng, và fallback mềm về số liệu ước tính nếu chưa có
+
+Lưu ý vận hành:
+
+- Nếu `analysis_cells` hoặc RPC lỗi, không được làm hỏng các luồng `Tiếp nhận dữ liệu`, `Báo cáo`, `Dashboard`
+- Mọi chỗ đồng bộ `analysis_cells` hiện đều được bọc `try/catch` và chỉ log cảnh báo
+- Để khối summary trong `Phân tích AI` chạy dữ liệu thật, cần chạy đủ:
+  1. `supabase/ai_analysis_setup.sql`
+  2. `supabase/ai_analysis_rpc.sql`

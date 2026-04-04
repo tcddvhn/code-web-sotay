@@ -1,7 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bot, Download, FileText, History, Lightbulb, RefreshCcw, Sparkles } from 'lucide-react';
 import { FormTemplate, ManagedUnit, Project } from '../types';
 import { YEARS } from '../constants';
+import {
+  fetchAIAnalysisProjectSummary,
+  fetchAIAnalysisScopeSummary,
+  fetchAIAnalysisTemplateSummary,
+  listRecentAIAnalysisReports,
+} from '../aiAnalysisStore';
 
 type AnalysisScope = 'ALL' | 'BY_TEMPLATE' | 'BY_UNIT' | 'BY_PROJECT_COMPARE';
 type AnalysisType =
@@ -99,6 +105,36 @@ const MOCK_HISTORY = [
   },
 ];
 
+type ScopeSummary = {
+  project_count: number;
+  template_count: number;
+  unit_count: number;
+  cell_count: number;
+  total_value: number;
+  distinct_source_rows: number;
+} | null;
+
+type ProjectSummaryRow = {
+  project_id: string;
+  project_name: string;
+  unit_count: number;
+  template_count: number;
+  cell_count: number;
+  total_value: number;
+  avg_value: number;
+};
+
+type TemplateSummaryRow = {
+  template_id: string;
+  template_name: string;
+  project_id: string;
+  project_name: string;
+  unit_count: number;
+  cell_count: number;
+  total_value: number;
+  avg_value: number;
+};
+
 function toggleInArray<T>(items: T[], item: T) {
   return items.includes(item) ? items.filter((value) => value !== item) : [...items, item];
 }
@@ -133,6 +169,12 @@ export function AIAnalysisView({
     'Kiến nghị / đề xuất',
   ]);
   const [extraPrompt, setExtraPrompt] = useState('');
+  const [scopeSummary, setScopeSummary] = useState<ScopeSummary>(null);
+  const [projectSummary, setProjectSummary] = useState<ProjectSummaryRow[]>([]);
+  const [templateSummary, setTemplateSummary] = useState<TemplateSummaryRow[]>([]);
+  const [recentHistory, setRecentHistory] = useState(MOCK_HISTORY);
+  const [summaryError, setSummaryError] = useState('');
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 
   const relatedTemplates = useMemo(() => {
     if (selectedProjectIds.length === 0) {
@@ -152,12 +194,28 @@ export function AIAnalysisView({
     [relatedTemplates, selectedTemplateIds],
   );
 
+  const projectNameById = useMemo(
+    () => new Map(projects.map((project) => [project.id, project.name])),
+    [projects],
+  );
+
   const selectedUnits = useMemo(
     () => units.filter((unit) => selectedUnitCodes.includes(unit.code)),
     [selectedUnitCodes, units],
   );
 
   const summary = useMemo(() => {
+    if (scopeSummary) {
+      return {
+        projectCount: scopeSummary.project_count || 0,
+        templateCount: scopeSummary.template_count || 0,
+        unitCount: scopeSummary.unit_count || 0,
+        rowCount: scopeSummary.distinct_source_rows || 0,
+        cellCount: scopeSummary.cell_count || 0,
+        totalValue: scopeSummary.total_value || 0,
+      };
+    }
+
     const projectCount = selectedProjects.length;
     const templateCount =
       selectedScope === 'BY_TEMPLATE' ? selectedTemplates.length : relatedTemplates.length;
@@ -169,8 +227,95 @@ export function AIAnalysisView({
       templateCount,
       unitCount,
       rowCount: simulatedRows,
+      cellCount: simulatedRows * 8,
+      totalValue: 0,
     };
-  }, [relatedTemplates.length, selectedProjects.length, selectedScope, selectedTemplates.length, selectedUnits.length, units.length]);
+  }, [
+    relatedTemplates.length,
+    scopeSummary,
+    selectedProjects.length,
+    selectedScope,
+    selectedTemplates.length,
+    selectedUnits.length,
+    units.length,
+  ]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    if (selectedProjectIds.length === 0 || !selectedYear) {
+      setScopeSummary(null);
+      setProjectSummary([]);
+      setTemplateSummary([]);
+      setSummaryError('');
+      return undefined;
+    }
+
+    const loadSummary = async () => {
+      setIsSummaryLoading(true);
+      setSummaryError('');
+
+      try {
+        const params = {
+          projectIds: selectedProjectIds,
+          years: [selectedYear],
+          templateIds: selectedScope === 'BY_TEMPLATE' ? selectedTemplateIds : undefined,
+          unitCodes: selectedScope === 'BY_UNIT' ? selectedUnitCodes : undefined,
+        };
+
+        const [scope, projectsData, templatesData, history] = await Promise.all([
+          fetchAIAnalysisScopeSummary(params),
+          fetchAIAnalysisProjectSummary(params),
+          fetchAIAnalysisTemplateSummary(params),
+          listRecentAIAnalysisReports(10),
+        ]);
+
+        if (disposed) {
+          return;
+        }
+
+        setScopeSummary(scope as ScopeSummary);
+        setProjectSummary((projectsData || []) as ProjectSummaryRow[]);
+        setTemplateSummary((templatesData || []) as TemplateSummaryRow[]);
+        setRecentHistory(
+          (history || []).map((item, index) => ({
+            id: item.id || `history_fallback_${index}`,
+            name:
+              item.scopeSnapshot?.reportTitle?.toString() ||
+              `${item.analysisType} - ${item.years?.join(', ') || selectedYear}`,
+            createdAt: item.createdAt
+              ? new Date(item.createdAt).toLocaleString('vi-VN')
+              : 'Chưa rõ thời gian',
+            createdBy:
+              item.createdBy?.displayName ||
+              item.createdBy?.email ||
+              'Người dùng hệ thống',
+          })),
+        );
+      } catch (error) {
+        if (disposed) {
+          return;
+        }
+        console.warn('Không thể tải tổng hợp dữ liệu cho Phân tích AI:', error);
+        setScopeSummary(null);
+        setProjectSummary([]);
+        setTemplateSummary([]);
+        setSummaryError(
+          'Chưa lấy được dữ liệu phân tích thật. Giao diện đang hiển thị ước tính cho tới khi lớp summary sẵn sàng.',
+        );
+      } finally {
+        if (!disposed) {
+          setIsSummaryLoading(false);
+        }
+      }
+    };
+
+    void loadSummary();
+
+    return () => {
+      disposed = true;
+    };
+  }, [selectedProjectIds, selectedYear, selectedScope, selectedTemplateIds, selectedUnitCodes]);
 
   const canGenerate = selectedProjectIds.length > 0;
   const isLargeScope = summary.projectCount >= 4 || summary.templateCount >= 10 || summary.rowCount >= 5000;
@@ -308,6 +453,9 @@ export function AIAnalysisView({
               {selectedScope === 'BY_TEMPLATE' && (
                 <div className="panel-soft rounded-[24px] p-5">
                   <p className="col-header mb-3">Biểu mẫu</p>
+                  <p className="mb-4 text-sm text-[var(--ink-soft)]">
+                    Hệ thống đang gom toàn bộ biểu mẫu thuộc các dự án đã chọn để bạn lọc đúng phạm vi cần phân tích.
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {relatedTemplates.map((template) => {
                       const isSelected = selectedTemplateIds.includes(template.id);
@@ -321,8 +469,12 @@ export function AIAnalysisView({
                               ? 'border-[var(--primary-dark)] bg-[rgba(179,15,20,0.08)] text-[var(--primary-dark)]'
                               : 'border-[var(--line)] bg-white text-[var(--ink-soft)]'
                           }`}
+                          title={`${template.name} • ${projectNameById.get(template.projectId) || 'Dự án không xác định'}`}
                         >
                           {template.name}
+                          <span className="ml-2 normal-case tracking-normal text-[11px] font-semibold opacity-80">
+                            ({projectNameById.get(template.projectId) || 'Dự án'})
+                          </span>
                         </button>
                       );
                     })}
@@ -358,12 +510,22 @@ export function AIAnalysisView({
 
             <aside className="panel-soft rounded-[24px] p-5">
               <p className="col-header">Tóm tắt phạm vi</p>
+              {isSummaryLoading && (
+                <p className="mt-3 text-xs font-semibold text-[var(--ink-soft)]">Đang tổng hợp dữ liệu thật...</p>
+              )}
+              {summaryError && (
+                <p className="mt-3 text-xs font-semibold text-[var(--primary-dark)]">{summaryError}</p>
+              )}
               <div className="mt-4 space-y-2 text-sm text-[var(--ink)]">
                 <p>- Dự án đã chọn: <span className="font-bold">{summary.projectCount}</span></p>
                 <p>- Năm phân tích: <span className="font-bold">{selectedYear}</span></p>
                 <p>- Biểu mẫu liên quan: <span className="font-bold">{summary.templateCount}</span></p>
                 <p>- Đơn vị có dữ liệu: <span className="font-bold">{summary.unitCount}</span></p>
                 <p>- Tổng số dòng tổng hợp ước tính: <span className="font-bold">{summary.rowCount.toLocaleString('vi-VN')}</span></p>
+                <p>- Tổng số ô dữ liệu: <span className="font-bold">{summary.cellCount.toLocaleString('vi-VN')}</span></p>
+                {summary.totalValue > 0 && (
+                  <p>- Tổng giá trị cộng dồn: <span className="font-bold">{summary.totalValue.toLocaleString('vi-VN')}</span></p>
+                )}
               </div>
 
               {selectedProjects.length > 0 && (
@@ -538,7 +700,7 @@ export function AIAnalysisView({
                 <h3 className="section-title text-[1.05rem]">Lịch sử báo cáo gần đây</h3>
               </div>
               <div className="mt-4 space-y-3">
-                {MOCK_HISTORY.map((item) => (
+                {recentHistory.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
                     <p className="text-sm font-semibold text-[var(--ink)]">{item.name}</p>
                     <p className="mt-1 text-xs text-[var(--ink-soft)]">
@@ -580,7 +742,48 @@ export function AIAnalysisView({
               <p>- Năm phân tích: <span className="font-semibold">{selectedYear}</span></p>
               <p>- Biểu mẫu liên quan: <span className="font-semibold">{summary.templateCount}</span></p>
               <p>- Đơn vị có dữ liệu: <span className="font-semibold">{summary.unitCount}</span></p>
+              <p>- Tổng số dòng tổng hợp: <span className="font-semibold">{summary.rowCount.toLocaleString('vi-VN')}</span></p>
             </div>
+
+            {projectSummary.length > 0 && (
+              <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                <h4 className="text-lg font-black text-[var(--primary-dark)]">Tổng hợp theo dự án</h4>
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {projectSummary.map((item) => (
+                    <div key={item.project_id} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                      <p className="text-sm font-bold text-[var(--ink)]">{item.project_name}</p>
+                      <div className="mt-2 space-y-1 text-xs text-[var(--ink-soft)]">
+                        <p>- Đơn vị có dữ liệu: <span className="font-semibold text-[var(--ink)]">{item.unit_count}</span></p>
+                        <p>- Biểu mẫu có dữ liệu: <span className="font-semibold text-[var(--ink)]">{item.template_count}</span></p>
+                        <p>- Ô dữ liệu: <span className="font-semibold text-[var(--ink)]">{Number(item.cell_count || 0).toLocaleString('vi-VN')}</span></p>
+                        <p>- Tổng giá trị: <span className="font-semibold text-[var(--ink)]">{Number(item.total_value || 0).toLocaleString('vi-VN')}</span></p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {selectedScope === 'BY_TEMPLATE' && templateSummary.length > 0 && (
+              <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                <h4 className="text-lg font-black text-[var(--primary-dark)]">Tổng hợp theo biểu</h4>
+                <div className="mt-4 space-y-3">
+                  {templateSummary.map((item) => (
+                    <div key={`${item.project_id}_${item.template_id}`} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                      <p className="text-sm font-bold text-[var(--ink)]">
+                        {item.template_name}
+                        <span className="ml-2 text-xs font-semibold text-[var(--ink-soft)]">({item.project_name})</span>
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-3 text-xs text-[var(--ink-soft)]">
+                        <span>Đơn vị: <strong className="text-[var(--ink)]">{item.unit_count}</strong></span>
+                        <span>Ô dữ liệu: <strong className="text-[var(--ink)]">{Number(item.cell_count || 0).toLocaleString('vi-VN')}</strong></span>
+                        <span>Tổng giá trị: <strong className="text-[var(--ink)]">{Number(item.total_value || 0).toLocaleString('vi-VN')}</strong></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <div className="mt-6 space-y-5">
               {MOCK_PREVIEW_SECTIONS.map((section) => (
