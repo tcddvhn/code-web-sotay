@@ -534,6 +534,12 @@ export function AIAnalysisView({
       const aiOutput = await generateAIAnalysisOutput({
         apiKey: resolvedGeminiApiKey,
         input: aiInput,
+        onProgress: ({ label, percent }) => {
+          setProgressLabel(label);
+          if (typeof percent === 'number') {
+            setProgressPercent(percent);
+          }
+        },
       });
 
       setProgressPercent(92);
@@ -599,9 +605,15 @@ export function AIAnalysisView({
       }, 350);
     } catch (error) {
       console.error('AI analysis generation error:', error);
-      setGenerationError(error instanceof Error ? error.message : 'Không thể tạo phân tích AI.');
+      setGenerationError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể tạo phân tích AI. Vui lòng thử lại sau.',
+      );
       setProgressPercent(100);
-      setProgressLabel('Tạo phân tích AI không thành công');
+      setProgressLabel(
+        error instanceof Error ? error.message : 'Tạo phân tích AI không thành công',
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -1626,7 +1638,9 @@ export function AIAnalysisView({
           <div className="absolute left-1/2 top-1/2 w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-[var(--line)] bg-white px-6 py-6 shadow-[0_24px_90px_rgba(15,23,42,0.28)]">
             <p className="col-header">Đang tạo báo cáo AI</p>
             <h3 className="section-title mt-2">Hệ thống đang xử lý yêu cầu của bạn</h3>
-            <p className="mt-3 text-sm text-[var(--ink-soft)]">{progressLabel}</p>
+            <p className={`mt-3 text-sm ${generationError ? 'font-semibold text-[var(--primary-dark)]' : 'text-[var(--ink-soft)]'}`}>
+              {progressLabel}
+            </p>
             <div className="mt-5 h-4 overflow-hidden rounded-full bg-[var(--surface-soft)]">
               <div
                 className="h-full rounded-full bg-[linear-gradient(90deg,#b30f14_0%,#d97706_100%)] transition-all duration-500"
@@ -1641,6 +1655,31 @@ export function AIAnalysisView({
               <p className="mt-4 text-xs text-[var(--primary-dark)]">
                 Chế độ chi tiết 132 đơn vị cần nhiều thời gian hơn do phải đồng bộ và phân tích sâu theo từng đơn vị.
               </p>
+            )}
+            {!isGenerating && (
+              <div className="mt-5 flex flex-wrap justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProgressOpen(false);
+                    setProgressLabel('Sẵn sàng tạo phân tích AI');
+                    setProgressPercent(0);
+                  }}
+                  className="secondary-btn px-4 py-2 text-[11px]"
+                >
+                  Đóng
+                </button>
+                {generationError && (
+                  <button
+                    type="button"
+                    onClick={() => void handleGenerate()}
+                    disabled={!canGenerate}
+                    className="primary-btn px-4 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Thử lại
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

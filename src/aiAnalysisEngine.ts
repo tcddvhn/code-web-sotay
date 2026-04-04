@@ -46,6 +46,11 @@ export type AIAnalysisOutput = {
   appendixTables: { title: string; headers: string[]; rows: string[][] }[];
 };
 
+type AIGenerationProgress = {
+  label: string;
+  percent?: number;
+};
+
 function toFiniteNumber(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -57,6 +62,46 @@ function inferPreviousYear(year: string) {
     return null;
   }
   return String(numericYear - 1);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function parseRetryDelayMs(error: unknown) {
+  if (!(error instanceof Error)) {
+    return 6000;
+  }
+
+  const retryMatch = error.message.match(/retry in ([\d.]+)s/i);
+  if (retryMatch) {
+    return Math.max(1500, Math.ceil(Number(retryMatch[1]) * 1000));
+  }
+
+  const detailMatch = error.message.match(/"retryDelay":"(\d+)s"/i);
+  if (detailMatch) {
+    return Math.max(1500, Number(detailMatch[1]) * 1000);
+  }
+
+  return 6000;
+}
+
+function isTransientGeminiError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toUpperCase();
+  return (
+    message.includes('503') ||
+    message.includes('UNAVAILABLE') ||
+    message.includes('HIGH DEMAND') ||
+    message.includes('RESOURCE_EXHAUSTED') ||
+    message.includes('429') ||
+    message.includes('OVERLOAD')
+  );
 }
 
 function deriveAnomalies(cells: AnalysisCellRecord[]) {
@@ -246,9 +291,11 @@ export async function buildAIAnalysisInput(params: AIAnalysisBuildParams) {
 export async function generateAIAnalysisOutput({
   apiKey,
   input,
+  onProgress,
 }: {
   apiKey: string;
   input: Record<string, unknown>;
+  onProgress?: (progress: AIGenerationProgress) => void;
 }) {
   if (!apiKey.trim()) {
     throw new Error('Chưa có khóa Gemini để tạo phân tích AI.');
@@ -269,71 +316,139 @@ export async function generateAIAnalysisOutput({
     JSON.stringify(input, null, 2),
   ].join('\n');
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          executiveSummary: { type: Type.STRING },
-          keyFindings: { type: Type.ARRAY, items: { type: Type.STRING } },
-          projectHighlights: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                projectName: { type: Type.STRING },
-                summary: { type: Type.STRING },
-              },
-              required: ['projectName', 'summary'],
+  const responseConfig = {
+    responseMimeType: 'application/json',
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING },
+        executiveSummary: { type: Type.STRING },
+        keyFindings: { type: Type.ARRAY, items: { type: Type.STRING } },
+        projectHighlights: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              projectName: { type: Type.STRING },
+              summary: { type: Type.STRING },
             },
-          },
-          riskItems: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                detail: { type: Type.STRING },
-              },
-              required: ['title', 'detail'],
-            },
-          },
-          recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-          appendixTables: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                headers: { type: Type.ARRAY, items: { type: Type.STRING } },
-                rows: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                  },
-                },
-              },
-              required: ['title', 'headers', 'rows'],
-            },
+            required: ['projectName', 'summary'],
           },
         },
-        required: [
-          'title',
-          'executiveSummary',
-          'keyFindings',
-          'projectHighlights',
-          'riskItems',
-          'recommendations',
-          'appendixTables',
-        ],
+        riskItems: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              detail: { type: Type.STRING },
+            },
+            required: ['title', 'detail'],
+          },
+        },
+        recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+        appendixTables: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              headers: { type: Type.ARRAY, items: { type: Type.STRING } },
+              rows: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                },
+              },
+            },
+            required: ['title', 'headers', 'rows'],
+          },
+        },
       },
+      required: [
+        'title',
+        'executiveSummary',
+        'keyFindings',
+        'projectHighlights',
+        'riskItems',
+        'recommendations',
+        'appendixTables',
+      ],
     },
-  });
+  };
 
-  return JSON.parse(response.text) as AIAnalysisOutput;
+  const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
+  let lastError: unknown = null;
+
+  for (let modelIndex = 0; modelIndex < candidateModels.length; modelIndex += 1) {
+    const model = candidateModels[modelIndex]!;
+    onProgress?.({
+      label:
+        modelIndex === 0
+          ? 'Đang gọi Gemini để soạn báo cáo'
+          : `Đang chuyển sang model dự phòng ${model}`,
+      percent: 80 + modelIndex * 5,
+    });
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: responseConfig,
+        });
+
+        if (!response.text?.trim()) {
+          throw new Error('Gemini không trả về nội dung báo cáo.');
+        }
+
+        onProgress?.({
+          label: `Đã nhận phản hồi từ ${model}, đang hoàn thiện báo cáo`,
+          percent: 94,
+        });
+        return JSON.parse(response.text) as AIAnalysisOutput;
+      } catch (error) {
+        lastError = error;
+
+        if (!isTransientGeminiError(error)) {
+          throw error;
+        }
+
+        const isLastAttemptOnModel = attempt === 2;
+        const isLastModel = modelIndex === candidateModels.length - 1;
+
+        if (isLastAttemptOnModel && isLastModel) {
+          break;
+        }
+
+        if (isLastAttemptOnModel) {
+          onProgress?.({
+            label: `${model} đang quá tải, chuyển sang model dự phòng tiếp theo`,
+            percent: 84 + modelIndex * 5,
+          });
+          break;
+        }
+
+        const retryDelayMs = parseRetryDelayMs(error);
+        onProgress?.({
+          label: `${model} đang quá tải, chờ ${Math.ceil(retryDelayMs / 1000)} giây để thử lại lần ${attempt + 2}`,
+          percent: 82 + modelIndex * 5,
+        });
+        await sleep(retryDelayMs);
+      }
+    }
+  }
+
+  if (isTransientGeminiError(lastError)) {
+    throw new Error(
+      'Gemini đang quá tải tạm thời (503/UNAVAILABLE). Hệ thống đã tự thử lại và chuyển model dự phòng nhưng vẫn chưa thành công. Vui lòng thử lại sau ít phút.',
+    );
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+
+  throw new Error('Không thể tạo phân tích AI do chưa nhận được phản hồi hợp lệ từ Gemini.');
 }
