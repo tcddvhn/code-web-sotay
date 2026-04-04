@@ -23,6 +23,7 @@ export type AIAnalysisBuildParams = {
   projectIds: string[];
   year: string;
   scope: AIAnalysisScope;
+  analysisLevel?: 'CITY' | 'UNITS';
   selectedTemplateIds?: string[];
   selectedUnitCodes?: string[];
   analysisType: AIAnalysisType;
@@ -154,9 +155,10 @@ export async function buildAIAnalysisInput(params: AIAnalysisBuildParams) {
   };
 
   const shouldReadScopedCells =
+    params.analysisLevel === 'UNITS' &&
     params.analysisType === 'ANOMALY' ||
-    params.analysisType === 'FULL' ||
-    params.requestedSections.includes('Đơn vị chậm cập nhật');
+    (params.analysisLevel === 'UNITS' && params.analysisType === 'FULL') ||
+    (params.analysisLevel === 'UNITS' && params.requestedSections.includes('Đơn vị chậm cập nhật'));
 
   const [scopeSummary, projectSummary, templateSummary, scopedCells] = await Promise.all([
     fetchAIAnalysisScopeSummary(rpcParams),
@@ -223,6 +225,7 @@ export async function buildAIAnalysisInput(params: AIAnalysisBuildParams) {
         .filter((unit) => (params.selectedUnitCodes || []).includes(unit.code))
         .map((unit) => unit.name),
       analysisType: params.analysisType,
+      analysisLevel: params.analysisLevel || 'CITY',
       writingTone: params.writingTone,
       reportLength: params.reportLength,
       requestedSections: params.requestedSections,

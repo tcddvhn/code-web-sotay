@@ -24,6 +24,7 @@ import { uploadFile } from '../supabase';
 import { buildDocxBlob } from '../utils/docxExport';
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
+const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
 
 const ANALYSIS_TYPE_OPTIONS: { value: AIAnalysisType; label: string }[] = [
   { value: 'QUICK', label: 'Tóm tắt nhanh' },
@@ -185,6 +186,7 @@ export function AIAnalysisView({
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState(YEARS[0] || '2026');
   const [selectedScope, setSelectedScope] = useState<AIAnalysisScope>('ALL');
+  const [analysisLevel, setAnalysisLevel] = useState<'CITY' | 'UNITS'>('CITY');
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
   const [selectedUnitCodes, setSelectedUnitCodes] = useState<string[]>([]);
   const [analysisType, setAnalysisType] = useState<AIAnalysisType>('FULL');
@@ -216,6 +218,9 @@ export function AIAnalysisView({
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [docxNotice, setDocxNotice] = useState('');
+  const [isProgressOpen, setIsProgressOpen] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [progressLabel, setProgressLabel] = useState('Sẵn sàng tạo phân tích AI');
   const previewSectionRef = useRef<HTMLDivElement | null>(null);
 
   const configuredGeminiApiKey = ((import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined) || '';
@@ -283,12 +288,20 @@ export function AIAnalysisView({
     });
   }, [dataFiles, selectedProjectIds, selectedScope, selectedUnitCodes, selectedYear]);
 
+  const scopedRowsForAI = useMemo(() => {
+    if (analysisLevel === 'CITY') {
+      return [];
+    }
+    return scopedOperationalRows;
+  }, [analysisLevel, scopedOperationalRows]);
+
   const operationalScopeSummary = useMemo<ScopeSummary>(() => {
-    const projectIds = new Set(scopedOperationalRows.map((row) => row.projectId));
-    const templateIds = new Set(scopedOperationalRows.map((row) => row.templateId));
-    const unitCodes = new Set(scopedOperationalRows.map((row) => row.unitCode));
-    const cellCount = scopedOperationalRows.reduce((sum, row) => sum + row.values.length, 0);
-    const totalValue = scopedOperationalRows.reduce(
+    const rowsForSummary = analysisLevel === 'CITY' ? scopedOperationalRows : scopedRowsForAI;
+    const projectIds = new Set(rowsForSummary.map((row) => row.projectId));
+    const templateIds = new Set(rowsForSummary.map((row) => row.templateId));
+    const unitCodes = new Set(rowsForSummary.map((row) => row.unitCode));
+    const cellCount = rowsForSummary.reduce((sum, row) => sum + row.values.length, 0);
+    const totalValue = rowsForSummary.reduce(
       (sum, row) => sum + row.values.reduce((rowSum, value) => rowSum + (Number(value) || 0), 0),
       0,
     );
@@ -299,15 +312,21 @@ export function AIAnalysisView({
       unit_count: unitCodes.size,
       cell_count: cellCount,
       total_value: totalValue,
-      distinct_source_rows: scopedOperationalRows.length,
+      distinct_source_rows: rowsForSummary.length,
     };
-  }, [scopedOperationalRows]);
+  }, [analysisLevel, scopedOperationalRows, scopedRowsForAI]);
 
   useEffect(() => {
     setSelectedTemplateIds((current) =>
       current.filter((templateId) => relatedTemplates.some((template) => template.id === templateId)),
     );
   }, [relatedTemplates]);
+
+  useEffect(() => {
+    if (analysisLevel === 'CITY' && selectedScope === 'BY_UNIT') {
+      setSelectedScope('ALL');
+    }
+  }, [analysisLevel, selectedScope]);
 
   const summary = useMemo(() => {
     const effectiveSummary =
@@ -459,11 +478,16 @@ export function AIAnalysisView({
 
     setIsGenerating(true);
     setGenerationError('');
+    setIsProgressOpen(true);
+    setProgressPercent(8);
+    setProgressLabel('Đang kiểm tra phạm vi phân tích');
 
     try {
-      if (scopedOperationalRows.length > 0) {
+      if (analysisLevel === 'UNITS' && scopedRowsForAI.length > 0) {
+        setProgressPercent(28);
+        setProgressLabel('Đang đồng bộ dữ liệu chi tiết 132 đơn vị');
         await syncAnalysisCellsFromRows({
-          rows: scopedOperationalRows,
+          rows: scopedRowsForAI,
           templates,
           projects,
           units,
@@ -476,14 +500,23 @@ export function AIAnalysisView({
           ? selectedTemplateIds
           : Array.from(new Set(scopedOperationalRows.map((row) => row.templateId)));
       const syncedUnitCodes =
-        selectedScope === 'BY_UNIT'
+        analysisLevel === 'UNITS' && selectedScope === 'BY_UNIT'
           ? selectedUnitCodes
-          : Array.from(new Set(scopedOperationalRows.map((row) => row.unitCode)));
+          : analysisLevel === 'UNITS'
+            ? Array.from(new Set(scopedRowsForAI.map((row) => row.unitCode)))
+            : [TOTAL_REPORT_UNIT_CODE];
 
+      setProgressPercent(52);
+      setProgressLabel(
+        analysisLevel === 'CITY'
+          ? 'Đang tổng hợp dữ liệu cấp Đảng bộ Thành phố'
+          : 'Đang chuẩn bị dữ liệu phân tích chi tiết',
+      );
       const aiInput = await buildAIAnalysisInput({
         projectIds: selectedProjectIds,
         year: selectedYear,
         scope: selectedScope,
+        analysisLevel,
         selectedTemplateIds: syncedTemplateIds,
         selectedUnitCodes: syncedUnitCodes,
         analysisType,
@@ -496,11 +529,15 @@ export function AIAnalysisView({
         units,
       });
 
+      setProgressPercent(78);
+      setProgressLabel('Đang gọi Gemini để soạn báo cáo');
       const aiOutput = await generateAIAnalysisOutput({
         apiKey: resolvedGeminiApiKey,
         input: aiInput,
       });
 
+      setProgressPercent(92);
+      setProgressLabel('Đang lưu lịch sử và mở trình soạn thảo');
       setAIInputSnapshot(aiInput);
       setAnalysisResult(aiOutput);
       setDocxNotice('');
@@ -527,6 +564,7 @@ export function AIAnalysisView({
             projectNames: selectedProjects.map((project) => project.name),
             year: selectedYear,
             scope: selectedScope,
+            analysisLevel,
           },
           aiInput,
           aiOutput,
@@ -554,9 +592,16 @@ export function AIAnalysisView({
         console.warn('Không thể lưu lịch sử báo cáo AI:', historyError);
         setActiveReportId(null);
       }
+      setProgressPercent(100);
+      setProgressLabel('Đã tạo xong báo cáo AI');
+      window.setTimeout(() => {
+        setIsProgressOpen(false);
+      }, 350);
     } catch (error) {
       console.error('AI analysis generation error:', error);
       setGenerationError(error instanceof Error ? error.message : 'Không thể tạo phân tích AI.');
+      setProgressPercent(100);
+      setProgressLabel('Tạo phân tích AI không thành công');
     } finally {
       setIsGenerating(false);
     }
@@ -780,17 +825,64 @@ export function AIAnalysisView({
                       <button
                         key={option.value}
                         type="button"
+                        disabled={analysisLevel === 'CITY' && option.value === 'BY_UNIT'}
                         onClick={() => setSelectedScope(option.value)}
                         className={`rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] transition-all ${
                           selectedScope === option.value
                             ? 'border-[var(--primary-dark)] bg-[rgba(179,15,20,0.08)] text-[var(--primary-dark)]'
                             : 'border-[var(--line)] bg-white text-[var(--ink-soft)]'
-                        }`}
+                        } disabled:cursor-not-allowed disabled:opacity-40`}
                       >
                         {option.label}
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div className="panel-soft rounded-[24px] p-5">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="col-header">Tầng phân tích</p>
+                    <p className="mt-2 text-sm text-[var(--ink-soft)]">
+                      Mặc định phân tích ở mức <strong>Đảng bộ Thành phố</strong> để báo cáo lên nhanh hơn.
+                    </p>
+                  </div>
+                  {analysisLevel === 'UNITS' && (
+                    <div className="rounded-full border border-[rgba(179,15,20,0.18)] bg-[rgba(179,15,20,0.08)] px-4 py-2 text-xs font-semibold text-[var(--primary-dark)]">
+                      Chế độ 132 đơn vị sẽ mất nhiều thời gian hơn
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAnalysisLevel('CITY')}
+                    className={`rounded-[18px] border px-4 py-3 text-left transition-all ${
+                      analysisLevel === 'CITY'
+                        ? 'border-[var(--primary-dark)] bg-[rgba(179,15,20,0.08)]'
+                        : 'border-[var(--line)] bg-white'
+                    }`}
+                  >
+                    <p className="text-sm font-bold text-[var(--ink)]">Phân tích cấp Đảng bộ Thành phố</p>
+                    <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                      Dùng tầng tổng hợp toàn cục, nhẹ và nhanh hơn.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalysisLevel('UNITS')}
+                    className={`rounded-[18px] border px-4 py-3 text-left transition-all ${
+                      analysisLevel === 'UNITS'
+                        ? 'border-[var(--primary-dark)] bg-[rgba(179,15,20,0.08)]'
+                        : 'border-[var(--line)] bg-white'
+                    }`}
+                  >
+                    <p className="text-sm font-bold text-[var(--ink)]">Phân tích chi tiết 132 đơn vị</p>
+                    <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                      Phân tích sâu theo đơn vị, chi tiết hơn nhưng chậm hơn.
+                    </p>
+                  </button>
                 </div>
               </div>
 
@@ -861,6 +953,7 @@ export function AIAnalysisView({
                 <p className="mt-3 text-xs font-semibold text-[var(--primary-dark)]">{summaryError}</p>
               )}
               <div className="mt-4 space-y-2 text-sm text-[var(--ink)]">
+                <p>- Tầng phân tích: <span className="font-bold">{analysisLevel === 'CITY' ? 'Đảng bộ Thành phố' : '132 đơn vị'}</span></p>
                 <p>- Dự án đang chọn: <span className="font-bold">{selectedProjects.length}</span></p>
                 <p>- Dự án có dữ liệu trong phạm vi: <span className="font-bold">{summary.projectCount}</span></p>
                 <p>- Năm phân tích: <span className="font-bold">{selectedYear}</span></p>
@@ -1502,6 +1595,7 @@ export function AIAnalysisView({
                 <aside className="border-l border-[var(--line)] bg-white/70 p-5">
                   <p className="col-header mb-4">Nguồn dữ liệu</p>
                   <div className="space-y-2 text-sm text-[var(--ink)]">
+                    <p>- Tầng phân tích: <span className="font-semibold">{analysisLevel === 'CITY' ? 'Đảng bộ Thành phố' : '132 đơn vị'}</span></p>
                     <p>- Dự án đang chọn: <span className="font-semibold">{selectedProjects.length}</span></p>
                     <p>- Dự án có dữ liệu: <span className="font-semibold">{summary.projectCount}</span></p>
                     <p>- Năm: <span className="font-semibold">{selectedYear}</span></p>
@@ -1523,6 +1617,31 @@ export function AIAnalysisView({
                 </aside>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isProgressOpen && (
+        <div className="fixed inset-0 z-[130] bg-[rgba(20,24,32,0.46)] backdrop-blur-sm">
+          <div className="absolute left-1/2 top-1/2 w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-[var(--line)] bg-white px-6 py-6 shadow-[0_24px_90px_rgba(15,23,42,0.28)]">
+            <p className="col-header">Đang tạo báo cáo AI</p>
+            <h3 className="section-title mt-2">Hệ thống đang xử lý yêu cầu của bạn</h3>
+            <p className="mt-3 text-sm text-[var(--ink-soft)]">{progressLabel}</p>
+            <div className="mt-5 h-4 overflow-hidden rounded-full bg-[var(--surface-soft)]">
+              <div
+                className="h-full rounded-full bg-[linear-gradient(90deg,#b30f14_0%,#d97706_100%)] transition-all duration-500"
+                style={{ width: `${Math.max(4, Math.min(100, progressPercent))}%` }}
+              />
+            </div>
+            <div className="mt-3 flex items-center justify-between text-sm font-semibold text-[var(--ink)]">
+              <span>Tiến trình</span>
+              <span>{Math.round(progressPercent)}%</span>
+            </div>
+            {analysisLevel === 'UNITS' && (
+              <p className="mt-4 text-xs text-[var(--primary-dark)]">
+                Chế độ chi tiết 132 đơn vị cần nhiều thời gian hơn do phải đồng bộ và phân tích sâu theo từng đơn vị.
+              </p>
+            )}
           </div>
         </div>
       )}
