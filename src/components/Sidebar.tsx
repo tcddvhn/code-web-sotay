@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   FileUp,
   FileText,
+  Sparkles,
   Settings,
   LogOut,
   LogIn,
@@ -48,6 +49,7 @@ export function Sidebar({
     ? baseMenu
     : [
         ...baseMenu,
+        { id: 'AI_ANALYSIS' as ViewMode, label: 'Phân tích AI', icon: Sparkles },
         ...(isAuthenticated
           ? [
               ...(isAdmin

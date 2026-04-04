@@ -13,6 +13,7 @@ import {
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ImportFiles } from './components/ImportFiles';
 import { ReportView } from './components/ReportView';
+import { AIAnalysisView } from './components/AIAnalysisView';
 import { Sidebar } from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
@@ -1184,6 +1185,7 @@ export default function App() {
             dataFiles={dataFiles}
             onOpenLogin={() => setCurrentView('LOGIN')}
             onLogout={handleLogout}
+            onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
           />
         );
       case 'PROJECTS':
@@ -1216,6 +1218,7 @@ export default function App() {
             dataFiles={dataFiles}
             onOpenLogin={() => setCurrentView('LOGIN')}
             onLogout={handleLogout}
+            onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
           />
         );
       case 'LEARN_FORM':
@@ -1244,6 +1247,7 @@ export default function App() {
             dataFiles={dataFiles}
             onOpenLogin={() => setCurrentView('LOGIN')}
             onLogout={handleLogout}
+            onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
           />
         );
       case 'IMPORT':
@@ -1283,6 +1287,7 @@ export default function App() {
             dataFiles={dataFiles}
             onOpenLogin={() => setCurrentView('LOGIN')}
             onLogout={handleLogout}
+            onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
           />
         );
       case 'REPORTS':
@@ -1296,6 +1301,14 @@ export default function App() {
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             currentUser={effectiveUserProfile}
+          />
+        );
+      case 'AI_ANALYSIS':
+        return (
+          <AIAnalysisView
+            projects={projects}
+            templates={templates}
+            units={availableUnitsForProject}
           />
         );
       case 'SETTINGS':
@@ -1317,6 +1330,7 @@ export default function App() {
               dataFiles={dataFiles}
               onOpenLogin={() => setCurrentView('LOGIN')}
               onLogout={handleLogout}
+              onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
             />
           );
         }
@@ -1785,6 +1799,7 @@ function DashboardOverview({
   onSaveAssignments,
   onOpenLogin,
   onLogout,
+  onOpenAIAnalysis,
 }: {
   data: ConsolidatedData;
   dataFiles: DataFileRecordSummary[];
@@ -1801,6 +1816,7 @@ function DashboardOverview({
   onSaveAssignments: (assigneeKey: string, unitCodes: string[]) => Promise<void>;
   onOpenLogin: () => void;
   onLogout: () => Promise<void>;
+  onOpenAIAnalysis: () => void;
 }) {
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isLoginPromptOpen, setIsLoginPromptOpen] = useState(false);
@@ -2062,6 +2078,20 @@ function DashboardOverview({
           <p className="text-xs leading-5 text-[var(--ink-soft)]">
             {selectedProject ? selectedProject.description || DEFAULT_PROJECT_NAME : DEFAULT_PROJECT_NAME}
           </p>
+        </div>
+      </div>
+
+      <div className="mt-6 panel-card rounded-[24px] p-5 md:hidden">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="section-title text-base">Phân tích AI</h3>
+            <p className="page-subtitle mt-2 text-sm">
+              Mở module phân tích nhiều dự án, xem trước nội dung báo cáo và chuẩn bị xuất DOCX.
+            </p>
+          </div>
+          <button type="button" onClick={onOpenAIAnalysis} className="primary-btn px-4 py-3 text-[11px]">
+            Mở
+          </button>
         </div>
       </div>
 

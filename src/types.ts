@@ -58,6 +58,7 @@ export interface ConsolidatedData {
 export type ViewMode =
   | 'IMPORT'
   | 'REPORTS'
+  | 'AI_ANALYSIS'
   | 'SETTINGS'
   | 'DASHBOARD'
   | 'LOGIN'
