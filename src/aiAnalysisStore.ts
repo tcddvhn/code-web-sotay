@@ -1,5 +1,9 @@
 import { supabase } from './supabase';
 import { DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, Project } from './types';
+import {
+  listDataFilesByProject as listDataFilesByProjectFromSupabase,
+  listRowsByProject as listRowsByProjectFromSupabase,
+} from './supabaseStore';
 
 export interface AnalysisCellRecord {
   id: string;
@@ -276,6 +280,109 @@ export async function syncAnalysisCellsFromRows(params: {
   return cells.length;
 }
 
+export async function backfillAnalysisCellsForScope(params: {
+  projectIds: string[];
+  years: string[];
+  templateIds?: string[];
+  unitCodes?: string[];
+  templates: FormTemplate[];
+  projects: Project[];
+  units: ManagedUnit[];
+}) {
+  const allRows: DataRow[] = [];
+  const allFiles: DataFileRecordSummary[] = [];
+
+  for (const projectId of params.projectIds) {
+    const [rows, files] = await Promise.all([
+      listRowsByProjectFromSupabase(projectId),
+      listDataFilesByProjectFromSupabase(projectId),
+    ]);
+
+    const filteredRows = rows.filter((row) => {
+      if (params.years.length > 0 && !params.years.includes(row.year)) {
+        return false;
+      }
+      if (params.templateIds && params.templateIds.length > 0 && !params.templateIds.includes(row.templateId)) {
+        return false;
+      }
+      if (params.unitCodes && params.unitCodes.length > 0 && !params.unitCodes.includes(row.unitCode)) {
+        return false;
+      }
+      return true;
+    });
+
+    const filteredFiles = files.filter((file) => {
+      if (params.years.length > 0 && !params.years.includes(file.year)) {
+        return false;
+      }
+      if (params.unitCodes && params.unitCodes.length > 0 && !params.unitCodes.includes(file.unitCode)) {
+        return false;
+      }
+      return true;
+    });
+
+    allRows.push(...filteredRows);
+    allFiles.push(...filteredFiles);
+  }
+
+  if (allRows.length === 0) {
+    return 0;
+  }
+
+  return syncAnalysisCellsFromRows({
+    rows: allRows,
+    templates: params.templates,
+    projects: params.projects,
+    units: params.units,
+    dataFiles: allFiles,
+  });
+}
+
+export async function fetchOperationalScopeSummary(params: {
+  projectIds: string[];
+  years: string[];
+  templateIds?: string[];
+  unitCodes?: string[];
+}) {
+  const allRows: DataRow[] = [];
+
+  for (const projectId of params.projectIds) {
+    const rows = await listRowsByProjectFromSupabase(projectId);
+    allRows.push(...rows);
+  }
+
+  const filteredRows = allRows.filter((row) => {
+    if (params.years.length > 0 && !params.years.includes(row.year)) {
+      return false;
+    }
+    if (params.templateIds && params.templateIds.length > 0 && !params.templateIds.includes(row.templateId)) {
+      return false;
+    }
+    if (params.unitCodes && params.unitCodes.length > 0 && !params.unitCodes.includes(row.unitCode)) {
+      return false;
+    }
+    return true;
+  });
+
+  const projectIds = new Set(filteredRows.map((row) => row.projectId));
+  const templateIds = new Set(filteredRows.map((row) => row.templateId));
+  const unitCodes = new Set(filteredRows.map((row) => row.unitCode));
+  const cellCount = filteredRows.reduce((sum, row) => sum + row.values.length, 0);
+  const totalValue = filteredRows.reduce(
+    (sum, row) => sum + row.values.reduce((rowSum, value) => rowSum + normalizeValue(value), 0),
+    0,
+  );
+
+  return {
+    project_count: projectIds.size,
+    template_count: templateIds.size,
+    unit_count: unitCodes.size,
+    cell_count: cellCount,
+    total_value: totalValue,
+    distinct_source_rows: filteredRows.length,
+  };
+}
+
 export async function listAnalysisCellsByScope({
   projectIds,
   years,
@@ -388,6 +495,35 @@ export async function createAIAnalysisReport(record: AIAnalysisReportRecord) {
 
   if (error) {
     throw new Error(error.message || 'Không thể lưu lịch sử báo cáo phân tích AI.');
+  }
+
+  return mapAIAnalysisReport(data as SupabaseAIAnalysisReportRow);
+}
+
+export async function updateAIAnalysisReport(
+  reportId: string,
+  patch: Partial<AIAnalysisReportRecord>,
+) {
+  const payload: Record<string, unknown> = {};
+
+  if (patch.aiOutput !== undefined) payload.ai_output = patch.aiOutput;
+  if (patch.docxFileName !== undefined) payload.docx_file_name = patch.docxFileName;
+  if (patch.docxStoragePath !== undefined) payload.docx_storage_path = patch.docxStoragePath;
+  if (patch.docxDownloadUrl !== undefined) payload.docx_download_url = patch.docxDownloadUrl;
+  if (patch.status !== undefined) payload.status = patch.status;
+  if (patch.scopeSnapshot !== undefined) payload.scope_snapshot = patch.scopeSnapshot;
+  if (patch.aiInput !== undefined) payload.ai_input = patch.aiInput;
+  if (patch.extraPrompt !== undefined) payload.extra_prompt = patch.extraPrompt;
+
+  const { data, error } = await supabase
+    .from('ai_analysis_reports')
+    .update(payload)
+    .eq('id', reportId)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw new Error(error.message || 'Không thể cập nhật lịch sử báo cáo phân tích AI.');
   }
 
   return mapAIAnalysisReport(data as SupabaseAIAnalysisReportRow);

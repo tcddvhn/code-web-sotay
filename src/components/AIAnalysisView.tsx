@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Download, FileText, History, Lightbulb, RefreshCcw, Sparkles } from 'lucide-react';
+import { Bot, Download, FileText, History, Lightbulb, RefreshCcw, Sparkles, X } from 'lucide-react';
 import { FormTemplate, ManagedUnit, Project } from '../types';
 import { YEARS } from '../constants';
 import {
+  backfillAnalysisCellsForScope,
   createAIAnalysisReport,
   fetchAIAnalysisProjectSummary,
+  fetchOperationalScopeSummary,
   fetchAIAnalysisScopeSummary,
   fetchAIAnalysisTemplateSummary,
   listRecentAIAnalysisReports,
+  updateAIAnalysisReport,
 } from '../aiAnalysisStore';
 import {
   AIAnalysisOutput,
@@ -18,6 +21,8 @@ import {
   buildAIAnalysisInput,
   generateAIAnalysisOutput,
 } from '../aiAnalysisEngine';
+import { uploadFile } from '../supabase';
+import { buildDocxBlob } from '../utils/docxExport';
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
 
@@ -136,6 +141,20 @@ type TemplateSummaryRow = {
   avg_value: number;
 };
 
+function slugifyFileName(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[^\w\s-]+/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 120);
+}
+
+function cloneAnalysisOutput(value: AIAnalysisOutput): AIAnalysisOutput {
+  return JSON.parse(JSON.stringify(value)) as AIAnalysisOutput;
+}
+
 function toggleInArray<T>(items: T[], item: T) {
   return items.includes(item) ? items.filter((value) => value !== item) : [...items, item];
 }
@@ -181,6 +200,7 @@ export function AIAnalysisView({
     return window.localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '';
   });
   const [scopeSummary, setScopeSummary] = useState<ScopeSummary>(null);
+  const [operationalScopeSummary, setOperationalScopeSummary] = useState<ScopeSummary>(null);
   const [projectSummary, setProjectSummary] = useState<ProjectSummaryRow[]>([]);
   const [templateSummary, setTemplateSummary] = useState<TemplateSummaryRow[]>([]);
   const [recentHistory, setRecentHistory] = useState(MOCK_HISTORY);
@@ -190,7 +210,12 @@ export function AIAnalysisView({
   const [aiInputSnapshot, setAIInputSnapshot] = useState<Record<string, unknown> | null>(null);
   const [generationError, setGenerationError] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeReportId, setActiveReportId] = useState<string | null>(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [docxNotice, setDocxNotice] = useState('');
   const previewSectionRef = useRef<HTMLDivElement | null>(null);
+  const backfilledScopeKeysRef = useRef<Set<string>>(new Set());
 
   const configuredGeminiApiKey = ((import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined) || '';
   const resolvedGeminiApiKey = geminiApiKey.trim() || configuredGeminiApiKey.trim();
@@ -230,14 +255,17 @@ export function AIAnalysisView({
   }, [relatedTemplates]);
 
   const summary = useMemo(() => {
-    if (scopeSummary) {
+    const effectiveSummary =
+      scopeSummary && Number(scopeSummary.cell_count || 0) > 0 ? scopeSummary : operationalScopeSummary;
+
+    if (effectiveSummary) {
       return {
-        projectCount: scopeSummary.project_count || 0,
-        templateCount: scopeSummary.template_count || 0,
-        unitCount: scopeSummary.unit_count || 0,
-        rowCount: scopeSummary.distinct_source_rows || 0,
-        cellCount: scopeSummary.cell_count || 0,
-        totalValue: scopeSummary.total_value || 0,
+        projectCount: effectiveSummary.project_count || 0,
+        templateCount: effectiveSummary.template_count || 0,
+        unitCount: effectiveSummary.unit_count || 0,
+        rowCount: effectiveSummary.distinct_source_rows || 0,
+        cellCount: effectiveSummary.cell_count || 0,
+        totalValue: effectiveSummary.total_value || 0,
       };
     }
 
@@ -257,6 +285,7 @@ export function AIAnalysisView({
     };
   }, [
     relatedTemplates.length,
+    operationalScopeSummary,
     scopeSummary,
     selectedProjects.length,
     selectedScope,
@@ -283,6 +312,7 @@ export function AIAnalysisView({
 
     if (selectedProjectIds.length === 0 || !selectedYear) {
       setScopeSummary(null);
+      setOperationalScopeSummary(null);
       setProjectSummary([]);
       setTemplateSummary([]);
       setSummaryError('');
@@ -301,18 +331,54 @@ export function AIAnalysisView({
           unitCodes: selectedScope === 'BY_UNIT' ? selectedUnitCodes : undefined,
         };
 
-        const [scope, projectsData, templatesData, history] = await Promise.all([
+        let [scope, projectsData, templatesData, history, operationalScope] = await Promise.all([
           fetchAIAnalysisScopeSummary(params),
           fetchAIAnalysisProjectSummary(params),
           fetchAIAnalysisTemplateSummary(params),
           listRecentAIAnalysisReports(10),
+          fetchOperationalScopeSummary(params),
         ]);
+
+        const backfillKey = [
+          [...selectedProjectIds].sort().join(','),
+          selectedYear,
+          selectedScope,
+          [...selectedTemplateIds].sort().join(','),
+          [...selectedUnitCodes].sort().join(','),
+        ].join('|');
+
+        if (
+          Number((scope as any)?.cell_count || 0) === 0 &&
+          !backfilledScopeKeysRef.current.has(backfillKey)
+        ) {
+          backfilledScopeKeysRef.current.add(backfillKey);
+
+          const syncedCount = await backfillAnalysisCellsForScope({
+            projectIds: selectedProjectIds,
+            years: [selectedYear],
+            templateIds: selectedScope === 'BY_TEMPLATE' ? selectedTemplateIds : undefined,
+            unitCodes: selectedScope === 'BY_UNIT' ? selectedUnitCodes : undefined,
+            templates,
+            projects,
+            units,
+          });
+
+          if (syncedCount > 0) {
+            [scope, projectsData, templatesData, operationalScope] = await Promise.all([
+              fetchAIAnalysisScopeSummary(params),
+              fetchAIAnalysisProjectSummary(params),
+              fetchAIAnalysisTemplateSummary(params),
+              fetchOperationalScopeSummary(params),
+            ]);
+          }
+        }
 
         if (disposed) {
           return;
         }
 
         setScopeSummary(scope as ScopeSummary);
+        setOperationalScopeSummary((operationalScope || null) as ScopeSummary);
         setProjectSummary((projectsData || []) as ProjectSummaryRow[]);
         setTemplateSummary((templatesData || []) as TemplateSummaryRow[]);
         setRecentHistory(
@@ -336,6 +402,7 @@ export function AIAnalysisView({
         }
         console.warn('Không thể tải tổng hợp dữ liệu cho Phân tích AI:', error);
         setScopeSummary(null);
+        setOperationalScopeSummary(null);
         setProjectSummary([]);
         setTemplateSummary([]);
         setSummaryError(
@@ -353,7 +420,7 @@ export function AIAnalysisView({
     return () => {
       disposed = true;
     };
-  }, [selectedProjectIds, selectedYear, selectedScope, selectedTemplateIds, selectedUnitCodes]);
+  }, [projects, selectedProjectIds, selectedScope, selectedTemplateIds, selectedUnitCodes, selectedYear, templates, units]);
 
   const canGenerate = selectedProjectIds.length > 0;
   const isLargeScope = summary.projectCount >= 4 || summary.templateCount >= 10 || summary.rowCount >= 5000;
@@ -372,6 +439,16 @@ export function AIAnalysisView({
     setGenerationError('');
 
     try {
+      await backfillAnalysisCellsForScope({
+        projectIds: selectedProjectIds,
+        years: [selectedYear],
+        templateIds: selectedScope === 'BY_TEMPLATE' ? selectedTemplateIds : undefined,
+        unitCodes: selectedScope === 'BY_UNIT' ? selectedUnitCodes : undefined,
+        templates,
+        projects,
+        units,
+      });
+
       const aiInput = await buildAIAnalysisInput({
         projectIds: selectedProjectIds,
         year: selectedYear,
@@ -395,12 +472,14 @@ export function AIAnalysisView({
 
       setAIInputSnapshot(aiInput);
       setAnalysisResult(aiOutput);
+      setDocxNotice('');
+      setIsEditorOpen(true);
       window.setTimeout(() => {
         previewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 120);
 
       try {
-        await createAIAnalysisReport({
+        const savedReport = await createAIAnalysisReport({
           createdBy: currentUser || null,
           projectIds: selectedProjectIds,
           years: [selectedYear],
@@ -422,6 +501,7 @@ export function AIAnalysisView({
           aiOutput,
           status: 'READY',
         });
+        setActiveReportId(savedReport.id || null);
 
         const history = await listRecentAIAnalysisReports(10);
         setRecentHistory(
@@ -441,12 +521,102 @@ export function AIAnalysisView({
         );
       } catch (historyError) {
         console.warn('Không thể lưu lịch sử báo cáo AI:', historyError);
+        setActiveReportId(null);
       }
     } catch (error) {
       console.error('AI analysis generation error:', error);
       setGenerationError(error instanceof Error ? error.message : 'Không thể tạo phân tích AI.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleUpdateHighlight = (index: number, value: string) => {
+    setAnalysisResult((current) => {
+      if (!current) return current;
+      const next = cloneAnalysisOutput(current);
+      if (next.projectHighlights[index]) {
+        next.projectHighlights[index].summary = value;
+      }
+      return next;
+    });
+  };
+
+  const handleUpdateRisk = (index: number, value: string) => {
+    setAnalysisResult((current) => {
+      if (!current) return current;
+      const next = cloneAnalysisOutput(current);
+      if (next.riskItems[index]) {
+        next.riskItems[index].detail = value;
+      }
+      return next;
+    });
+  };
+
+  const handleExportDocx = async () => {
+    if (!analysisResult) {
+      return;
+    }
+
+    setIsExportingDocx(true);
+    setDocxNotice('');
+
+    try {
+      const fileName = `${slugifyFileName(analysisResult.title || 'Bao_cao_phan_tich_AI')}.docx`;
+      const docxBlob = buildDocxBlob(analysisResult);
+
+      const uploadResult = await uploadFile(docxBlob, {
+        folder: `ai_analysis_exports/${selectedProjectIds[0] || 'multi_project'}`,
+        fileName,
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+      if (activeReportId) {
+        await updateAIAnalysisReport(activeReportId, {
+          aiOutput: analysisResult,
+          docxFileName: fileName,
+          docxStoragePath: uploadResult.path,
+          docxDownloadUrl: uploadResult.publicUrl,
+          status: 'EXPORTED',
+        });
+      }
+
+      const objectUrl = URL.createObjectURL(docxBlob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+
+      setDocxNotice('Đã xuất DOCX và lưu file lên kho lưu trữ.');
+
+      try {
+        const history = await listRecentAIAnalysisReports(10);
+        setRecentHistory(
+          (history || []).map((item, index) => ({
+            id: item.id || `history_fallback_${index}`,
+            name:
+              item.scopeSnapshot?.reportTitle?.toString() ||
+              `${item.analysisType} - ${item.years?.join(', ') || selectedYear}`,
+            createdAt: item.createdAt
+              ? new Date(item.createdAt).toLocaleString('vi-VN')
+              : 'Chưa rõ thời gian',
+            createdBy:
+              item.createdBy?.displayName ||
+              item.createdBy?.email ||
+              'Người dùng hệ thống',
+          })),
+        );
+      } catch (historyError) {
+        console.warn('Không thể làm mới lịch sử báo cáo AI sau khi xuất DOCX:', historyError);
+      }
+    } catch (error) {
+      console.error('DOCX export error:', error);
+      setDocxNotice(error instanceof Error ? error.message : 'Không thể xuất DOCX.');
+    } finally {
+      setIsExportingDocx(false);
     }
   };
 
@@ -467,7 +637,7 @@ export function AIAnalysisView({
               </p>
             </div>
             <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--ink-soft)]">
-              Giai đoạn hiện tại: Summary thật + AI preview thật, DOCX sẽ triển khai ở pha sau
+              Giai đoạn hiện tại: Summary thật + popup soạn thảo toàn màn hình + xuất DOCX
             </div>
           </div>
         </div>
@@ -909,15 +1079,31 @@ export function AIAnalysisView({
                     setAnalysisResult(null);
                     setAIInputSnapshot(null);
                     setGenerationError('');
+                    setDocxNotice('');
+                    setIsEditorOpen(false);
                   }}
                   className="secondary-btn px-4 py-2 text-[11px]"
                 >
                   <Sparkles size={14} />
                   Sửa yêu cầu
                 </button>
-                <button type="button" disabled className="primary-btn px-4 py-2 text-[11px] opacity-50 cursor-not-allowed">
+                <button
+                  type="button"
+                  onClick={() => setIsEditorOpen(true)}
+                  disabled={!analysisResult}
+                  className="secondary-btn px-4 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <FileText size={14} />
+                  Mở trình soạn thảo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleExportDocx()}
+                  disabled={!analysisResult || isExportingDocx}
+                  className="primary-btn px-4 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+                >
                   <Download size={14} />
-                  Xuất DOCX (sắp có)
+                  {isExportingDocx ? 'Đang xuất DOCX...' : 'Xuất DOCX'}
                 </button>
               </div>
             </div>
@@ -931,6 +1117,9 @@ export function AIAnalysisView({
               <p>- Tổng số dòng tổng hợp: <span className="font-semibold">{summary.rowCount.toLocaleString('vi-VN')}</span></p>
               {aiInputSnapshot && (
                 <p>- Phiên này dùng dữ liệu thật từ lớp `analysis_cells` và các summary RPC đã chọn.</p>
+              )}
+              {docxNotice && (
+                <p className="mt-2 font-semibold text-[var(--primary-dark)]">{docxNotice}</p>
               )}
             </div>
 
@@ -1076,6 +1265,236 @@ export function AIAnalysisView({
           </div>
         </section>
       </div>
+
+      {isEditorOpen && analysisResult && (
+        <div className="fixed inset-0 z-[120] bg-[rgba(20,24,32,0.58)] backdrop-blur-sm">
+          <div className="absolute inset-3 md:inset-6 rounded-[28px] border border-[var(--line)] bg-[#f3efe7] shadow-[0_24px_90px_rgba(15,23,42,0.28)]">
+            <div className="flex h-full flex-col">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] bg-white/90 px-5 py-4 md:px-6">
+                <div>
+                  <p className="col-header">Trình soạn thảo báo cáo AI</p>
+                  <h3 className="section-title mt-1 text-[1.2rem]">{analysisResult.title}</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleGenerate()}
+                    disabled={isGenerating}
+                    className="secondary-btn px-4 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <RefreshCcw size={14} />
+                    Tạo lại
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleExportDocx()}
+                    disabled={isExportingDocx}
+                    className="primary-btn px-4 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Download size={14} />
+                    {isExportingDocx ? 'Đang xuất DOCX...' : 'Xuất DOCX'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditorOpen(false)}
+                    className="secondary-btn px-4 py-2 text-[11px]"
+                  >
+                    <X size={14} />
+                    Đóng
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)_280px]">
+                <aside className="border-r border-[var(--line)] bg-white/70 p-5">
+                  <p className="col-header mb-4">Mục lục</p>
+                  <div className="space-y-2 text-sm">
+                    {[
+                      'Tóm tắt điều hành',
+                      'Điểm chính',
+                      'Nhận xét theo dự án',
+                      'Đơn vị / điểm cần lưu ý',
+                      'Kiến nghị',
+                      'Phụ lục số liệu',
+                    ].map((item) => (
+                      <div key={item} className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 font-semibold text-[var(--ink)]">
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </aside>
+
+                <div className="min-h-0 overflow-auto bg-[#ebe7de] px-4 py-5 md:px-8">
+                  <div className="mx-auto max-w-[820px] rounded-[12px] bg-white px-8 py-10 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                    <input
+                      value={analysisResult.title}
+                      onChange={(event) =>
+                        setAnalysisResult((current) =>
+                          current ? { ...current, title: event.target.value } : current,
+                        )
+                      }
+                      className="w-full border-b border-transparent bg-transparent text-center text-[1.8rem] font-black text-[var(--primary-dark)] outline-none focus:border-[var(--gold)]"
+                    />
+
+                    <div className="mt-8 space-y-8">
+                      <section>
+                        <h4 className="text-lg font-black text-[var(--primary-dark)]">I. Tóm tắt điều hành</h4>
+                        <textarea
+                          value={analysisResult.executiveSummary}
+                          onChange={(event) =>
+                            setAnalysisResult((current) =>
+                              current ? { ...current, executiveSummary: event.target.value } : current,
+                            )
+                          }
+                          className="field-input mt-3 min-h-[150px] resize-y py-4 text-sm leading-7"
+                        />
+                      </section>
+
+                      <section>
+                        <h4 className="text-lg font-black text-[var(--primary-dark)]">II. Điểm chính</h4>
+                        <div className="mt-3 space-y-3">
+                          {analysisResult.keyFindings.map((item, index) => (
+                            <textarea
+                              key={`finding_${index}`}
+                              value={item}
+                              onChange={(event) =>
+                                setAnalysisResult((current) => {
+                                  if (!current) return current;
+                                  const next = cloneAnalysisOutput(current);
+                                  next.keyFindings[index] = event.target.value;
+                                  return next;
+                                })
+                              }
+                              className="field-input min-h-[88px] resize-y py-3 text-sm leading-7"
+                            />
+                          ))}
+                        </div>
+                      </section>
+
+                      {analysisResult.projectHighlights.length > 0 && (
+                        <section>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">III. Nhận xét theo dự án</h4>
+                          <div className="mt-3 space-y-4">
+                            {analysisResult.projectHighlights.map((item, index) => (
+                              <div key={`project_${item.projectName}_${index}`} className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                                <p className="text-sm font-bold text-[var(--ink)]">{item.projectName}</p>
+                                <textarea
+                                  value={item.summary}
+                                  onChange={(event) => handleUpdateHighlight(index, event.target.value)}
+                                  className="field-input mt-3 min-h-[110px] resize-y py-3 text-sm leading-7"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {analysisResult.riskItems.length > 0 && (
+                        <section>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">IV. Đơn vị / điểm cần lưu ý</h4>
+                          <div className="mt-3 space-y-4">
+                            {analysisResult.riskItems.map((item, index) => (
+                              <div key={`risk_${item.title}_${index}`} className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                                <p className="text-sm font-bold text-[var(--ink)]">{item.title}</p>
+                                <textarea
+                                  value={item.detail}
+                                  onChange={(event) => handleUpdateRisk(index, event.target.value)}
+                                  className="field-input mt-3 min-h-[110px] resize-y py-3 text-sm leading-7"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {analysisResult.recommendations.length > 0 && (
+                        <section>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">V. Kiến nghị</h4>
+                          <div className="mt-3 space-y-3">
+                            {analysisResult.recommendations.map((item, index) => (
+                              <textarea
+                                key={`rec_${index}`}
+                                value={item}
+                                onChange={(event) =>
+                                  setAnalysisResult((current) => {
+                                    if (!current) return current;
+                                    const next = cloneAnalysisOutput(current);
+                                    next.recommendations[index] = event.target.value;
+                                    return next;
+                                  })
+                                }
+                                className="field-input min-h-[88px] resize-y py-3 text-sm leading-7"
+                              />
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {analysisResult.appendixTables.length > 0 && (
+                        <section>
+                          <h4 className="text-lg font-black text-[var(--primary-dark)]">VI. Phụ lục số liệu</h4>
+                          <div className="mt-4 space-y-5">
+                            {analysisResult.appendixTables.map((table) => (
+                              <div key={`editor_${table.title}`} className="overflow-x-auto">
+                                <p className="mb-2 text-sm font-bold text-[var(--ink)]">{table.title}</p>
+                                <table className="min-w-full border-collapse text-sm">
+                                  <thead>
+                                    <tr>
+                                      {table.headers.map((header) => (
+                                        <th key={header} className="border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-left font-bold text-[var(--ink)]">
+                                          {header}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {table.rows.map((row, rowIndex) => (
+                                      <tr key={`editor_row_${rowIndex}`}>
+                                        {row.map((cell, cellIndex) => (
+                                          <td key={`editor_cell_${rowIndex}_${cellIndex}`} className="border border-[var(--line)] px-3 py-2 text-[var(--ink)]">
+                                            {cell}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <aside className="border-l border-[var(--line)] bg-white/70 p-5">
+                  <p className="col-header mb-4">Nguồn dữ liệu</p>
+                  <div className="space-y-2 text-sm text-[var(--ink)]">
+                    <p>- Dự án đang chọn: <span className="font-semibold">{selectedProjects.length}</span></p>
+                    <p>- Dự án có dữ liệu: <span className="font-semibold">{summary.projectCount}</span></p>
+                    <p>- Năm: <span className="font-semibold">{selectedYear}</span></p>
+                    <p>- Biểu mẫu: <span className="font-semibold">{summary.templateCount}</span></p>
+                    <p>- Đơn vị có dữ liệu: <span className="font-semibold">{summary.unitCount}</span></p>
+                    <p>- Dòng tổng hợp: <span className="font-semibold">{summary.rowCount.toLocaleString('vi-VN')}</span></p>
+                    <p>- Ô dữ liệu: <span className="font-semibold">{summary.cellCount.toLocaleString('vi-VN')}</span></p>
+                  </div>
+
+                  {docxNotice && (
+                    <div className="mt-5 rounded-2xl border border-[rgba(179,15,20,0.18)] bg-[rgba(179,15,20,0.08)] px-4 py-3 text-sm font-semibold text-[var(--primary-dark)]">
+                      {docxNotice}
+                    </div>
+                  )}
+
+                  <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">
+                    Sau khi chỉnh sửa nhẹ nội dung tại đây, bạn có thể bấm <strong>Xuất DOCX</strong> để tải file Word và lưu lên kho báo cáo AI.
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
