@@ -262,3 +262,34 @@ Luu y van hanh:
 - De summary that chay du, can chay them `supabase/ai_analysis_rpc.sql`
 - `analysis_cells` hien la lop phan tich phan chieu du lieu van hanh, khong phai nguon du lieu goc
 - Neu lop phan tich loi, luong `Tiep nhan du lieu` va `Xoa du lieu` van phai tiep tuc hoat dong
+
+### Kich hoat pha AI that cho module Phan tich AI ngay 2026-04-04
+
+Yeu cau user phe duyet:
+- Tiep tuc sau khi da co `analysis_cells` va summary RPC
+- Uu tien preview that va lich su that truoc
+- Khong duoc anh huong `Dashboard`, `Bao cao`, `Tiep nhan du lieu`, `Bieu mau`
+
+Thuc hien:
+- Tao `src/aiAnalysisEngine.ts`
+  - build payload phan tich tu:
+    - summary pham vi
+    - summary theo du an
+    - summary theo bieu
+    - phat hien bat thuong client-side tu `analysis_cells`
+    - so sanh voi nam truoc neu chon phan tich theo nam
+  - goi Gemini qua `@google/genai`
+  - ep model tra JSON co cau truc
+- Cap nhat `src/components/AIAnalysisView.tsx`
+  - bo sung o nhap Gemini API key (fallback ve `VITE_GEMINI_API_KEY`)
+  - nut `Tao phan tich AI` da goi AI that
+  - luu lich su vao `ai_analysis_reports`
+  - hien preview that tu ket qua JSON cua AI
+  - `Xuat DOCX` tam thoi de trang thai `sap co`
+- Cap nhat `src/App.tsx`
+  - truyen `allUnits` vao `AIAnalysisView` de phan tich nhieu du an khong bi thieu nguon don vi
+  - truyen thong tin user hien tai de luu lich su bao cao AI
+
+Luu y:
+- Pha nay chua sinh DOCX that
+- Pha nay chua dua them RPC moi cho `year comparison` va `anomalies`; hien dang ket hop summary RPC san co voi tinh toan client-side de tranh anh huong runtime

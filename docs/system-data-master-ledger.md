@@ -401,6 +401,12 @@ Khi tiếp tục ở máy khác hoặc ở phiên khác:
 - đã có RPC summary riêng cho AI trong:
   - `supabase/ai_analysis_rpc.sql`
 - UI `Phân tích AI` đã đọc summary thật nếu RPC sẵn sàng, và fallback mềm về số liệu ước tính nếu chưa có
+- đã có lớp `src/aiAnalysisEngine.ts` để:
+  - build payload phân tích từ summary + `analysis_cells`
+  - gọi Gemini thật
+  - render preview thật
+  - lưu lịch sử thật vào `ai_analysis_reports`
+- `Xuất DOCX` vẫn đang là pha sau, chưa kích hoạt runtime thật
 
 Lưu ý vận hành:
 

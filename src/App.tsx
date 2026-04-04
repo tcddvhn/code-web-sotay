@@ -1346,7 +1346,12 @@ export default function App() {
           <AIAnalysisView
             projects={projects}
             templates={templates}
-            units={availableUnitsForProject}
+            units={allUnits}
+            currentUser={{
+              uid: user?.id || null,
+              email: user?.email || null,
+              displayName: effectiveUserProfile?.displayName || user?.displayName || user?.email || null,
+            }}
           />
         );
       case 'SETTINGS':

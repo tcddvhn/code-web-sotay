@@ -3,24 +3,25 @@ import { Bot, Download, FileText, History, Lightbulb, RefreshCcw, Sparkles } fro
 import { FormTemplate, ManagedUnit, Project } from '../types';
 import { YEARS } from '../constants';
 import {
+  createAIAnalysisReport,
   fetchAIAnalysisProjectSummary,
   fetchAIAnalysisScopeSummary,
   fetchAIAnalysisTemplateSummary,
   listRecentAIAnalysisReports,
 } from '../aiAnalysisStore';
+import {
+  AIAnalysisOutput,
+  AIAnalysisScope,
+  AIAnalysisType,
+  AIReportLength,
+  AIWritingTone,
+  buildAIAnalysisInput,
+  generateAIAnalysisOutput,
+} from '../aiAnalysisEngine';
 
-type AnalysisScope = 'ALL' | 'BY_TEMPLATE' | 'BY_UNIT' | 'BY_PROJECT_COMPARE';
-type AnalysisType =
-  | 'QUICK'
-  | 'FULL'
-  | 'YEAR_COMPARE'
-  | 'PROJECT_COMPARE'
-  | 'ANOMALY'
-  | 'LEADERSHIP';
-type WritingTone = 'ADMIN' | 'OPERATIONS' | 'DEEP';
-type ReportLength = 'SHORT' | 'MEDIUM' | 'LONG';
+const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
 
-const ANALYSIS_TYPE_OPTIONS: { value: AnalysisType; label: string }[] = [
+const ANALYSIS_TYPE_OPTIONS: { value: AIAnalysisType; label: string }[] = [
   { value: 'QUICK', label: 'Tóm tắt nhanh' },
   { value: 'FULL', label: 'Phân tích đầy đủ' },
   { value: 'YEAR_COMPARE', label: 'So sánh theo năm' },
@@ -29,19 +30,19 @@ const ANALYSIS_TYPE_OPTIONS: { value: AnalysisType; label: string }[] = [
   { value: 'LEADERSHIP', label: 'Báo cáo lãnh đạo' },
 ];
 
-const WRITING_TONE_OPTIONS: { value: WritingTone; label: string }[] = [
+const WRITING_TONE_OPTIONS: { value: AIWritingTone; label: string }[] = [
   { value: 'ADMIN', label: 'Hành chính' },
   { value: 'OPERATIONS', label: 'Điều hành' },
   { value: 'DEEP', label: 'Phân tích chuyên sâu' },
 ];
 
-const REPORT_LENGTH_OPTIONS: { value: ReportLength; label: string }[] = [
+const REPORT_LENGTH_OPTIONS: { value: AIReportLength; label: string }[] = [
   { value: 'SHORT', label: 'Ngắn' },
   { value: 'MEDIUM', label: 'Trung bình' },
   { value: 'LONG', label: 'Dài' },
 ];
 
-const SCOPE_OPTIONS: { value: AnalysisScope; label: string }[] = [
+const SCOPE_OPTIONS: { value: AIAnalysisScope; label: string }[] = [
   { value: 'ALL', label: 'Toàn bộ dữ liệu đã chọn' },
   { value: 'BY_TEMPLATE', label: 'Theo biểu' },
   { value: 'BY_UNIT', label: 'Theo đơn vị' },
@@ -143,10 +144,16 @@ export function AIAnalysisView({
   projects,
   templates,
   units,
+  currentUser,
 }: {
   projects: Project[];
   templates: FormTemplate[];
   units: ManagedUnit[];
+  currentUser?: {
+    uid?: string | null;
+    email?: string | null;
+    displayName?: string | null;
+  } | null;
 }) {
   const activeProjects = useMemo(
     () => projects.filter((project) => project.status === 'ACTIVE'),
@@ -157,24 +164,37 @@ export function AIAnalysisView({
     activeProjects.slice(0, Math.min(2, activeProjects.length)).map((project) => project.id),
   );
   const [selectedYear, setSelectedYear] = useState(YEARS[0] || '2026');
-  const [selectedScope, setSelectedScope] = useState<AnalysisScope>('ALL');
+  const [selectedScope, setSelectedScope] = useState<AIAnalysisScope>('ALL');
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
   const [selectedUnitCodes, setSelectedUnitCodes] = useState<string[]>([]);
-  const [analysisType, setAnalysisType] = useState<AnalysisType>('FULL');
-  const [writingTone, setWritingTone] = useState<WritingTone>('ADMIN');
-  const [reportLength, setReportLength] = useState<ReportLength>('MEDIUM');
+  const [analysisType, setAnalysisType] = useState<AIAnalysisType>('FULL');
+  const [writingTone, setWritingTone] = useState<AIWritingTone>('ADMIN');
+  const [reportLength, setReportLength] = useState<AIReportLength>('MEDIUM');
   const [selectedContent, setSelectedContent] = useState<string[]>([
     'Tổng quan số liệu',
     'Điểm nổi bật',
     'Kiến nghị / đề xuất',
   ]);
   const [extraPrompt, setExtraPrompt] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    if (typeof window === 'undefined') {
+      return '';
+    }
+    return window.localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '';
+  });
   const [scopeSummary, setScopeSummary] = useState<ScopeSummary>(null);
   const [projectSummary, setProjectSummary] = useState<ProjectSummaryRow[]>([]);
   const [templateSummary, setTemplateSummary] = useState<TemplateSummaryRow[]>([]);
   const [recentHistory, setRecentHistory] = useState(MOCK_HISTORY);
   const [summaryError, setSummaryError] = useState('');
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AIAnalysisOutput | null>(null);
+  const [aiInputSnapshot, setAIInputSnapshot] = useState<Record<string, unknown> | null>(null);
+  const [generationError, setGenerationError] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const configuredGeminiApiKey = ((import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined) || '';
+  const resolvedGeminiApiKey = geminiApiKey.trim() || configuredGeminiApiKey.trim();
 
   const relatedTemplates = useMemo(() => {
     if (selectedProjectIds.length === 0) {
@@ -239,6 +259,19 @@ export function AIAnalysisView({
     selectedUnits.length,
     units.length,
   ]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (geminiApiKey.trim()) {
+      window.localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, geminiApiKey.trim());
+      return;
+    }
+
+    window.localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
+  }, [geminiApiKey]);
 
   useEffect(() => {
     let disposed = false;
@@ -320,6 +353,95 @@ export function AIAnalysisView({
   const canGenerate = selectedProjectIds.length > 0;
   const isLargeScope = summary.projectCount >= 4 || summary.templateCount >= 10 || summary.rowCount >= 5000;
 
+  const handleGenerate = async () => {
+    if (!canGenerate) {
+      return;
+    }
+
+    if (!resolvedGeminiApiKey) {
+      setGenerationError('Chưa có khóa Gemini. Hãy dán API key vào ô cấu hình AI trước khi tạo phân tích.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationError('');
+
+    try {
+      const aiInput = await buildAIAnalysisInput({
+        projectIds: selectedProjectIds,
+        year: selectedYear,
+        scope: selectedScope,
+        selectedTemplateIds,
+        selectedUnitCodes,
+        analysisType,
+        writingTone,
+        reportLength,
+        requestedSections: selectedContent,
+        extraPrompt,
+        projects,
+        templates,
+        units,
+      });
+
+      const aiOutput = await generateAIAnalysisOutput({
+        apiKey: resolvedGeminiApiKey,
+        input: aiInput,
+      });
+
+      setAIInputSnapshot(aiInput);
+      setAnalysisResult(aiOutput);
+
+      try {
+        await createAIAnalysisReport({
+          createdBy: currentUser || null,
+          projectIds: selectedProjectIds,
+          years: [selectedYear],
+          scope: selectedScope,
+          analysisType,
+          writingTone,
+          reportLength,
+          selectedTemplateIds,
+          selectedUnitCodes,
+          requestedSections: selectedContent,
+          extraPrompt,
+          scopeSnapshot: {
+            reportTitle: aiOutput.title,
+            projectNames: selectedProjects.map((project) => project.name),
+            year: selectedYear,
+            scope: selectedScope,
+          },
+          aiInput,
+          aiOutput,
+          status: 'READY',
+        });
+
+        const history = await listRecentAIAnalysisReports(10);
+        setRecentHistory(
+          (history || []).map((item, index) => ({
+            id: item.id || `history_fallback_${index}`,
+            name:
+              item.scopeSnapshot?.reportTitle?.toString() ||
+              `${item.analysisType} - ${item.years?.join(', ') || selectedYear}`,
+            createdAt: item.createdAt
+              ? new Date(item.createdAt).toLocaleString('vi-VN')
+              : 'Chưa rõ thời gian',
+            createdBy:
+              item.createdBy?.displayName ||
+              item.createdBy?.email ||
+              'Người dùng hệ thống',
+          })),
+        );
+      } catch (historyError) {
+        console.warn('Không thể lưu lịch sử báo cáo AI:', historyError);
+      }
+    } catch (error) {
+      console.error('AI analysis generation error:', error);
+      setGenerationError(error instanceof Error ? error.message : 'Không thể tạo phân tích AI.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="p-6 md:p-8">
       <header className="mb-8">
@@ -332,12 +454,12 @@ export function AIAnalysisView({
               </div>
               <h2 className="page-title mt-4">PHÂN TÍCH AI</h2>
               <p className="page-subtitle mt-3 max-w-4xl text-sm">
-                Chọn nhiều dự án, cấu hình loại phân tích và xem trước báo cáo AI trước khi triển khai phần
-                xử lý dữ liệu, sinh nội dung và xuất DOCX chuẩn văn phòng.
+                Chọn nhiều dự án, cấu hình loại phân tích và tạo báo cáo AI từ lớp dữ liệu phân tích đã được đồng
+                bộ từ hệ thống hiện hành.
               </p>
             </div>
             <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--ink-soft)]">
-              Giai đoạn hiện tại: Dựng giao diện và chốt trải nghiệm người dùng
+              Giai đoạn hiện tại: Summary thật + AI preview thật, DOCX sẽ triển khai ở pha sau
             </div>
           </div>
         </div>
@@ -649,19 +771,42 @@ export function AIAnalysisView({
                   placeholder="Ví dụ: ưu tiên phân tích những dự án có tỷ lệ hoàn thành thấp và nhấn mạnh những biểu mẫu còn thiếu nhiều dữ liệu."
                 />
               </div>
+
+              <div className="panel-soft rounded-[24px] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="col-header">Khóa Gemini</p>
+                  <span className="text-xs font-semibold text-[var(--ink-soft)]">
+                    {resolvedGeminiApiKey ? 'Đã sẵn sàng gọi AI' : 'Chưa có API key'}
+                  </span>
+                </div>
+                <input
+                  type="password"
+                  value={geminiApiKey}
+                  onChange={(event) => setGeminiApiKey(event.target.value)}
+                  className="field-input mt-3 py-3 text-sm"
+                  placeholder="Dán Gemini API key nếu không dùng biến môi trường"
+                />
+                <p className="mt-3 text-xs text-[var(--ink-soft)]">
+                  Ưu tiên khóa bạn dán tại đây. Nếu để trống, hệ thống sẽ thử dùng `VITE_GEMINI_API_KEY`.
+                </p>
+              </div>
             </div>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              disabled={!canGenerate}
+              disabled={!canGenerate || isGenerating}
+              onClick={() => void handleGenerate()}
               className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Tạo phân tích AI
+              {isGenerating ? 'Đang tạo phân tích AI...' : 'Tạo phân tích AI'}
             </button>
             {!canGenerate && (
               <p className="text-sm text-[var(--ink-soft)]">Chọn ít nhất một dự án để bắt đầu phân tích.</p>
+            )}
+            {generationError && (
+              <p className="text-sm font-semibold text-[var(--primary-dark)]">{generationError}</p>
             )}
           </div>
         </section>
@@ -718,21 +863,34 @@ export function AIAnalysisView({
                 <p className="col-header">3. Preview kết quả</p>
                 <h3 className="section-title mt-2">Bản xem trước báo cáo phân tích AI</h3>
                 <p className="page-subtitle mt-2 text-sm">
-                  Đây là khung preview mẫu để duyệt trải nghiệm đọc và xuất báo cáo trước khi nối AI thật.
+                  Khung này sẽ hiển thị kết quả phân tích thật sau khi gọi Gemini trên lớp summary đã chọn.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="secondary-btn px-4 py-2 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => void handleGenerate()}
+                  disabled={isGenerating || !canGenerate}
+                  className="secondary-btn px-4 py-2 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
+                >
                   <RefreshCcw size={14} />
                   Tạo lại
                 </button>
-                <button type="button" className="secondary-btn px-4 py-2 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAnalysisResult(null);
+                    setAIInputSnapshot(null);
+                    setGenerationError('');
+                  }}
+                  className="secondary-btn px-4 py-2 text-[11px]"
+                >
                   <Sparkles size={14} />
                   Sửa yêu cầu
                 </button>
-                <button type="button" className="primary-btn px-4 py-2 text-[11px]">
+                <button type="button" disabled className="primary-btn px-4 py-2 text-[11px] opacity-50 cursor-not-allowed">
                   <Download size={14} />
-                  Xuất DOCX
+                  Xuất DOCX (sắp có)
                 </button>
               </div>
             </div>
@@ -743,6 +901,9 @@ export function AIAnalysisView({
               <p>- Biểu mẫu liên quan: <span className="font-semibold">{summary.templateCount}</span></p>
               <p>- Đơn vị có dữ liệu: <span className="font-semibold">{summary.unitCount}</span></p>
               <p>- Tổng số dòng tổng hợp: <span className="font-semibold">{summary.rowCount.toLocaleString('vi-VN')}</span></p>
+              {aiInputSnapshot && (
+                <p>- Phiên này dùng dữ liệu thật từ lớp `analysis_cells` và các summary RPC đã chọn.</p>
+              )}
             </div>
 
             {projectSummary.length > 0 && (
@@ -786,12 +947,103 @@ export function AIAnalysisView({
             )}
 
             <div className="mt-6 space-y-5">
-              {MOCK_PREVIEW_SECTIONS.map((section) => (
-                <section key={section.id} className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
-                  <h4 className="text-lg font-black text-[var(--primary-dark)]">{section.title}</h4>
-                  <p className="mt-3 text-sm leading-7 text-[var(--ink)]">{section.body}</p>
-                </section>
-              ))}
+              {analysisResult ? (
+                <>
+                  <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                    <h4 className="text-lg font-black text-[var(--primary-dark)]">{analysisResult.title}</h4>
+                    <p className="mt-3 text-sm leading-7 text-[var(--ink)]">{analysisResult.executiveSummary}</p>
+                  </section>
+
+                  <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                    <h4 className="text-lg font-black text-[var(--primary-dark)]">Điểm chính</h4>
+                    <div className="mt-3 space-y-3">
+                      {analysisResult.keyFindings.map((item, index) => (
+                        <p key={`${index}_${item}`} className="text-sm leading-7 text-[var(--ink)]">
+                          - {item}
+                        </p>
+                      ))}
+                    </div>
+                  </section>
+
+                  {analysisResult.projectHighlights.length > 0 && (
+                    <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                      <h4 className="text-lg font-black text-[var(--primary-dark)]">Nhận xét theo dự án</h4>
+                      <div className="mt-4 space-y-4">
+                        {analysisResult.projectHighlights.map((item) => (
+                          <div key={`${item.projectName}_${item.summary}`} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                            <p className="text-sm font-bold text-[var(--ink)]">{item.projectName}</p>
+                            <p className="mt-2 text-sm leading-7 text-[var(--ink)]">{item.summary}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {analysisResult.riskItems.length > 0 && (
+                    <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                      <h4 className="text-lg font-black text-[var(--primary-dark)]">Đơn vị / điểm cần lưu ý</h4>
+                      <div className="mt-4 space-y-4">
+                        {analysisResult.riskItems.map((item) => (
+                          <div key={`${item.title}_${item.detail}`} className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                            <p className="text-sm font-bold text-[var(--ink)]">{item.title}</p>
+                            <p className="mt-2 text-sm leading-7 text-[var(--ink)]">{item.detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {analysisResult.recommendations.length > 0 && (
+                    <section className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                      <h4 className="text-lg font-black text-[var(--primary-dark)]">Kiến nghị</h4>
+                      <div className="mt-3 space-y-3">
+                        {analysisResult.recommendations.map((item, index) => (
+                          <p key={`${index}_${item}`} className="text-sm leading-7 text-[var(--ink)]">
+                            - {item}
+                          </p>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {analysisResult.appendixTables.map((table) => (
+                    <section key={table.title} className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                      <h4 className="text-lg font-black text-[var(--primary-dark)]">{table.title}</h4>
+                      <div className="mt-4 overflow-x-auto">
+                        <table className="min-w-full border-collapse text-sm">
+                          <thead>
+                            <tr>
+                              {table.headers.map((header) => (
+                                <th key={header} className="border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-left font-bold text-[var(--ink)]">
+                                  {header}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {table.rows.map((row, rowIndex) => (
+                              <tr key={`${table.title}_${rowIndex}`}>
+                                {row.map((cell, cellIndex) => (
+                                  <td key={`${rowIndex}_${cellIndex}`} className="border border-[var(--line)] px-3 py-2 text-[var(--ink)]">
+                                    {cell}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  ))}
+                </>
+              ) : (
+                MOCK_PREVIEW_SECTIONS.map((section) => (
+                  <section key={section.id} className="rounded-[24px] border border-[var(--line)] bg-white px-5 py-5">
+                    <h4 className="text-lg font-black text-[var(--primary-dark)]">{section.title}</h4>
+                    <p className="mt-3 text-sm leading-7 text-[var(--ink)]">{section.body}</p>
+                  </section>
+                ))
+              )}
             </div>
           </div>
         </section>
