@@ -191,6 +191,23 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
+    let authResolved = false;
+
+    const releaseAuthGate = () => {
+      authResolved = true;
+      if (active) {
+        setIsAuthReady(true);
+      }
+    };
+
+    const authBootstrapTimeout = window.setTimeout(() => {
+      if (authResolved || !active) {
+        return;
+      }
+      console.warn('Supabase auth bootstrap timed out, releasing app shell in public mode.');
+      setAuthError((current) => current || 'Khởi tạo phiên đăng nhập đang chậm. Hệ thống đã mở ở chế độ công khai.');
+      setIsAuthReady(true);
+    }, 4000);
 
     const applyAuthUser = async (nextUser: AuthenticatedUser | null) => {
       if (!nextUser) {
@@ -199,7 +216,7 @@ export default function App() {
         }
         setUser(null);
         setUserProfile(null);
-        setIsAuthReady(true);
+        releaseAuthGate();
         return;
       }
 
@@ -216,7 +233,7 @@ export default function App() {
         setUser(null);
         setUserProfile(null);
         setCurrentView('LOGIN');
-        setIsAuthReady(true);
+        releaseAuthGate();
         return;
       }
 
@@ -235,7 +252,7 @@ export default function App() {
           setUser(null);
           setUserProfile(null);
           setCurrentView('LOGIN');
-          setIsAuthReady(true);
+          releaseAuthGate();
           return;
         }
 
@@ -256,7 +273,7 @@ export default function App() {
         });
         setAuthError(null);
         setCurrentView((current) => (current === 'LOGIN' ? 'DASHBOARD' : current));
-        setIsAuthReady(true);
+        releaseAuthGate();
         return;
       } catch (error) {
         console.error('Supabase profile load error:', error);
@@ -272,7 +289,7 @@ export default function App() {
         setUser(null);
         setUserProfile(null);
         setCurrentView('LOGIN');
-        setIsAuthReady(true);
+        releaseAuthGate();
         return;
       }
 
@@ -287,7 +304,7 @@ export default function App() {
         }
         setAuthError('Không thể khởi tạo phiên đăng nhập từ Supabase.');
         setUser(null);
-        setIsAuthReady(true);
+        releaseAuthGate();
       });
 
     const unsubscribe = onSupabaseAuthStateChange((nextUser) => {
@@ -296,6 +313,7 @@ export default function App() {
 
     return () => {
       active = false;
+      window.clearTimeout(authBootstrapTimeout);
       unsubscribe();
     };
   }, []);
