@@ -1,15 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, Download, FileText, History, Lightbulb, RefreshCcw, Sparkles, X } from 'lucide-react';
-import { FormTemplate, ManagedUnit, Project } from '../types';
+import { ConsolidatedData, DataFileRecordSummary, FormTemplate, ManagedUnit, Project } from '../types';
 import { YEARS } from '../constants';
 import {
-  backfillAnalysisCellsForScope,
   createAIAnalysisReport,
   fetchAIAnalysisProjectSummary,
-  fetchOperationalScopeSummary,
   fetchAIAnalysisScopeSummary,
   fetchAIAnalysisTemplateSummary,
   listRecentAIAnalysisReports,
+  syncAnalysisCellsFromRows,
   updateAIAnalysisReport,
 } from '../aiAnalysisStore';
 import {
@@ -163,11 +162,15 @@ export function AIAnalysisView({
   projects,
   templates,
   units,
+  data,
+  dataFiles,
   currentUser,
 }: {
   projects: Project[];
   templates: FormTemplate[];
   units: ManagedUnit[];
+  data: ConsolidatedData;
+  dataFiles: DataFileRecordSummary[];
   currentUser?: {
     uid?: string | null;
     email?: string | null;
@@ -200,7 +203,6 @@ export function AIAnalysisView({
     return window.localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '';
   });
   const [scopeSummary, setScopeSummary] = useState<ScopeSummary>(null);
-  const [operationalScopeSummary, setOperationalScopeSummary] = useState<ScopeSummary>(null);
   const [projectSummary, setProjectSummary] = useState<ProjectSummaryRow[]>([]);
   const [templateSummary, setTemplateSummary] = useState<TemplateSummaryRow[]>([]);
   const [recentHistory, setRecentHistory] = useState(MOCK_HISTORY);
@@ -215,7 +217,6 @@ export function AIAnalysisView({
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [docxNotice, setDocxNotice] = useState('');
   const previewSectionRef = useRef<HTMLDivElement | null>(null);
-  const backfilledScopeKeysRef = useRef<Set<string>>(new Set());
 
   const configuredGeminiApiKey = ((import.meta as any).env?.VITE_GEMINI_API_KEY as string | undefined) || '';
   const resolvedGeminiApiKey = geminiApiKey.trim() || configuredGeminiApiKey.trim();
@@ -247,6 +248,60 @@ export function AIAnalysisView({
     () => units.filter((unit) => selectedUnitCodes.includes(unit.code)),
     [selectedUnitCodes, units],
   );
+
+  const scopedOperationalRows = useMemo(() => {
+    const allRows = Object.values(data).flat();
+    return allRows.filter((row) => {
+      if (!selectedProjectIds.includes(row.projectId)) {
+        return false;
+      }
+      if (selectedYear && row.year !== selectedYear) {
+        return false;
+      }
+      if (selectedScope === 'BY_TEMPLATE' && selectedTemplateIds.length > 0 && !selectedTemplateIds.includes(row.templateId)) {
+        return false;
+      }
+      if (selectedScope === 'BY_UNIT' && selectedUnitCodes.length > 0 && !selectedUnitCodes.includes(row.unitCode)) {
+        return false;
+      }
+      return true;
+    });
+  }, [data, selectedProjectIds, selectedScope, selectedTemplateIds, selectedUnitCodes, selectedYear]);
+
+  const scopedOperationalFiles = useMemo(() => {
+    return dataFiles.filter((file) => {
+      if (!selectedProjectIds.includes(file.projectId)) {
+        return false;
+      }
+      if (selectedYear && file.year !== selectedYear) {
+        return false;
+      }
+      if (selectedScope === 'BY_UNIT' && selectedUnitCodes.length > 0 && !selectedUnitCodes.includes(file.unitCode)) {
+        return false;
+      }
+      return true;
+    });
+  }, [dataFiles, selectedProjectIds, selectedScope, selectedUnitCodes, selectedYear]);
+
+  const operationalScopeSummary = useMemo<ScopeSummary>(() => {
+    const projectIds = new Set(scopedOperationalRows.map((row) => row.projectId));
+    const templateIds = new Set(scopedOperationalRows.map((row) => row.templateId));
+    const unitCodes = new Set(scopedOperationalRows.map((row) => row.unitCode));
+    const cellCount = scopedOperationalRows.reduce((sum, row) => sum + row.values.length, 0);
+    const totalValue = scopedOperationalRows.reduce(
+      (sum, row) => sum + row.values.reduce((rowSum, value) => rowSum + (Number(value) || 0), 0),
+      0,
+    );
+
+    return {
+      project_count: projectIds.size,
+      template_count: templateIds.size,
+      unit_count: unitCodes.size,
+      cell_count: cellCount,
+      total_value: totalValue,
+      distinct_source_rows: scopedOperationalRows.length,
+    };
+  }, [scopedOperationalRows]);
 
   useEffect(() => {
     setSelectedTemplateIds((current) =>
@@ -312,7 +367,6 @@ export function AIAnalysisView({
 
     if (selectedProjectIds.length === 0 || !selectedYear) {
       setScopeSummary(null);
-      setOperationalScopeSummary(null);
       setProjectSummary([]);
       setTemplateSummary([]);
       setSummaryError('');
@@ -331,58 +385,21 @@ export function AIAnalysisView({
           unitCodes: selectedScope === 'BY_UNIT' ? selectedUnitCodes : undefined,
         };
 
-        let [scope, projectsData, templatesData, history, operationalScope] = await Promise.all([
+        const [scope, projectsData, templatesData, history] = await Promise.all([
           fetchAIAnalysisScopeSummary(params),
           fetchAIAnalysisProjectSummary(params),
           fetchAIAnalysisTemplateSummary(params),
           listRecentAIAnalysisReports(10),
-          fetchOperationalScopeSummary(params),
         ]);
-
-        const backfillKey = [
-          [...selectedProjectIds].sort().join(','),
-          selectedYear,
-          selectedScope,
-          [...selectedTemplateIds].sort().join(','),
-          [...selectedUnitCodes].sort().join(','),
-        ].join('|');
-
-        if (
-          Number((scope as any)?.cell_count || 0) === 0 &&
-          Number((operationalScope as any)?.cell_count || 0) === 0 &&
-          !backfilledScopeKeysRef.current.has(backfillKey)
-        ) {
-          backfilledScopeKeysRef.current.add(backfillKey);
-
-          const syncedCount = await backfillAnalysisCellsForScope({
-            projectIds: selectedProjectIds,
-            years: [selectedYear],
-            templateIds: selectedScope === 'BY_TEMPLATE' ? selectedTemplateIds : undefined,
-            unitCodes: selectedScope === 'BY_UNIT' ? selectedUnitCodes : undefined,
-            templates,
-            projects,
-            units,
-          });
-
-          if (syncedCount > 0) {
-            [scope, projectsData, templatesData, operationalScope] = await Promise.all([
-              fetchAIAnalysisScopeSummary(params),
-              fetchAIAnalysisProjectSummary(params),
-              fetchAIAnalysisTemplateSummary(params),
-              fetchOperationalScopeSummary(params),
-            ]);
-          }
-        }
 
         if (disposed) {
           return;
         }
 
         setScopeSummary(scope as ScopeSummary);
-        setOperationalScopeSummary((operationalScope || null) as ScopeSummary);
         setProjectSummary((projectsData || []) as ProjectSummaryRow[]);
         setTemplateSummary((templatesData || []) as TemplateSummaryRow[]);
-        if (Number((scope as any)?.cell_count || 0) === 0 && Number((operationalScope as any)?.cell_count || 0) > 0) {
+        if (Number((scope as any)?.cell_count || 0) === 0 && Number((operationalScopeSummary as any)?.cell_count || 0) > 0) {
           setSummaryError(
             'Tóm tắt đang dùng trực tiếp dữ liệu vận hành. Khi bấm "Tạo phân tích AI", hệ thống sẽ tự đồng bộ lớp phân tích cho phạm vi này.',
           );
@@ -408,7 +425,6 @@ export function AIAnalysisView({
         }
         console.warn('Không thể tải tổng hợp dữ liệu cho Phân tích AI:', error);
         setScopeSummary(null);
-        setOperationalScopeSummary(null);
         setProjectSummary([]);
         setTemplateSummary([]);
         setSummaryError(
@@ -426,7 +442,7 @@ export function AIAnalysisView({
     return () => {
       disposed = true;
     };
-  }, [projects, selectedProjectIds, selectedScope, selectedTemplateIds, selectedUnitCodes, selectedYear, templates, units]);
+  }, [operationalScopeSummary, selectedProjectIds, selectedScope, selectedTemplateIds, selectedUnitCodes, selectedYear]);
 
   const canGenerate = selectedProjectIds.length > 0;
   const isLargeScope = summary.projectCount >= 4 || summary.templateCount >= 10 || summary.rowCount >= 5000;
@@ -445,29 +461,38 @@ export function AIAnalysisView({
     setGenerationError('');
 
     try {
-      await backfillAnalysisCellsForScope({
-        projectIds: selectedProjectIds,
-        years: [selectedYear],
-        templateIds: selectedScope === 'BY_TEMPLATE' ? selectedTemplateIds : undefined,
-        unitCodes: selectedScope === 'BY_UNIT' ? selectedUnitCodes : undefined,
-        templates,
-        projects,
-        units,
-      });
+      if (scopedOperationalRows.length > 0) {
+        await syncAnalysisCellsFromRows({
+          rows: scopedOperationalRows,
+          templates,
+          projects,
+          units,
+          dataFiles: scopedOperationalFiles,
+        });
+      }
+
+      const syncedTemplateIds =
+        selectedScope === 'BY_TEMPLATE'
+          ? selectedTemplateIds
+          : Array.from(new Set(scopedOperationalRows.map((row) => row.templateId)));
+      const syncedUnitCodes =
+        selectedScope === 'BY_UNIT'
+          ? selectedUnitCodes
+          : Array.from(new Set(scopedOperationalRows.map((row) => row.unitCode)));
 
       const aiInput = await buildAIAnalysisInput({
         projectIds: selectedProjectIds,
         year: selectedYear,
         scope: selectedScope,
-        selectedTemplateIds,
-        selectedUnitCodes,
+        selectedTemplateIds: syncedTemplateIds,
+        selectedUnitCodes: syncedUnitCodes,
         analysisType,
         writingTone,
         reportLength,
         requestedSections: selectedContent,
         extraPrompt,
-        projects,
         templates,
+        projects,
         units,
       });
 

@@ -1347,6 +1347,8 @@ export default function App() {
             projects={projects}
             templates={templates}
             units={allUnits}
+            data={data}
+            dataFiles={dataFiles}
             currentUser={{
               uid: user?.id || null,
               email: user?.email || null,
