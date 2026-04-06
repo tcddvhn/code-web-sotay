@@ -1,0 +1,1203 @@
+[
+  {
+    "code": "DV001",
+    "name": "Đảng bộ các cơ quan Đảng Thành phố",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV002",
+    "name": "Đảng bộ UBND Thành phố",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV003",
+    "name": "Đảng bộ Công an Thành phố",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV004",
+    "name": "Đảng bộ Bộ Tư lệnh Thủ đô",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV005",
+    "name": "Đảng bộ các Trường Đại học, Cao đẳng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV006",
+    "name": "Đảng bộ Đại học Quốc gia Hà Nội",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV007",
+    "name": "Đảng bộ Phường Ba Đình",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV008",
+    "name": "Đảng bộ Phường Bạch Mai",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV009",
+    "name": "Đảng bộ Phường Bồ Đề",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV010",
+    "name": "Đảng bộ Phường Cầu Giấy",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV011",
+    "name": "Đảng bộ Phường Cửa Nam",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV012",
+    "name": "Đảng bộ Phường Chương Mỹ",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV013",
+    "name": "Đảng bộ Phường Dương Nội",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV014",
+    "name": "Đảng bộ Phường Đại Mỗ",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV015",
+    "name": "Đảng bộ Phường Định Công",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV016",
+    "name": "Đảng bộ Phường Đống Đa",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV017",
+    "name": "Đảng bộ Phường Đông Ngạc",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV018",
+    "name": "Đảng bộ Phường Giảng Võ",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV019",
+    "name": "Đảng bộ Phường Hà Đông",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV020",
+    "name": "Đảng bộ Phường Hai Bà Trưng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV021",
+    "name": "Đảng bộ Phường Hoàn Kiếm",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV022",
+    "name": "Đảng bộ Phường Hoàng Liệt",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV023",
+    "name": "Đảng bộ Phường Hoàng Mai",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV024",
+    "name": "Đảng bộ Phường Hồng Hà",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV025",
+    "name": "Đảng bộ Phường Kiến Hưng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV026",
+    "name": "Đảng bộ Phường Kim Liên",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV027",
+    "name": "Đảng bộ Phường Khương Đình",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV028",
+    "name": "Đảng bộ Phường Láng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV029",
+    "name": "Đảng bộ Phường Lĩnh Nam",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV030",
+    "name": "Đảng bộ Phường Long Biên",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV031",
+    "name": "Đảng bộ Phường Nghĩa Đô",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV032",
+    "name": "Đảng bộ Phường Ngọc Hà",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV033",
+    "name": "Đảng bộ Phường Ô Chợ Dừa",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV034",
+    "name": "Đảng bộ Phường Phú Diễn",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV035",
+    "name": "Đảng bộ Phường Phú Lương",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV036",
+    "name": "Đảng bộ Phường Phú Thượng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV037",
+    "name": "Đảng bộ Phường Phúc Lợi",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV038",
+    "name": "Đảng bộ Phường Phương Liệt",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV039",
+    "name": "Đảng bộ Phường Sơn Tây",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV040",
+    "name": "Đảng bộ Phường Tây Hồ",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV041",
+    "name": "Đảng bộ Phường Tây Mỗ",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV042",
+    "name": "Đảng bộ Phường Tây Tựu",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV043",
+    "name": "Đảng bộ Phường Tùng Thiện",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV044",
+    "name": "Đảng bộ Phường Từ Liêm",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV045",
+    "name": "Đảng bộ Phường Tương Mai",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV046",
+    "name": "Đảng bộ Phường Thanh Liệt",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV047",
+    "name": "Đảng bộ Phường Thanh Xuân",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV048",
+    "name": "Đảng bộ Phường Thượng Cát",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV049",
+    "name": "Đảng bộ Phường Văn Miếu-QTG",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV050",
+    "name": "Đảng bộ Phường Việt Hưng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV051",
+    "name": "Đảng bộ Phường Vĩnh Hưng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV052",
+    "name": "Đảng bộ Phường Vĩnh Tuy",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV053",
+    "name": "Đảng bộ Phường Xuân Đỉnh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV054",
+    "name": "Đảng bộ Phường Xuân Phương",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV055",
+    "name": "Đảng bộ Phường Yên Hoà",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV056",
+    "name": "Đảng bộ Phường Yên Nghĩa",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV057",
+    "name": "Đảng bộ Phường Yên Sở",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV058",
+    "name": "Đảng bộ Xã An Khánh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV059",
+    "name": "Đảng bộ Xã Ba Vì",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV060",
+    "name": "Đảng bộ Xã Bát Tràng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV061",
+    "name": "Đảng bộ Xã Bất Bạt",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV062",
+    "name": "Đảng bộ Xã Bình Minh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV063",
+    "name": "Đảng bộ Xã Cổ Đô",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV064",
+    "name": "Đảng bộ Xã Chuyên Mỹ",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV065",
+    "name": "Đảng bộ Xã Chương Dương",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV066",
+    "name": "Đảng bộ Xã Dân Hoà",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV067",
+    "name": "Đảng bộ Xã Dương Hòa",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV068",
+    "name": "Đảng bộ Xã Đa Phúc",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV069",
+    "name": "Đảng bộ Xã Đại Thanh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV070",
+    "name": "Đảng bộ Xã Đại Xuyên",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV071",
+    "name": "Đảng bộ Xã Đan Phượng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV072",
+    "name": "Đảng bộ xã Đoài Phương",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV073",
+    "name": "Đảng bộ Xã Đông Anh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV074",
+    "name": "Đảng bộ Xã Gia Lâm",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV075",
+    "name": "Đảng bộ Xã Hạ Bằng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV076",
+    "name": "Đảng bộ Xã Hát Môn",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV077",
+    "name": "Đảng bộ Xã Hoà Lạc",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV078",
+    "name": "Đảng bộ Xã Hoà Phú",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV079",
+    "name": "Đảng bộ Xã Hoà Xá",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV080",
+    "name": "Đảng bộ Xã Hoài Đức",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV081",
+    "name": "Đảng bộ Xã Hồng Sơn",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV082",
+    "name": "Đảng bộ Xã Hồng Vân",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV083",
+    "name": "Đảng bộ Xã Hưng Đạo",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV084",
+    "name": "Đảng bộ Xã Hương Sơn",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV085",
+    "name": "Đảng bộ Xã Kiều Phú",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV086",
+    "name": "Đảng bộ Xã Kim Anh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV087",
+    "name": "Đảng bộ Xã Liên Minh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV088",
+    "name": "Đảng bộ Xã Mê Linh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV089",
+    "name": "Đảng bộ Xã Minh Châu",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV090",
+    "name": "Đảng bộ Xã Mỹ Đức",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV091",
+    "name": "Đảng bộ Xã Nam Phù",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV092",
+    "name": "Đảng bộ Xã Nội Bài",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV093",
+    "name": "Đảng bộ Xã Ngọc Hồi",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV094",
+    "name": "Đảng bộ Xã Ô Diên",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV095",
+    "name": "Đảng bộ Xã Phú Cát",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV096",
+    "name": "Đảng bộ Xã Phù Đổng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV097",
+    "name": "Đảng bộ Xã Phú Nghĩa",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV098",
+    "name": "Đảng bộ Xã Phú Xuyên",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV099",
+    "name": "Đảng bộ Xã Phúc Lộc",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV100",
+    "name": "Đảng bộ Xã Phúc Sơn",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV101",
+    "name": "Đảng bộ Xã Phúc Thịnh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV102",
+    "name": "Đảng bộ Xã Phúc Thọ",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV103",
+    "name": "Đảng bộ Xã Phượng Dực",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV104",
+    "name": "Đảng bộ Xã Quảng Bị",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV105",
+    "name": "Đảng bộ Xã Quang Minh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV106",
+    "name": "Đảng bộ Xã Quảng Oai",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV107",
+    "name": "Đảng bộ Xã Quốc Oai",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV108",
+    "name": "Đảng bộ Xã Sóc Sơn",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV109",
+    "name": "Đảng bộ Xã Sơn Đồng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV110",
+    "name": "Đảng bộ Xã Suối Hai",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV111",
+    "name": "Đảng bộ Xã Tam Hưng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV112",
+    "name": "Đảng bộ Xã Tây Phương",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV113",
+    "name": "Đảng bộ Xã Tiến Thắng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV114",
+    "name": "Đảng bộ Xã Thạch Thất",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.579+00:00"
+  },
+  {
+    "code": "DV115",
+    "name": "Đảng bộ Xã Thanh Oai",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.579+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV116",
+    "name": "Đảng bộ Xã Thanh Trì",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV117",
+    "name": "Đảng bộ Xã Thiên Lộc",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV118",
+    "name": "Đảng bộ Xã Thuận An",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV119",
+    "name": "Đảng bộ Xã Thư Lâm",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV120",
+    "name": "Đảng bộ Xã Thượng Phúc",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV121",
+    "name": "Đảng bộ Xã Thường Tín",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV122",
+    "name": "Đảng bộ Xã Trần Phú",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV123",
+    "name": "Đảng bộ Xã Trung Giã",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV124",
+    "name": "Đảng bộ Xã Ứng Hoà",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV125",
+    "name": "Đảng bộ Xã Ứng Thiên",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV126",
+    "name": "Đảng bộ Xã Vân Đình",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV127",
+    "name": "Đảng bộ Xã Vật Lại",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV128",
+    "name": "Đảng bộ Xã Vĩnh Thanh",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV129",
+    "name": "Đảng bộ Xã Xuân Mai",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV130",
+    "name": "Đảng bộ Xã Yên Bài",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV131",
+    "name": "Đảng bộ Xã Yên Lãng",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV132",
+    "name": "Đảng bộ Xã Yên Xuân",
+    "is_deleted": false,
+    "deleted_at": null,
+    "deleted_by": null,
+    "created_at": "2026-03-28T02:55:38.58+00:00",
+    "updated_at": "2026-03-28T02:55:38.58+00:00"
+  },
+  {
+    "code": "DV133",
+    "name": "Đảng bộ Thành phố Hà Nội",
+    "is_deleted": true,
+    "deleted_at": "2026-03-31T04:04:39.115+00:00",
+    "deleted_by": {
+      "uid": "261c7145-e356-4749-aaa7-db9050243add",
+      "email": "admin@sotay.com",
+      "displayName": "Lê Đình Kiên"
+    },
+    "created_at": "2026-03-31T04:04:19.562+00:00",
+    "updated_at": "2026-03-31T04:04:39.115+00:00"
+  }
+]

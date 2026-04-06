@@ -10,7 +10,9 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "check:encoding": "node scripts/check-encoding.mjs",
-    "auth:import-users": "node scripts/import-supabase-auth-users.mjs"
+    "auth:import-users": "node scripts/import-supabase-auth-users.mjs",
+    "auth:sync-unit-profiles": "node scripts/sync-supabase-unit-profiles.mjs",
+    "backup:supabase": "node scripts/backup-supabase-project.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",

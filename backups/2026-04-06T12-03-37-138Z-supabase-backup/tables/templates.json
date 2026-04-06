@@ -1,0 +1,4402 @@
+[
+  {
+    "id": "tpl_1775004149234_4qrpgjm",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 03-DTTS",
+    "sheet_name": "BIEU 03-DTTS",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 16,
+      "startRow": 8,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "A",
+      "sheetSignature": {
+        "endRowText": "trong đó: số học viên tham gia lớp bồi dưỡng lý luận chính trị dành cho đảng viên mới là người dtts",
+        "headerEndCol": "A",
+        "headerEndRow": 16,
+        "startRowText": "",
+        "headerStartCol": "A",
+        "headerStartRow": 7,
+        "middleRowCount": 8
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "A"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Năm 2022"
+        },
+        {
+          "col": 3,
+          "row": 7,
+          "value": "Năm 2023"
+        },
+        {
+          "col": 4,
+          "row": 7,
+          "value": "Năm 2024"
+        },
+        {
+          "col": 5,
+          "row": 7,
+          "value": "Năm 2025"
+        },
+        {
+          "col": 6,
+          "row": 7,
+          "value": "Quý I/2026"
+        },
+        {
+          "col": 7,
+          "row": 7,
+          "value": "Tổng cộng"
+        }
+      ],
+      "endCol": 7,
+      "endRow": 7,
+      "merges": [],
+      "startCol": 1,
+      "startRow": 7
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775004149318_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775004149318_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T00:42:29.234+00:00",
+    "updated_at": "2026-04-01T23:38:02.394+00:00"
+  },
+  {
+    "id": "tpl_1775011469963_3uscxil",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 10-SHD",
+    "sheet_name": "BIEU 10-SHD",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 19,
+      "startRow": 7,
+      "dataColumns": [
+        "B",
+        "C"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "A",
+      "sheetSignature": {
+        "endRowText": "cộng",
+        "headerEndCol": "A",
+        "headerEndRow": 19,
+        "startRowText": "loại hình tổ chức cơ sở đảng",
+        "headerStartCol": "A",
+        "headerStartRow": 5,
+        "middleRowCount": 13
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "A"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Loại hình tổ chức cơ sở đảng"
+        },
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Số lượng đảng viên đang công tác sinh hoạt đảng tại nơi cư trú trong các loại hình tổ chức cơ sở đảng"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Tại thời điểm 31/12/2020"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Tại thời điểm 31/12/2025"
+        }
+      ],
+      "endCol": 3,
+      "endRow": 6,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 3,
+          "endRow": 5,
+          "startCol": 2,
+          "startRow": 5
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775011470050_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775011470050_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T02:44:29.963+00:00",
+    "updated_at": "2026-04-01T23:39:37.038+00:00"
+  },
+  {
+    "id": "tpl_1774687017469_a3nof49",
+    "project_id": "proj_1774686718587",
+    "name": "B2",
+    "sheet_name": "B2",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3"
+    ],
+    "column_mapping": {
+      "endRow": 85,
+      "startRow": 9,
+      "dataColumns": [
+        "B",
+        "C",
+        "D"
+      ],
+      "labelColumn": "A"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Tổng số đảng viên"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Số lượng đảng viên mới kết nạp"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Tính đến thời điểm báo cáo"
+        },
+        {
+          "col": 3,
+          "row": 7,
+          "value": "Trong Quý báo cáo"
+        },
+        {
+          "col": 4,
+          "row": 7,
+          "value": "Tính từ đầu năm đến thời điểm báo cáo"
+        },
+        {
+          "col": 1,
+          "row": 8,
+          "value": "1"
+        },
+        {
+          "col": 2,
+          "row": 8,
+          "value": "2"
+        },
+        {
+          "col": 3,
+          "row": 8,
+          "value": "3"
+        },
+        {
+          "col": 4,
+          "row": 8,
+          "value": "4"
+        }
+      ],
+      "endCol": 4,
+      "endRow": 8,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 4,
+          "endRow": 6,
+          "startCol": 3,
+          "startRow": 6
+        }
+      ],
+      "startCol": 1,
+      "startRow": 6
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_01_02.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774686718587/1774687017498_BIEU_01_02.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774686718587/1774687017498_BIEU_01_02.xlsx",
+    "created_at": "2026-03-28T08:36:57.469+00:00",
+    "updated_at": "2026-03-28T08:43:10.866+00:00"
+  },
+  {
+    "id": "tpl_1774686912089_hqwbtai",
+    "project_id": "proj_1774686718587",
+    "name": "B1",
+    "sheet_name": "B1",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6",
+      "Cột 7",
+      "Cột 8",
+      "Cột 9",
+      "Cột 10",
+      "Cột 11",
+      "Cột 12",
+      "Cột 13",
+      "Cột 14",
+      "Cột 15",
+      "Cột 16",
+      "Cột 17"
+    ],
+    "column_mapping": {
+      "endRow": 36,
+      "startRow": 13,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R"
+      ],
+      "labelColumn": "A"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 7,
+          "value": "Loại hình tổ chức đảng"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Tổ chức cơ sở đảng"
+        },
+        {
+          "col": 12,
+          "row": 7,
+          "value": "Tổ chức đảng trực thuộc"
+        },
+        {
+          "col": 16,
+          "row": 7,
+          "value": "Đảng viên"
+        },
+        {
+          "col": 2,
+          "row": 8,
+          "value": "Tổng số"
+        },
+        {
+          "col": 3,
+          "row": 8,
+          "value": "Đảng bộ cơ sở"
+        },
+        {
+          "col": 11,
+          "row": 8,
+          "value": "Chi bộ \r\ncơ sở"
+        },
+        {
+          "col": 12,
+          "row": 8,
+          "value": "Chia ra"
+        },
+        {
+          "col": 3,
+          "row": 9,
+          "value": "Tổng số"
+        },
+        {
+          "col": 4,
+          "row": 9,
+          "value": "Trong đó:"
+        },
+        {
+          "col": 12,
+          "row": 9,
+          "value": "Chi bộ trực thuộc Đảng ủy cấp trên trực tiếp cơ sở"
+        },
+        {
+          "col": 13,
+          "row": 9,
+          "value": "Chi bộ trực thuộc Đảng ủy cơ sở"
+        },
+        {
+          "col": 14,
+          "row": 9,
+          "value": "Đảng bộ bộ phận  trực thuộc Đảng ủy cơ sở"
+        },
+        {
+          "col": 15,
+          "row": 9,
+          "value": "Chi bộ trực thuộc Đảng ủy bộ phận"
+        },
+        {
+          "col": 16,
+          "row": 9,
+          "value": "Tổng số đảng viên"
+        },
+        {
+          "col": 17,
+          "row": 9,
+          "value": "Trong đó: Đảng viên mới kết nạp"
+        },
+        {
+          "col": 4,
+          "row": 10,
+          "value": "Đảng bộ cơ sở trực thuộc đảng ủy cấp trên trực tiếp cơ sở"
+        },
+        {
+          "col": 5,
+          "row": 10,
+          "value": "Đảng bộ cơ sở trực thuộc tỉnh ủy, thành ủy, đảng ủy trực thuộc Trung ương"
+        },
+        {
+          "col": 6,
+          "row": 10,
+          "value": "Đảng bộ cơ sở được giao quyền cấp trên trực tiếp cơ sở"
+        },
+        {
+          "col": 7,
+          "row": 10,
+          "value": "Đảng bộ cơ sở được thí điểm giao quyền cấp trên trực tiếp cơ sở"
+        },
+        {
+          "col": 8,
+          "row": 10,
+          "value": "Đảng bộ cơ sở trực thuộc đảng ủy cơ sở được giao quyền cấp trên trực tiếp cơ sở"
+        },
+        {
+          "col": 9,
+          "row": 10,
+          "value": "Đảng bộ cơ sở trực thuộc đảng ủy cơ sở được thí điểm giao quyền cấp trên trực tiếp cơ sở"
+        },
+        {
+          "col": 10,
+          "row": 10,
+          "value": "Đảng bộ cơ sở được ủy quyền kết nạp, khai trừ đảng viên"
+        },
+        {
+          "col": 17,
+          "row": 11,
+          "value": "Số trong quý báo cáo"
+        },
+        {
+          "col": 18,
+          "row": 11,
+          "value": "Số từ đầu năm đến thời điểm báo cáo"
+        },
+        {
+          "col": 1,
+          "row": 12,
+          "value": "1"
+        },
+        {
+          "col": 2,
+          "row": 12,
+          "value": "2 (=3+11)"
+        },
+        {
+          "col": 3,
+          "row": 12,
+          "value": "3 (=4+…+10)"
+        },
+        {
+          "col": 4,
+          "row": 12,
+          "value": "4"
+        },
+        {
+          "col": 5,
+          "row": 12,
+          "value": "5"
+        },
+        {
+          "col": 6,
+          "row": 12,
+          "value": "6"
+        },
+        {
+          "col": 7,
+          "row": 12,
+          "value": "7"
+        },
+        {
+          "col": 8,
+          "row": 12,
+          "value": "8"
+        },
+        {
+          "col": 9,
+          "row": 12,
+          "value": "9"
+        },
+        {
+          "col": 10,
+          "row": 12,
+          "value": "10"
+        },
+        {
+          "col": 11,
+          "row": 12,
+          "value": "11"
+        },
+        {
+          "col": 12,
+          "row": 12,
+          "value": "12"
+        },
+        {
+          "col": 13,
+          "row": 12,
+          "value": "13"
+        },
+        {
+          "col": 14,
+          "row": 12,
+          "value": "14"
+        },
+        {
+          "col": 15,
+          "row": 12,
+          "value": "15"
+        },
+        {
+          "col": 16,
+          "row": 12,
+          "value": "16"
+        },
+        {
+          "col": 17,
+          "row": 12,
+          "value": "17"
+        },
+        {
+          "col": 18,
+          "row": 12,
+          "value": "18"
+        }
+      ],
+      "endCol": 18,
+      "endRow": 12,
+      "merges": [
+        {
+          "endCol": 11,
+          "endRow": 7,
+          "startCol": 2,
+          "startRow": 7
+        },
+        {
+          "endCol": 15,
+          "endRow": 7,
+          "startCol": 12,
+          "startRow": 7
+        },
+        {
+          "endCol": 10,
+          "endRow": 8,
+          "startCol": 3,
+          "startRow": 8
+        },
+        {
+          "endCol": 10,
+          "endRow": 9,
+          "startCol": 4,
+          "startRow": 9
+        },
+        {
+          "endCol": 13,
+          "endRow": 11,
+          "startCol": 13,
+          "startRow": 9
+        },
+        {
+          "endCol": 14,
+          "endRow": 11,
+          "startCol": 14,
+          "startRow": 9
+        },
+        {
+          "endCol": 18,
+          "endRow": 10,
+          "startCol": 17,
+          "startRow": 9
+        },
+        {
+          "endCol": 18,
+          "endRow": 8,
+          "startCol": 16,
+          "startRow": 7
+        },
+        {
+          "endCol": 16,
+          "endRow": 11,
+          "startCol": 16,
+          "startRow": 9
+        },
+        {
+          "endCol": 1,
+          "endRow": 11,
+          "startCol": 1,
+          "startRow": 7
+        },
+        {
+          "endCol": 2,
+          "endRow": 11,
+          "startCol": 2,
+          "startRow": 8
+        },
+        {
+          "endCol": 3,
+          "endRow": 11,
+          "startCol": 3,
+          "startRow": 9
+        },
+        {
+          "endCol": 4,
+          "endRow": 11,
+          "startCol": 4,
+          "startRow": 10
+        },
+        {
+          "endCol": 5,
+          "endRow": 11,
+          "startCol": 5,
+          "startRow": 10
+        },
+        {
+          "endCol": 15,
+          "endRow": 8,
+          "startCol": 12,
+          "startRow": 8
+        },
+        {
+          "endCol": 15,
+          "endRow": 11,
+          "startCol": 15,
+          "startRow": 9
+        },
+        {
+          "endCol": 6,
+          "endRow": 11,
+          "startCol": 6,
+          "startRow": 10
+        },
+        {
+          "endCol": 7,
+          "endRow": 11,
+          "startCol": 7,
+          "startRow": 10
+        },
+        {
+          "endCol": 8,
+          "endRow": 11,
+          "startCol": 8,
+          "startRow": 10
+        },
+        {
+          "endCol": 9,
+          "endRow": 11,
+          "startCol": 9,
+          "startRow": 10
+        },
+        {
+          "endCol": 10,
+          "endRow": 11,
+          "startCol": 10,
+          "startRow": 10
+        },
+        {
+          "endCol": 11,
+          "endRow": 11,
+          "startCol": 11,
+          "startRow": 8
+        },
+        {
+          "endCol": 12,
+          "endRow": 11,
+          "startCol": 12,
+          "startRow": 9
+        }
+      ],
+      "startCol": 1,
+      "startRow": 7
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_01_02.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774686718587/1774686912116_BIEU_01_02.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774686718587/1774686912116_BIEU_01_02.xlsx",
+    "created_at": "2026-03-28T08:35:12.089+00:00",
+    "updated_at": "2026-03-28T08:43:08.899+00:00"
+  },
+  {
+    "id": "tpl_1774714246897_qfjkjkf",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-1C",
+    "sheet_name": "1C",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6",
+      "Cột 7",
+      "Cột 8",
+      "Cột 9",
+      "Cột 10",
+      "Cột 11"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 58,
+      "startRow": 10,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L"
+      ],
+      "labelColumn": "A",
+      "specialRows": [
+        34
+      ],
+      "sheetSignature": {
+        "endRowText": "cộng (1+....+9)",
+        "headerEndCol": "A",
+        "headerEndRow": 58,
+        "startRowText": "loại hình tổ chức cơ sở đảng",
+        "headerStartCol": "A",
+        "headerStartRow": 6,
+        "middleRowCount": 51
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 6,
+          "value": "Loại hình tổ chức cơ sở đảng"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Chi bộ cơ sở"
+        },
+        {
+          "col": 6,
+          "row": 6,
+          "value": "Chi bộ trực thuộc Đảng ủy cấp trên trực tiếp cơ sở/ Đảng ủy cơ sở/ Đảng ủy bộ phận"
+        },
+        {
+          "col": 12,
+          "row": 6,
+          "value": "Tổ đảng"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Tổng số"
+        },
+        {
+          "col": 3,
+          "row": 7,
+          "value": "Chi bộ có từ 03 đến 05 đảng viên"
+        },
+        {
+          "col": 4,
+          "row": 7,
+          "value": "Chi bộ có từ 06 đến 09 đảng viên"
+        },
+        {
+          "col": 5,
+          "row": 7,
+          "value": "Chi bộ có từ 10 đảng viên trở lên"
+        },
+        {
+          "col": 6,
+          "row": 7,
+          "value": "Tổng số"
+        },
+        {
+          "col": 7,
+          "row": 7,
+          "value": "Chi bộ có từ 03 đến 05 đảng viên"
+        },
+        {
+          "col": 8,
+          "row": 7,
+          "value": "Chi bộ có từ 06 đến 09 đảng viên"
+        },
+        {
+          "col": 9,
+          "row": 7,
+          "value": "Chi bộ có từ 10 đến dưới 30 đảng viên"
+        },
+        {
+          "col": 10,
+          "row": 7,
+          "value": "Chi bộ có từ 30 đến 100 đảng viên"
+        },
+        {
+          "col": 11,
+          "row": 7,
+          "value": "Chi bộ có trên 100 đảng viên"
+        },
+        {
+          "col": 1,
+          "row": 8,
+          "value": "1"
+        },
+        {
+          "col": 2,
+          "row": 8,
+          "value": "2=3+4+5"
+        },
+        {
+          "col": 3,
+          "row": 8,
+          "value": "3"
+        },
+        {
+          "col": 4,
+          "row": 8,
+          "value": "4"
+        },
+        {
+          "col": 5,
+          "row": 8,
+          "value": "5"
+        },
+        {
+          "col": 6,
+          "row": 8,
+          "value": "6=7+8+9+10+11"
+        },
+        {
+          "col": 7,
+          "row": 8,
+          "value": "7"
+        },
+        {
+          "col": 8,
+          "row": 8,
+          "value": "8"
+        },
+        {
+          "col": 9,
+          "row": 8,
+          "value": "9"
+        },
+        {
+          "col": 10,
+          "row": 8,
+          "value": "10"
+        },
+        {
+          "col": 11,
+          "row": 8,
+          "value": "11"
+        },
+        {
+          "col": 12,
+          "row": 8,
+          "value": "12"
+        },
+        {
+          "col": 1,
+          "row": 9,
+          "value": "Tính đến 01/7/2025"
+        }
+      ],
+      "endCol": 12,
+      "endRow": 9,
+      "merges": [
+        {
+          "endCol": 12,
+          "endRow": 7,
+          "startCol": 12,
+          "startRow": 6
+        },
+        {
+          "endCol": 1,
+          "endRow": 7,
+          "startCol": 1,
+          "startRow": 6
+        },
+        {
+          "endCol": 11,
+          "endRow": 6,
+          "startCol": 6,
+          "startRow": 6
+        },
+        {
+          "endCol": 12,
+          "endRow": 9,
+          "startCol": 1,
+          "startRow": 9
+        },
+        {
+          "endCol": 5,
+          "endRow": 6,
+          "startCol": 2,
+          "startRow": 6
+        }
+      ],
+      "startCol": 1,
+      "startRow": 6
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714246951_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714246951_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:10:46.897+00:00",
+    "updated_at": "2026-04-01T23:51:00.909+00:00"
+  },
+  {
+    "id": "tpl_1774714365961_6p6ultg",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-2B",
+    "sheet_name": "2B",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6",
+      "Cột 7",
+      "Cột 8",
+      "Cột 9"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 10,
+      "startRow": 7,
+      "dataColumns": [
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K"
+      ],
+      "labelColumn": "B",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "4 | số thôn, bản, ấp ... chưa có đảng viên",
+        "headerEndCol": "B",
+        "headerEndRow": 10,
+        "startRowText": "stt | chỉ tiêu",
+        "headerStartCol": "A",
+        "headerStartRow": 5,
+        "middleRowCount": 4
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Chỉ tiêu"
+        },
+        {
+          "col": 3,
+          "row": 5,
+          "value": "Năm 2022"
+        },
+        {
+          "col": 6,
+          "row": 5,
+          "value": "Đến 30/6/2025"
+        },
+        {
+          "col": 9,
+          "row": 5,
+          "value": "Đến 01/3/2026"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Khu vực I"
+        },
+        {
+          "col": 4,
+          "row": 6,
+          "value": "Khu vực II"
+        },
+        {
+          "col": 5,
+          "row": 6,
+          "value": "Khu vực III"
+        },
+        {
+          "col": 6,
+          "row": 6,
+          "value": "Khu vực I"
+        },
+        {
+          "col": 7,
+          "row": 6,
+          "value": "Khu vực II"
+        },
+        {
+          "col": 8,
+          "row": 6,
+          "value": "Khu vực III"
+        },
+        {
+          "col": 9,
+          "row": 6,
+          "value": "Khu vực I"
+        },
+        {
+          "col": 10,
+          "row": 6,
+          "value": "Khu vực II"
+        },
+        {
+          "col": 11,
+          "row": 6,
+          "value": "Khu vực III"
+        }
+      ],
+      "endCol": 11,
+      "endRow": 6,
+      "merges": [
+        {
+          "endCol": 11,
+          "endRow": 5,
+          "startCol": 9,
+          "startRow": 5
+        },
+        {
+          "endCol": 8,
+          "endRow": 5,
+          "startCol": 6,
+          "startRow": 5
+        },
+        {
+          "endCol": 5,
+          "endRow": 5,
+          "startCol": 3,
+          "startRow": 5
+        },
+        {
+          "endCol": 2,
+          "endRow": 6,
+          "startCol": 2,
+          "startRow": 5
+        }
+      ],
+      "startCol": 2,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714366011_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714366011_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:12:45.961+00:00",
+    "updated_at": "2026-04-01T23:51:43.75+00:00"
+  },
+  {
+    "id": "tpl_1774714483827_9fqvt77",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-3",
+    "sheet_name": "3",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 24,
+      "startRow": 10,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "cộng (1+....+9)",
+        "headerEndCol": "A",
+        "headerEndRow": 24,
+        "startRowText": "loại hình tổ chức cơ sở đảng",
+        "headerStartCol": "A",
+        "headerStartRow": 6,
+        "middleRowCount": 17
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 6,
+          "value": "Loại hình tổ chức cơ sở đảng"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Số lượng tổ chức đảng đã triển khai thực hiện"
+        },
+        {
+          "col": 5,
+          "row": 6,
+          "value": "Kết quả số lượng tổ chức đảng được công nhận"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Tổng số"
+        },
+        {
+          "col": 3,
+          "row": 7,
+          "value": "Chi bộ bốn tốt"
+        },
+        {
+          "col": 4,
+          "row": 7,
+          "value": "Đảng bộ bốn tốt"
+        },
+        {
+          "col": 5,
+          "row": 7,
+          "value": "Tổng số"
+        },
+        {
+          "col": 6,
+          "row": 7,
+          "value": "Chi bộ bốn tốt"
+        },
+        {
+          "col": 7,
+          "row": 7,
+          "value": "Đảng bộ bốn tốt"
+        },
+        {
+          "col": 1,
+          "row": 8,
+          "value": "1"
+        },
+        {
+          "col": 2,
+          "row": 8,
+          "value": "2 (=3+4)"
+        },
+        {
+          "col": 3,
+          "row": 8,
+          "value": "3"
+        },
+        {
+          "col": 4,
+          "row": 8,
+          "value": "4"
+        },
+        {
+          "col": 5,
+          "row": 8,
+          "value": "5 (=6+7)"
+        },
+        {
+          "col": 6,
+          "row": 8,
+          "value": "6"
+        },
+        {
+          "col": 7,
+          "row": 8,
+          "value": "7"
+        },
+        {
+          "col": 1,
+          "row": 9,
+          "value": "Tính đến 01/3/2026"
+        }
+      ],
+      "endCol": 7,
+      "endRow": 9,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 7,
+          "startCol": 1,
+          "startRow": 6
+        },
+        {
+          "endCol": 4,
+          "endRow": 6,
+          "startCol": 2,
+          "startRow": 6
+        },
+        {
+          "endCol": 7,
+          "endRow": 6,
+          "startCol": 5,
+          "startRow": 6
+        },
+        {
+          "endCol": 7,
+          "endRow": 9,
+          "startCol": 1,
+          "startRow": 9
+        }
+      ],
+      "startCol": 1,
+      "startRow": 6
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714483881_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714483881_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:14:43.827+00:00",
+    "updated_at": "2026-04-01T23:52:10.087+00:00"
+  },
+  {
+    "id": "tpl_1775012112526_psrdewo",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 11-SHD",
+    "sheet_name": "BIEU 11-SHD",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 29,
+      "startRow": 8,
+      "dataColumns": [
+        "C",
+        "D",
+        "E"
+      ],
+      "labelColumn": "A",
+      "specialRows": [
+        24
+      ],
+      "labelColumnEnd": "B",
+      "sheetSignature": {
+        "endRowText": "3",
+        "headerEndCol": "A",
+        "headerEndRow": 29,
+        "startRowText": "tt",
+        "headerStartCol": "A",
+        "headerStartRow": 6,
+        "middleRowCount": 22
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "B"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 6,
+          "value": "TT"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Tiêu chí"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Năm 2020"
+        },
+        {
+          "col": 4,
+          "row": 6,
+          "value": "Năm 2025"
+        },
+        {
+          "col": 1,
+          "row": 7,
+          "value": "I"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Cấp ủy cơ sở nơi đảng viên đang công tác giới thiệu đảng viên về nơi cư trú"
+        }
+      ],
+      "endCol": 5,
+      "endRow": 7,
+      "merges": [
+        {
+          "endCol": 4,
+          "endRow": 7,
+          "startCol": 2,
+          "startRow": 7
+        }
+      ],
+      "startCol": 1,
+      "startRow": 6
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775012112616_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775012112616_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T02:55:12.526+00:00",
+    "updated_at": "2026-04-01T23:39:56.833+00:00"
+  },
+  {
+    "id": "tpl_1774714611109_o0m9w8m",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-5A",
+    "sheet_name": "5A",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6",
+      "Cột 7",
+      "Cột 8",
+      "Cột 9",
+      "Cột 10",
+      "Cột 11",
+      "Cột 12",
+      "Cột 13"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 46,
+      "startRow": 9,
+      "dataColumns": [
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O"
+      ],
+      "labelColumn": "B",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "- | sơ cấp, chưa qua đào tạo",
+        "headerEndCol": "B",
+        "headerEndRow": 46,
+        "startRowText": "tiêu chí",
+        "headerStartCol": "A",
+        "headerStartRow": 6,
+        "middleRowCount": 39
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Tổng số"
+        },
+        {
+          "col": 4,
+          "row": 6,
+          "value": "Trong đó"
+        },
+        {
+          "col": 4,
+          "row": 7,
+          "value": "Thôn, tổ dân phố (Nếu có)"
+        },
+        {
+          "col": 5,
+          "row": 7,
+          "value": "Cơ quan Đảng, MTTQ, tổ chức CT-XH"
+        },
+        {
+          "col": 6,
+          "row": 7,
+          "value": "Cơ quan Nhà nước"
+        },
+        {
+          "col": 7,
+          "row": 7,
+          "value": "Đơn vị sự nghiệp công lập"
+        },
+        {
+          "col": 8,
+          "row": 7,
+          "value": "Đơn vị sự nghiệp ngoài công lập"
+        },
+        {
+          "col": 9,
+          "row": 7,
+          "value": "Quân đội"
+        },
+        {
+          "col": 10,
+          "row": 7,
+          "value": "Công an"
+        },
+        {
+          "col": 11,
+          "row": 7,
+          "value": "Doanh nghiệp có vốn Nhà nước"
+        },
+        {
+          "col": 12,
+          "row": 7,
+          "value": "Doanh nghiệp ngoài khu vực Nhà nước"
+        },
+        {
+          "col": 13,
+          "row": 7,
+          "value": "Hợp tác xã"
+        },
+        {
+          "col": 14,
+          "row": 7,
+          "value": "Tổ chức cơ sở đảng ở ngoài nước"
+        },
+        {
+          "col": 15,
+          "row": 7,
+          "value": "Loại hình tổ chức cơ sở đảng khác"
+        },
+        {
+          "col": 3,
+          "row": 8,
+          "value": "2=3+…+14"
+        },
+        {
+          "col": 4,
+          "row": 8,
+          "value": "3"
+        },
+        {
+          "col": 5,
+          "row": 8,
+          "value": "4"
+        },
+        {
+          "col": 6,
+          "row": 8,
+          "value": "5"
+        },
+        {
+          "col": 7,
+          "row": 8,
+          "value": "6"
+        },
+        {
+          "col": 8,
+          "row": 8,
+          "value": "7"
+        },
+        {
+          "col": 9,
+          "row": 8,
+          "value": "8"
+        },
+        {
+          "col": 10,
+          "row": 8,
+          "value": "9"
+        },
+        {
+          "col": 11,
+          "row": 8,
+          "value": "10"
+        },
+        {
+          "col": 12,
+          "row": 8,
+          "value": "11"
+        },
+        {
+          "col": 13,
+          "row": 8,
+          "value": "12"
+        },
+        {
+          "col": 14,
+          "row": 8,
+          "value": "13"
+        },
+        {
+          "col": 15,
+          "row": 8,
+          "value": "14"
+        }
+      ],
+      "endCol": 15,
+      "endRow": 8,
+      "merges": [
+        {
+          "endCol": 15,
+          "endRow": 6,
+          "startCol": 4,
+          "startRow": 6
+        },
+        {
+          "endCol": 2,
+          "endRow": 8,
+          "startCol": 1,
+          "startRow": 8
+        },
+        {
+          "endCol": 2,
+          "endRow": 7,
+          "startCol": 1,
+          "startRow": 6
+        },
+        {
+          "endCol": 3,
+          "endRow": 7,
+          "startCol": 3,
+          "startRow": 6
+        }
+      ],
+      "startCol": 2,
+      "startRow": 6
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714611160_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714611160_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:16:51.109+00:00",
+    "updated_at": "2026-04-01T23:53:04.086+00:00"
+  },
+  {
+    "id": "tpl_1774714646441_oq0mwtd",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-5B",
+    "sheet_name": "5B",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 20,
+      "startRow": 7,
+      "dataColumns": [
+        "B",
+        "C"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "cộng",
+        "headerEndCol": "A",
+        "headerEndRow": 20,
+        "startRowText": "loại hình tổ chức cơ sở đảng",
+        "headerStartCol": "A",
+        "headerStartRow": 5,
+        "middleRowCount": 14
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Loại hình tổ chức cơ sở đảng"
+        },
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Số lượng bí thư cấp ủy đồng thời là thủ trưởng cơ quan, đơn vị của các tổ chức cơ sở đảng"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Tính đến 01/7/2026"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Tính đến 31/3/2026"
+        }
+      ],
+      "endCol": 3,
+      "endRow": 6,
+      "merges": [
+        {
+          "endCol": 3,
+          "endRow": 5,
+          "startCol": 2,
+          "startRow": 5
+        },
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 5
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714646491_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714646491_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:17:26.441+00:00",
+    "updated_at": "2026-04-01T23:53:31.438+00:00"
+  },
+  {
+    "id": "tpl_1775004102907_2g04qh2",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 02-DTTS",
+    "sheet_name": "BIEU 02-DTTS",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 17,
+      "startRow": 7,
+      "dataColumns": [
+        "B",
+        "C",
+        "D"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "A",
+      "sheetSignature": {
+        "endRowText": "tổng số",
+        "headerEndCol": "A",
+        "headerEndRow": 17,
+        "startRowText": "thể loại văn bản",
+        "headerStartCol": "A",
+        "headerStartRow": 5,
+        "middleRowCount": 11
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "A"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Thể loại \r\nvăn bản"
+        },
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Số lượng văn bản"
+        },
+        {
+          "col": 4,
+          "row": 5,
+          "value": "Ghi chú"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Đảng bộ cấp tỉnh \r\nvà tương đương"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Đảng bộ cấp trên trực tiếp của \r\ntổ chức cơ sở đảng"
+        }
+      ],
+      "endCol": 4,
+      "endRow": 6,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 3,
+          "endRow": 5,
+          "startCol": 2,
+          "startRow": 5
+        },
+        {
+          "endCol": 4,
+          "endRow": 6,
+          "startCol": 4,
+          "startRow": 5
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775004102980_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775004102980_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T00:41:42.907+00:00",
+    "updated_at": "2026-04-01T23:37:45.731+00:00"
+  },
+  {
+    "id": "tpl_1774714684391_uy4euns",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-6",
+    "sheet_name": "6",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6",
+      "Cột 7",
+      "Cột 8",
+      "Cột 9",
+      "Cột 10",
+      "Cột 11",
+      "Cột 12"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 23,
+      "startRow": 9,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "cộng (1+...+9)",
+        "headerEndCol": "A",
+        "headerEndRow": 23,
+        "startRowText": "loại hình chi bộ",
+        "headerStartCol": "A",
+        "headerStartRow": 5,
+        "middleRowCount": 17
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Loại hình chi bộ"
+        },
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Chương trình, hình thức đào tạo, bồi dưỡng"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Đào tạo chuyên môn"
+        },
+        {
+          "col": 5,
+          "row": 6,
+          "value": "Đào tạo lý luận chính trị"
+        },
+        {
+          "col": 7,
+          "row": 6,
+          "value": "Bồi dưỡng nghiệp vụ"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Sau đại học"
+        },
+        {
+          "col": 3,
+          "row": 7,
+          "value": "Đại học, \r\ncao đẳng"
+        },
+        {
+          "col": 4,
+          "row": 7,
+          "value": "Trung cấp"
+        },
+        {
+          "col": 5,
+          "row": 7,
+          "value": "Cử nhân, cao cấp"
+        },
+        {
+          "col": 6,
+          "row": 7,
+          "value": "Trung cấp"
+        },
+        {
+          "col": 7,
+          "row": 7,
+          "value": "Nghiệp vụ xây dựng Đảng"
+        },
+        {
+          "col": 8,
+          "row": 7,
+          "value": "Nghiệp vụ đoàn thể chính trị"
+        },
+        {
+          "col": 9,
+          "row": 7,
+          "value": "Quản lý nhà nước"
+        },
+        {
+          "col": 10,
+          "row": 7,
+          "value": "Ngoại ngữ"
+        },
+        {
+          "col": 11,
+          "row": 7,
+          "value": "Tin học"
+        },
+        {
+          "col": 12,
+          "row": 7,
+          "value": "Bồi dưỡng, cập nhật kiến thức, kỹ năng"
+        },
+        {
+          "col": 13,
+          "row": 7,
+          "value": "Quốc phòng - An ninh"
+        },
+        {
+          "col": 1,
+          "row": 8,
+          "value": "Từ 1/7/2025 đến 01/3/2026"
+        }
+      ],
+      "endCol": 13,
+      "endRow": 8,
+      "merges": [
+        {
+          "endCol": 13,
+          "endRow": 8,
+          "startCol": 1,
+          "startRow": 8
+        },
+        {
+          "endCol": 6,
+          "endRow": 6,
+          "startCol": 5,
+          "startRow": 6
+        },
+        {
+          "endCol": 4,
+          "endRow": 6,
+          "startCol": 2,
+          "startRow": 6
+        },
+        {
+          "endCol": 13,
+          "endRow": 6,
+          "startCol": 7,
+          "startRow": 6
+        },
+        {
+          "endCol": 13,
+          "endRow": 5,
+          "startCol": 2,
+          "startRow": 5
+        },
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 5
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714684445_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714684445_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:18:04.391+00:00",
+    "updated_at": "2026-04-01T23:53:45.792+00:00"
+  },
+  {
+    "id": "tpl_1774714190899_j6aswnv",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-1B",
+    "sheet_name": "1B",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 23,
+      "startRow": 9,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "10. loại hình tổ chức cơ sở đảng khác (ghi cụ thể loại hình cơ sở khác)",
+        "headerEndCol": "A",
+        "headerEndRow": 23,
+        "startRowText": "1. xã, phường, thị trấn *",
+        "headerStartCol": "A",
+        "headerStartRow": 9,
+        "middleRowCount": 13
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Loại hình tổ chức cơ sở đảng"
+        },
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Số TCCSĐ \r\ntính đến 01/7/2025"
+        },
+        {
+          "col": 3,
+          "row": 5,
+          "value": "Kết quả kiện toàn, sắp xếp, củng cố"
+        },
+        {
+          "col": 7,
+          "row": 5,
+          "value": "Số TCCSĐ \r\ntính đến 31/3/2026"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Thành lập mới (bao gồm cả hợp nhất, sáp nhập)"
+        },
+        {
+          "col": 4,
+          "row": 6,
+          "value": "Giải thể"
+        },
+        {
+          "col": 5,
+          "row": 6,
+          "value": "Đưa vào diện \r\ntheo dõi"
+        },
+        {
+          "col": 5,
+          "row": 7,
+          "value": "Tổng số"
+        },
+        {
+          "col": 6,
+          "row": 7,
+          "value": "Đã củng cố xong"
+        },
+        {
+          "col": 1,
+          "row": 8,
+          "value": "1"
+        },
+        {
+          "col": 2,
+          "row": 8,
+          "value": "7"
+        },
+        {
+          "col": 3,
+          "row": 8,
+          "value": "8"
+        },
+        {
+          "col": 4,
+          "row": 8,
+          "value": "9"
+        },
+        {
+          "col": 5,
+          "row": 8,
+          "value": "10"
+        },
+        {
+          "col": 6,
+          "row": 8,
+          "value": "11"
+        },
+        {
+          "col": 7,
+          "row": 8,
+          "value": "12"
+        }
+      ],
+      "endCol": 7,
+      "endRow": 8,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 7,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 2,
+          "endRow": 7,
+          "startCol": 2,
+          "startRow": 5
+        },
+        {
+          "endCol": 6,
+          "endRow": 5,
+          "startCol": 3,
+          "startRow": 5
+        },
+        {
+          "endCol": 7,
+          "endRow": 7,
+          "startCol": 7,
+          "startRow": 5
+        },
+        {
+          "endCol": 3,
+          "endRow": 7,
+          "startCol": 3,
+          "startRow": 6
+        },
+        {
+          "endCol": 4,
+          "endRow": 7,
+          "startCol": 4,
+          "startRow": 6
+        },
+        {
+          "endCol": 6,
+          "endRow": 6,
+          "startCol": 5,
+          "startRow": 6
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714190955_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714190955_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:09:50.899+00:00",
+    "updated_at": "2026-04-01T23:50:33.482+00:00"
+  },
+  {
+    "id": "tpl_1774714289980_2fuse2q",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-1D",
+    "sheet_name": "1D",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 12,
+      "startRow": 8,
+      "dataColumns": [
+        "B",
+        "C"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "tổng số",
+        "headerEndCol": "A",
+        "headerEndRow": 12,
+        "startRowText": "tiêu chí",
+        "headerStartCol": "A",
+        "headerStartRow": 6,
+        "middleRowCount": 5
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 6,
+          "value": "Tiêu chí"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Số lượng chi bộ"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Tổng số"
+        },
+        {
+          "col": 3,
+          "row": 7,
+          "value": "Số chi bộ có \r\nthành lập tổ đảng"
+        }
+      ],
+      "endCol": 3,
+      "endRow": 7,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 7,
+          "startCol": 1,
+          "startRow": 6
+        },
+        {
+          "endCol": 3,
+          "endRow": 6,
+          "startCol": 2,
+          "startRow": 6
+        }
+      ],
+      "startCol": 1,
+      "startRow": 6
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714290031_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714290031_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:11:29.98+00:00",
+    "updated_at": "2026-04-01T23:51:15.286+00:00"
+  },
+  {
+    "id": "tpl_1774714551509_s48xz54",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-4C",
+    "sheet_name": "4C",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 21,
+      "startRow": 7,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "cộng",
+        "headerEndCol": "A",
+        "headerEndRow": 21,
+        "startRowText": "loại hình chi bộ",
+        "headerStartCol": "A",
+        "headerStartRow": 5,
+        "middleRowCount": 15
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Loại hình chi bộ"
+        },
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Số chi bộ thực hiện sinh hoạt tổ đảng"
+        },
+        {
+          "col": 3,
+          "row": 5,
+          "value": "Lý do lựa chọn sinh hoạt theo tổ đảng"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Từ 50-100 đảng viên"
+        },
+        {
+          "col": 4,
+          "row": 6,
+          "value": "Từ 100 - 200 đảng viên"
+        },
+        {
+          "col": 5,
+          "row": 6,
+          "value": "Trên 200 đảng viên"
+        },
+        {
+          "col": 6,
+          "row": 6,
+          "value": "Khó khăn về địa điểm sinh hoạt toàn thể"
+        },
+        {
+          "col": 7,
+          "row": 6,
+          "value": "Lý do \r\nkhác"
+        }
+      ],
+      "endCol": 7,
+      "endRow": 6,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 2,
+          "endRow": 6,
+          "startCol": 2,
+          "startRow": 5
+        },
+        {
+          "endCol": 7,
+          "endRow": 5,
+          "startCol": 3,
+          "startRow": 5
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714551560_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714551560_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:15:51.509+00:00",
+    "updated_at": "2026-04-01T23:52:38.396+00:00"
+  },
+  {
+    "id": "tpl_1774714408061_h8esq2l",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-2C",
+    "sheet_name": "2C",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 10,
+      "startRow": 7,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "4. tổ chức đảng có đảng viên phải thực hiện nhiệm vụ trong điều kiện không thể rời vị trí công tác (lực lượng vũ trang, y tế, kiểm lâm, kiểm toán...)",
+        "headerEndCol": "A",
+        "headerEndRow": 10,
+        "startRowText": "",
+        "headerStartCol": "A",
+        "headerStartRow": 4,
+        "middleRowCount": 5
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Tiêu chí"
+        },
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Tại thời điểm 30/3/2025 (trước khi thực hiện Kết luận số 151-KL/TW, ngày 25/4/2025  của Ban Bí thư)"
+        },
+        {
+          "col": 5,
+          "row": 5,
+          "value": "Tại thời điểm 01/3/2026"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Đảng bộ \r\ncơ sở"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Chi bộ \r\ncơ sở"
+        },
+        {
+          "col": 4,
+          "row": 6,
+          "value": "Chi bộ \r\ntrực thuộc"
+        },
+        {
+          "col": 5,
+          "row": 6,
+          "value": "Đảng bộ \r\ncơ sở"
+        },
+        {
+          "col": 6,
+          "row": 6,
+          "value": "Chi bộ \r\ncơ sở"
+        },
+        {
+          "col": 7,
+          "row": 6,
+          "value": "Chi bộ \r\ntrực thuộc"
+        }
+      ],
+      "endCol": 7,
+      "endRow": 6,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 4,
+          "endRow": 5,
+          "startCol": 2,
+          "startRow": 5
+        },
+        {
+          "endCol": 7,
+          "endRow": 5,
+          "startCol": 5,
+          "startRow": 5
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714408114_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714408114_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:13:28.061+00:00",
+    "updated_at": "2026-04-01T23:51:54.828+00:00"
+  },
+  {
+    "id": "tpl_1774714720176_d6niuum",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-7",
+    "sheet_name": "7",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 35,
+      "startRow": 8,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "- miễn 3 lần trở lên",
+        "headerEndCol": "A",
+        "headerEndRow": 35,
+        "startRowText": "tiêu chí",
+        "headerStartCol": "A",
+        "headerStartRow": 5,
+        "middleRowCount": 29
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Tiêu chí"
+        },
+        {
+          "col": 2,
+          "row": 5,
+          "value": "Đến 31/12/2022"
+        },
+        {
+          "col": 4,
+          "row": 5,
+          "value": "Đến 01/3/2026"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Tổng số đảng viên"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Đảng viên mới kết nạp"
+        },
+        {
+          "col": 4,
+          "row": 6,
+          "value": "Tổng số đảng viên"
+        },
+        {
+          "col": 5,
+          "row": 6,
+          "value": "Đảng viên mới kết nạp"
+        },
+        {
+          "col": 1,
+          "row": 7,
+          "value": "1"
+        }
+      ],
+      "endCol": 5,
+      "endRow": 7,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 3,
+          "endRow": 5,
+          "startCol": 2,
+          "startRow": 5
+        },
+        {
+          "endCol": 5,
+          "endRow": 5,
+          "startCol": 4,
+          "startRow": 5
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714720228_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714720228_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:18:40.176+00:00",
+    "updated_at": "2026-04-01T23:54:05.783+00:00"
+  },
+  {
+    "id": "tpl_1774714517727_9fp191v",
+    "project_id": "proj_1774714110034",
+    "name": "BIỂU-4B",
+    "sheet_name": "4B",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 22,
+      "startRow": 7,
+      "dataColumns": [
+        "B",
+        "C",
+        "D"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "sheetSignature": {
+        "endRowText": "- ở nơi bị dịch bệnh phải cách ly, giãn cách xã hội, không được tập trung đông người",
+        "headerEndCol": "A",
+        "headerEndRow": 22,
+        "startRowText": "loại hình",
+        "headerStartCol": "A",
+        "headerStartRow": 6,
+        "middleRowCount": 15
+      }
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 6,
+          "value": "Loại hình"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Đảng bộ \r\ncơ sở"
+        },
+        {
+          "col": 3,
+          "row": 6,
+          "value": "Chi bộ \r\ncơ sở"
+        },
+        {
+          "col": 4,
+          "row": 6,
+          "value": "Chi bộ \r\ntrực thuộc"
+        },
+        {
+          "col": 1,
+          "row": 7,
+          "value": "I. Tính chất đặc thù"
+        }
+      ],
+      "endCol": 4,
+      "endRow": 7,
+      "merges": [],
+      "startCol": 1,
+      "startRow": 6
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "Biểu mẫu_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774714110034/1774714517779_Bie_u_ma_u_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774714110034/1774714517779_Bie_u_ma_u_CS.xlsx",
+    "created_at": "2026-03-28T16:15:17.727+00:00",
+    "updated_at": "2026-04-01T23:52:25.327+00:00"
+  },
+  {
+    "id": "tpl_1775008628763_o6bzdoa",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 05-DTTS",
+    "sheet_name": "BIEU 05-DTTS",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6",
+      "Cột 7",
+      "Cột 8",
+      "Cột 9",
+      "Cột 10",
+      "Cột 11",
+      "Cột 12",
+      "Cột 13",
+      "Cột 14",
+      "Cột 15",
+      "Cột 16",
+      "Cột 17",
+      "Cột 18",
+      "Cột 19",
+      "Cột 20",
+      "Cột 21",
+      "Cột 22",
+      "Cột 23",
+      "Cột 24"
+    ],
+    "column_mapping": {
+      "blocks": [
+        {
+          "id": "block_1775004287887_0ym0zc",
+          "name": "Khối 1",
+          "endRow": 9,
+          "startRow": 9,
+          "dataColumns": [
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "O",
+            "P",
+            "Q",
+            "R",
+            "S",
+            "T",
+            "U",
+            "V",
+            "W",
+            "X",
+            "Y"
+          ],
+          "specialRows": [],
+          "headerLayout": {
+            "cells": [],
+            "endCol": 25,
+            "endRow": 8,
+            "merges": [],
+            "startCol": 1,
+            "startRow": 6
+          },
+          "columnHeaders": [],
+          "labelColumnEnd": "A",
+          "labelColumnStart": "A",
+          "primaryLabelColumn": "A"
+        },
+        {
+          "id": "block_1775004287887_5m0zky",
+          "name": "Khối 2",
+          "endRow": 14,
+          "startRow": 14,
+          "dataColumns": [
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "O",
+            "P",
+            "Q"
+          ],
+          "specialRows": [],
+          "headerLayout": {
+            "cells": [],
+            "endCol": 25,
+            "endRow": 13,
+            "merges": [],
+            "startCol": 1,
+            "startRow": 10
+          },
+          "columnHeaders": [],
+          "labelColumnEnd": "A",
+          "labelColumnStart": "A",
+          "primaryLabelColumn": "A"
+        }
+      ],
+      "endRow": 14,
+      "startRow": 6,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "A",
+      "sheetSignature": {
+        "endRowText": "",
+        "headerEndCol": "A",
+        "headerEndRow": 13,
+        "startRowText": "ts cb, đv là người dtts",
+        "headerStartCol": "A",
+        "headerStartRow": 6,
+        "middleRowCount": 6
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "A"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 5,
+          "value": "Tại thời điểm 30/6/2025, trước khi sắp xếp lại các đơn vị hành chính"
+        },
+        {
+          "col": 1,
+          "row": 6,
+          "value": "TS \r\nCB, ĐV\r\nlà người\r\n DTTS"
+        },
+        {
+          "col": 2,
+          "row": 6,
+          "value": "Cấp xã \r\nvà tương đương"
+        },
+        {
+          "col": 10,
+          "row": 6,
+          "value": "Cấp huyện \r\nvà tương đương"
+        },
+        {
+          "col": 18,
+          "row": 6,
+          "value": "Cấp tỉnh\r\nvà tương đương"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Tham gia \r\nBCH"
+        },
+        {
+          "col": 4,
+          "row": 7,
+          "value": "Tham gia \r\nBTV"
+        },
+        {
+          "col": 6,
+          "row": 7,
+          "value": "Phó \r\nBí thư"
+        },
+        {
+          "col": 8,
+          "row": 7,
+          "value": "Bí thư"
+        },
+        {
+          "col": 10,
+          "row": 7,
+          "value": "Tham gia \r\nBCH"
+        },
+        {
+          "col": 12,
+          "row": 7,
+          "value": "Tham gia \r\nBTV"
+        },
+        {
+          "col": 14,
+          "row": 7,
+          "value": "Phó\r\n Bí thư"
+        },
+        {
+          "col": 16,
+          "row": 7,
+          "value": "Bí thư"
+        },
+        {
+          "col": 18,
+          "row": 7,
+          "value": "Tham gia \r\nBCH"
+        },
+        {
+          "col": 20,
+          "row": 7,
+          "value": "Tham gia \r\nBTV"
+        },
+        {
+          "col": 22,
+          "row": 7,
+          "value": "Phó\r\n Bí thư"
+        },
+        {
+          "col": 24,
+          "row": 7,
+          "value": "Bí thư"
+        },
+        {
+          "col": 2,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 3,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 4,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 5,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 6,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 7,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 8,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 9,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 10,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 11,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 12,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 13,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 14,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 15,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 16,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 17,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 18,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 19,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 20,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 21,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 22,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 23,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 24,
+          "row": 8,
+          "value": "SL"
+        },
+        {
+          "col": 25,
+          "row": 8,
+          "value": "%"
+        },
+        {
+          "col": 1,
+          "row": 10,
+          "value": "Tại thời điểm báo cáo (31/3/2026), sau khi sắp xếp lại các đơn vị hành chính"
+        },
+        {
+          "col": 1,
+          "row": 11,
+          "value": "TS \r\nCB, ĐV\r\nlà người\r\n DTTS"
+        },
+        {
+          "col": 2,
+          "row": 11,
+          "value": "Cấp xã, phường, đặc khu"
+        },
+        {
+          "col": 10,
+          "row": 11,
+          "value": "Cấp tỉnh\r\nvà tương đương"
+        },
+        {
+          "col": 2,
+          "row": 12,
+          "value": "Tham gia \r\nBCH"
+        },
+        {
+          "col": 4,
+          "row": 12,
+          "value": "Tham gia \r\nBTV"
+        },
+        {
+          "col": 6,
+          "row": 12,
+          "value": "Phó \r\nBí thư"
+        },
+        {
+          "col": 8,
+          "row": 12,
+          "value": "Bí thư"
+        },
+        {
+          "col": 10,
+          "row": 12,
+          "value": "Tham gia \r\nBCH"
+        },
+        {
+          "col": 12,
+          "row": 12,
+          "value": "Tham gia \r\nBTV"
+        },
+        {
+          "col": 14,
+          "row": 12,
+          "value": "Phó\r\n Bí thư"
+        },
+        {
+          "col": 16,
+          "row": 12,
+          "value": "Bí thư"
+        },
+        {
+          "col": 2,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 3,
+          "row": 13,
+          "value": "%"
+        },
+        {
+          "col": 4,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 5,
+          "row": 13,
+          "value": "%"
+        },
+        {
+          "col": 6,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 7,
+          "row": 13,
+          "value": "%"
+        },
+        {
+          "col": 8,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 9,
+          "row": 13,
+          "value": "%"
+        },
+        {
+          "col": 10,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 11,
+          "row": 13,
+          "value": "%"
+        },
+        {
+          "col": 12,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 13,
+          "row": 13,
+          "value": "%"
+        },
+        {
+          "col": 14,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 15,
+          "row": 13,
+          "value": "%"
+        },
+        {
+          "col": 16,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 17,
+          "row": 13,
+          "value": "%"
+        }
+      ],
+      "endCol": 25,
+      "endRow": 14,
+      "merges": [
+        {
+          "endCol": 25,
+          "endRow": 5,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 25,
+          "endRow": 7,
+          "startCol": 24,
+          "startRow": 7
+        },
+        {
+          "endCol": 1,
+          "endRow": 8,
+          "startCol": 1,
+          "startRow": 6
+        },
+        {
+          "endCol": 9,
+          "endRow": 6,
+          "startCol": 2,
+          "startRow": 6
+        },
+        {
+          "endCol": 17,
+          "endRow": 6,
+          "startCol": 10,
+          "startRow": 6
+        },
+        {
+          "endCol": 25,
+          "endRow": 6,
+          "startCol": 18,
+          "startRow": 6
+        },
+        {
+          "endCol": 3,
+          "endRow": 7,
+          "startCol": 2,
+          "startRow": 7
+        },
+        {
+          "endCol": 5,
+          "endRow": 7,
+          "startCol": 4,
+          "startRow": 7
+        },
+        {
+          "endCol": 7,
+          "endRow": 7,
+          "startCol": 6,
+          "startRow": 7
+        },
+        {
+          "endCol": 9,
+          "endRow": 7,
+          "startCol": 8,
+          "startRow": 7
+        },
+        {
+          "endCol": 11,
+          "endRow": 7,
+          "startCol": 10,
+          "startRow": 7
+        },
+        {
+          "endCol": 13,
+          "endRow": 7,
+          "startCol": 12,
+          "startRow": 7
+        },
+        {
+          "endCol": 15,
+          "endRow": 7,
+          "startCol": 14,
+          "startRow": 7
+        },
+        {
+          "endCol": 17,
+          "endRow": 7,
+          "startCol": 16,
+          "startRow": 7
+        },
+        {
+          "endCol": 19,
+          "endRow": 7,
+          "startCol": 18,
+          "startRow": 7
+        },
+        {
+          "endCol": 21,
+          "endRow": 7,
+          "startCol": 20,
+          "startRow": 7
+        },
+        {
+          "endCol": 23,
+          "endRow": 7,
+          "startCol": 22,
+          "startRow": 7
+        },
+        {
+          "endCol": 25,
+          "endRow": 10,
+          "startCol": 1,
+          "startRow": 10
+        },
+        {
+          "endCol": 1,
+          "endRow": 13,
+          "startCol": 1,
+          "startRow": 11
+        },
+        {
+          "endCol": 9,
+          "endRow": 11,
+          "startCol": 2,
+          "startRow": 11
+        },
+        {
+          "endCol": 17,
+          "endRow": 11,
+          "startCol": 10,
+          "startRow": 11
+        },
+        {
+          "endCol": 25,
+          "endRow": 11,
+          "startCol": 18,
+          "startRow": 11
+        },
+        {
+          "endCol": 3,
+          "endRow": 12,
+          "startCol": 2,
+          "startRow": 12
+        },
+        {
+          "endCol": 5,
+          "endRow": 12,
+          "startCol": 4,
+          "startRow": 12
+        },
+        {
+          "endCol": 7,
+          "endRow": 12,
+          "startCol": 6,
+          "startRow": 12
+        },
+        {
+          "endCol": 9,
+          "endRow": 12,
+          "startCol": 8,
+          "startRow": 12
+        },
+        {
+          "endCol": 11,
+          "endRow": 12,
+          "startCol": 10,
+          "startRow": 12
+        },
+        {
+          "endCol": 25,
+          "endRow": 12,
+          "startCol": 24,
+          "startRow": 12
+        },
+        {
+          "endCol": 13,
+          "endRow": 12,
+          "startCol": 12,
+          "startRow": 12
+        },
+        {
+          "endCol": 15,
+          "endRow": 12,
+          "startCol": 14,
+          "startRow": 12
+        },
+        {
+          "endCol": 17,
+          "endRow": 12,
+          "startCol": 16,
+          "startRow": 12
+        },
+        {
+          "endCol": 19,
+          "endRow": 12,
+          "startCol": 18,
+          "startRow": 12
+        },
+        {
+          "endCol": 21,
+          "endRow": 12,
+          "startCol": 20,
+          "startRow": 12
+        },
+        {
+          "endCol": 23,
+          "endRow": 12,
+          "startCol": 22,
+          "startRow": 12
+        }
+      ],
+      "startCol": 1,
+      "startRow": 5
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775008628839_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775008628839_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T01:57:08.763+00:00",
+    "updated_at": "2026-04-01T23:38:39.272+00:00"
+  },
+  {
+    "id": "tpl_1775004249176_hmtgmzt",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 04-DTTS",
+    "sheet_name": "BIEU 04-DTTS",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6",
+      "Cột 7",
+      "Cột 8"
+    ],
+    "column_mapping": {
+      "blocks": [
+        {
+          "id": "block_1775004155272_px3hni",
+          "name": "Khối 1",
+          "endRow": 10,
+          "startRow": 10,
+          "dataColumns": [
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I"
+          ],
+          "specialRows": [],
+          "headerLayout": {
+            "cells": [],
+            "endCol": 9,
+            "endRow": 9,
+            "merges": [],
+            "startCol": 1,
+            "startRow": 7
+          },
+          "columnHeaders": [],
+          "labelColumnEnd": "A",
+          "labelColumnStart": "A",
+          "primaryLabelColumn": "A"
+        },
+        {
+          "id": "block_1775004155272_grxb76",
+          "name": "Khối 2",
+          "endRow": 14,
+          "startRow": 14,
+          "dataColumns": [
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I"
+          ],
+          "specialRows": [],
+          "headerLayout": {
+            "cells": [],
+            "endCol": 9,
+            "endRow": 13,
+            "merges": [],
+            "startCol": 1,
+            "startRow": 11
+          },
+          "columnHeaders": [],
+          "labelColumnEnd": "A",
+          "labelColumnStart": "A",
+          "primaryLabelColumn": "A"
+        },
+        {
+          "id": "block_1775004155272_f7x56v",
+          "name": "Khối 3",
+          "endRow": 18,
+          "startRow": 18,
+          "dataColumns": [
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I"
+          ],
+          "specialRows": [],
+          "headerLayout": {
+            "cells": [],
+            "endCol": 9,
+            "endRow": 17,
+            "merges": [],
+            "startCol": 1,
+            "startRow": 15
+          },
+          "columnHeaders": [],
+          "labelColumnEnd": "A",
+          "labelColumnStart": "A",
+          "primaryLabelColumn": "A"
+        }
+      ],
+      "endRow": 18,
+      "startRow": 10,
+      "dataColumns": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "A",
+      "sheetSignature": {
+        "endRowText": "ts đv là người dtts",
+        "headerEndCol": "A",
+        "headerEndRow": 16,
+        "startRowText": "trình độ văn hóa",
+        "headerStartCol": "A",
+        "headerStartRow": 7,
+        "middleRowCount": 8
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "A"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 7,
+          "value": "TRÌNH ĐỘ VĂN HÓA"
+        },
+        {
+          "col": 1,
+          "row": 8,
+          "value": "TS ĐV\r\n là người \r\nDTTS"
+        },
+        {
+          "col": 2,
+          "row": 8,
+          "value": "Biết đọc, \r\nbiết viết"
+        },
+        {
+          "col": 4,
+          "row": 8,
+          "value": "Tiểu học"
+        },
+        {
+          "col": 6,
+          "row": 8,
+          "value": "THCS"
+        },
+        {
+          "col": 2,
+          "row": 9,
+          "value": "SL"
+        },
+        {
+          "col": 3,
+          "row": 9,
+          "value": "Tỷ lệ %"
+        },
+        {
+          "col": 4,
+          "row": 9,
+          "value": "SL"
+        },
+        {
+          "col": 5,
+          "row": 9,
+          "value": "Tỷ lệ %"
+        },
+        {
+          "col": 6,
+          "row": 9,
+          "value": "SL"
+        },
+        {
+          "col": 7,
+          "row": 9,
+          "value": "Tỷ lệ %"
+        },
+        {
+          "col": 1,
+          "row": 11,
+          "value": "TRÌNH ĐỘ CHUYÊN MÔN"
+        },
+        {
+          "col": 1,
+          "row": 12,
+          "value": "TS ĐV\r\n là người \r\nDTTS"
+        },
+        {
+          "col": 2,
+          "row": 12,
+          "value": "Trung cấp"
+        },
+        {
+          "col": 4,
+          "row": 12,
+          "value": "Cao đẳng"
+        },
+        {
+          "col": 6,
+          "row": 12,
+          "value": "Đại học"
+        },
+        {
+          "col": 2,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 3,
+          "row": 13,
+          "value": "Tỷ lệ %"
+        },
+        {
+          "col": 4,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 5,
+          "row": 13,
+          "value": "Tỷ lệ %"
+        },
+        {
+          "col": 6,
+          "row": 13,
+          "value": "SL"
+        },
+        {
+          "col": 7,
+          "row": 13,
+          "value": "Tỷ lệ %"
+        },
+        {
+          "col": 1,
+          "row": 15,
+          "value": "TRÌNH ĐỘ LÝ LUẬN CHÍNH TRỊ"
+        },
+        {
+          "col": 1,
+          "row": 16,
+          "value": "TS ĐV \r\nlà người DTTS"
+        },
+        {
+          "col": 2,
+          "row": 16,
+          "value": "Sơ cấp"
+        },
+        {
+          "col": 4,
+          "row": 16,
+          "value": "Trung cấp"
+        },
+        {
+          "col": 6,
+          "row": 16,
+          "value": "Cao cấp, cử nhân"
+        },
+        {
+          "col": 2,
+          "row": 17,
+          "value": "SL"
+        },
+        {
+          "col": 3,
+          "row": 17,
+          "value": "Tỷ lệ %"
+        },
+        {
+          "col": 4,
+          "row": 17,
+          "value": "SL"
+        },
+        {
+          "col": 5,
+          "row": 17,
+          "value": "Tỷ lệ %"
+        },
+        {
+          "col": 6,
+          "row": 17,
+          "value": "SL"
+        },
+        {
+          "col": 7,
+          "row": 17,
+          "value": "Tỷ lệ %"
+        }
+      ],
+      "endCol": 7,
+      "endRow": 18,
+      "merges": [
+        {
+          "endCol": 9,
+          "endRow": 7,
+          "startCol": 1,
+          "startRow": 7
+        },
+        {
+          "endCol": 3,
+          "endRow": 8,
+          "startCol": 2,
+          "startRow": 8
+        },
+        {
+          "endCol": 5,
+          "endRow": 8,
+          "startCol": 4,
+          "startRow": 8
+        },
+        {
+          "endCol": 7,
+          "endRow": 8,
+          "startCol": 6,
+          "startRow": 8
+        },
+        {
+          "endCol": 1,
+          "endRow": 10,
+          "startCol": 1,
+          "startRow": 9
+        },
+        {
+          "endCol": 9,
+          "endRow": 11,
+          "startCol": 1,
+          "startRow": 11
+        },
+        {
+          "endCol": 3,
+          "endRow": 12,
+          "startCol": 2,
+          "startRow": 12
+        },
+        {
+          "endCol": 5,
+          "endRow": 12,
+          "startCol": 4,
+          "startRow": 12
+        },
+        {
+          "endCol": 7,
+          "endRow": 12,
+          "startCol": 6,
+          "startRow": 12
+        },
+        {
+          "endCol": 1,
+          "endRow": 14,
+          "startCol": 1,
+          "startRow": 13
+        },
+        {
+          "endCol": 9,
+          "endRow": 15,
+          "startCol": 1,
+          "startRow": 15
+        },
+        {
+          "endCol": 3,
+          "endRow": 16,
+          "startCol": 2,
+          "startRow": 16
+        },
+        {
+          "endCol": 5,
+          "endRow": 16,
+          "startCol": 4,
+          "startRow": 16
+        },
+        {
+          "endCol": 7,
+          "endRow": 16,
+          "startCol": 6,
+          "startRow": 16
+        },
+        {
+          "endCol": 1,
+          "endRow": 18,
+          "startCol": 1,
+          "startRow": 17
+        }
+      ],
+      "startCol": 1,
+      "startRow": 7
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775004249274_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775004249274_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T00:44:09.176+00:00",
+    "updated_at": "2026-04-01T23:38:21.717+00:00"
+  },
+  {
+    "id": "tpl_1775004054588_qees42n",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 01-HSSV",
+    "sheet_name": "BIEU 01-HSSV",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 19,
+      "startRow": 9,
+      "dataColumns": [
+        "B",
+        "C"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "A",
+      "sheetSignature": {
+        "endRowText": "tổng số",
+        "headerEndCol": "A",
+        "headerEndRow": 19,
+        "startRowText": "thể loại văn bản",
+        "headerStartCol": "A",
+        "headerStartRow": 7,
+        "middleRowCount": 11
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "A"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 7,
+          "value": "Thể loại \r\nvăn bản"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "Số lượng văn bản"
+        },
+        {
+          "col": 2,
+          "row": 8,
+          "value": "Đảng bộ cấp tỉnh \r\nvà tương đương"
+        },
+        {
+          "col": 3,
+          "row": 8,
+          "value": "Đảng bộ cấp trên trực tiếp của \r\ntổ chức cơ sở đảng"
+        }
+      ],
+      "endCol": 3,
+      "endRow": 8,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 8,
+          "startCol": 1,
+          "startRow": 7
+        },
+        {
+          "endCol": 3,
+          "endRow": 7,
+          "startCol": 2,
+          "startRow": 7
+        }
+      ],
+      "startCol": 1,
+      "startRow": 7
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775004054667_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775004054667_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T00:40:54.588+00:00",
+    "updated_at": "2026-04-01T23:37:31.165+00:00"
+  },
+  {
+    "id": "tpl_1775009183527_btfy77t",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 09-TG",
+    "sheet_name": "BIEU 09-TG",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2",
+      "Cột 3",
+      "Cột 4",
+      "Cột 5",
+      "Cột 6",
+      "Cột 7",
+      "Cột 8",
+      "Cột 9",
+      "Cột 10",
+      "Cột 11",
+      "Cột 12",
+      "Cột 13",
+      "Cột 14"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 20,
+      "startRow": 8,
+      "dataColumns": [
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "B",
+      "sheetSignature": {
+        "endRowText": "10",
+        "headerEndCol": "A",
+        "headerEndRow": 20,
+        "startRowText": "tt",
+        "headerStartCol": "A",
+        "headerStartRow": 3,
+        "middleRowCount": 16
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "B"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 3,
+          "value": "TT"
+        },
+        {
+          "col": 2,
+          "row": 3,
+          "value": "Loại hình tổ chức đảng"
+        },
+        {
+          "col": 3,
+          "row": 3,
+          "value": "Tổng số tổ chức cơ sở đảng"
+        },
+        {
+          "col": 9,
+          "row": 3,
+          "value": "Tổ chức đảng trực thuộc đảng bộ cơ sở"
+        },
+        {
+          "col": 13,
+          "row": 3,
+          "value": "Số tổ chức đảng \r\ncó đảng viên \r\nlà người theo tôn giáo"
+        },
+        {
+          "col": 16,
+          "row": 3,
+          "value": "Ghi chú"
+        },
+        {
+          "col": 3,
+          "row": 4,
+          "value": "Tổng số"
+        },
+        {
+          "col": 5,
+          "row": 4,
+          "value": "Trong đó:"
+        },
+        {
+          "col": 9,
+          "row": 4,
+          "value": "Đảng bộ bộ phận"
+        },
+        {
+          "col": 11,
+          "row": 4,
+          "value": "Chi bộ trực thuộc"
+        },
+        {
+          "col": 13,
+          "row": 4,
+          "value": "Tổng"
+        },
+        {
+          "col": 14,
+          "row": 4,
+          "value": "Trong đó:"
+        },
+        {
+          "col": 3,
+          "row": 5,
+          "value": "31/12/2018"
+        },
+        {
+          "col": 4,
+          "row": 5,
+          "value": "31/3/2026"
+        },
+        {
+          "col": 5,
+          "row": 5,
+          "value": "Đảng bộ cơ sở"
+        },
+        {
+          "col": 7,
+          "row": 5,
+          "value": "Chi bộ cơ sở"
+        },
+        {
+          "col": 14,
+          "row": 5,
+          "value": "Chi bộ \r\ncơ sở"
+        },
+        {
+          "col": 15,
+          "row": 5,
+          "value": "Chi bộ \r\ntrực thuộc"
+        },
+        {
+          "col": 5,
+          "row": 6,
+          "value": "31/12/2018"
+        },
+        {
+          "col": 6,
+          "row": 6,
+          "value": "31/3/2026"
+        },
+        {
+          "col": 7,
+          "row": 6,
+          "value": "31/12/2018"
+        },
+        {
+          "col": 8,
+          "row": 6,
+          "value": "31/3/2026"
+        },
+        {
+          "col": 9,
+          "row": 6,
+          "value": "31/12/2018"
+        },
+        {
+          "col": 10,
+          "row": 6,
+          "value": "31/3/2026"
+        },
+        {
+          "col": 11,
+          "row": 6,
+          "value": "31/12/2018"
+        },
+        {
+          "col": 12,
+          "row": 6,
+          "value": "31/3/2026"
+        },
+        {
+          "col": 1,
+          "row": 7,
+          "value": "(1)"
+        },
+        {
+          "col": 2,
+          "row": 7,
+          "value": "(2)"
+        },
+        {
+          "col": 3,
+          "row": 7,
+          "value": "(3)"
+        },
+        {
+          "col": 4,
+          "row": 7,
+          "value": "(4)"
+        },
+        {
+          "col": 5,
+          "row": 7,
+          "value": "(5)"
+        },
+        {
+          "col": 6,
+          "row": 7,
+          "value": "(6)"
+        },
+        {
+          "col": 7,
+          "row": 7,
+          "value": "(7)"
+        },
+        {
+          "col": 8,
+          "row": 7,
+          "value": "(8)"
+        },
+        {
+          "col": 9,
+          "row": 7,
+          "value": "(9)"
+        },
+        {
+          "col": 10,
+          "row": 7,
+          "value": "(10)"
+        },
+        {
+          "col": 11,
+          "row": 7,
+          "value": "(11)"
+        },
+        {
+          "col": 12,
+          "row": 7,
+          "value": "(12)"
+        },
+        {
+          "col": 13,
+          "row": 7,
+          "value": "(13)"
+        },
+        {
+          "col": 14,
+          "row": 7,
+          "value": "(14)"
+        },
+        {
+          "col": 15,
+          "row": 7,
+          "value": "(15)"
+        },
+        {
+          "col": 16,
+          "row": 7,
+          "value": "(16)"
+        }
+      ],
+      "endCol": 16,
+      "endRow": 7,
+      "merges": [
+        {
+          "endCol": 1,
+          "endRow": 6,
+          "startCol": 1,
+          "startRow": 3
+        },
+        {
+          "endCol": 2,
+          "endRow": 6,
+          "startCol": 2,
+          "startRow": 3
+        },
+        {
+          "endCol": 8,
+          "endRow": 3,
+          "startCol": 3,
+          "startRow": 3
+        },
+        {
+          "endCol": 12,
+          "endRow": 3,
+          "startCol": 9,
+          "startRow": 3
+        },
+        {
+          "endCol": 15,
+          "endRow": 3,
+          "startCol": 13,
+          "startRow": 3
+        },
+        {
+          "endCol": 8,
+          "endRow": 5,
+          "startCol": 7,
+          "startRow": 5
+        },
+        {
+          "endCol": 14,
+          "endRow": 6,
+          "startCol": 14,
+          "startRow": 5
+        },
+        {
+          "endCol": 15,
+          "endRow": 6,
+          "startCol": 15,
+          "startRow": 5
+        },
+        {
+          "endCol": 16,
+          "endRow": 6,
+          "startCol": 16,
+          "startRow": 3
+        },
+        {
+          "endCol": 4,
+          "endRow": 4,
+          "startCol": 3,
+          "startRow": 4
+        },
+        {
+          "endCol": 8,
+          "endRow": 4,
+          "startCol": 5,
+          "startRow": 4
+        },
+        {
+          "endCol": 10,
+          "endRow": 5,
+          "startCol": 9,
+          "startRow": 4
+        },
+        {
+          "endCol": 12,
+          "endRow": 5,
+          "startCol": 11,
+          "startRow": 4
+        },
+        {
+          "endCol": 13,
+          "endRow": 6,
+          "startCol": 13,
+          "startRow": 4
+        },
+        {
+          "endCol": 15,
+          "endRow": 4,
+          "startCol": 14,
+          "startRow": 4
+        },
+        {
+          "endCol": 3,
+          "endRow": 6,
+          "startCol": 3,
+          "startRow": 5
+        },
+        {
+          "endCol": 4,
+          "endRow": 6,
+          "startCol": 4,
+          "startRow": 5
+        },
+        {
+          "endCol": 6,
+          "endRow": 5,
+          "startCol": 5,
+          "startRow": 5
+        }
+      ],
+      "startCol": 1,
+      "startRow": 3
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775009183597_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775009183597_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T02:06:23.527+00:00",
+    "updated_at": "2026-04-01T23:39:28.965+00:00"
+  },
+  {
+    "id": "tpl_1775008756843_5ktagmx",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 07-TG",
+    "sheet_name": "BIEU 07-TG",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 53,
+      "startRow": 6,
+      "dataColumns": [
+        "C",
+        "D"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "A",
+      "sheetSignature": {
+        "endRowText": "- cao cấp (hoặc cử nhân chính trị)",
+        "headerEndCol": "A",
+        "headerEndRow": 53,
+        "startRowText": "tiêu chí",
+        "headerStartCol": "A",
+        "headerStartRow": 3,
+        "middleRowCount": 49
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "B"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 3,
+          "value": "Tiêu chí"
+        },
+        {
+          "col": 3,
+          "row": 3,
+          "value": "Tính đến 31/3/2026"
+        },
+        {
+          "col": 4,
+          "row": 3,
+          "value": "Ghi chú"
+        },
+        {
+          "col": 1,
+          "row": 5,
+          "value": "1"
+        },
+        {
+          "col": 3,
+          "row": 5,
+          "value": "3"
+        }
+      ],
+      "endCol": 4,
+      "endRow": 5,
+      "merges": [
+        {
+          "endCol": 2,
+          "endRow": 4,
+          "startCol": 1,
+          "startRow": 3
+        },
+        {
+          "endCol": 4,
+          "endRow": 4,
+          "startCol": 4,
+          "startRow": 3
+        },
+        {
+          "endCol": 2,
+          "endRow": 5,
+          "startCol": 1,
+          "startRow": 5
+        },
+        {
+          "endCol": 3,
+          "endRow": 4,
+          "startCol": 3,
+          "startRow": 3
+        }
+      ],
+      "startCol": 1,
+      "startRow": 3
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775008756951_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775008756951_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T01:59:16.843+00:00",
+    "updated_at": "2026-04-01T23:39:01.821+00:00"
+  },
+  {
+    "id": "tpl_1775009141837_2ur4bdl",
+    "project_id": "proj_1774972306703",
+    "name": "BIEU 08-TG",
+    "sheet_name": "BIEU 08-TG",
+    "is_published": true,
+    "column_headers": [
+      "Cột 1",
+      "Cột 2"
+    ],
+    "column_mapping": {
+      "blocks": [],
+      "endRow": 20,
+      "startRow": 5,
+      "dataColumns": [
+        "C",
+        "D"
+      ],
+      "labelColumn": "A",
+      "specialRows": [],
+      "labelColumnEnd": "B",
+      "sheetSignature": {
+        "endRowText": "16",
+        "headerEndCol": "A",
+        "headerEndRow": 20,
+        "startRowText": "tt",
+        "headerStartCol": "A",
+        "headerStartRow": 3,
+        "middleRowCount": 16
+      },
+      "labelColumnStart": "A",
+      "primaryLabelColumn": "B"
+    },
+    "header_layout": {
+      "cells": [
+        {
+          "col": 1,
+          "row": 3,
+          "value": "TT"
+        },
+        {
+          "col": 2,
+          "row": 3,
+          "value": "Tên dân tộc/tôn giáo"
+        },
+        {
+          "col": 3,
+          "row": 3,
+          "value": "Tổng số đảng viên\r\n(31/3/2026)"
+        },
+        {
+          "col": 4,
+          "row": 3,
+          "value": "Kết quả kết nạp đảng viên là người tôn giáo"
+        },
+        {
+          "col": 1,
+          "row": 4,
+          "value": "1"
+        },
+        {
+          "col": 2,
+          "row": 4,
+          "value": "2"
+        },
+        {
+          "col": 3,
+          "row": 4,
+          "value": "4"
+        },
+        {
+          "col": 4,
+          "row": 4,
+          "value": "13"
+        }
+      ],
+      "endCol": 4,
+      "endRow": 4,
+      "merges": [],
+      "startCol": 1,
+      "startRow": 3
+    },
+    "mode": "MANUAL",
+    "legacy_config_name": null,
+    "source_workbook_name": "BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_path": "app_data/project_templates/proj_1774972306703/1775009141926_BIEU_CV_384_TW_CS.xlsx",
+    "source_workbook_url": "https://taivkgwwinakcoxhquyv.supabase.co/storage/v1/object/public/uploads/app_data/project_templates/proj_1774972306703/1775009141926_BIEU_CV_384_TW_CS.xlsx",
+    "created_at": "2026-04-01T02:05:41.837+00:00",
+    "updated_at": "2026-04-01T23:39:14.451+00:00"
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "email": "tranthikieuanh@sotay.com",
+    "auth_user_id": "ca4c802b-632d-4f8f-bdd5-d6ded3b017a6",
+    "display_name": "Trần Thị Kiều Anh",
+    "role": "contributor",
+    "is_active": true,
+    "created_at": "2026-03-28T02:09:24.506024+00:00",
+    "updated_at": "2026-03-31T16:05:11.516636+00:00",
+    "last_login_at": "2026-03-31T16:05:11.113+00:00"
+  },
+  {
+    "email": "nguyenthugiang@sotay.com",
+    "auth_user_id": "bd257131-487e-4e66-9826-00eb2d0f5ff9",
+    "display_name": "Nguyễn Thu Giang",
+    "role": "contributor",
+    "is_active": true,
+    "created_at": "2026-03-28T02:09:24.506024+00:00",
+    "updated_at": "2026-03-30T01:24:14.455173+00:00",
+    "last_login_at": "2026-03-30T01:24:12.193+00:00"
+  },
+  {
+    "email": "trieuthingoc@sotay.com",
+    "auth_user_id": null,
+    "display_name": "Triệu Thị Ngọc",
+    "role": "contributor",
+    "is_active": true,
+    "created_at": "2026-03-28T02:09:24.506024+00:00",
+    "updated_at": "2026-03-28T03:26:04.377627+00:00",
+    "last_login_at": null
+  },
+  {
+    "email": "tranphuongha@sotay.com",
+    "auth_user_id": null,
+    "display_name": "Trần Phương Hà",
+    "role": "contributor",
+    "is_active": true,
+    "created_at": "2026-03-28T02:09:24.506024+00:00",
+    "updated_at": "2026-03-28T03:26:04.377627+00:00",
+    "last_login_at": null
+  },
+  {
+    "email": "nguyensinghiem@sotay.com",
+    "auth_user_id": null,
+    "display_name": "Nguyễn Sĩ Nghiêm",
+    "role": "contributor",
+    "is_active": true,
+    "created_at": "2026-03-28T02:09:24.506024+00:00",
+    "updated_at": "2026-03-28T03:26:04.377627+00:00",
+    "last_login_at": null
+  },
+  {
+    "email": "nguyenhuuhung@sotay.com",
+    "auth_user_id": "7b87a316-5710-4d07-87ac-f317b3029c0c",
+    "display_name": "Nguyễn Hữu Hùng",
+    "role": "contributor",
+    "is_active": true,
+    "created_at": "2026-03-28T02:09:24.506024+00:00",
+    "updated_at": "2026-04-06T07:31:29.959094+00:00",
+    "last_login_at": "2026-04-06T07:31:29.757+00:00"
+  },
+  {
+    "email": "admin@sotay.com",
+    "auth_user_id": "261c7145-e356-4749-aaa7-db9050243add",
+    "display_name": "Lê Đình Kiên",
+    "role": "admin",
+    "is_active": true,
+    "created_at": "2026-03-28T02:09:24.506024+00:00",
+    "updated_at": "2026-04-06T11:55:28.82413+00:00",
+    "last_login_at": "2026-04-06T11:55:28.073+00:00"
+  },
+  {
+    "email": "phamthithuhanh@sotay.com",
+    "auth_user_id": "22604694-55f7-432f-ba30-8d4957bad40c",
+    "display_name": "Phạm Thị Thu Hạnh",
+    "role": "contributor",
+    "is_active": true,
+    "created_at": "2026-03-28T02:09:24.506024+00:00",
+    "updated_at": "2026-04-06T01:25:04.1018+00:00",
+    "last_login_at": "2026-04-06T01:25:04.017+00:00"
+  }
+]

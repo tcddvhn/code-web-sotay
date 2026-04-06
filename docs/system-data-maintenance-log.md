@@ -350,3 +350,73 @@ Luu y van hanh:
 - Script nay chi tao user trong Supabase Auth, chua tao role/profile nghiep vu rieng neu he thong can them bang phu tro.
 - service_role key khong duoc dua vao frontend, khong commit len GitHub, chi duoc dung local/server-side.
 
+
+### Ra soat vi tri dung Supabase key truoc khi tat legacy JWT-based API keys ngay 2026-04-06
+
+Yeu cau user:
+- Kiem tra toan bo he thong xem co cho nao dang dung key cu hay khong.
+- Neu tat Disable JWT-based API keys thi can thay cac key o dau.
+
+Ket qua ra soat trong repo:
+- Runtime frontend dang dung VITE_SUPABASE_PUBLISHABLE_KEY trong src/supabase.ts; neu env khong co thi file nay dang fallback sang mot sb_publishable_... hardcode.
+- Khong co cho runtime nao trong app doc SUPABASE_SERVICE_ROLE_KEY.
+- Cho duy nhat doc key server-side la script scripts/import-supabase-auth-users.mjs.
+- .env hien tai khong luu Supabase key; chi co Gemini key.
+
+Tai lieu da cap nhat:
+- Bo sung section Checklist sau khi bam Disable JWT-based API keys vao docs/supabase-auth-bulk-import-guide.md.
+
+Luu y:
+- Cac noi ngoai repo nhu Vercel env, may khac, terminal history, Edge Functions, cron job khong the tu dong kiem tra tu day; user phai tu ra soat truoc khi tat legacy keys.
+
+- 2026-04-06: Sửa lỗi TypeScript tại `src/components/AIAnalysisView.tsx` (`sumRowValues` và các phép cộng dồn `total_value`) do `row.values` bị suy luận là `unknown[]`. Chuẩn hóa kiểu dữ liệu đầu vào của hàm cộng dồn để `npm run lint` không còn fail vì ba dòng 153 / 390 / 435.
+
+## Moc ngay 2026-04-06 - rollout 132 tai khoan don vi
+
+Yeu cau user:
+- 132 tai khoan don vi tu dang nhap va nop file cho chinh don vi cua minh.
+- Menu cua tai khoan don vi chi con: Dashboard, Tiep nhan du lieu, Bao cao.
+- Tiep nhan du lieu voi tai khoan don vi chi cho 1 file, khong cho chon thu muc, va tu dong gan don vi theo tai khoan dang nhap.
+- Neu don vi da co du lieu thi khong duoc ghi de truc tiep; phai tao yeu cau ghi de va cho admin phe duyet ngay tai man Tiep nhan du lieu.
+
+Da thuc hien:
+- Mo rong role `unit_user` trong `src/types.ts`, `src/supabase.ts`, `src/access.ts`.
+- Cap nhat `src/App.tsx`:
+  - bootstrap `user_profiles` cho `unit_user` neu login lan dau ma profile chua co
+  - khoa route quan tri voi `unit_user`
+  - gioi han du lieu Dashboard theo `unit_code`
+  - gioi han danh sach du an hien cho `unit_user` ve cac du an ACTIVE
+- Cap nhat `src/components/Sidebar.tsx` de `unit_user` chi thay 3 menu duoc phep.
+- Cap nhat `src/components/ReportView.tsx` de khoa bo loc don vi theo don vi dang nhap cua `unit_user`.
+- Cap nhat `src/components/ImportFiles.tsx`:
+  - `unit_user` chi chon 1 file
+  - an nut chon thu muc
+  - tu dong gan don vi theo tai khoan
+  - neu da co du lieu thi tao `data_overwrite_requests`
+  - admin co khung phe duyet ghi de ngay trong man Tiep nhan du lieu
+  - sau khi tao yeu cau ghi de, file duoc bo khoi hang cho thay vi bi giu lai
+- Mo rong `src/supabaseStore.ts` va `src/types.ts` cho `OverwriteRequestRecord`.
+- Them SQL rollout `supabase/unit_user_rollout.sql`.
+- Them script `scripts/sync-supabase-unit-profiles.mjs` va npm script `auth:sync-unit-profiles` de dong bo 132 auth users vao `user_profiles`.
+- Them tai lieu van hanh `docs/unit-user-rollout-guide.md`.
+
+Kiem tra:
+- `npm.cmd run lint`: pass
+- `npm.cmd run build`: pass
+- `npm.cmd run check:encoding`: fail do trong repo con nhieu chuoi mojibake ton tai tu truoc o `src/App.tsx`, `src/components/ImportFiles.tsx`, `src/supabaseStore.ts` va mot so docs. Loi nay da duoc ghi nhan rieng, nhung khong can tro build/runtime cua rollout moi.
+
+### Backup local va backup Supabase truoc rollout unit_user ngay 2026-04-06
+
+Yeu cau user:
+- Tao backup toan bo he thong dang chay truoc khi chay rollout 132 tai khoan don vi.
+- Can co backup local codebase va backup du lieu tren Supabase project.
+
+Da thuc hien:
+- Tao snapshot local tai `backups/2026-04-06_185755-pre-unit-user-rollout`.
+- Tao script `scripts/backup-supabase-project.mjs` de backup du lieu cloud tu Supabase ra JSON.
+- Them npm script `backup:supabase`.
+- Tao tai lieu `docs/backup-guide.md`.
+
+Luu y:
+- Backup local da tao xong.
+- Backup cloud chua chay tu day vi can user nap `SUPABASE_SERVICE_ROLE_KEY` moi vao PowerShell va chay lenh `npm.cmd run backup:supabase`.
