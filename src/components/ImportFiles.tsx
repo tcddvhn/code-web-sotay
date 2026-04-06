@@ -1167,7 +1167,7 @@ export function ImportFiles({
               reviewNote: null,
             });
             partialWarnings.push(
-              `${unitName} (${fileItem.file.name}) Ä‘Ã£ gá»­i yÃªu cáº§u ghi Ä‘Ã¨, chá» admin phÃª duyá»‡t trÆ°á»›c khi cáº­p nháº­t dá»¯ liá»‡u.`,
+              `${unitName} (${fileItem.file.name}) ?? g?i y?u c?u ghi ??, ch? admin ph? duy?t tr??c khi c?p nh?t d? li?u.`,
             );
             completedFileKeys.add(`${fileItem.file.name}__${fileItem.relativePath || ''}`);
           } catch (requestError) {
@@ -1178,7 +1178,7 @@ export function ImportFiles({
               reason:
                 requestError instanceof Error
                   ? requestError.message
-                  : 'KhÃ´ng thá»ƒ táº¡o yÃªu cáº§u ghi Ä‘Ã¨ dá»¯ liá»‡u.',
+                  : 'Kh?ng th? t?o y?u c?u ghi ?? d? li?u.',
               relativePath: fileItem.relativePath,
             });
           }
@@ -1189,25 +1189,25 @@ export function ImportFiles({
         try {
           await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, importYear, unitName);
         } catch (uploadError) {
-          console.error('KhÃ´ng thá»ƒ upload file dá»¯ liá»‡u Ä‘Ã£ tiáº¿p nháº­n:', uploadError);
+          console.error('Kh?ng th? upload file d? li?u ?? ti?p nh?n:', uploadError);
         }
         acceptedFiles += 1;
         completedFileKeys.add(`${fileItem.file.name}__${fileItem.relativePath || ''}`);
         showProgress(
-          'Äang tá»•ng há»£p dá»¯ liá»‡u',
-          `ÄÃ£ xá»­ lÃ½ ${index + 1}/${files.length} file. Äang tiáº¿p tá»¥c...`,
+          '?ang t?ng h?p d? li?u',
+          `?? x? l? ${index + 1}/${files.length} file. ?ang ti?p t?c...`,
           5 + ((index + 1) / totalFiles) * 75,
         );
 
         if (templateErrors.length > 0) {
           partialWarnings.push(
-            `${unitName} (${fileItem.file.name}) chá»‰ tiáº¿p nháº­n má»™t pháº§n. Bá» qua: ${templateErrors.join(' | ')}`,
+            `${unitName} (${fileItem.file.name}) ch? ti?p nh?n m?t ph?n. B? qua: ${templateErrors.join(' | ' )}`,
           );
         }
       }
 
       if (importedRows.length > 0) {
-        showProgress('Äang tá»•ng há»£p dá»¯ liá»‡u', 'Äang ghi dá»¯ liá»‡u tá»•ng há»£p vÃ o há»‡ thá»‘ng...', 90);
+        showProgress('?ang t?ng h?p d? li?u', '?ang ghi d? li?u t?ng h?p v?o h? th?ng...', 90);
         await onDataImported(importedRows);
       }
 
@@ -1215,11 +1215,11 @@ export function ImportFiles({
 
       const summaryLines: string[] = [];
       if (acceptedFiles > 0) {
-        summaryLines.push(`ÄÃ£ tiáº¿p nháº­n ${acceptedFiles} file há»£p lá»‡.`);
+        summaryLines.push(`?? ti?p nh?n ${acceptedFiles} file h?p l?.`);
       }
 
       if (failedFiles.length > 0) {
-        summaryLines.push('CÃ¡c file chÆ°a Ä‘Æ°á»£c tiáº¿p nháº­n:');
+        summaryLines.push('C?c file ch?a ???c ti?p nh?n:');
         failedFiles.forEach((item) => {
           const suffix = item.missingSheets.length > 0 ? ` - thiáº¿u sheet: ${item.missingSheets.join(', ')}` : '';
           summaryLines.push(`- ${item.unitName} (${item.fileName})${suffix}${item.reason ? ` - ${item.reason}` : ''}`);
@@ -1227,14 +1227,14 @@ export function ImportFiles({
       }
 
       if (partialWarnings.length > 0) {
-        summaryLines.push('CÃ¡c file tiáº¿p nháº­n má»™t pháº§n:');
+        summaryLines.push('C?c file ti?p nh?n m?t ph?n:');
         partialWarnings.forEach((warning) => {
           summaryLines.push(`- ${warning}`);
         });
       }
 
       if (summaryLines.length === 0) {
-        summaryLines.push('KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u phÃ¹ há»£p trong cÃ¡c file Ä‘Ã£ chá»n.');
+        summaryLines.push('Kh?ng t?m th?y d? li?u ph? h?p trong c?c file ?? ch?n.');
       }
 
       setManagementMessage(summaryLines.join('\n'));
@@ -1255,7 +1255,7 @@ export function ImportFiles({
       }
     } catch (error) {
       closeProgress();
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ Ä‘á»c file Excel nÃ y.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? ??c file Excel n?y.');
     } finally {
       setIsManagingData(false);
     }
@@ -1263,14 +1263,14 @@ export function ImportFiles({
 
   const handleDeleteUnit = async () => {
     if (!selectedUnitToDelete) {
-      setManagementMessage('Vui lÃ²ng chá»n Ä‘Æ¡n vá»‹ cáº§n xÃ³a dá»¯ liá»‡u.');
+      setManagementMessage('Vui l?ng ch?n ??n v? c?n x?a d? li?u.');
       return;
     }
 
     const yearToDelete = selectedYear;
     const unitName = unitNameByCode[selectedUnitToDelete] || selectedUnitToDelete;
     const confirmed = window.confirm(
-      `XÃ³a toÃ n bá»™ dá»¯ liá»‡u cá»§a Ä‘Æ¡n vá»‹ "${unitName}" trong nÄƒm ${yearToDelete} thuá»™c dá»± Ã¡n hiá»‡n táº¡i?`,
+      `X?a to?n b? d? li?u c?a ??n v? "${unitName}" trong n?m ${yearToDelete} thu?c d? ?n hi?n t?i?`,
     );
     if (!confirmed) {
       return;
@@ -1283,11 +1283,11 @@ export function ImportFiles({
       const deletedCount = await onDeleteUnitData(yearToDelete, selectedUnitToDelete);
       setManagementMessage(
         deletedCount > 0
-          ? `ÄÃ£ xÃ³a ${deletedCount} dÃ²ng dá»¯ liá»‡u cá»§a Ä‘Æ¡n vá»‹ ${unitName} trong nÄƒm ${yearToDelete}.`
-          : `KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u cá»§a Ä‘Æ¡n vá»‹ ${unitName} trong nÄƒm ${yearToDelete}.`,
+          ? `?? x?a ${deletedCount} d?ng d? li?u c?a ??n v? ${unitName} trong n?m ${yearToDelete}.`
+          : `Kh?ng t?m th?y d? li?u c?a ??n v? ${unitName} trong n?m ${yearToDelete}.`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a dá»¯ liá»‡u cá»§a Ä‘Æ¡n vá»‹.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? x?a d? li?u c?a ??n v?.');
     } finally {
       setIsManagingData(false);
     }
@@ -1295,30 +1295,30 @@ export function ImportFiles({
 
   const handleDeleteYear = async () => {
     const yearToDelete = selectedYear;
-    const confirmed = window.confirm(`XÃ³a toÃ n bá»™ dá»¯ liá»‡u Ä‘Ã£ lÆ°u cá»§a nÄƒm ${yearToDelete} trong dá»± Ã¡n hiá»‡n táº¡i?`);
+    const confirmed = window.confirm(`X?a to?n b? d? li?u ?? l?u c?a n?m ${yearToDelete} trong d? ?n hi?n t?i?`);
     if (!confirmed) {
       return;
     }
 
     setIsManagingData(true);
     setManagementMessage(null);
-    showProgress('Äang xÃ³a dá»¯ liá»‡u theo nÄƒm', `Äang chuáº©n bá»‹ xÃ³a dá»¯ liá»‡u nÄƒm ${yearToDelete}...`, 10);
+    showProgress('?ang x?a d? li?u theo n?m', `?ang chu?n b? x?a d? li?u n?m ${yearToDelete}...`, 10);
 
     try {
-      showProgress('Äang xÃ³a dá»¯ liá»‡u theo nÄƒm', `Äang xÃ³a cÃ¡c dÃ²ng dá»¯ liá»‡u cá»§a nÄƒm ${yearToDelete}...`, 65);
+      showProgress('?ang x?a d? li?u theo n?m', `?ang x?a c?c d?ng d? li?u c?a n?m ${yearToDelete}...`, 65);
       const deletedCount = await onDeleteYearData(yearToDelete);
       setManagementMessage(
         deletedCount > 0
-          ? `ÄÃ£ xÃ³a ${deletedCount} dÃ²ng dá»¯ liá»‡u cá»§a nÄƒm ${yearToDelete}.`
-          : `KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u nÃ o cá»§a nÄƒm ${yearToDelete} Ä‘á»ƒ xÃ³a.`,
+          ? `?? x?a ${deletedCount} d?ng d? li?u c?a n?m ${yearToDelete}.`
+          : `Kh?ng t?m th?y d? li?u n?o c?a n?m ${yearToDelete} ?? x?a.`,
       );
       completeProgress(
-        'HoÃ n táº¥t xÃ³a dá»¯ liá»‡u theo nÄƒm',
-        deletedCount > 0 ? `ÄÃ£ xá»­ lÃ½ xong dá»¯ liá»‡u nÄƒm ${yearToDelete}.` : `KhÃ´ng cÃ³ dá»¯ liá»‡u nÄƒm ${yearToDelete} Ä‘á»ƒ xÃ³a.`,
+        'Ho?n t?t x?a d? li?u theo n?m',
+        deletedCount > 0 ? `?? x? l? xong d? li?u n?m ${yearToDelete}.` : `Kh?ng c? d? li?u n?m ${yearToDelete} ?? x?a.`,
       );
     } catch (error) {
       closeProgress();
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a dá»¯ liá»‡u theo nÄƒm.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? x?a d? li?u theo n?m.');
     } finally {
       setIsManagingData(false);
     }
@@ -1326,12 +1326,12 @@ export function ImportFiles({
 
   const handleDeleteProject = async () => {
     if (!currentProject) {
-      setManagementMessage('Vui lÃ²ng chá»n dá»± Ã¡n trÆ°á»›c khi xÃ³a dá»¯ liá»‡u.');
+      setManagementMessage('Vui l?ng ch?n d? ?n tr??c khi x?a d? li?u.');
       return;
     }
 
     const confirmed = window.confirm(
-      `XÃ³a toÃ n bá»™ dá»¯ liá»‡u, biá»ƒu máº«u, phÃ¢n cÃ´ng vÃ  lá»‹ch sá»­ xuáº¥t bÃ¡o cÃ¡o cá»§a dá»± Ã¡n "${currentProject.name}"?`,
+      `X?a to?n b? d? li?u, bi?u m?u, ph?n c?ng v? l?ch s? xu?t b?o c?o c?a d? ?n "${currentProject.name}"?`,
     );
     if (!confirmed) {
       return;
@@ -1339,23 +1339,23 @@ export function ImportFiles({
 
     setIsManagingData(true);
     setManagementMessage(null);
-    showProgress('Äang xÃ³a toÃ n bá»™ dá»± Ã¡n', `Äang chuáº©n bá»‹ xÃ³a dá»± Ã¡n "${currentProject.name}"...`, 5);
+    showProgress('?ang x?a to?n b? d? ?n', `?ang chu?n b? x?a d? ?n "${currentProject.name}"...`, 5);
 
     try {
-      showProgress('Äang xÃ³a toÃ n bá»™ dá»± Ã¡n', `Äang xÃ³a dá»¯ liá»‡u, biá»ƒu máº«u vÃ  file cá»§a dá»± Ã¡n "${currentProject.name}"...`, 70);
+      showProgress('?ang x?a to?n b? d? ?n', `?ang x?a d? li?u, bi?u m?u v? file c?a d? ?n "${currentProject.name}"...`, 70);
       const deletedCount = await onDeleteProjectData(currentProject.id);
       setManagementMessage(
         deletedCount > 0
-          ? `ÄÃ£ xÃ³a dá»± Ã¡n "${currentProject.name}" vÃ  ${deletedCount - 1} báº£n ghi liÃªn quan.`
-          : `KhÃ´ng thá»ƒ xÃ³a dá»± Ã¡n "${currentProject.name}".`,
+          ? `?? x?a d? ?n "${currentProject.name}" v? ${deletedCount - 1} b?n ghi li?n quan.`
+          : `Kh?ng th? x?a d? ?n "${currentProject.name}".`,
       );
       completeProgress(
-        deletedCount > 0 ? 'ÄÃ£ xÃ³a toÃ n bá»™ dá»± Ã¡n' : 'KhÃ´ng thá»ƒ xÃ³a dá»± Ã¡n',
-        deletedCount > 0 ? `Dá»± Ã¡n "${currentProject.name}" Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ xong.` : `KhÃ´ng thá»ƒ xÃ³a dá»± Ã¡n "${currentProject.name}".`,
+        deletedCount > 0 ? '?? x?a to?n b? d? ?n' : 'Kh?ng th? x?a d? ?n',
+        deletedCount > 0 ? `D? ?n "${currentProject.name}" ?? ???c x? l? xong.` : `Kh?ng th? x?a d? ?n "${currentProject.name}".`,
       );
     } catch (error) {
       closeProgress();
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a dá»¯ liá»‡u cá»§a dá»± Ã¡n.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? x?a d? li?u c?a d? ?n.');
     } finally {
       setIsManagingData(false);
     }
@@ -1393,9 +1393,9 @@ export function ImportFiles({
       <div className="space-y-6 p-6 md:p-8">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h2 className="page-title">Tiáº¿p nháº­n dá»¯ liá»‡u</h2>
+            <h2 className="page-title">Ti?p nh?n d? li?u</h2>
             <p className="page-subtitle mt-2">
-              Chá»n dá»± Ã¡n, nÄƒm vÃ  biá»ƒu máº«u phÃ¹ há»£p Ä‘á»ƒ nháº­p dá»¯ liá»‡u Excel theo Ä‘Ãºng cáº¥u trÃºc Ä‘Ã£ phÃ¡t hÃ nh.
+              Ch?n d? ?n, n?m v? bi?u m?u ph? h?p ?? nh?p d? li?u Excel theo ??ng c?u tr?c ?? ph?t h?nh.
             </p>
           </div>
           {managementMessage && (
@@ -1413,14 +1413,14 @@ export function ImportFiles({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
-                      <p className="col-header">1. Dá»± Ã¡n</p>
+                      <p className="col-header">1. D? ?n</p>
                       <p className="page-subtitle mt-2 text-sm">
-                        Chá»n Ä‘Ãºng dá»± Ã¡n Ä‘á»ƒ há»‡ thá»‘ng lá»c Ä‘Æ¡n vá»‹ chÆ°a tiáº¿p nháº­n vÃ  cÃ¡c biá»ƒu máº«u Ä‘Ã£ chá»‘t tÆ°Æ¡ng á»©ng.
+                        Ch?n ??ng d? ?n ?? h? th?ng l?c ??n v? ch?a ti?p nh?n v? c?c bi?u m?u ?? ch?t t??ng ?ng.
                       </p>
                     </div>
                     {currentProject && (
                       <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                        {currentProject.status === 'ACTIVE' ? 'Äang hoáº¡t Ä‘á»™ng' : 'ÄÃ£ hoÃ n thÃ nh'}
+                        {currentProject.status === 'ACTIVE' ? '?ang ho?t ??ng' : '?? ho?n th?nh'}
                       </div>
                     )}
                   </div>
@@ -1430,7 +1430,7 @@ export function ImportFiles({
                   <div className="flex items-end justify-end gap-3">
                     <div className="min-w-[180px]">
                       <div className="mb-1 text-right text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--brand)]">
-                        NÄƒm
+                        N?m
                       </div>
                       <select
                         value={selectedYear}
@@ -1447,7 +1447,7 @@ export function ImportFiles({
                   </div>
                   <label className="mt-3 flex items-center justify-end gap-2 text-xs text-[var(--ink-soft)]">
                     <input type="checkbox" checked={pinnedYear === selectedYear} onChange={togglePinnedYear} />
-                    <span>Ghim nÄƒm nÃ y cho láº§n nháº­p sau</span>
+                    <span>Ghim n?m n?y cho l?n nh?p sau</span>
                   </label>
                 </div>
               </div>
@@ -1468,7 +1468,7 @@ export function ImportFiles({
                   >
                     <p className="truncate text-sm font-semibold text-[var(--ink)]">{project.name}</p>
                     <p className="mt-1 line-clamp-2 text-xs text-[var(--ink-soft)]">
-                      {project.description || 'ChÆ°a cÃ³ mÃ´ táº£ dá»± Ã¡n.'}
+                      {project.description || 'Ch?a c? m? t? d? ?n.'}
                     </p>
                   </button>
                 );
@@ -1479,10 +1479,10 @@ export function ImportFiles({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    ÄÆ¡n vá»‹ chÆ°a tiáº¿p nháº­n
+                    ??n v? ch?a ti?p nh?n
                   </p>
                   <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                    {pendingUnits.length} Ä‘Æ¡n vá»‹
+                    {pendingUnits.length} ??n v?
                   </p>
                 </div>
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
@@ -1490,7 +1490,7 @@ export function ImportFiles({
                 </span>
               </div>
               <p className="mt-2 text-xs text-[var(--ink-soft)]">
-                Danh sÃ¡ch nÃ y dÃ¹ng cÃ¹ng logic vá»›i Nháº­t kÃ½ vÃ  tá»± lá»c theo dá»± Ã¡n, nÄƒm vÃ  phÃ¢n quyá»n theo dÃµi.
+                Danh s?ch n?y d?ng c?ng logic v?i Nh?t k? v? t? l?c theo d? ?n, n?m v? ph?n quy?n theo d?i.
               </p>
               <div className="mt-3 max-h-52 space-y-2 overflow-auto pr-1">
                 {pendingUnits.length > 0 ? (
@@ -1506,17 +1506,17 @@ export function ImportFiles({
                         </p>
                       </div>
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
-                        ChÆ°a tiáº¿p nháº­n
+                        Ch?a ti?p nh?n
                       </span>
                     </div>
                   ))
                 ) : (
                   <div className="rounded-[16px] border border-dashed border-[var(--line)] bg-white px-3 py-4 text-sm text-[var(--ink-soft)]">
                     {isUnitUser
-                      ? 'Đơn vị của bạn đã có dữ liệu trong dự án/năm đang chọn hoặc không còn mục chưa tiếp nhận.'
+                      ? '??n v? c?a b?n ?? c? d? li?u trong d? ?n/n?m ?ang ch?n ho?c kh?ng c?n m?c ch?a ti?p nh?n.'
                       : !isAdmin && currentAssignedUnitCodes.length === 0
-                      ? 'TÃ i khoáº£n nÃ y chÆ°a Ä‘Æ°á»£c phÃ¢n cÃ´ng Ä‘Æ¡n vá»‹ theo dÃµi cho luá»“ng tiáº¿p nháº­n.'
-                      : 'KhÃ´ng cÃ²n Ä‘Æ¡n vá»‹ nÃ o chÆ°a tiáº¿p nháº­n trong dá»± Ã¡n/nÄƒm Ä‘ang chá»n.'}
+                      ? 'T?i kho?n n?y ch?a ???c ph?n c?ng ??n v? theo d?i cho lu?ng ti?p nh?n.'
+                      : 'Kh?ng c?n ??n v? n?o ch?a ti?p nh?n trong d? ?n/n?m ?ang ch?n.'}
                   </div>
                 )}
               </div>
@@ -1527,11 +1527,11 @@ export function ImportFiles({
           <div className="panel-card rounded-[24px] p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
-                <p className="col-header">2. Biá»ƒu máº«u</p>
+                <p className="col-header">2. Bi?u m?u</p>
                 <p className="page-subtitle mt-2 text-sm">
                   {selectedTemplateId
-                    ? 'Há»‡ thá»‘ng Ä‘ang Ä‘á»‘i chiáº¿u theo biá»ƒu máº«u báº¡n chá»n. File chá»‰ Ä‘Æ°á»£c nháº­n khi cÃ³ Ä‘Ãºng sheet báº¯t buá»™c cá»§a biá»ƒu nÃ y.'
-                    : 'Khi tiáº¿p nháº­n, há»‡ thá»‘ng sáº½ Ä‘á»‘i chiáº¿u toÃ n bá»™ biá»ƒu máº«u Ä‘Ã£ chá»‘t cá»§a dá»± Ã¡n. File chá»‰ Ä‘Æ°á»£c nháº­n khi Ä‘á»§ 100% sheet báº¯t buá»™c; cÃ¡c sheet thá»«a sáº½ tá»± bá» qua.'}
+                    ? 'H? th?ng ?ang ??i chi?u theo bi?u m?u b?n ch?n. File ch? ???c nh?n khi c? ??ng sheet b?t bu?c c?a bi?u n?y.'
+                    : 'Khi ti?p nh?n, h? th?ng s? ??i chi?u to?n b? bi?u m?u ?? ch?t c?a d? ?n. File ch? ???c nh?n khi ?? 100% sheet b?t bu?c; c?c sheet th?a s? t? b? qua.'}
                 </p>
               </div>
             </div>
@@ -1551,7 +1551,7 @@ export function ImportFiles({
                     <CheckCircle2 size={14} />
                   </span>
                 )}
-                <span className="pr-7">Táº¥t cáº£ biá»ƒu máº«u Ä‘Ã£ chá»‘t</span>
+                <span className="pr-7">T?t c? bi?u m?u ?? ch?t</span>
               </button>
               {publishedTemplates.map((template) => {
                 const isActive = template.id === selectedTemplateId;
@@ -1571,8 +1571,8 @@ export function ImportFiles({
                         <CheckCircle2 size={14} />
                       </span>
                     )}
-                    <p className={`truncate pr-7 text-sm font-semibold ${isActive ? 'text-white' : 'text-[var(--ink)]'}`}>{template.name}</p>
-                    <p className={`mt-1 text-xs ${isActive ? 'text-white/80' : 'text-[var(--ink-soft)]'}`}>{template.sheetName}</p>
+                    <p className={`truncate pr-7 text-sm font-semibold ${isActive ? "text-white" : "text-[var(--ink)]"}`}>{template.name}</p>
+                    <p className={`mt-1 text-xs ${isActive ? "text-white/80" : "text-[var(--ink-soft)]"}`}>{template.sheetName}</p>
                   </button>
                 );
               })}
@@ -1580,21 +1580,21 @@ export function ImportFiles({
 
             {publishedTemplates.length === 0 && (
               <div className="mt-4 rounded-[16px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">
-                Dá»± Ã¡n nÃ y chÆ°a cÃ³ biá»ƒu máº«u Ä‘Ã£ chá»‘t Ä‘á»ƒ tiáº¿p nháº­n dá»¯ liá»‡u.
+                D? ?n n?y ch?a c? bi?u m?u ?? ch?t ?? ti?p nh?n d? li?u.
               </div>
             )}
           </div>
 
           {canManageData && (
             <div className="panel-card rounded-[24px] p-5">
-              <p className="col-header mb-3">3. Quáº£n trá»‹ dá»¯ liá»‡u theo nÄƒm</p>
+              <p className="col-header mb-3">3. Qu?n tr? d? li?u theo n?m</p>
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
                 <select
                   value={selectedUnitToDelete}
                   onChange={(event) => setSelectedUnitToDelete(event.target.value)}
                   className="field-input h-11 text-base font-semibold"
                 >
-                  <option value="">-- Chá»n Ä‘Æ¡n vá»‹ --</option>
+                  <option value="">-- Ch?n ??n v? --</option>
                   {scopedUnits.map((unit) => (
                     <option key={unit.code} value={unit.code}>
                       {unit.name} ({unit.code})
@@ -1608,89 +1608,89 @@ export function ImportFiles({
                     disabled={isManagingData || !selectedUnitToDelete}
                     className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    XÃ³a dá»¯ liá»‡u theo Ä‘Æ¡n vá»‹
+                    X?a d? li?u theo ??n v?
                   </button>
                   <button
                     onClick={handleDeleteYear}
                     disabled={isManagingData}
                     className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    XÃ³a dá»¯ liá»‡u theo nÄƒm
+                    X?a d? li?u theo n?m
                   </button>
                   <button
                     onClick={handleDeleteProject}
                     disabled={isManagingData || !currentProject}
                     className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    XÃ³a toÃ n bá»™ dá»± Ã¡n hiá»‡n táº¡i
+                    X?a to?n b? d? ?n hi?n t?i
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {canManageData && overwriteRequests.some((request) => request.status === 'PENDING') && (
+          {canManageData && overwriteRequests.some((request) => request.status === "PENDING") && (
             <div className="panel-card rounded-[24px] p-5">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <p className="col-header">4. Phê duyệt ghi đè dữ liệu</p>
+                  <p className="col-header">4. Ph? duy?t ghi ?? d? li?u</p>
                   <p className="page-subtitle mt-2 text-sm">
-                    Đơn vị đã có dữ liệu muốn nộp lại file sẽ được đưa vào danh sách chờ phê duyệt. Admin duyệt tại đây để thay thế dữ liệu cũ.
+                    ??n v? ?? c? d? li?u mu?n n?p l?i file s? ???c ??a v?o danh s?ch ch? ph? duy?t. Admin duy?t t?i ??y ?? thay th? d? li?u c?.
                   </p>
                 </div>
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">
-                  {overwriteRequests.filter((request) => request.status === 'PENDING').length} yêu cầu chờ duyệt
+                  {overwriteRequests.filter((request) => request.status === "PENDING").length} y?u c?u ch? duy?t
                 </span>
               </div>
 
               <div className="mt-4 space-y-4">
                 {overwriteRequests
-                  .filter((request) => request.status === 'PENDING')
+                  .filter((request) => request.status === "PENDING")
                   .map((request) => (
                     <div key={request.id} className="rounded-[20px] border border-amber-200 bg-amber-50/40 p-4">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                           <p className="text-base font-semibold text-[var(--ink)]">{request.unitName}</p>
                           <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                            {request.fileName} • {request.year} • {request.projectName || currentProject?.name || request.projectId}
+                            {request.fileName} ? {request.year} ? {request.projectName || currentProject?.name || request.projectId}
                           </p>
                           <p className="mt-2 text-xs text-[var(--ink-soft)]">
-                            Người gửi: {request.requestedBy?.displayName || request.requestedBy?.email || 'Chưa xác định'}
+                            Ng??i g?i: {request.requestedBy?.displayName || request.requestedBy?.email || "Ch?a x?c ??nh"}
                           </p>
                         </div>
                         <div className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                          Chờ phê duyệt
+                          Ch? ph? duy?t
                         </div>
                       </div>
 
                       <textarea
-                        value={overwriteReviewNote[request.id] || ''}
+                        value={overwriteReviewNote[request.id] || ""}
                         onChange={(event) =>
                           setOverwriteReviewNote((current) => ({
                             ...current,
                             [request.id]: event.target.value,
                           }))
                         }
-                        placeholder="Ghi chú phê duyệt / từ chối"
+                        placeholder="Ghi ch? ph? duy?t / t? ch?i"
                         className="mt-3 field-input min-h-[88px] py-3"
                       />
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleReviewOverwriteRequest(request, 'APPROVED')}
+                          onClick={() => handleReviewOverwriteRequest(request, "APPROVED")}
                           disabled={isManagingData}
                           className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          Phê duyệt ghi đè
+                          Ph? duy?t ghi ??
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleReviewOverwriteRequest(request, 'REJECTED')}
+                          onClick={() => handleReviewOverwriteRequest(request, "REJECTED")}
                           disabled={isManagingData}
                           className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          Từ chối
+                          T? ch?i
                         </button>
                       </div>
                     </div>
@@ -1706,9 +1706,9 @@ export function ImportFiles({
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand)]">
                 <Upload size={18} />
               </div>
-              <p className="mt-3 text-sm font-semibold text-[var(--ink)]">Kéo thả hoặc bấm để chọn file</p>
+              <p className="mt-3 text-sm font-semibold text-[var(--ink)]">K?o th? ho?c b?m ?? ch?n file</p>
               <p className="page-subtitle mt-1 text-xs">
-                {isUnitUser ? "Tài khoản đơn vị chỉ nộp 1 file và hệ thống tự gắn đúng đơn vị đăng nhập." : "Phù hợp khi nhận từng file lẻ."}
+                {isUnitUser ? "T?i kho?n ??n v? ch? n?p 1 file v? h? th?ng t? g?n ??ng ??n v? ??ng nh?p." : "Ph? h?p khi nh?n t?ng file l?."}
               </p>
               <input type="file" multiple={!isUnitUser} accept=".xlsx,.xlsm,.xls" className="hidden" onChange={handleFileChange} />
             </label>
@@ -1722,8 +1722,8 @@ export function ImportFiles({
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand)]">
                   <FolderOpen size={18} />
                 </div>
-                <p className="mt-3 text-sm font-semibold text-[var(--ink)]">Chọn cả thư mục dữ liệu</p>
-                <p className="page-subtitle mt-1 text-xs">Hệ thống sẽ gợi ý đơn vị từ tên file trong thư mục.</p>
+                <p className="mt-3 text-sm font-semibold text-[var(--ink)]">Ch?n c? th? m?c d? li?u</p>
+                <p className="page-subtitle mt-1 text-xs">H? th?ng s? g?i ? ??n v? t? t?n file trong th? m?c.</p>
               </button>
             )}
           </div>
@@ -1737,11 +1737,11 @@ export function ImportFiles({
           <div className="panel-card rounded-[28px] p-6">
             <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h3 className="section-title">Danh sÃ¡ch file chá» tiáº¿p nháº­n</h3>
+                <h3 className="section-title">Danh s?ch file ch? ti?p nh?n</h3>
                 <p className="page-subtitle mt-2 text-sm">
                   {isUnitUser
-                    ? 'Hệ thống tự gắn đơn vị theo tài khoản đăng nhập và chỉ nhận 1 file mỗi lần gửi.'
-                    : 'Há»‡ thá»‘ng Ä‘Ã£ cá»‘ gáº¯ng tá»± nháº­n diá»‡n Ä‘Æ¡n vá»‹ tá»« tÃªn file. Báº¡n chá»‰ cáº§n rÃ  láº¡i cÃ¡c file cáº§n xÃ¡c nháº­n.'}
+                    ? "H? th?ng t? g?n ??n v? theo t?i kho?n ??ng nh?p v? ch? nh?n 1 file m?i l?n g?i."
+                    : "H? th?ng ?? c? g?ng t? nh?n di?n ??n v? t? t?n file. B?n ch? c?n r? l?i c?c file c?n x?c nh?n."}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -1752,31 +1752,31 @@ export function ImportFiles({
                       onChange={(event) => setVisibleFileFilter(event.target.value as VisibleFileFilter)}
                       className="field-input h-10 min-w-[250px] text-sm font-semibold"
                     >
-                      <option value="ALL">Hiá»‡n táº¥t cáº£ file</option>
-                      <option value="READY">Chá»‰ hiá»‡n file Ä‘Ã£ sáºµn sÃ ng</option>
-                      <option value="NEEDS_CONFIRMATION">Chá»‰ hiá»‡n file cáº§n xÃ¡c nháº­n</option>
-                      <option value="WITH_EXISTING_DATA">ÄÆ¡n vá»‹ Ä‘Ã£ cÃ³ dá»¯ liá»‡u</option>
-                      <option value="INVALID">Chá»‰ hiá»‡n file lá»—i sheet</option>
+                      <option value="ALL">Hi?n t?t c? file</option>
+                      <option value="READY">Ch? hi?n file ?? s?n s?ng</option>
+                      <option value="NEEDS_CONFIRMATION">Ch? hi?n file c?n x?c nh?n</option>
+                      <option value="WITH_EXISTING_DATA">??n v? ?? c? d? li?u</option>
+                      <option value="INVALID">Ch? hi?n file l?i sheet</option>
                     </select>
                     <button onClick={handleConfirmSuggested} className="secondary-btn">
-                      XÃ¡c nháº­n táº¥t cáº£ gá»£i Ã½ há»£p lá»‡
+                      X?c nh?n t?t c? g?i ? h?p l?
                     </button>
                   </>
                 )}
                 <button onClick={exportFailedFiles} disabled={!showExportErrors} className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40">
-                  Xuáº¥t danh sÃ¡ch file lá»—i
+                  Xu?t danh s?ch file l?i
                 </button>
                 <button onClick={processFiles} disabled={isManagingData} className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40">
                   {isManagingData ? <LoaderCircle size={16} className="animate-spin" /> : <FileCheck size={16} />}
-                  Báº¯t Ä‘áº§u tá»•ng há»£p
+                  B?t ??u t?ng h?p
                 </button>
               </div>
             </div>
 
             {!isUnitUser && (
               <div className="mb-4 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--ink-soft)]">
-                Bá»™ lá»c <strong>ÄÆ¡n vá»‹ Ä‘Ã£ cÃ³ dá»¯ liá»‡u</strong> Ä‘ang dÃ¹ng cÃ¹ng Ä‘iá»u kiá»‡n vá»›i Nháº­t kÃ½:
-                dá»± Ã¡n hiá»‡n táº¡i, nÄƒm Ä‘ang chá»n, Ä‘Æ¡n vá»‹ trong pháº¡m vi phÃ¢n quyá»n, vÃ  tá»“n táº¡i dá»¯ liá»‡u trong <code>data_files</code> hoáº·c <code>consolidated_rows</code>.
+                B? l?c <strong>??n v? ?? c? d? li?u</strong> ?ang d?ng c?ng ?i?u ki?n v?i Nh?t k?:
+                d? ?n hi?n t?i, n?m ?ang ch?n, ??n v? trong ph?m vi ph?n quy?n, v? t?n t?i d? li?u trong <code>data_files</code> ho?c <code>consolidated_rows</code>.
               </div>
             )}
 
@@ -1819,7 +1819,7 @@ export function ImportFiles({
                         {validation?.status === 'valid' && (
                           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                             <CheckCircle2 size={12} />
-                            File há»£p lá»‡
+                            File h?p l?
                           </span>
                         )}
                         <button
@@ -1827,15 +1827,15 @@ export function ImportFiles({
                           className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)] transition hover:border-[var(--brand)] hover:text-[var(--brand)]"
                         >
                           <X size={14} />
-                          Bá» file
+                          B? file
                         </button>
                       </div>
                     </div>
                     {isUnitUser ? (
                       <div className="mt-4 rounded-[18px] border border-[var(--line)] bg-white px-4 py-3 text-sm">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">Đơn vị nộp dữ liệu</p>
-                        <p className="mt-2 text-base font-semibold text-[var(--ink)]">{item.unitQuery || currentUser?.unitName || currentUser?.unitCode || "Chưa xác định"}</p>
-                        <p className="mt-1 text-xs text-[var(--ink-soft)]">Hệ thống tự gắn đơn vị theo tài khoản đăng nhập, không cần chọn lại.</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">??n v? n?p d? li?u</p>
+                        <p className="mt-2 text-base font-semibold text-[var(--ink)]">{item.unitQuery || currentUser?.unitName || currentUser?.unitCode || "Ch?a x?c ??nh"}</p>
+                        <p className="mt-1 text-xs text-[var(--ink-soft)]">H? th?ng t? g?n ??n v? theo t?i kho?n ??ng nh?p, kh?ng c?n ch?n l?i.</p>
                       </div>
                     ) : (
                     <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -1871,24 +1871,24 @@ export function ImportFiles({
                       <p className="font-semibold text-[var(--ink)]">{item.matchReason}</p>
                       {item.suggestedUnitCode && (
                         <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                          Gá»£i Ã½: {item.suggestedUnitName} ({item.suggestedUnitCode})
+                          G?i ?: {item.suggestedUnitName} ({item.suggestedUnitCode})
                         </p>
                       )}
                       {validation?.status === 'valid' && (
                         <p className="mt-2 text-xs text-emerald-700">
-                          File há»£p lá»‡. ÄÃ£ nháº­n Ä‘á»§ cÃ¡c sheet báº¯t buá»™c: {validation.matchedSheets.join(', ')}
+                          File h?p l?. ?? nh?n ?? c?c sheet b?t bu?c: {validation.matchedSheets.join(', ')}
                         </p>
                       )}
                       {validation?.status === 'invalid' && (
                         <>
                           {validation.missingSheets.length > 0 && (
-                            <p className="mt-2 text-xs text-red-700">Thiáº¿u sheet: {validation.missingSheets.join(', ')}</p>
+                            <p className="mt-2 text-xs text-red-700">Thi?u sheet: {validation.missingSheets.join(', ')}</p>
                           )}
                           {validation.reason && <p className="mt-2 text-xs text-red-700">{validation.reason}</p>}
                         </>
                       )}
                       {(!validation || validation.status === 'pending') && (
-                        <p className="mt-2 text-xs text-[var(--ink-soft)]">Äang kiá»ƒm tra cáº¥u trÃºc file...</p>
+                        <p className="mt-2 text-xs text-[var(--ink-soft)]">?ang ki?m tra c?u tr?c file...</p>
                       )}
                     </div>
                   </div>
@@ -1904,32 +1904,32 @@ export function ImportFiles({
           <div className="w-full max-w-lg rounded-[28px] border border-[var(--line)] bg-white p-6 shadow-[0_30px_90px_rgba(38,31,18,0.24)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">Tiáº¿n Ä‘á»™ xá»­ lÃ½</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">Ti?n ?? x? l?</p>
                 <h3 className="mt-2 text-xl font-semibold text-[var(--ink)]">{operationProgress.title}</h3>
                 <p className="mt-2 text-sm text-[var(--ink-soft)]">{operationProgress.description}</p>
               </div>
-              <div className={`flex h-11 w-11 items-center justify-center rounded-full ${operationProgress.status === 'done' ? 'bg-emerald-50 text-emerald-700' : 'bg-[var(--surface-soft)] text-[var(--brand)]'}`}>
-                {operationProgress.status === 'done' ? <CheckCircle2 size={22} /> : <LoaderCircle size={22} className="animate-spin" />}
+              <div className={`flex h-11 w-11 items-center justify-center rounded-full ${operationProgress.status === "done" ? "bg-emerald-50 text-emerald-700" : "bg-[var(--surface-soft)] text-[var(--brand)]"}`}>
+                {operationProgress.status === "done" ? <CheckCircle2 size={22} /> : <LoaderCircle size={22} className="animate-spin" />}
               </div>
             </div>
 
             <div className="mt-5">
               <div className="flex items-center justify-between text-sm font-semibold text-[var(--ink)]">
-                <span>HoÃ n thÃ nh</span>
+                <span>Ho?n th?nh</span>
                 <span>{operationProgress.percent}%</span>
               </div>
               <div className="mt-2 h-3 overflow-hidden rounded-full bg-[var(--surface-soft)]">
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${operationProgress.status === 'done' ? 'bg-emerald-500' : 'bg-[var(--brand)]'}`}
+                  className={`h-full rounded-full transition-all duration-300 ${operationProgress.status === "done" ? "bg-emerald-500" : "bg-[var(--brand)]"}`}
                   style={{ width: `${operationProgress.percent}%` }}
                 />
               </div>
             </div>
 
-            {operationProgress.status === 'done' && (
+            {operationProgress.status === "done" && (
               <div className="mt-6 flex justify-end">
                 <button type="button" onClick={closeProgress} className="primary-btn">
-                  ÄÃ£ hiá»ƒu
+                  ?? hi?u
                 </button>
               </div>
             )}
@@ -1943,10 +1943,10 @@ export function ImportFiles({
             <div className="border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">Káº¿t quáº£ tiáº¿p nháº­n</p>
-                  <h3 className="mt-2 text-xl font-semibold text-[var(--ink)]">Tá»•ng há»£p file Ä‘Ã£ hoÃ n táº¥t</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ink-soft)]">K?t qu? ti?p nh?n</p>
+                  <h3 className="mt-2 text-xl font-semibold text-[var(--ink)]">T?ng h?p file ?? ho?n t?t</h3>
                   <p className="mt-2 text-sm text-[var(--ink-soft)]">
-                    ÄÃ£ cáº­p nháº­t {importResultSummary.updatedCount}/{importResultSummary.totalSelected} Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c chá»n.
+                    ?? c?p nh?t {importResultSummary.updatedCount}/{importResultSummary.totalSelected} ??n v? ???c ch?n.
                   </p>
                 </div>
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
@@ -1956,15 +1956,15 @@ export function ImportFiles({
 
               <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="rounded-[18px] border border-emerald-200 bg-emerald-50 px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">ÄÃ£ cáº­p nháº­t</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">?? c?p nh?t</p>
                   <p className="mt-2 text-2xl font-bold text-emerald-800">{importResultSummary.updatedCount}</p>
                 </div>
                 <div className="rounded-[18px] border border-[var(--line)] bg-white px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">ÄÃ£ chá»n</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">?? ch?n</p>
                   <p className="mt-2 text-2xl font-bold text-[var(--ink)]">{importResultSummary.totalSelected}</p>
                 </div>
                 <div className="rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">Kh?ng c?p nh?t ???c</p>
                   <p className="mt-2 text-2xl font-bold text-amber-800">{importResultSummary.failedFiles.length}</p>
                 </div>
               </div>
@@ -1973,10 +1973,10 @@ export function ImportFiles({
             <div className="flex-1 space-y-5 overflow-auto px-6 py-5">
               {importResultSummary.failedFiles.length > 0 ? (
                 <div>
-                  <h4 className="text-sm font-semibold text-[var(--ink)]">Danh sÃ¡ch Ä‘Æ¡n vá»‹ khÃ´ng cáº­p nháº­t Ä‘Æ°á»£c</h4>
+                  <h4 className="text-sm font-semibold text-[var(--ink)]">Danh s?ch ??n v? kh?ng c?p nh?t ???c</h4>
                   <div className="mt-3 space-y-3">
                     {importResultSummary.failedFiles.map((item, index) => (
-                      <div key={`${item.fileName}-${item.relativePath || ''}-${index}`} className="rounded-[20px] border border-amber-200 bg-amber-50/50 px-4 py-4">
+                      <div key={`${item.fileName}-${item.relativePath || ""}-${index}`} className="rounded-[20px] border border-amber-200 bg-amber-50/50 px-4 py-4">
                         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-[var(--ink)]">{item.unitName}</p>
@@ -1984,17 +1984,17 @@ export function ImportFiles({
                             {item.relativePath && <p className="mt-1 break-all text-[11px] text-[var(--ink-soft)]">{item.relativePath}</p>}
                           </div>
                           <div className="rounded-full border border-amber-200 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
-                            KhÃ´ng cáº­p nháº­t
+                            Kh?ng c?p nh?t
                           </div>
                         </div>
                         {item.missingSheets.length > 0 && (
                           <p className="mt-3 text-xs font-medium text-amber-800">
-                            Thiáº¿u sheet: {item.missingSheets.join(', ')}
+                            Thi?u sheet: {item.missingSheets.join(", ")}
                           </p>
                         )}
                         {item.reason && (
                           <p className="mt-2 text-xs text-amber-900">
-                            LÃ½ do: {item.reason}
+                            L? do: {item.reason}
                           </p>
                         )}
                       </div>
@@ -2003,13 +2003,13 @@ export function ImportFiles({
                 </div>
               ) : (
                 <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-5 text-sm font-medium text-emerald-800">
-                  Táº¥t cáº£ cÃ¡c Ä‘Æ¡n vá»‹ Ä‘Ã£ chá»n Ä‘á»u Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t thÃ nh cÃ´ng.
+                  T?t c? c?c ??n v? ?? ch?n ??u ?? ???c c?p nh?t th?nh c?ng.
                 </div>
               )}
 
               {importResultSummary.partialWarnings.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-[var(--ink)]">CÃ¡c Ä‘Æ¡n vá»‹ tiáº¿p nháº­n má»™t pháº§n</h4>
+                  <h4 className="text-sm font-semibold text-[var(--ink)]">C?c ??n v? ti?p nh?n m?t ph?n</h4>
                   <div className="mt-3 space-y-3">
                     {importResultSummary.partialWarnings.map((warning, index) => (
                       <div key={`partial-warning-${index}`} className="rounded-[20px] border border-blue-200 bg-blue-50/60 px-4 py-4 text-sm text-blue-900">
@@ -2023,7 +2023,7 @@ export function ImportFiles({
 
             <div className="flex justify-end border-t border-[var(--line)] px-6 py-4">
               <button type="button" onClick={closeImportResultSummary} className="primary-btn">
-                ÄÃ£ hiá»ƒu
+                ?? hi?u
               </button>
             </div>
           </div>

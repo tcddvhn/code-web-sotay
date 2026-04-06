@@ -2096,16 +2096,16 @@ function DashboardOverview({
   }, [currentAssignmentKey, shouldLockToCurrentUserAssignments]);
 
   const stats = [
-    { label: 'Tá»•ng Ä‘Æ¡n vá»‹', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
+    { label: 'T?ng ??n v?', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
     {
-      label: 'ÄÆ¡n vá»‹ Ä‘Ã£ tiáº¿p nháº­n',
+      label: '??n v? ?? ti?p nh?n',
       value: `${submittedCount}/${totalUnits}`,
       icon: FileBarChart,
       iconColor: 'text-[var(--success)]',
       tone: 'bg-[rgba(47,110,73,0.12)]',
     },
     {
-      label: 'Tá»· lá»‡ hoÃ n thÃ nh',
+      label: 'T? l? ho?n th?nh',
       value: `${completionRate}%`,
       icon: Activity,
       iconColor: 'text-[var(--primary-dark)]',
@@ -2114,8 +2114,8 @@ function DashboardOverview({
   ];
 
   const pieData = [
-    { name: 'ÄÃ£ tiáº¿p nháº­n', value: submittedCount },
-    { name: 'ChÆ°a tiáº¿p nháº­n', value: totalUnits - submittedCount },
+    { name: '?? ti?p nh?n', value: submittedCount },
+    { name: 'Ch?a ti?p nh?n', value: totalUnits - submittedCount },
   ];
 
   const previewLogs = unitLogs.slice(0, 8);
@@ -2140,7 +2140,7 @@ function DashboardOverview({
           type="button"
           onClick={isAuthenticated ? () => void onLogout() : onOpenLogin}
           className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm md:hidden"
-          title={isAuthenticated ? 'ÄÄƒng xuáº¥t' : 'ÄÄƒng nháº­p'}
+          title={isAuthenticated ? '??ng xu?t' : '??ng nh?p'}
         >
           {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
         </button>
@@ -2154,15 +2154,15 @@ function DashboardOverview({
           }}
         >
           <h2 className="max-w-5xl text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
-            Há»† THá»NG QUáº¢N TRá»Š Dá»® LIá»†U TCÄ, ÄV Táº¬P TRUNG
+            H? TH?NG QU?N TR? D? LI?U TC?, ?V T?P TRUNG
           </h2>
           {currentUser && (
             <p className="mt-3 text-sm font-bold text-white/90">
-              TÃ i khoáº£n Ä‘ang Ä‘Äƒng nháº­p: {currentUser.displayName || currentUser.email || 'ChÆ°a xÃ¡c Ä‘á»‹nh'}
+              T?i kho?n ?ang ??ng nh?p: {currentUser.displayName || currentUser.email || 'Ch?a x?c ??nh'}
             </p>
           )}
           <p className="mt-3 max-w-3xl text-sm text-white/80">
-            Theo dÃµi nhanh tÃ¬nh hÃ¬nh tiáº¿p nháº­n dá»¯ liá»‡u cá»§a cÃ¡c Ä‘Æ¡n vá»‹, sá»‘ biá»ƒu Ä‘Ã£ nháº­p vÃ  má»©c Ä‘á»™ hoÃ n thÃ nh tá»•ng há»£p trÃªn toÃ n há»‡ thá»‘ng.
+            Theo d?i nhanh t?nh h?nh ti?p nh?n d? li?u c?a c?c ??n v?, s? bi?u ?? nh?p v? m?c ?? ho?n th?nh t?ng h?p tr?n to?n h? th?ng.
           </p>
         </div>
       </header>
@@ -2170,7 +2170,7 @@ function DashboardOverview({
       <div className="panel-card rounded-[24px] p-5 md:hidden">
         <div className="space-y-4">
           <div>
-            <p className="col-header mb-2">Chá»n dá»± Ã¡n</p>
+            <p className="col-header mb-2">Ch?n d? ?n</p>
             <select
               value={selectedProjectId}
               onChange={(event) => onSelectProject(event.target.value)}
@@ -2185,7 +2185,7 @@ function DashboardOverview({
           <div className="border-t border-[var(--line)]" />
 
           <div>
-            <p className="col-header mb-2">Chá»n nÄƒm</p>
+            <p className="col-header mb-2">Ch?n n?m</p>
             <select
               value={dashboardYear}
               onChange={(event) => setDashboardYear(event.target.value)}
@@ -2211,32 +2211,32 @@ function DashboardOverview({
       <div className="mt-6 panel-card rounded-[24px] p-5 md:hidden">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h3 className="section-title text-base">PhÃ¢n tÃ­ch AI</h3>
+            <h3 className="section-title text-base">Ph?n t?ch AI</h3>
             <p className="page-subtitle mt-2 text-sm">
-              Má»Ÿ module phÃ¢n tÃ­ch nhiá»u dá»± Ã¡n, xem trÆ°á»›c ná»™i dung bÃ¡o cÃ¡o vÃ  chuáº©n bá»‹ xuáº¥t DOCX.
+              M? module ph?n t?ch nhi?u d? ?n, xem tr??c n?i dung b?o c?o v? chu?n b? xu?t DOCX.
             </p>
           </div>
           <button type="button" onClick={onOpenAIAnalysis} className="primary-btn px-4 py-3 text-[11px]">
-            Má»Ÿ
+            M?
           </button>
         </div>
       </div>
       )}
 
       <div className="mt-6 panel-card rounded-[24px] p-5 md:hidden">
-        <h3 className="section-title text-base">Tiáº¿n Ä‘á»™ tiáº¿p nháº­n</h3>
+        <h3 className="section-title text-base">Ti?n ?? ti?p nh?n</h3>
         <div className="mt-3 space-y-1.5 text-sm leading-tight text-[var(--ink)]">
-          <p>- Dá»± Ã¡n Ä‘ang cháº¡y: <span className="font-semibold">{activeProjects}</span></p>
-          <p>- Dá»± Ã¡n hoÃ n thÃ nh: <span className="font-semibold">{completedProjects}</span></p>
-          <p>- Tá»•ng sá»‘ Ä‘Æ¡n vá»‹: <span className="font-semibold">{totalUnits}</span></p>
-          <p>- ÄÆ¡n vá»‹ Ä‘Ã£ tiáº¿p nháº­n: <span className="font-semibold">{submittedCount}/{totalUnits}</span></p>
-          <p>- Tá»· lá»‡ hoÃ n thÃ nh: <span className="font-semibold text-[var(--primary-dark)]">{completionRate}%</span></p>
+          <p>- D? ?n ?ang ch?y: <span className="font-semibold">{activeProjects}</span></p>
+          <p>- D? ?n ho?n th?nh: <span className="font-semibold">{completedProjects}</span></p>
+          <p>- T?ng s? ??n v?: <span className="font-semibold">{totalUnits}</span></p>
+          <p>- ??n v? ?? ti?p nh?n: <span className="font-semibold">{submittedCount}/{totalUnits}</span></p>
+          <p>- T? l? ho?n th?nh: <span className="font-semibold text-[var(--primary-dark)]">{completionRate}%</span></p>
         </div>
       </div>
 
       <div className="mt-6 hidden grid-cols-1 gap-6 md:grid md:grid-cols-2 xl:grid-cols-4">
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Chá»n dá»± Ã¡n</p>
+          <p className="col-header mb-2">Ch?n d? ?n</p>
           <select
             value={selectedProjectId}
             onChange={(event) => onSelectProject(event.target.value)}
@@ -2252,7 +2252,7 @@ function DashboardOverview({
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Chá»n nÄƒm</p>
+          <p className="col-header mb-2">Ch?n n?m</p>
           <select
             value={dashboardYear}
             onChange={(event) => setDashboardYear(event.target.value)}
@@ -2265,20 +2265,20 @@ function DashboardOverview({
             ))}
           </select>
           <p className="mt-3 text-xs text-[var(--ink-soft)]">
-            Tiáº¿n Ä‘á»™ vÃ  nháº­t kÃ½ bÃªn dÆ°á»›i sáº½ Ä‘Æ°á»£c lá»c theo Ä‘Ãºng dá»± Ã¡n vÃ  nÄƒm báº¡n Ä‘ang chá»n.
+            Ti?n ?? v? nh?t k? b?n d??i s? ???c l?c theo ??ng d? ?n v? n?m b?n ?ang ch?n.
           </p>
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Dá»± Ã¡n Ä‘ang cháº¡y</p>
+          <p className="col-header mb-2">D? ?n ?ang ch?y</p>
           <p className="data-value text-3xl font-bold text-[var(--ink)]">{activeProjects}</p>
-          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dá»± Ã¡n chÆ°a káº¿t thÃºc</p>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">D? ?n ch?a k?t th?c</p>
         </div>
 
         <div className="panel-card rounded-[24px] p-6">
-          <p className="col-header mb-2">Dá»± Ã¡n hoÃ n thÃ nh</p>
+          <p className="col-header mb-2">D? ?n ho?n th?nh</p>
           <p className="data-value text-3xl font-bold text-[var(--ink)]">{completedProjects}</p>
-          <p className="mt-2 text-xs text-[var(--ink-soft)]">Dá»± Ã¡n Ä‘Ã£ Ä‘Ã³ng</p>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">D? ?n ?? ??ng</p>
         </div>
       </div>
 
@@ -2313,25 +2313,25 @@ function DashboardOverview({
         <div className="mt-6 panel-card rounded-[28px] p-5 md:hidden">
           <div className="flex flex-col gap-3">
             <div>
-              <h3 className="section-title text-base">Nháº­t kÃ½ tiáº¿p nháº­n Ä‘Æ¡n vá»‹</h3>
-              <p className="page-subtitle mt-2 text-sm">Má»Ÿ nhanh danh sÃ¡ch Ä‘Ã£ tiáº¿p nháº­n hoáº·c chÆ°a tiáº¿p nháº­n.</p>
+              <h3 className="section-title text-base">Nh?t k? ti?p nh?n ??n v?</h3>
+              <p className="page-subtitle mt-2 text-sm">M? nhanh danh s?ch ?? ti?p nh?n ho?c ch?a ti?p nh?n.</p>
             </div>
             <button
               type="button"
               onClick={() => openLogView('SUBMITTED')}
               className="status-pill status-pill-submitted w-full justify-center"
             >
-              ÄÃ£ tiáº¿p nháº­n
+              ?? ti?p nh?n
             </button>
             <button
               type="button"
               onClick={() => openLogView('PENDING')}
               className="status-pill status-pill-pending w-full justify-center"
             >
-              ChÆ°a tiáº¿p nháº­n
+              Ch?a ti?p nh?n
             </button>
             <button onClick={() => openLogView()} className="primary-btn w-full">
-              Xem táº¥t cáº£ nháº­t kÃ½
+              Xem t?t c? nh?t k?
             </button>
           </div>
         </div>
@@ -2340,10 +2340,10 @@ function DashboardOverview({
       <div className="mt-6 panel-card rounded-[28px] p-6 md:hidden">
         <div className="flex flex-col gap-3">
           <div>
-            <h3 className="section-title">Biá»ƒu Ä‘á»“ tiáº¿p nháº­n dá»¯ liá»‡u</h3>
-            <p className="page-subtitle mt-2 text-sm">Tá»· lá»‡ Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p dá»¯ liá»‡u so vá»›i tá»•ng sá»‘ Ä‘Æ¡n vá»‹ trong nÄƒm {dashboardYear}.</p>
+            <h3 className="section-title">Bi?u ?? ti?p nh?n d? li?u</h3>
+            <p className="page-subtitle mt-2 text-sm">T? l? ??n v? ?? n?p d? li?u so v?i t?ng s? ??n v? trong n?m {dashboardYear}.</p>
           </div>
-          <div className="status-pill status-pill-submitted self-start">{submittedCount} Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p</div>
+          <div className="status-pill status-pill-submitted self-start">{submittedCount} ??n v? ?? n?p</div>
         </div>
 
         <div className="mt-8 h-[280px] w-full">
@@ -2370,7 +2370,7 @@ function DashboardOverview({
 
         <div className="mt-2 text-center">
           <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Má»©c Ä‘á»™ hoÃ n thÃ nh tiáº¿p nháº­n</p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">M?c ?? ho?n th?nh ti?p nh?n</p>
         </div>
       </div>
 
@@ -2378,10 +2378,10 @@ function DashboardOverview({
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Biá»ƒu Ä‘á»“ tiáº¿p nháº­n dá»¯ liá»‡u</h3>
-              <p className="page-subtitle mt-2 text-sm">Tá»· lá»‡ Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p dá»¯ liá»‡u so vá»›i tá»•ng sá»‘ Ä‘Æ¡n vá»‹ trong nÄƒm {dashboardYear}.</p>
+              <h3 className="section-title">Bi?u ?? ti?p nh?n d? li?u</h3>
+              <p className="page-subtitle mt-2 text-sm">T? l? ??n v? ?? n?p d? li?u so v?i t?ng s? ??n v? trong n?m {dashboardYear}.</p>
             </div>
-            <div className="status-pill status-pill-submitted">{submittedCount} Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p</div>
+            <div className="status-pill status-pill-submitted">{submittedCount} ??n v? ?? n?p</div>
           </div>
 
           <div className="mt-8 h-[300px] w-full">
@@ -2408,7 +2408,7 @@ function DashboardOverview({
 
           <div className="mt-2 text-center">
             <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Má»©c Ä‘á»™ hoÃ n thÃ nh tiáº¿p nháº­n</p>
+            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">M?c ?? ho?n th?nh ti?p nh?n</p>
           </div>
         </div>
 
@@ -2416,8 +2416,8 @@ function DashboardOverview({
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Tráº¡ng thÃ¡i tiáº¿p nháº­n Ä‘Æ¡n vá»‹</h3>
-              <p className="page-subtitle mt-2 text-sm">Danh sÃ¡ch Ä‘Æ°á»£c láº¥y tá»« dá»¯ liá»‡u tháº­t Ä‘Ã£ lÆ°u.</p>
+              <h3 className="section-title">Tr?ng th?i ti?p nh?n ??n v?</h3>
+              <p className="page-subtitle mt-2 text-sm">Danh s?ch ???c l?y t? d? li?u th?t ?? l?u.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -2425,14 +2425,14 @@ function DashboardOverview({
                 onClick={() => setStatusFilter((prev) => (prev === 'SUBMITTED' ? 'ALL' : 'SUBMITTED'))}
                 className={statusFilter === 'SUBMITTED' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}
               >
-                ÄÃ£ tiáº¿p nháº­n
+                ?? ti?p nh?n
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter((prev) => (prev === 'PENDING' ? 'ALL' : 'PENDING'))}
                 className={statusFilter === 'PENDING' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}
               >
-                ChÆ°a tiáº¿p nháº­n
+                Ch?a ti?p nh?n
               </button>
             </div>
           </div>
@@ -2447,14 +2447,14 @@ function DashboardOverview({
                   <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
                   <p className="mt-1 text-xs text-[var(--ink-soft)]">
                     {unit.isSubmitted
-                      ? `ÄÃ£ nháº­p ${unit.importedSheets.length}/${projectTemplates.length} biá»ƒu`
-                      : 'ChÆ°a tiáº¿p nháº­n dá»¯ liá»‡u'}
+                      ? `?? nh?p ${unit.importedSheets.length}/${projectTemplates.length} bi?u`
+                      : 'Ch?a ti?p nh?n d? li?u'}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3 self-start md:self-auto">
                   <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                    {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'ChÆ°a tiáº¿p nháº­n'}
+                    {unit.isSubmitted ? '?? ti?p nh?n' : 'Ch?a ti?p nh?n'}
                   </span>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
                 </div>
@@ -2464,7 +2464,7 @@ function DashboardOverview({
 
           <div className="mt-6">
             <button onClick={() => openLogView()} className="primary-btn w-full">
-              Xem táº¥t cáº£ nháº­t kÃ½
+              Xem t?t c? nh?t k?
             </button>
           </div>
         </div>
@@ -2476,9 +2476,9 @@ function DashboardOverview({
           <div className="panel-card w-full max-w-md rounded-[28px] p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="section-title">Báº N Cáº¦N ÄÄ‚NG NHáº¬P Äá»‚ XEM CHI TIáº¾T</h3>
+                <h3 className="section-title">B?N C?N ??NG NH?P ?? XEM CHI TI?T</h3>
                 <p className="page-subtitle mt-2 text-sm">
-                  HÃ£y Ä‘Äƒng nháº­p Ä‘á»ƒ xem nháº­t kÃ½ chi tiáº¿t vÃ  danh sÃ¡ch Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n cÃ´ng cho tÃ i khoáº£n cá»§a báº¡n.
+                  H?y ??ng nh?p ?? xem nh?t k? chi ti?t v? danh s?ch ??n v? ???c ph?n c?ng cho t?i kho?n c?a b?n.
                 </p>
               </div>
               <button
@@ -2496,7 +2496,7 @@ function DashboardOverview({
                 onClick={() => setIsLoginPromptOpen(false)}
                 className="secondary-btn px-5 py-3"
               >
-                ÄÃ³ng
+                ??ng
               </button>
               <button
                 type="button"
@@ -2506,7 +2506,7 @@ function DashboardOverview({
                 }}
                 className="primary-btn px-5 py-3"
               >
-                ÄÄƒng nháº­p
+                ??ng nh?p
               </button>
             </div>
           </div>
@@ -2518,9 +2518,9 @@ function DashboardOverview({
           <div className="panel-card flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[30px]">
             <div className="relative flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="surface-tag hidden md:inline-flex">{totalUnits} Ä‘Æ¡n vá»‹ toÃ n há»‡ thá»‘ng</div>
+                <div className="surface-tag hidden md:inline-flex">{totalUnits} ??n v? to?n h? th?ng</div>
                 <h3 className="mt-3 text-[1.6rem] font-black leading-tight tracking-[-0.02em] text-[var(--primary-dark)] md:text-[2.3rem]">
-                  NHáº¬T KÃ NÄ‚M {dashboardYear}
+                  NH?T K? N?M {dashboardYear}
                 </h3>
                 <p className="page-subtitle mt-2 hidden text-sm md:block">
                   Hiá»ƒn thá»‹ Ä‘áº§y Ä‘á»§ tráº¡ng thÃ¡i cá»§a tá»«ng Ä‘Æ¡n vá»‹ cÃ¹ng sá»‘ biá»ƒu Ä‘Ã£ Ä‘Æ°á»£c nháº­p vÃ o há»‡ thá»‘ng táº­p trung.

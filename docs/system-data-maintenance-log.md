@@ -420,3 +420,30 @@ Da thuc hien:
 Luu y:
 - Backup local da tao xong.
 - Backup cloud chua chay tu day vi can user nap `SUPABASE_SERVICE_ROLE_KEY` moi vao PowerShell va chay lenh `npm.cmd run backup:supabase`.
+
+### S?a g?p l?i font Dashboard và Ti?p nh?n d? li?u ngày 2026-04-06
+
+Yêu c?u user:
+- Dashboard và màn Ti?p nh?n d? li?u b? mojibake tr? l?i sau các thay d?i g?n dây.
+- C?n s?a ngay nhung không làm ?nh hu?ng logic các ph?n khác.
+
+Ðã th?c hi?n:
+- Rà l?i các chu?i hi?n th? trong `C:\CODE_APPWEB\src\App.tsx` cho các kh?i Dashboard:
+  - banner tiêu d?
+  - ch?n d? án / nam
+  - th? th?ng kê
+  - nh?t ký ti?p nh?n
+  - bi?u d? ti?p nh?n
+  - popup yêu c?u dang nh?p
+- Rà l?i các chu?i hi?n th? trong `C:\CODE_APPWEB\src\components\ImportFiles.tsx` cho:
+  - tiêu d? màn hình
+  - kh?i d? án / bi?u m?u / qu?n tr? d? li?u theo nam
+  - kh?i phê duy?t ghi dè
+  - uploader file / thu m?c
+  - danh sách file ch? ti?p nh?n
+  - popup ti?n d? và popup t?ng k?t ti?p nh?n
+- Gi? nguyên logic nghi?p v? c?a rollout `unit_user`, ch? s?a chu?i hi?n th? và khôi ph?c các block JSX b? ?nh hu?ng.
+
+Kiem tra:
+- `npm.cmd run lint`: pass
+- `npm.cmd run build`: pass
