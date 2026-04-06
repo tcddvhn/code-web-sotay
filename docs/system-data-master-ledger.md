@@ -186,6 +186,27 @@ File chính:
 - `C:\CODE_APPWEB\src\components\UnitAssignments.tsx`
 - `C:\CODE_APPWEB\src\App.tsx`
 
+### 3.8. Tác vụ quản trị tài khoản Supabase Auth
+
+Vai trò:
+
+- tạo hàng loạt tài khoản đăng nhập theo file Excel
+- phục vụ nhập người dùng vào `Supabase Authentication > Users`
+
+File chính:
+
+- `C:\CODE_APPWEB\scripts\import-supabase-auth-users.mjs`
+
+Tài liệu vận hành:
+
+- `C:\CODE_APPWEB\docs\supabase-auth-bulk-import-guide.md`
+
+Lưu ý:
+
+- script này dùng `SUPABASE_SERVICE_ROLE_KEY`
+- chỉ chạy local hoặc server-side
+- không đưa key vào frontend hoặc source công khai
+
 ### 3.8. Phân tích AI
 
 Vai trò:

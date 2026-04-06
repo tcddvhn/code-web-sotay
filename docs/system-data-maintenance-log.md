@@ -328,3 +328,25 @@ Thuc hien:
 Luu y:
 - Muon persist blueprint that tren Supabase thi can chay them `supabase/ai_report_blueprints.sql`.
 - Neu chua chay SQL moi, blueprint van co the test duoc qua `localStorage`, nhung chi luu tren trinh duyet hien tai.
+
+## Moc ngay 2026-04-06
+
+### Chuan bi script tao 132 tai khoan vao Supabase Auth
+
+Yeu cau user:
+- Tao them 132 tai khoan vao Supabase Authentication > Users theo file Excel Danh_sach_taikhoan.xlsx.
+- Mat khau mac dinh: tctuhn@456.
+- Can huong dan cach lay service_role key.
+
+Thuc hien:
+- Doc file C:\Users\ldkie\OneDrive\KIEN_BTCTU\Nam 2026\TONGHOPSOLIEU\Danh_sach_taikhoan.xlsx va xac nhan duoc 132 dong du lieu hop le.
+- Tao script scripts/import-supabase-auth-users.mjs de doc file Excel va goi supabase.auth.admin.createUser(...).
+- Script gan user_metadata gom: display_name, unit_code, unit_name, import_source.
+- Script co ho tro --dry-run, --file, --sheet va doc SUPABASE_SERVICE_ROLE_KEY tu bien moi truong.
+- Them npm script uth:import-users vao package.json.
+- Tao tai lieu van hanh docs/supabase-auth-bulk-import-guide.md va bo sung muc lien quan vao docs/system-data-master-ledger.md.
+
+Luu y van hanh:
+- Script nay chi tao user trong Supabase Auth, chua tao role/profile nghiep vu rieng neu he thong can them bang phu tro.
+- service_role key khong duoc dua vao frontend, khong commit len GitHub, chi duoc dung local/server-side.
+

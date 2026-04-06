@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "check:encoding": "node scripts/check-encoding.mjs"
+    "check:encoding": "node scripts/check-encoding.mjs",
+    "auth:import-users": "node scripts/import-supabase-auth-users.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",
