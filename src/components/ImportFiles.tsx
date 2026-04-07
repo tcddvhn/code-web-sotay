@@ -302,6 +302,12 @@ async function uploadAcceptedDataFile(
   unitCode: string,
   year: string,
   unitName: string,
+  submittedBy?: {
+    uid?: string | null;
+    email?: string | null;
+    displayName?: string | null;
+  } | null,
+  submittedAt?: string | null,
 ) {
   const extension = fileItem.file.name.split('.').pop() || 'xlsx';
   const safeUnitName = sanitizeStorageName(unitName) || fileItem.unitCode;
@@ -324,6 +330,8 @@ async function uploadAcceptedDataFile(
     fileName,
     storagePath: uploadResult.path,
     downloadURL: uploadResult.publicUrl,
+    submittedAt: submittedAt || new Date().toISOString(),
+    submittedBy: submittedBy || null,
   });
 }
 
@@ -370,7 +378,17 @@ export function ImportFiles({
   assignments,
   currentUser,
 }: {
-  onDataImported: (rows: DataRow[]) => Promise<void>;
+  onDataImported: (
+    rows: DataRow[],
+    options?: {
+      updatedBy?: {
+        uid?: string | null;
+        email?: string | null;
+        displayName?: string | null;
+      } | null;
+      updatedAt?: string | null;
+    },
+  ) => Promise<void>;
   onDeleteUnitData: (year: string, unitCode: string) => Promise<number>;
   onDeleteYearData: (year: string) => Promise<number>;
   onDeleteProjectData: (projectId: string) => Promise<number>;
@@ -960,8 +978,33 @@ export function ImportFiles({
           fileName: request.fileName,
           storagePath: request.storagePath,
           downloadURL: request.downloadURL || '',
+          submittedAt: typeof request.createdAt === 'string' ? request.createdAt : new Date().toISOString(),
+          submittedBy: request.requestedBy
+            ? {
+                uid: request.requestedBy.uid || null,
+                email: request.requestedBy.email || null,
+                displayName: request.unitName,
+              }
+            : {
+                uid: null,
+                email: null,
+                displayName: request.unitName,
+              },
         });
-        await onDataImported(request.rowPayload || []);
+        await onDataImported(request.rowPayload || [], {
+          updatedAt: typeof request.createdAt === 'string' ? request.createdAt : new Date().toISOString(),
+          updatedBy: request.requestedBy
+            ? {
+                uid: request.requestedBy.uid || null,
+                email: request.requestedBy.email || null,
+                displayName: request.unitName,
+              }
+            : {
+                uid: null,
+                email: null,
+                displayName: request.unitName,
+              },
+        });
       }
 
       await updateOverwriteRequestDecision({
@@ -1187,7 +1230,21 @@ export function ImportFiles({
 
         importedRows.push(...parsedRowsForFile);
         try {
-          await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, importYear, unitName);
+          await uploadAcceptedDataFile(
+            fileItem,
+            selectedProjectId,
+            fileItem.unitCode,
+            importYear,
+            unitName,
+            currentUser
+              ? {
+                  uid: currentUser.id,
+                  email: currentUser.email,
+                  displayName: isUnitUser ? unitName : currentUser.displayName,
+                }
+              : null,
+            new Date().toISOString(),
+          );
         } catch (uploadError) {
           console.error('Không thể upload file dữ liệu đã tiếp nhận:', uploadError);
         }
@@ -1208,7 +1265,16 @@ export function ImportFiles({
 
       if (importedRows.length > 0) {
         showProgress('Đang tổng hợp dữ liệu', 'Đang ghi dữ liệu tổng hợp vào hệ thống...', 90);
-        await onDataImported(importedRows);
+        await onDataImported(importedRows, {
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUser
+            ? {
+                uid: currentUser.id,
+                email: currentUser.email,
+                displayName: isUnitUser ? currentUser.unitName || currentUser.displayName || currentUser.email : currentUser.displayName,
+              }
+            : null,
+        });
       }
 
       setLastFailedFiles(failedFiles);
@@ -1768,7 +1834,7 @@ export function ImportFiles({
                 </button>
                 <button onClick={processFiles} disabled={isManagingData} className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40">
                   {isManagingData ? <LoaderCircle size={16} className="animate-spin" /> : <FileCheck size={16} />}
-                  Bắt đầu tổng hợp
+                  {isUnitUser ? 'Nộp biểu báo cáo' : 'Bắt đầu tổng hợp'}
                 </button>
               </div>
             </div>

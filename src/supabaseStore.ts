@@ -92,6 +92,7 @@ type SupabaseOverwriteRequestRow = {
   review_note: string | null;
   reviewed_at: string | null;
   reviewed_by: OverwriteRequestRecord['reviewedBy'];
+  requester_seen_at: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -105,6 +106,8 @@ type SupabaseDataFileRow = {
   file_name: string;
   storage_path: string;
   download_url: string | null;
+  submitted_at: string | null;
+  submitted_by: DataFileRecordSummary['submittedBy'] | null;
   updated_at: string | null;
 };
 
@@ -216,6 +219,7 @@ function mapOverwriteRequest(row: SupabaseOverwriteRequestRow): OverwriteRequest
     reviewNote: row.review_note || null,
     reviewedAt: row.reviewed_at,
     reviewedBy: row.reviewed_by || null,
+    requesterSeenAt: row.requester_seen_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -465,6 +469,42 @@ export async function upsertUserProfile(profile: {
   if (error) {
     throw new Error(error.message || 'KhÃ´ng thá»ƒ lÆ°u há»“ sÆ¡ tÃ i khoáº£n lÃªn Supabase.');
   }
+}
+
+export async function updateUserProfile(email: string, patch: {
+  displayName?: string;
+  role?: UserProfile['role'];
+  unitCode?: string | null;
+  unitName?: string | null;
+  isActive?: boolean;
+}) {
+  const normalizedEmail = getAssignmentKey(email);
+  if (!normalizedEmail) {
+    throw new Error('Email tài khoản không hợp lệ.');
+  }
+
+  const payload: Record<string, any> = {
+    updated_at: nowIso(),
+  };
+
+  if (patch.displayName !== undefined) payload.display_name = patch.displayName;
+  if (patch.role !== undefined) payload.role = patch.role;
+  if (patch.unitCode !== undefined) payload.unit_code = patch.unitCode || null;
+  if (patch.unitName !== undefined) payload.unit_name = patch.unitName || null;
+  if (patch.isActive !== undefined) payload.is_active = patch.isActive;
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .update(payload)
+    .eq('email', normalizedEmail);
+
+  if (error) {
+    throw new Error(error.message || 'Không thể cập nhật hồ sơ tài khoản trên Supabase.');
+  }
+}
+
+export async function deactivateUserProfile(email: string) {
+  await updateUserProfile(email, { isActive: false });
 }
 export async function listAssignments(projectId: string) {
   const { data, error } = await supabase
@@ -739,6 +779,8 @@ export async function upsertDataFileRecord(record: {
   fileName: string;
   storagePath: string;
   downloadURL: string;
+  submittedAt?: string | null;
+  submittedBy?: DataFileRecordSummary['submittedBy'];
 }) {
   const payload = {
     id: `${record.projectId}_${record.unitCode}_${record.year}`,
@@ -749,6 +791,8 @@ export async function upsertDataFileRecord(record: {
     file_name: record.fileName,
     storage_path: record.storagePath,
     download_url: record.downloadURL,
+    submitted_at: record.submittedAt || nowIso(),
+    submitted_by: record.submittedBy || null,
     updated_at: nowIso(),
   };
 
@@ -776,9 +820,9 @@ export async function listOverwriteRequests(projectId?: string): Promise<Overwri
   return ((data || []) as SupabaseOverwriteRequestRow[]).map(mapOverwriteRequest);
 }
 
-export async function createOverwriteRequest(record: Omit<OverwriteRequestRecord, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'reviewedAt' | 'reviewedBy'>) {
+export async function createOverwriteRequest(record: Omit<OverwriteRequestRecord, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'reviewedAt' | 'reviewedBy' | 'requesterSeenAt'>) {
   const payload = {
-    id: `${record.projectId}_${record.unitCode}_${record.year}`,
+    id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${record.projectId}_${record.unitCode}_${record.year}_${Date.now()}`,
     project_id: record.projectId,
     project_name: record.projectName || null,
     unit_code: record.unitCode,
@@ -793,10 +837,11 @@ export async function createOverwriteRequest(record: Omit<OverwriteRequestRecord
     review_note: record.reviewNote || null,
     reviewed_at: null,
     reviewed_by: null,
+    requester_seen_at: null,
     updated_at: nowIso(),
   };
 
-  const { error } = await supabase.from('data_overwrite_requests').upsert(payload, { onConflict: 'id' });
+  const { error } = await supabase.from('data_overwrite_requests').insert(payload);
   if (error) {
     throw new Error(error.message || 'Không thể tạo yêu cầu ghi đè dữ liệu trên Supabase.');
   }
@@ -815,6 +860,7 @@ export async function updateOverwriteRequestDecision(params: {
       review_note: params.reviewNote || null,
       reviewed_at: nowIso(),
       reviewed_by: params.reviewedBy || null,
+      requester_seen_at: null,
       updated_at: nowIso(),
     })
     .eq('id', params.requestId);
@@ -823,6 +869,24 @@ export async function updateOverwriteRequestDecision(params: {
     throw new Error(error.message || 'Không thể cập nhật quyết định phê duyệt ghi đè trên Supabase.');
   }
 }
+export async function markOverwriteRequestsSeen(requestIds: string[]) {
+  if (requestIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from('data_overwrite_requests')
+    .update({
+      requester_seen_at: nowIso(),
+      updated_at: nowIso(),
+    })
+    .in('id', requestIds);
+
+  if (error) {
+    throw new Error(error.message || 'Kh?ng th? c?p nh?t tr?ng th?i ?? xem cho th?ng b?o ghi ??.');
+  }
+}
+
 export async function getDataFileRecord(projectId: string, unitCode: string, year: string) {
   const { data, error } = await supabase
     .from('data_files')
@@ -857,6 +921,8 @@ export async function listDataFilesByProject(projectId: string): Promise<DataFil
     fileName: row.file_name,
     storagePath: row.storage_path,
     downloadURL: row.download_url,
+    submittedAt: row.submitted_at,
+    submittedBy: row.submitted_by,
     updatedAt: row.updated_at,
   }));
 }
@@ -894,6 +960,8 @@ export async function listDataFilesByScope(params: {
     fileName: row.file_name,
     storagePath: row.storage_path,
     downloadURL: row.download_url,
+    submittedAt: row.submitted_at,
+    submittedBy: row.submitted_by,
     updatedAt: row.updated_at,
   }));
 }

@@ -475,3 +475,9 @@ Checklist rollout:
 Rui ro con mo:
 - Repo con no ky thuat ve encoding/mojibake trong mot so file shared. Van build duoc, nhung can mot dot don rieng neu muon `check:encoding` xanh lai.
 - RLS hien chua khoa chat overwrite o muc backend cho `consolidated_rows`; luong overwrite hien dang duoc khong che o UI + bang `data_overwrite_requests`. Neu can khoa sat hon thi phai tach them luong RPC/server-side cho import.
+
+## C?p nh?t 2026-04-07
+- Màn Cài d?t hi?n là d?u m?i qu?n tr? don v?, phân công theo dõi và h? so tài kho?n don v?.
+- Dashboard không còn ch?a UI phân công theo dõi don v?.
+- Các h? so tài kho?n don v? trong UI dang qu?n lý b?ng user_profiles; vi?c t?o/xóa Supabase Auth user th?t v?n là tác v? admin riêng ngoài frontend.
+

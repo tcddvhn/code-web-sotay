@@ -62,7 +62,7 @@ export function Sidebar({
               { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText },
               ...(isAdmin ? [{ id: 'SETTINGS' as ViewMode, label: 'Cài đặt', icon: Settings }] : []),
             ]
-          : [{ id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText }]),
+          : []),
       ];
 
   return (

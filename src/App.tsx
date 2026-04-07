@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  Bell,
+  BellDot,
   CheckCircle2,
   FileBarChart,
-  Link as LinkIcon,
-  Lock,
   LogIn,
   LogOut,
   Users,
@@ -17,7 +17,6 @@ import { AIAnalysisView } from './components/AIAnalysisView';
 import { Sidebar } from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
-import { UnitAssignments } from './components/UnitAssignments';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS, YEARS } from './constants';
 import {
   deleteFileByPath,
@@ -27,7 +26,7 @@ import {
   logoutSupabase,
   onSupabaseAuthStateChange,
 } from './supabase';
-import { AppSettings, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, Project, UserProfile, ViewMode } from './types';
+import { AppSettings, AssignmentUser, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAssignmentKey } from './access';
 import {
@@ -48,16 +47,20 @@ import {
   deleteRowsByUnit as deleteRowsByUnitFromSupabase,
   deleteRowsByYear as deleteRowsByYearFromSupabase,
   deleteTemplateById as deleteTemplateFromSupabase,
+  deactivateUserProfile as deactivateUserProfileInSupabase,
   listAssignments as listAssignmentsFromSupabase,
   listGlobalAssignments as listGlobalAssignmentsFromSupabase,
+  listOverwriteRequests as listOverwriteRequestsFromSupabase,
   listProjects as listProjectsFromSupabase,
   listRowsByProject as listRowsByProjectFromSupabase,
   listTemplates as listTemplatesFromSupabase,
   listUnits as listUnitsFromSupabase,
+  markOverwriteRequestsSeen as markOverwriteRequestsSeenInSupabase,
   replaceAssignments as replaceAssignmentsInSupabase,
   replaceGlobalAssignments as replaceGlobalAssignmentsInSupabase,
   seedUnits as seedUnitsToSupabase,
   touchUserProfileSession,
+  updateUserProfile as updateUserProfileInSupabase,
   upsertRows as upsertRowsToSupabase,
   upsertProject as upsertProjectToSupabase,
   upsertSettings as upsertSettingsToSupabase,
@@ -86,6 +89,9 @@ type UnitLog = {
   isSubmitted: boolean;
   lastUpdatedBy?: string;
   assignedTo?: string;
+  submittedAt?: string | null;
+  overwriteRequestCount: number;
+  overwriteStatus?: OverwriteRequestRecord['status'] | null;
 };
 
 type UnitStatusFilter = 'ALL' | 'SUBMITTED' | 'PENDING';
@@ -123,6 +129,27 @@ function getTimestampMs(value: any) {
 
   return null;
 }
+
+function formatDateTime(value?: string | number | Date | null) {
+  if (!value) {
+    return 'Chưa có';
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Chưa có';
+  }
+
+  return date.toLocaleString('vi-VN', {
+    hour12: false,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 
 function isUnitVisibleForProject(unit: ManagedUnit, project: Project | null) {
   if (!unit.isDeleted) {
@@ -191,6 +218,26 @@ export default function App() {
   const allUnits = useMemo<ManagedUnit[]>(
     () => (units.length > 0 ? units : UNITS.map((unit) => ({ ...unit, isDeleted: false }))),
     [units],
+  );
+  const unitWatcherByCode = useMemo<Record<string, string>>(() => {
+    const next: Record<string, string> = {};
+    Object.entries(assignments).forEach(([assigneeKey, unitCodes]) => {
+      const codes = Array.isArray(unitCodes) ? unitCodes : [];
+      codes.forEach((unitCode) => {
+        next[unitCode] = assigneeKey;
+      });
+    });
+    return next;
+  }, [assignments]);
+  const unitUserProfiles = useMemo(
+    () =>
+      users
+        .filter((profile) => profile.role === 'unit_user' && !!profile.email)
+        .sort((left, right) =>
+          (left.unitCode || '').localeCompare(right.unitCode || '', 'vi') ||
+          (left.displayName || left.email || '').localeCompare(right.displayName || right.email || '', 'vi'),
+        ),
+    [users],
   );
   const availableUnitsForProject = useMemo(
     () => {
@@ -655,6 +702,12 @@ export default function App() {
   }, [projects, selectedProjectId]);
 
   useEffect(() => {
+    if (!isAuthenticated && currentView === 'REPORTS') {
+      setCurrentView('DASHBOARD');
+    }
+  }, [currentView, isAuthenticated]);
+
+  useEffect(() => {
     if (!effectiveUserProfile || effectiveUserProfile.role !== 'unit_user') {
       return;
     }
@@ -883,20 +936,33 @@ export default function App() {
     }
   };
 
-  const handleDataImported = async (newData: DataRow[]) => {
+  const handleDataImported = async (
+    newData: DataRow[],
+    options?: {
+      updatedBy?: {
+        uid?: string | null;
+        email?: string | null;
+        displayName?: string | null;
+      } | null;
+      updatedAt?: string | null;
+    },
+  ) => {
     if (!user) {
       return;
     }
 
     try {
-      const nextRows = newData.map((row) => ({
-        ...row,
-        updatedAt: new Date().toISOString(),
-        updatedBy: {
+      const effectiveUpdatedAt = options?.updatedAt || new Date().toISOString();
+      const effectiveUpdatedBy =
+        options?.updatedBy || {
           uid: user.id,
           email: user.email,
           displayName: effectiveUserProfile?.displayName || user.displayName,
-        },
+        };
+      const nextRows = newData.map((row) => ({
+        ...row,
+        updatedAt: effectiveUpdatedAt,
+        updatedBy: effectiveUpdatedBy,
       }));
       await upsertRowsToSupabase(nextRows);
       const refreshedRows = await listRowsByProjectFromSupabase(selectedProjectId);
@@ -1025,6 +1091,43 @@ export default function App() {
     }
   };
 
+  const persistGlobalAssignments = async (nextAssignmentsMap: Record<string, string[]>) => {
+    const payload = Object.entries(nextAssignmentsMap)
+      .map(([key, unitCodes]) => {
+        const assignmentUser = assignmentUsers.find((item) => item.id === key);
+        if (!assignmentUser || unitCodes.length === 0) {
+          return null;
+        }
+
+        return {
+          id: key,
+          assignee_key: key,
+          user_id: assignmentUser.userId || null,
+          email: assignmentUser.email,
+          display_name: assignmentUser.displayName,
+          unit_codes: UNITS.filter((unit) => unitCodes.includes(unit.code)).map((unit) => unit.code),
+          updated_at: new Date().toISOString(),
+        };
+      })
+      .filter(Boolean) as Array<{
+        id: string;
+        assignee_key: string;
+        user_id: string | null;
+        email: string;
+        display_name: string;
+        unit_codes: string[];
+        updated_at: string;
+      }>;
+
+    await replaceGlobalAssignmentsInSupabase(payload);
+    const refreshed = await listGlobalAssignmentsFromSupabase();
+    const nextMap: Record<string, string[]> = {};
+    refreshed.forEach((row) => {
+      nextMap[row.assignee_key] = Array.isArray(row.unit_codes) ? row.unit_codes : [];
+    });
+    setAssignments(nextMap);
+  };
+
   const handleSaveAssignments = async (assigneeKey: string, unitCodes: string[]) => {
     if (!isAdmin) {
       return;
@@ -1073,38 +1176,35 @@ export default function App() {
       unitCodes: orderedUnitCodes,
     });
 
-    const payload = Array.from(nextAssignments.entries())
-      .filter(([, entry]) => entry.unitCodes.length > 0)
-      .map(([key, entry]) => ({
-        id: key,
-        assignee_key: key,
-        user_id: entry.userId || null,
-        email: entry.email,
-        display_name: entry.displayName,
-        unit_codes: entry.unitCodes,
-        updated_at: new Date().toISOString(),
-      }));
-
-    await replaceGlobalAssignmentsInSupabase(payload);
-    const refreshed = await listGlobalAssignmentsFromSupabase();
     const nextMap: Record<string, string[]> = {};
-    refreshed.forEach((row) => {
-      nextMap[row.assignee_key] = Array.isArray(row.unit_codes) ? row.unit_codes : [];
-    });
-    setAssignments(nextMap);
+    Array.from(nextAssignments.entries())
+      .filter(([, entry]) => entry.unitCodes.length > 0)
+      .forEach(([key, entry]) => {
+        nextMap[key] = entry.unitCodes;
+      });
+
+    await persistGlobalAssignments(nextMap);
   };
 
-  const handleSaveSettings = async () => {
+  const handleSaveUnitWatcherAssignments = async (watcherByUnitCode: Record<string, string>) => {
     if (!isAdmin) {
       return;
     }
 
-    try {
-      await upsertSettingsToSupabase(settings);
-      alert('Đã lưu cài đặt!');
-    } catch (error) {
-      console.error('Save settings error:', error);
-    }
+    const nextAssignmentsMap: Record<string, string[]> = {};
+    Object.entries(watcherByUnitCode).forEach(([unitCode, assigneeKey]) => {
+      const normalizedAssigneeKey = getAssignmentKey(assigneeKey);
+      if (!normalizedAssigneeKey) {
+        return;
+      }
+
+      if (!nextAssignmentsMap[normalizedAssigneeKey]) {
+        nextAssignmentsMap[normalizedAssigneeKey] = [];
+      }
+      nextAssignmentsMap[normalizedAssigneeKey].push(unitCode);
+    });
+
+    await persistGlobalAssignments(nextAssignmentsMap);
   };
 
   const handleAddUnit = async (name: string) => {
@@ -1137,6 +1237,7 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     });
     setUnits(await listUnitsFromSupabase());
+    return { code: nextCode, name: trimmedName };
   };
 
   const handleSoftDeleteUnit = async (unitCode: string) => {
@@ -1213,6 +1314,46 @@ export default function App() {
     setUnits(await listUnitsFromSupabase());
   };
 
+  const handleUpsertUnitAccount = async (payload: {
+    email: string;
+    displayName: string;
+    unitCode: string;
+  }) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const normalizedEmail = getAssignmentKey(payload.email);
+    if (!normalizedEmail) {
+      throw new Error('Email tài khoản không hợp lệ.');
+    }
+
+    const unit = allUnits.find((item) => item.code === payload.unitCode);
+    if (!unit) {
+      throw new Error('Không tìm thấy đơn vị để gắn tài khoản.');
+    }
+
+    await upsertUserProfileToSupabase({
+      email: normalizedEmail,
+      displayName: payload.displayName,
+      role: 'unit_user',
+      unitCode: unit.code,
+      unitName: unit.name,
+      isActive: true,
+    });
+
+    setUsers(await listUserProfilesFromSupabase());
+  };
+
+  const handleDeleteUnitAccount = async (email: string) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    await deactivateUserProfileInSupabase(email);
+    setUsers(await listUserProfilesFromSupabase());
+  };
+
   const handleDeleteAllSystemData = async () => {
     if (!isAdmin) {
       return;
@@ -1260,6 +1401,13 @@ export default function App() {
     }
   };
 
+  const handleOpenImportFromDashboard = (projectId?: string) => {
+    if (projectId) {
+      setSelectedProjectId(projectId);
+    }
+    setCurrentView('IMPORT');
+  };
+
   if (!isAuthReady) {
     return (
       <div className="app-shell h-screen flex items-center justify-center">
@@ -1293,6 +1441,7 @@ export default function App() {
             onOpenLogin={() => setCurrentView('LOGIN')}
             onLogout={handleLogout}
             onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
+            onOpenImport={handleOpenImportFromDashboard}
           />
         );
       case 'PROJECTS':
@@ -1326,6 +1475,7 @@ export default function App() {
             onOpenLogin={() => setCurrentView('LOGIN')}
             onLogout={handleLogout}
             onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
+            onOpenImport={handleOpenImportFromDashboard}
           />
         );
       case 'LEARN_FORM':
@@ -1355,6 +1505,7 @@ export default function App() {
             onOpenLogin={() => setCurrentView('LOGIN')}
             onLogout={handleLogout}
             onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
+            onOpenImport={handleOpenImportFromDashboard}
           />
         );
       case 'IMPORT':
@@ -1395,6 +1546,7 @@ export default function App() {
             onOpenLogin={() => setCurrentView('LOGIN')}
             onLogout={handleLogout}
             onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
+            onOpenImport={handleOpenImportFromDashboard}
           />
         );
       case 'REPORTS':
@@ -1445,6 +1597,7 @@ export default function App() {
               onOpenLogin={() => setCurrentView('LOGIN')}
               onLogout={handleLogout}
               onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
+            onOpenImport={handleOpenImportFromDashboard}
             />
           );
         }
@@ -1452,62 +1605,35 @@ export default function App() {
           <div className="p-6 md:p-8">
             <h2 className="page-title">Cài đặt hệ thống</h2>
             <p className="page-subtitle mt-2 max-w-3xl text-sm">
-              Cấu hình nguồn lưu trữ và đường dẫn tiếp nhận dữ liệu tập trung cho toàn hệ thống.
+              Tập trung toàn bộ cấu hình quản trị: danh mục đơn vị, phân công theo dõi và hồ sơ tài khoản đơn vị.
             </p>
 
-            <div className="mt-8 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_320px] xl:grid-cols-[minmax(0,1.45fr)_300px]">
+            <div className="mt-8 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_340px] xl:grid-cols-[minmax(0,1.45fr)_320px]">
               <div className="space-y-6">
-                <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Link OneDrive (lưu trữ trực tuyến)</label>
-                <div className="flex gap-3">
-                  <LinkIcon size={18} className="mt-3 text-[var(--primary)]" />
-                  <input
-                    type="text"
-                    value={settings.oneDriveLink}
-                    onChange={(event) => setSettings({ ...settings, oneDriveLink: event.target.value })}
-                    className="field-input field-link"
-                    disabled={!isAdmin}
-                  />
-                </div>
-                </div>
-
-                <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Thư mục lưu trữ file gốc</label>
-                <input
-                  type="text"
-                  value={settings.storagePath}
-                  onChange={(event) => setSettings({ ...settings, storagePath: event.target.value })}
-                  className="field-input"
-                    disabled={!isAdmin}
-                />
-                </div>
-
-                <div className="panel-card rounded-[24px] p-6">
-                <label className="col-header block mb-3">Thư mục lưu trữ file đã tiếp nhận</label>
-                <input
-                  type="text"
-                  value={settings.receivedPath}
-                  onChange={(event) => setSettings({ ...settings, receivedPath: event.target.value })}
-                  className="field-input"
-                    disabled={!isAdmin}
-                />
-                </div>
-
                 {isAdmin && (
                   <SystemSettingsUnitsPanel
                     units={allUnits}
+                    assignmentUsers={assignmentUsers}
+                    assignmentsByUnit={unitWatcherByCode}
                     onAddUnit={handleAddUnit}
                     onSoftDeleteUnit={handleSoftDeleteUnit}
                     onRestoreUnit={handleRestoreUnit}
                     onRenameUnit={handleRenameUnit}
+                    onSaveWatcherAssignments={handleSaveUnitWatcherAssignments}
+                  />
+                )}
+
+                {isAdmin && (
+                  <SystemSettingsUnitAccountsPanel
+                    units={allUnits}
+                    accounts={unitUserProfiles}
+                    onUpsertAccount={handleUpsertUnitAccount}
+                    onDeleteAccount={handleDeleteUnitAccount}
                   />
                 )}
 
                 {isAdmin && (
                   <div className="flex flex-wrap gap-3">
-                    <button onClick={handleSaveSettings} className="primary-btn">
-                      Lưu cấu hình
-                    </button>
                     <button onClick={handleDeleteAllSystemData} className="secondary-btn">
                       Xóa sạch dữ liệu hệ thống
                     </button>
@@ -1530,24 +1656,20 @@ export default function App() {
                   {isSettingsHelpExpanded && (
                   <div className="mt-3 space-y-3 text-[13px] leading-6 text-[var(--ink-soft)]">
                     <p>
-                      <strong className="text-[var(--ink)]">Link OneDrive</strong> dùng để lưu đường dẫn truy cập kho tài liệu trực tuyến,
-                      giúp người vận hành mở nhanh nơi chứa file mẫu hoặc file gốc dùng chung.
-                    </p>
-                    <p>
-                      <strong className="text-[var(--ink)]">Thư mục lưu trữ file gốc</strong> là nơi quy ước chứa các file Excel ban đầu do
-                      đơn vị gửi lên trước khi chuẩn hóa hoặc nhập dữ liệu vào hệ thống.
-                    </p>
-                    <p>
-                      <strong className="text-[var(--ink)]">Thư mục lưu trữ file đã tiếp nhận</strong> là nơi quy ước lưu các file đã được kiểm tra,
-                      tiếp nhận và sẵn sàng đối chiếu với dữ liệu đã nhập.
-                    </p>
-                    <p>
                       <strong className="text-[var(--ink)]">Quản lý danh sách đơn vị</strong> dùng để vận hành danh mục 132 đơn vị toàn hệ thống.
-                      Khi xóa mềm một đơn vị, dự án cũ vẫn giữ nguyên dữ liệu lịch sử, còn dự án tạo mới sau thời điểm xóa sẽ không còn nhìn thấy đơn vị đó.
+                      Mỗi đơn vị giờ có thể gắn luôn người theo dõi ngay trong cùng một dòng thao tác.
                     </p>
                     <p>
-                      <strong className="text-[var(--ink)]">Xóa sạch dữ liệu hệ thống</strong> là thao tác quản trị cao nhất, dùng khi cần làm sạch
-                      toàn bộ dữ liệu dự án, biểu mẫu, tiếp nhận và lịch sử xuất báo cáo.
+                      <strong className="text-[var(--ink)]">Tài khoản đơn vị</strong> là lớp hồ sơ nghiệp vụ gắn với đơn vị trong hệ thống.
+                      Email tại đây phải khớp với tài khoản đã có trong Supabase Auth thì đơn vị mới đăng nhập được.
+                    </p>
+                    <p>
+                      <strong className="text-[var(--ink)]">Phân công theo dõi</strong> đã được đưa khỏi Dashboard và gom về Cài đặt,
+                      giúp Dashboard chỉ còn vai trò theo dõi tiến độ, không lẫn thao tác quản trị.
+                    </p>
+                    <p>
+                      <strong className="text-[var(--ink)]">Xóa sạch dữ liệu hệ thống</strong> là thao tác quản trị cao nhất, chỉ dùng khi cần làm sạch
+                      toàn bộ dữ liệu dự án, biểu mẫu, tiếp nhận, phân tích AI và lịch sử xuất báo cáo.
                     </p>
                   </div>
                   )}
@@ -1591,20 +1713,28 @@ export default function App() {
 
 function SystemSettingsUnitsPanel({
   units,
+  assignmentUsers,
+  assignmentsByUnit,
   onAddUnit,
   onSoftDeleteUnit,
   onRestoreUnit,
   onRenameUnit,
+  onSaveWatcherAssignments,
 }: {
   units: ManagedUnit[];
-  onAddUnit: (name: string) => Promise<void>;
+  assignmentUsers: AssignmentUser[];
+  assignmentsByUnit: Record<string, string>;
+  onAddUnit: (name: string) => Promise<{ code: string; name: string }>;
   onSoftDeleteUnit: (unitCode: string) => Promise<void>;
   onRestoreUnit: (unitCode: string) => Promise<void>;
   onRenameUnit: (unitCode: string, name: string) => Promise<void>;
+  onSaveWatcherAssignments: (watcherByUnitCode: Record<string, string>) => Promise<void>;
 }) {
   const [newUnitName, setNewUnitName] = useState('');
+  const [newUnitWatcher, setNewUnitWatcher] = useState('');
   const [editingUnitCode, setEditingUnitCode] = useState<string | null>(null);
   const [editingUnitName, setEditingUnitName] = useState('');
+  const [watcherDrafts, setWatcherDrafts] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -1617,19 +1747,50 @@ function SystemSettingsUnitsPanel({
     [units],
   );
 
+  useEffect(() => {
+    setWatcherDrafts(assignmentsByUnit);
+  }, [assignmentsByUnit]);
+
   const submitNewUnit = async () => {
     setIsSubmitting(true);
     setMessage(null);
 
     try {
-      await onAddUnit(newUnitName);
+      const createdUnit = await onAddUnit(newUnitName);
+      if (newUnitWatcher) {
+        await onSaveWatcherAssignments({
+          ...watcherDrafts,
+          [createdUnit.code]: newUnitWatcher,
+        });
+      }
       setNewUnitName('');
+      setNewUnitWatcher('');
       setMessage('Đã thêm đơn vị mới vào danh mục hệ thống.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Không thể thêm đơn vị mới.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const saveWatcherDrafts = async () => {
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onSaveWatcherAssignments(watcherDrafts);
+      setMessage('Đã cập nhật phân công theo dõi cho danh sách đơn vị.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu phân công theo dõi.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateWatcherDraft = (unitCode: string, assigneeKey: string) => {
+    setWatcherDrafts((current) => ({
+      ...current,
+      [unitCode]: assigneeKey,
+    }));
   };
 
   const deleteUnit = async (unit: ManagedUnit) => {
@@ -1704,21 +1865,42 @@ function SystemSettingsUnitsPanel({
         <div>
           <h3 className="section-title">Quản lý danh sách đơn vị</h3>
           <p className="page-subtitle mt-2 text-sm">
-            Danh mục nền của toàn hệ thống. Mã đơn vị được tự sinh theo số lớn nhất hiện có.
+            Danh mục nền của toàn hệ thống. Ngay trong từng đơn vị có thể chọn luôn người theo dõi phụ trách.
           </p>
         </div>
-        <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-          Đang hoạt động {activeUnits.length} đơn vị
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+            Đang hoạt động {activeUnits.length} đơn vị
+          </div>
+          <button
+            onClick={saveWatcherDrafts}
+            disabled={isSubmitting}
+            className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Lưu phân công theo dõi
+          </button>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_280px_auto]">
         <input
           value={newUnitName}
           onChange={(event) => setNewUnitName(event.target.value)}
           className="field-input"
           placeholder="Nhập tên đơn vị mới"
         />
+        <select
+          value={newUnitWatcher}
+          onChange={(event) => setNewUnitWatcher(event.target.value)}
+          className="field-select"
+        >
+          <option value="">-- Chưa phân công --</option>
+          {assignmentUsers.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.displayName || user.email}
+            </option>
+          ))}
+        </select>
         <button
           onClick={submitNewUnit}
           disabled={isSubmitting || !newUnitName.trim()}
@@ -1737,7 +1919,7 @@ function SystemSettingsUnitsPanel({
             {activeUnits.map((unit) => (
               <div
                 key={unit.code}
-                className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 lg:grid-cols-[minmax(0,1fr)_128px]"
+                className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 xl:grid-cols-[minmax(0,1fr)_240px_128px]"
               >
                 <div className="min-w-0 space-y-2">
                   {editingUnitCode === unit.code ? (
@@ -1751,6 +1933,22 @@ function SystemSettingsUnitsPanel({
                     <p className="break-words text-sm font-semibold leading-5 text-[var(--ink)]">{unit.name}</p>
                   )}
                   <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="col-header mb-2">Người theo dõi</p>
+                  <select
+                    value={watcherDrafts[unit.code] || ''}
+                    onChange={(event) => updateWatcherDraft(unit.code, event.target.value)}
+                    className="field-select h-11 text-sm"
+                    disabled={isSubmitting}
+                  >
+                    <option value="">-- Chưa phân công --</option>
+                    {assignmentUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.displayName || user.email}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex shrink-0 flex-col gap-2 self-start lg:w-[128px]">
                   {editingUnitCode === unit.code ? (
@@ -1823,6 +2021,250 @@ function SystemSettingsUnitsPanel({
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SystemSettingsUnitAccountsPanel({
+  units,
+  accounts,
+  onUpsertAccount,
+  onDeleteAccount,
+}: {
+  units: ManagedUnit[];
+  accounts: UserProfile[];
+  onUpsertAccount: (payload: { email: string; displayName: string; unitCode: string }) => Promise<void>;
+  onDeleteAccount: (email: string) => Promise<void>;
+}) {
+  const activeUnits = useMemo(
+    () => units.filter((unit) => !unit.isDeleted).sort((left, right) => left.code.localeCompare(right.code, 'vi')),
+    [units],
+  );
+  const [draftEmail, setDraftEmail] = useState('');
+  const [draftDisplayName, setDraftDisplayName] = useState('');
+  const [draftUnitCode, setDraftUnitCode] = useState('');
+  const [editingEmail, setEditingEmail] = useState<string | null>(null);
+  const [editingDisplayName, setEditingDisplayName] = useState('');
+  const [editingUnitCode, setEditingUnitCode] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const submitAccount = async () => {
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onUpsertAccount({
+        email: draftEmail,
+        displayName: draftDisplayName || draftEmail,
+        unitCode: draftUnitCode,
+      });
+      setDraftEmail('');
+      setDraftDisplayName('');
+      setDraftUnitCode('');
+      setMessage('Đã thêm hoặc cập nhật hồ sơ tài khoản đơn vị.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu hồ sơ tài khoản đơn vị.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const beginEdit = (account: UserProfile) => {
+    setEditingEmail(account.email || null);
+    setEditingDisplayName(account.displayName || account.email || '');
+    setEditingUnitCode(account.unitCode || '');
+    setMessage(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingEmail(null);
+    setEditingDisplayName('');
+    setEditingUnitCode('');
+  };
+
+  const saveEdit = async () => {
+    if (!editingEmail) {
+      return;
+    }
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onUpsertAccount({
+        email: editingEmail,
+        displayName: editingDisplayName || editingEmail,
+        unitCode: editingUnitCode,
+      });
+      cancelEdit();
+      setMessage('Đã cập nhật hồ sơ tài khoản đơn vị.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật hồ sơ tài khoản đơn vị.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deleteAccount = async (email: string) => {
+    const confirmed = window.confirm(`Ẩn hồ sơ tài khoản đơn vị "${email}" khỏi hệ thống?`);
+    if (!confirmed) {
+      return;
+    }
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onDeleteAccount(email);
+      if (editingEmail === email) {
+        cancelEdit();
+      }
+      setMessage(`Đã xóa hồ sơ tài khoản ${email}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể xóa hồ sơ tài khoản đơn vị.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="panel-card rounded-[24px] p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="section-title">Quản trị tài khoản đơn vị</h3>
+          <p className="page-subtitle mt-2 text-sm">
+            Quản lý hồ sơ đăng nhập theo đơn vị. Email tại đây phải trùng với tài khoản đã có trong Supabase Auth.
+          </p>
+        </div>
+        <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+          Đang quản lý {accounts.length} tài khoản đơn vị
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_240px_220px_auto]">
+        <input
+          value={draftEmail}
+          onChange={(event) => setDraftEmail(event.target.value)}
+          className="field-input"
+          placeholder="Email tài khoản đơn vị"
+        />
+        <input
+          value={draftDisplayName}
+          onChange={(event) => setDraftDisplayName(event.target.value)}
+          className="field-input"
+          placeholder="Tên hiển thị"
+        />
+        <select
+          value={draftUnitCode}
+          onChange={(event) => setDraftUnitCode(event.target.value)}
+          className="field-select"
+        >
+          <option value="">-- Chọn đơn vị --</option>
+          {activeUnits.map((unit) => (
+            <option key={unit.code} value={unit.code}>
+              {unit.name} ({unit.code})
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={submitAccount}
+          disabled={isSubmitting || !draftEmail.trim() || !draftUnitCode}
+          className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Thêm tài khoản
+        </button>
+      </div>
+
+      {message && <p className="mt-4 text-sm font-medium text-[var(--ink-soft)]">{message}</p>}
+
+      <div className="mt-6 max-h-[420px] space-y-3 overflow-y-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+        {accounts.length === 0 ? (
+          <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--ink-soft)]">
+            Chưa có hồ sơ tài khoản đơn vị nào được khai báo.
+          </div>
+        ) : (
+          accounts.map((account) => (
+            <div
+              key={account.email || account.id}
+              className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 xl:grid-cols-[minmax(0,1.1fr)_220px_220px_128px]"
+            >
+              <div className="min-w-0">
+                <p className="break-all text-sm font-semibold text-[var(--ink)]">{account.email}</p>
+                <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                  {editingEmail === account.email ? 'Đang chỉnh sửa hồ sơ tài khoản.' : `Tên hiển thị: ${account.displayName || 'Chưa có'}`}
+                </p>
+              </div>
+              <div>
+                {editingEmail === account.email ? (
+                  <input
+                    value={editingDisplayName}
+                    onChange={(event) => setEditingDisplayName(event.target.value)}
+                    className="field-input h-11 py-2 text-sm"
+                    placeholder="Tên hiển thị"
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-sm text-[var(--ink)]">
+                    {account.displayName || 'Chưa có'}
+                  </div>
+                )}
+              </div>
+              <div>
+                {editingEmail === account.email ? (
+                  <select
+                    value={editingUnitCode}
+                    onChange={(event) => setEditingUnitCode(event.target.value)}
+                    className="field-select h-11 text-sm"
+                  >
+                    <option value="">-- Chọn đơn vị --</option>
+                    {activeUnits.map((unit) => (
+                      <option key={unit.code} value={unit.code}>
+                        {unit.name} ({unit.code})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-sm text-[var(--ink)]">
+                    {account.unitName || account.unitCode || 'Chưa gắn đơn vị'}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                {editingEmail === account.email ? (
+                  <>
+                    <button
+                      onClick={saveEdit}
+                      disabled={isSubmitting || !editingUnitCode}
+                      className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Lưu
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      disabled={isSubmitting}
+                      className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Hủy
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => beginEdit(account)}
+                      disabled={isSubmitting || !account.email}
+                      className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      onClick={() => account.email && deleteAccount(account.email)}
+                      disabled={isSubmitting || !account.email}
+                      className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Xóa
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -1914,6 +2356,7 @@ function DashboardOverview({
   onOpenLogin,
   onLogout,
   onOpenAIAnalysis,
+  onOpenImport,
 }: {
   data: ConsolidatedData;
   dataFiles: DataFileRecordSummary[];
@@ -1931,9 +2374,13 @@ function DashboardOverview({
   onOpenLogin: () => void;
   onLogout: () => Promise<void>;
   onOpenAIAnalysis: () => void;
+  onOpenImport: (projectId?: string) => void;
 }) {
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isLoginPromptOpen, setIsLoginPromptOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [overwriteRequests, setOverwriteRequests] = useState<OverwriteRequestRecord[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<UnitStatusFilter>('ALL');
   const [dashboardYear, setDashboardYear] = useState(() => getPreferredReportingYear());
@@ -1942,18 +2389,98 @@ function DashboardOverview({
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
   const templateMap = new Map(projectTemplates.map((tpl) => [tpl.id, tpl]));
-  const submittedUnitCodes = useMemo(() => {
-    return new Set(
-      dataFiles
-        .filter((file) => file.projectId === selectedProjectId && file.year === dashboardYear)
-        .map((file) => file.unitCode),
-    );
-  }, [dashboardYear, dataFiles, selectedProjectId]);
+  const dataFilesForYear = useMemo(
+    () => dataFiles.filter((file) => file.projectId === selectedProjectId && file.year === dashboardYear),
+    [dashboardYear, dataFiles, selectedProjectId],
+  );
+  const submittedUnitCodes = useMemo(() => new Set(dataFilesForYear.map((file) => file.unitCode)), [dataFilesForYear]);
 
   const rowsForYear = useMemo(() => {
     const rows = Object.values(data).flat();
     return rows.filter((row) => row.projectId === selectedProjectId && row.year === dashboardYear);
   }, [data, dashboardYear, selectedProjectId]);
+
+  const overwriteRequestsForYear = useMemo(
+    () => overwriteRequests.filter((request) => request.projectId === selectedProjectId && request.year === dashboardYear),
+    [dashboardYear, overwriteRequests, selectedProjectId],
+  );
+
+  const adminNotifications = useMemo(
+    () => overwriteRequests.filter((request) => request.status === 'PENDING'),
+    [overwriteRequests],
+  );
+
+  const unitNotifications = useMemo(() => {
+    if (!currentUser?.email) {
+      return [] as OverwriteRequestRecord[];
+    }
+
+    return overwriteRequests.filter(
+      (request) =>
+        getAssignmentKey(request.requestedBy?.email) === getAssignmentKey(currentUser.email) &&
+        request.status !== 'PENDING' &&
+        !request.requesterSeenAt,
+    );
+  }, [currentUser?.email, overwriteRequests]);
+
+  const activeNotifications = isAdmin ? adminNotifications : currentUser?.role === 'unit_user' ? unitNotifications : [];
+  const canUseNotifications = isAdmin || currentUser?.role === 'unit_user';
+
+  const handleToggleNotifications = async () => {
+    const nextOpen = !isNotificationOpen;
+    setIsNotificationOpen(nextOpen);
+
+    if (!nextOpen || isAdmin || unitNotifications.length === 0) {
+      return;
+    }
+
+    try {
+      await markOverwriteRequestsSeenInSupabase(unitNotifications.map((request) => request.id));
+      const seenAt = new Date().toISOString();
+      setOverwriteRequests((current) =>
+        current.map((request) =>
+          unitNotifications.some((item) => item.id === request.id)
+            ? { ...request, requesterSeenAt: seenAt }
+            : request,
+        ),
+      );
+    } catch (error) {
+      console.error('Không thể đánh dấu thông báo ghi đè là đã xem:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated || (!isAdmin && currentUser?.role !== 'unit_user')) {
+      setOverwriteRequests([]);
+      setIsNotificationOpen(false);
+      return;
+    }
+
+    let active = true;
+    setNotificationLoading(true);
+
+    listOverwriteRequestsFromSupabase()
+      .then((items) => {
+        if (active) {
+          setOverwriteRequests(items);
+        }
+      })
+      .catch((error) => {
+        console.error('Không thể tải thông báo ghi đè dữ liệu:', error);
+        if (active) {
+          setOverwriteRequests([]);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setNotificationLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.email, currentUser?.role, isAdmin, isAuthenticated]);
 
   const lastUpdatedBy = useMemo(() => {
     const map = new Map<string, { name: string; at: number }>();
@@ -1983,6 +2510,29 @@ function DashboardOverview({
     return map;
   }, [assignments, assignmentUsers]);
 
+  const latestDataFileByUnit = useMemo(() => {
+    const map = new Map<string, DataFileRecordSummary>();
+    dataFilesForYear.forEach((file) => {
+      const previous = map.get(file.unitCode);
+      const currentTime = getTimestampMs(file.submittedAt || file.updatedAt) || 0;
+      const previousTime = getTimestampMs(previous?.submittedAt || previous?.updatedAt) || 0;
+      if (!previous || currentTime >= previousTime) {
+        map.set(file.unitCode, file);
+      }
+    });
+    return map;
+  }, [dataFilesForYear]);
+
+  const overwriteRequestsByUnit = useMemo(() => {
+    const map = new Map<string, OverwriteRequestRecord[]>();
+    overwriteRequestsForYear.forEach((request) => {
+      const current = map.get(request.unitCode) || [];
+      current.push(request);
+      map.set(request.unitCode, current);
+    });
+    return map;
+  }, [overwriteRequestsForYear]);
+
   const currentAssignedUnitCodes = useMemo(
     () => (currentAssignmentKey ? assignments[currentAssignmentKey] || [] : []),
     [assignments, currentAssignmentKey],
@@ -2006,6 +2556,13 @@ function DashboardOverview({
 
     return units.map((unit) => {
       const unitRows = rowsForYear.filter((row) => row.unitCode === unit.code);
+      const unitFile = latestDataFileByUnit.get(unit.code);
+      const unitRequests = overwriteRequestsByUnit.get(unit.code) || [];
+      const latestRequest = unitRequests.reduce<OverwriteRequestRecord | null>((latest, current) => {
+        const latestTime = getTimestampMs(latest?.createdAt) || 0;
+        const currentTime = getTimestampMs(current.createdAt) || 0;
+        return currentTime >= latestTime ? current : latest;
+      }, null);
       const importedSheets = Array.from<string>(
         new Set(
           unitRows
@@ -2013,14 +2570,33 @@ function DashboardOverview({
         ),
       ).sort((left, right) => (sheetOrder.get(left) ?? 0) - (sheetOrder.get(right) ?? 0));
 
+      const latestAcceptedTime = getTimestampMs(unitFile?.submittedAt || unitFile?.updatedAt);
+      const latestRequestTime = getTimestampMs(latestRequest?.createdAt);
+      const submittedAt =
+        latestRequestTime && (!latestAcceptedTime || latestRequestTime >= latestAcceptedTime)
+          ? (typeof latestRequest?.createdAt === 'string' ? latestRequest.createdAt : null)
+          : (typeof unitFile?.submittedAt === 'string'
+              ? unitFile.submittedAt
+              : typeof unitFile?.updatedAt === 'string'
+                ? unitFile.updatedAt
+                : null);
+
+      const latestActor =
+        latestRequestTime && (!latestAcceptedTime || latestRequestTime >= latestAcceptedTime)
+          ? latestRequest?.unitName || latestRequest?.requestedBy?.displayName || latestRequest?.requestedBy?.email || unit.name
+          : unitFile?.submittedBy?.displayName || lastUpdatedBy.get(unit.code)?.name;
+
       return {
         code: unit.code,
         name: unit.name,
         importedSheets,
         rowCount: unitRows.length,
         isSubmitted: submittedUnitCodes.has(unit.code) || importedSheets.length > 0,
-        lastUpdatedBy: lastUpdatedBy.get(unit.code)?.name,
+        lastUpdatedBy: latestActor,
         assignedTo: assignmentMap.get(unit.code),
+        submittedAt,
+        overwriteRequestCount: unitRequests.length,
+        overwriteStatus: latestRequest?.status || null,
       };
     }).sort((left, right) => {
       if (left.isSubmitted !== right.isSubmitted) {
@@ -2033,7 +2609,7 @@ function DashboardOverview({
 
       return left.name.localeCompare(right.name, 'vi');
     });
-  }, [assignmentMap, lastUpdatedBy, rowsForYear, submittedUnitCodes, templateMap, units]);
+  }, [assignmentMap, lastUpdatedBy, latestDataFileByUnit, overwriteRequestsByUnit, rowsForYear, submittedUnitCodes, templateMap, units]);
 
   const unitLogs = useMemo<UnitLog[]>(() => {
     if (isAuthenticated && !isAdmin) {
@@ -2136,14 +2712,29 @@ function DashboardOverview({
   return (
     <div className="p-6 md:p-8">
       <header className="relative mb-6 md:mb-8">
-        <button
-          type="button"
-          onClick={isAuthenticated ? () => void onLogout() : onOpenLogin}
-          className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm md:hidden"
-          title={isAuthenticated ? 'Đăng xuất' : 'Đăng nhập'}
-        >
-          {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
-        </button>
+        <div className="absolute right-0 top-0 z-10 flex items-center gap-2 md:hidden">
+          {canUseNotifications && activeNotifications.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleToggleNotifications()}
+              className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm"
+              title="Thông báo"
+            >
+              <BellDot size={18} />
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-bold text-white">
+                {activeNotifications.length}
+              </span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={isAuthenticated ? () => void onLogout() : onOpenLogin}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm"
+            title={isAuthenticated ? 'Đăng xuất' : 'Đăng nhập'}
+          >
+            {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
+          </button>
+        </div>
         <div
           className="overflow-hidden rounded-[24px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
           style={{
@@ -2153,6 +2744,23 @@ function DashboardOverview({
             backgroundSize: '56px 56px, 28px 28px, auto, 84px 84px',
           }}
         >
+          {canUseNotifications && (
+            <div className="absolute right-6 top-6 hidden md:block">
+              <button
+                type="button"
+                onClick={() => void handleToggleNotifications()}
+                className="relative flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] bg-white/10 text-white transition hover:bg-white/15"
+                title="Thông báo"
+              >
+                {activeNotifications.length > 0 ? <BellDot size={20} /> : <Bell size={20} />}
+                {activeNotifications.length > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--gold)] px-1 text-[10px] font-bold text-[var(--primary-dark)]">
+                    {activeNotifications.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
           <h2 className="max-w-5xl text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
             HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG
           </h2>
@@ -2165,6 +2773,60 @@ function DashboardOverview({
             Theo dõi nhanh tình hình tiếp nhận dữ liệu của các đơn vị, số biểu đã nhập và mức độ hoàn thành tổng hợp trên toàn hệ thống.
           </p>
         </div>
+        {canUseNotifications && isNotificationOpen && (
+          <div className="absolute right-0 top-14 z-20 w-full max-w-[420px] rounded-[24px] border border-[var(--line)] bg-white shadow-[0_24px_60px_rgba(44,62,80,0.18)] md:right-6 md:top-20">
+            <div className="border-b border-[var(--line)] px-5 py-4">
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--primary-dark)]">Thông báo</p>
+              <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                {isAdmin
+                  ? 'Các đơn vị vừa nộp yêu cầu ghi đè đang chờ admin xử lý.'
+                  : 'Các yêu cầu ghi đè của đơn vị bạn đã được admin xử lý.'}
+              </p>
+            </div>
+            <div className="max-h-[360px] overflow-y-auto px-4 py-3">
+              {notificationLoading ? (
+                <p className="rounded-2xl bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">Đang tải thông báo...</p>
+              ) : activeNotifications.length === 0 ? (
+                <p className="rounded-2xl bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">Hiện chưa có thông báo mới.</p>
+              ) : (
+                <div className="space-y-3">
+                  {activeNotifications.map((request) => (
+                    <button
+                      key={request.id}
+                      type="button"
+                      onClick={() => {
+                        setIsNotificationOpen(false);
+                        onOpenImport(request.projectId);
+                      }}
+                      className="block w-full rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-left transition hover:border-[var(--primary)] hover:bg-white"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--ink)]">
+                            {isAdmin
+                              ? `${request.unitName} đề nghị ghi đè dữ liệu`
+                              : `Yêu cầu ghi đè của ${request.unitName} đã ${request.status === 'APPROVED' ? 'được phê duyệt' : 'bị từ chối'}`}
+                          </p>
+                          <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                            {request.projectName || request.projectId} - Năm {request.year}
+                          </p>
+                          <p className="mt-2 text-xs text-[var(--ink-soft)]">
+                            {isAdmin
+                              ? `Nộp lúc ${formatDateTime(typeof request.createdAt === 'string' ? request.createdAt : null)}`
+                              : `Xử lý lúc ${formatDateTime(typeof request.reviewedAt === 'string' ? request.reviewedAt : null)}`}
+                          </p>
+                        </div>
+                        <span className={request.status === 'APPROVED' ? 'status-pill status-pill-submitted' : request.status === 'REJECTED' ? 'status-pill status-pill-pending' : 'status-pill status-pill-pending'}>
+                          {request.status === 'PENDING' ? 'Chờ duyệt' : request.status === 'APPROVED' ? 'Đã duyệt' : 'Từ chối'}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="panel-card rounded-[24px] p-5 md:hidden">
@@ -2297,17 +2959,6 @@ function DashboardOverview({
           </div>
         ))}
       </div>
-
-      {isAdmin && assignees.length > 0 && (
-        <div className="mt-8">
-          <UnitAssignments
-            units={units}
-            users={assignees}
-            assignments={assignments}
-            onSaveAssignments={onSaveAssignments}
-          />
-        </div>
-      )}
 
       {selectedProject && (
         <div className="mt-6 panel-card rounded-[28px] p-5 md:hidden">
@@ -2449,6 +3100,9 @@ function DashboardOverview({
                     {unit.isSubmitted
                       ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} biểu`
                       : 'Chưa tiếp nhận dữ liệu'}
+                  </p>
+                  <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
+                    Nộp gần nhất: {formatDateTime(unit.submittedAt)} · Cập nhật lại: {unit.overwriteRequestCount}
                   </p>
                 </div>
 
@@ -2629,7 +3283,9 @@ function DashboardOverview({
                         </p>
                         <div className="mt-2 text-[11px] text-[var(--ink-soft)]">
                           {isAdmin && <p>Người theo dõi: {unit.assignedTo || 'Chưa phân công'}</p>}
-                          <p>Cập nhật gần nhất: {unit.lastUpdatedBy || 'Chưa có'}</p>
+                          <p>Ngày giờ nộp: {formatDateTime(unit.submittedAt)}</p>
+                          <p>Số lần cập nhật lại: {unit.overwriteRequestCount}</p>
+                          <p>Người cập nhật: {unit.lastUpdatedBy || 'Chưa có'}</p>
                         </div>
                       </div>
 

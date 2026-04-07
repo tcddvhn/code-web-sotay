@@ -459,3 +459,26 @@ Kiem tra:
 Ki?m tra:
 - `npm.cmd run lint`: pass
 - `npm.cmd run build`: pass
+
+## 2026-04-07 - S?a l?i hi?n th? Dashboard và Ti?p nh?n d? li?u
+- Rà l?i C:\CODE_APPWEB\src\App.tsx và s?a chu?i fallback th?i gian Chua có trong Dashboard/log ti?p nh?n.
+- Ki?m tra l?i C:\CODE_APPWEB\src\components\ImportFiles.tsx; ph?n chu?i hi?n th? h?p l?, không thay logic nghi?p v?.
+- Ch?y 
+pm.cmd run lint: pass.
+- Ch?y 
+pm.cmd run build: pass.
+
+
+## 2026-04-07 - Tái c?u trúc ph?n Cài d?t
+- Chuy?n khu phân công theo dõi don v? kh?i Dashboard, gom v? C:\CODE_APPWEB\src\App.tsx trong màn Cài d?t.
+- B? toàn b? tru?ng c?u hình Link OneDrive, Thu m?c luu tr? file g?c, Thu m?c luu tr? file dã ti?p nh?n kh?i giao di?n Cài d?t theo yêu c?u.
+- M? r?ng Qu?n lý danh sách don v?: m?i don v? có th? g?n ngu?i theo dõi ngay trên dòng don v?; thêm ch?n ngu?i theo dõi ngay khi t?o don v? m?i.
+- B? sung panel Qu?n tr? tài kho?n don v?: thêm/s?a/xóa h? so tài kho?n don v? d?a trên user_profiles; email ph?i kh?p tài kho?n dã có trong Supabase Auth.
+- Thêm hàm c?p nh?t/vô hi?u hóa h? so tài kho?n t?i C:\CODE_APPWEB\src\supabaseStore.ts.
+- Ch?y 
+pm.cmd run lint: pass.
+- Ch?y 
+pm.cmd run build: pass.
+- 
+pm.cmd run check:encoding v?n báo n? k? thu?t cu trong C:\CODE_APPWEB\src\supabaseStore.ts, chua x? lý trong d?t này.
+

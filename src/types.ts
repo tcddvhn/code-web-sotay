@@ -48,6 +48,12 @@ export interface DataFileRecordSummary {
   fileName: string;
   storagePath: string;
   downloadURL?: string | null;
+  submittedAt?: any;
+  submittedBy?: {
+    uid?: string | null;
+    email?: string | null;
+    displayName?: string | null;
+  } | null;
   updatedAt?: any;
 }
 
@@ -75,6 +81,7 @@ export interface OverwriteRequestRecord {
     email?: string | null;
     displayName?: string | null;
   } | null;
+  requesterSeenAt?: any;
   createdAt?: any;
   updatedAt?: any;
 }
