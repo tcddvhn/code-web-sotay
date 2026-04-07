@@ -491,3 +491,23 @@ pm.cmd run lint: pass.
 - Ch?y 
 pm.cmd run build: pass.
 
+
+## 2026-04-07 - Tinh g?n giao di?n Cài d?t và b? sung l?c theo ngu?i theo dõi
+- B? h?n kh?i Các m?c cài d?t dùng d? làm gì? kh?i giao di?n C:\CODE_APPWEB\src\App.tsx theo yêu c?u.
+- B? sung b? l?c L?c theo ngu?i theo dõi trong panel Qu?n lý danh sách don v? t?i C:\CODE_APPWEB\src\App.tsx (T?t c?, Chua phân công, t?ng ngu?i theo dõi).
+- Ch?y 
+pm.cmd run lint: pass.
+- Ch?y 
+pm.cmd run build: pass.
+
+
+## 2026-04-07 - B? sung d?i m?t kh?u cho ngu?i dùng
+- Thêm updateSupabasePassword(...) t?i C:\CODE_APPWEB\src\supabase.ts, dùng supabase.auth.updateUser({ password }) d? ngu?i dùng t? d?i m?t kh?u.
+- M? nút Ð?i m?t kh?u trong kh?i tài kho?n ? C:\CODE_APPWEB\src\components\Sidebar.tsx cho m?i tài kho?n dã dang nh?p.
+- Thêm modal Ð?i m?t kh?u t?i C:\CODE_APPWEB\src\App.tsx.
+- Không tri?n khai reset password trong app; quy trình reset c?a admin th?c hi?n tr?c ti?p trong Supabase Dashboard theo nguyên t?c dã ch?t.
+- Ch?y 
+pm.cmd run lint: pass.
+- Ch?y 
+pm.cmd run build: pass.
+

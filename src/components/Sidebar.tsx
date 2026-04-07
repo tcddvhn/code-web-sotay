@@ -23,6 +23,7 @@ interface SidebarProps {
   isAuthenticated: boolean;
   isAdmin: boolean;
   onLogout: () => void;
+  onOpenChangePassword: () => void;
   user: AuthenticatedUser | null;
   userProfile?: UserProfile | null;
   isCollapsed?: boolean;
@@ -36,6 +37,7 @@ export function Sidebar({
   isAuthenticated,
   isAdmin,
   onLogout,
+  onOpenChangePassword,
   user,
   userProfile,
   isCollapsed = false,
@@ -124,6 +126,16 @@ export function Sidebar({
               )}
             </div>
           </div>
+        )}
+
+        {user && (
+          <button
+            onClick={onOpenChangePassword}
+            className="sidebar-auth-btn flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 transition-opacity hover:opacity-70"
+          >
+            <Settings size={14} />
+            <span className="sidebar-auth-label">Đổi mật khẩu</span>
+          </button>
         )}
 
         {user ? (

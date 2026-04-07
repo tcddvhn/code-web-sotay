@@ -96,6 +96,22 @@ export async function loginWithSupabaseEmail(email: string, password: string) {
 
   return data;
 }
+
+export async function updateSupabasePassword(newPassword: string) {
+  const password = newPassword.trim();
+  if (!password) {
+    throw new Error('Vui lòng nhập mật khẩu mới.');
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Không thể cập nhật mật khẩu.');
+  }
+}
+
 export async function ensureSupabaseSession() {
   const {
     data: { session },

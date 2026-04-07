@@ -26,6 +26,7 @@ import {
   loginWithSupabaseEmail,
   logoutSupabase,
   onSupabaseAuthStateChange,
+  updateSupabasePassword,
 } from './supabase';
 import { AppSettings, AssignmentUser, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
@@ -182,13 +183,13 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isSettingsHelpExpanded, setIsSettingsHelpExpanded] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [units, setUnits] = useState<ManagedUnit[]>([]);
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [dataFiles, setDataFiles] = useState<DataFileRecordSummary[]>([]);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const isAuthenticated = useMemo(() => !!user, [user]);
   const assignmentUsers = useMemo(() => buildAssignmentUsers(users), [users]);
@@ -1402,6 +1403,12 @@ export default function App() {
     }
   };
 
+  const handleChangePassword = async (nextPassword: string) => {
+    await updateSupabasePassword(nextPassword);
+    setIsChangePasswordOpen(false);
+    alert('Đã cập nhật mật khẩu mới.');
+  };
+
   const handleOpenImportFromDashboard = (projectId?: string) => {
     if (projectId) {
       setSelectedProjectId(projectId);
@@ -1643,39 +1650,6 @@ export default function App() {
               </div>
 
               <div className="space-y-4 xl:max-w-[320px] 2xl:max-w-[340px]">
-                <div className="panel-card rounded-[24px] p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="section-title text-[1.08rem] leading-6">Các mục cài đặt dùng để làm gì?</h3>
-                    <button
-                      type="button"
-                      onClick={() => setIsSettingsHelpExpanded((current) => !current)}
-                      className="secondary-btn px-4 py-2 text-[10px]"
-                    >
-                      {isSettingsHelpExpanded ? 'Ẩn hướng dẫn' : 'Xem hướng dẫn'}
-                    </button>
-                  </div>
-                  {isSettingsHelpExpanded && (
-                  <div className="mt-3 space-y-3 text-[13px] leading-6 text-[var(--ink-soft)]">
-                    <p>
-                      <strong className="text-[var(--ink)]">Quản lý danh sách đơn vị</strong> dùng để vận hành danh mục 132 đơn vị toàn hệ thống.
-                      Mỗi đơn vị giờ có thể gắn luôn người theo dõi ngay trong cùng một dòng thao tác.
-                    </p>
-                    <p>
-                      <strong className="text-[var(--ink)]">Tài khoản đơn vị</strong> là lớp hồ sơ nghiệp vụ gắn với đơn vị trong hệ thống.
-                      Email tại đây phải khớp với tài khoản đã có trong Supabase Auth thì đơn vị mới đăng nhập được.
-                    </p>
-                    <p>
-                      <strong className="text-[var(--ink)]">Phân công theo dõi</strong> đã được đưa khỏi Dashboard và gom về Cài đặt,
-                      giúp Dashboard chỉ còn vai trò theo dõi tiến độ, không lẫn thao tác quản trị.
-                    </p>
-                    <p>
-                      <strong className="text-[var(--ink)]">Xóa sạch dữ liệu hệ thống</strong> là thao tác quản trị cao nhất, chỉ dùng khi cần làm sạch
-                      toàn bộ dữ liệu dự án, biểu mẫu, tiếp nhận, phân tích AI và lịch sử xuất báo cáo.
-                    </p>
-                  </div>
-                  )}
-                </div>
-
                 {!isAdmin && (
                   <div className="panel-card rounded-[24px] p-5 text-sm text-[var(--ink-soft)]">
                     Chỉ tài khoản Admin mới được phép thay đổi cấu hình hệ thống và quản lý danh mục đơn vị.
@@ -1699,6 +1673,9 @@ export default function App() {
           isAuthenticated={isAuthenticated}
           isAdmin={isAdmin}
           onLogout={handleLogout}
+          onOpenChangePassword={() => {
+            setIsChangePasswordOpen(true);
+          }}
           user={user}
           userProfile={effectiveUserProfile}
           isCollapsed={isSidebarCollapsed}
@@ -1707,6 +1684,12 @@ export default function App() {
         />
       )}
       <main className="app-main flex-1 overflow-auto">{renderContent()}</main>
+      {isChangePasswordOpen && (
+        <ChangePasswordModal
+          onClose={() => setIsChangePasswordOpen(false)}
+          onSubmit={handleChangePassword}
+        />
+      )}
 
     </div>
   );
@@ -1733,6 +1716,7 @@ function SystemSettingsUnitsPanel({
 }) {
   const [newUnitName, setNewUnitName] = useState('');
   const [newUnitWatcher, setNewUnitWatcher] = useState('');
+  const [watcherFilter, setWatcherFilter] = useState('');
   const [editingUnitCode, setEditingUnitCode] = useState<string | null>(null);
   const [editingUnitName, setEditingUnitName] = useState('');
   const [watcherDrafts, setWatcherDrafts] = useState<Record<string, string>>({});
@@ -1747,6 +1731,15 @@ function SystemSettingsUnitsPanel({
     () => units.filter((unit) => unit.isDeleted).sort((left, right) => left.code.localeCompare(right.code)),
     [units],
   );
+  const filteredActiveUnits = useMemo(() => {
+    if (!watcherFilter) {
+      return activeUnits;
+    }
+    if (watcherFilter === '__UNASSIGNED__') {
+      return activeUnits.filter((unit) => !(watcherDrafts[unit.code] || ''));
+    }
+    return activeUnits.filter((unit) => (watcherDrafts[unit.code] || '') === watcherFilter);
+  }, [activeUnits, watcherDrafts, watcherFilter]);
 
   useEffect(() => {
     setWatcherDrafts(assignmentsByUnit);
@@ -1915,9 +1908,32 @@ function SystemSettingsUnitsPanel({
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div>
-          <p className="col-header mb-3">Đơn vị đang sử dụng</p>
+          <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="col-header">Đơn vị đang sử dụng</p>
+              <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                Hiển thị {filteredActiveUnits.length}/{activeUnits.length} đơn vị theo bộ lọc người theo dõi.
+              </p>
+            </div>
+            <div className="w-full xl:w-[260px]">
+              <label className="col-header mb-2 block">Lọc theo người theo dõi</label>
+              <select
+                value={watcherFilter}
+                onChange={(event) => setWatcherFilter(event.target.value)}
+                className="field-select h-11 text-sm"
+              >
+                <option value="">-- Tất cả --</option>
+                <option value="__UNASSIGNED__">Chưa phân công</option>
+                {assignmentUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.displayName || user.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div className="max-h-[420px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
-            {activeUnits.map((unit) => (
+            {filteredActiveUnits.map((unit) => (
               <div
                 key={unit.code}
                 className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 xl:grid-cols-[minmax(0,1fr)_240px_128px]"
@@ -2334,6 +2350,91 @@ function LoginView({
           </p>
           {authError && <p className="text-xs text-red-600">{authError}</p>}
           {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChangePasswordModal({
+  onClose,
+  onSubmit,
+}: {
+  onClose: () => void;
+  onSubmit: (password: string) => Promise<void>;
+}) {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submit = async () => {
+    setError(null);
+
+    if (password.trim().length < 6) {
+      setError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit(password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể đổi mật khẩu.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[rgba(44,62,80,0.45)] p-4 backdrop-blur-sm">
+      <div className="panel-card w-full max-w-md rounded-[28px] p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="section-title">Đổi mật khẩu</h3>
+            <p className="page-subtitle mt-2 text-sm">
+              Chức năng này chỉ đổi mật khẩu cho tài khoản đang đăng nhập. Reset mật khẩu vẫn thực hiện trực tiếp trong Supabase Dashboard.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/85 text-[var(--primary-dark)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="field-input"
+            placeholder="Mật khẩu mới"
+          />
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            className="field-input"
+            placeholder="Nhập lại mật khẩu mới"
+          />
+          {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="secondary-btn px-5 py-3" disabled={isSubmitting}>
+            Hủy
+          </button>
+          <button type="button" onClick={() => void submit()} className="primary-btn px-5 py-3" disabled={isSubmitting}>
+            {isSubmitting ? 'Đang lưu...' : 'Lưu mật khẩu'}
+          </button>
         </div>
       </div>
     </div>
