@@ -369,7 +369,7 @@ Tai lieu da cap nhat:
 Luu y:
 - Cac noi ngoai repo nhu Vercel env, may khac, terminal history, Edge Functions, cron job khong the tu dong kiem tra tu day; user phai tu ra soat truoc khi tat legacy keys.
 
-- 2026-04-06: Sá»­a lá»—i TypeScript táº¡i `src/components/AIAnalysisView.tsx` (`sumRowValues` vÃ  cÃ¡c phÃ©p cá»™ng dá»“n `total_value`) do `row.values` bá»‹ suy luáº­n lÃ  `unknown[]`. Chuáº©n hÃ³a kiá»ƒu dá»¯ liá»‡u Ä‘áº§u vÃ o cá»§a hÃ m cá»™ng dá»“n Ä‘á»ƒ `npm run lint` khÃ´ng cÃ²n fail vÃ¬ ba dÃ²ng 153 / 390 / 435.
+- 2026-04-06: SÃ¡Â»Â­a lÃ¡Â»â€”i TypeScript tÃ¡ÂºÂ¡i `src/components/AIAnalysisView.tsx` (`sumRowValues` vÃƒÂ  cÃƒÂ¡c phÃƒÂ©p cÃ¡Â»â„¢ng dÃ¡Â»â€œn `total_value`) do `row.values` bÃ¡Â»â€¹ suy luÃ¡ÂºÂ­n lÃƒÂ  `unknown[]`. ChuÃ¡ÂºÂ©n hÃƒÂ³a kiÃ¡Â»Æ’u dÃ¡Â»Â¯ liÃ¡Â»â€¡u Ã„â€˜Ã¡ÂºÂ§u vÃƒÂ o cÃ¡Â»Â§a hÃƒÂ m cÃ¡Â»â„¢ng dÃ¡Â»â€œn Ã„â€˜Ã¡Â»Æ’ `npm run lint` khÃƒÂ´ng cÃƒÂ²n fail vÃƒÂ¬ ba dÃƒÂ²ng 153 / 390 / 435.
 
 ## Moc ngay 2026-04-06 - rollout 132 tai khoan don vi
 
@@ -421,28 +421,28 @@ Luu y:
 - Backup local da tao xong.
 - Backup cloud chua chay tu day vi can user nap `SUPABASE_SERVICE_ROLE_KEY` moi vao PowerShell va chay lenh `npm.cmd run backup:supabase`.
 
-### S?a g?p l?i font Dashboard và Ti?p nh?n d? li?u ngày 2026-04-06
+### S?a g?p l?i font Dashboard vÃ  Ti?p nh?n d? li?u ngÃ y 2026-04-06
 
-Yêu c?u user:
-- Dashboard và màn Ti?p nh?n d? li?u b? mojibake tr? l?i sau các thay d?i g?n dây.
-- C?n s?a ngay nhung không làm ?nh hu?ng logic các ph?n khác.
+YÃªu c?u user:
+- Dashboard vÃ  mÃ n Ti?p nh?n d? li?u b? mojibake tr? l?i sau cÃ¡c thay d?i g?n dÃ¢y.
+- C?n s?a ngay nhung khÃ´ng lÃ m ?nh hu?ng logic cÃ¡c ph?n khÃ¡c.
 
-Ðã th?c hi?n:
-- Rà l?i các chu?i hi?n th? trong `C:\CODE_APPWEB\src\App.tsx` cho các kh?i Dashboard:
-  - banner tiêu d?
-  - ch?n d? án / nam
-  - th? th?ng kê
-  - nh?t ký ti?p nh?n
+ÃÃ£ th?c hi?n:
+- RÃ  l?i cÃ¡c chu?i hi?n th? trong `C:\CODE_APPWEB\src\App.tsx` cho cÃ¡c kh?i Dashboard:
+  - banner tiÃªu d?
+  - ch?n d? Ã¡n / nam
+  - th? th?ng kÃª
+  - nh?t kÃ½ ti?p nh?n
   - bi?u d? ti?p nh?n
-  - popup yêu c?u dang nh?p
-- Rà l?i các chu?i hi?n th? trong `C:\CODE_APPWEB\src\components\ImportFiles.tsx` cho:
-  - tiêu d? màn hình
-  - kh?i d? án / bi?u m?u / qu?n tr? d? li?u theo nam
-  - kh?i phê duy?t ghi dè
+  - popup yÃªu c?u dang nh?p
+- RÃ  l?i cÃ¡c chu?i hi?n th? trong `C:\CODE_APPWEB\src\components\ImportFiles.tsx` cho:
+  - tiÃªu d? mÃ n hÃ¬nh
+  - kh?i d? Ã¡n / bi?u m?u / qu?n tr? d? li?u theo nam
+  - kh?i phÃª duy?t ghi dÃ¨
   - uploader file / thu m?c
-  - danh sách file ch? ti?p nh?n
-  - popup ti?n d? và popup t?ng k?t ti?p nh?n
-- Gi? nguyên logic nghi?p v? c?a rollout `unit_user`, ch? s?a chu?i hi?n th? và khôi ph?c các block JSX b? ?nh hu?ng.
+  - danh sÃ¡ch file ch? ti?p nh?n
+  - popup ti?n d? vÃ  popup t?ng k?t ti?p nh?n
+- Gi? nguyÃªn logic nghi?p v? c?a rollout `unit_user`, ch? s?a chu?i hi?n th? vÃ  khÃ´i ph?c cÃ¡c block JSX b? ?nh hu?ng.
 
 Kiem tra:
 - `npm.cmd run lint`: pass
@@ -460,52 +460,52 @@ Ki?m tra:
 - `npm.cmd run lint`: pass
 - `npm.cmd run build`: pass
 
-## 2026-04-07 - S?a l?i hi?n th? Dashboard và Ti?p nh?n d? li?u
-- Rà l?i C:\CODE_APPWEB\src\App.tsx và s?a chu?i fallback th?i gian Chua có trong Dashboard/log ti?p nh?n.
-- Ki?m tra l?i C:\CODE_APPWEB\src\components\ImportFiles.tsx; ph?n chu?i hi?n th? h?p l?, không thay logic nghi?p v?.
+## 2026-04-07 - S?a l?i hi?n th? Dashboard vÃ  Ti?p nh?n d? li?u
+- RÃ  l?i C:\CODE_APPWEB\src\App.tsx vÃ  s?a chu?i fallback th?i gian Chua cÃ³ trong Dashboard/log ti?p nh?n.
+- Ki?m tra l?i C:\CODE_APPWEB\src\components\ImportFiles.tsx; ph?n chu?i hi?n th? h?p l?, khÃ´ng thay logic nghi?p v?.
 - Ch?y 
 pm.cmd run lint: pass.
 - Ch?y 
 pm.cmd run build: pass.
 
 
-## 2026-04-07 - Tái c?u trúc ph?n Cài d?t
-- Chuy?n khu phân công theo dõi don v? kh?i Dashboard, gom v? C:\CODE_APPWEB\src\App.tsx trong màn Cài d?t.
-- B? toàn b? tru?ng c?u hình Link OneDrive, Thu m?c luu tr? file g?c, Thu m?c luu tr? file dã ti?p nh?n kh?i giao di?n Cài d?t theo yêu c?u.
-- M? r?ng Qu?n lý danh sách don v?: m?i don v? có th? g?n ngu?i theo dõi ngay trên dòng don v?; thêm ch?n ngu?i theo dõi ngay khi t?o don v? m?i.
-- B? sung panel Qu?n tr? tài kho?n don v?: thêm/s?a/xóa h? so tài kho?n don v? d?a trên user_profiles; email ph?i kh?p tài kho?n dã có trong Supabase Auth.
-- Thêm hàm c?p nh?t/vô hi?u hóa h? so tài kho?n t?i C:\CODE_APPWEB\src\supabaseStore.ts.
+## 2026-04-07 - TÃ¡i c?u trÃºc ph?n CÃ i d?t
+- Chuy?n khu phÃ¢n cÃ´ng theo dÃµi don v? kh?i Dashboard, gom v? C:\CODE_APPWEB\src\App.tsx trong mÃ n CÃ i d?t.
+- B? toÃ n b? tru?ng c?u hÃ¬nh Link OneDrive, Thu m?c luu tr? file g?c, Thu m?c luu tr? file dÃ£ ti?p nh?n kh?i giao di?n CÃ i d?t theo yÃªu c?u.
+- M? r?ng Qu?n lÃ½ danh sÃ¡ch don v?: m?i don v? cÃ³ th? g?n ngu?i theo dÃµi ngay trÃªn dÃ²ng don v?; thÃªm ch?n ngu?i theo dÃµi ngay khi t?o don v? m?i.
+- B? sung panel Qu?n tr? tÃ i kho?n don v?: thÃªm/s?a/xÃ³a h? so tÃ i kho?n don v? d?a trÃªn user_profiles; email ph?i kh?p tÃ i kho?n dÃ£ cÃ³ trong Supabase Auth.
+- ThÃªm hÃ m c?p nh?t/vÃ´ hi?u hÃ³a h? so tÃ i kho?n t?i C:\CODE_APPWEB\src\supabaseStore.ts.
 - Ch?y 
 pm.cmd run lint: pass.
 - Ch?y 
 pm.cmd run build: pass.
 - 
-pm.cmd run check:encoding v?n báo n? k? thu?t cu trong C:\CODE_APPWEB\src\supabaseStore.ts, chua x? lý trong d?t này.
+pm.cmd run check:encoding v?n bÃ¡o n? k? thu?t cu trong C:\CODE_APPWEB\src\supabaseStore.ts, chua x? lÃ½ trong d?t nÃ y.
 
 
 ## 2026-04-07 - S?a l?i dang xu?t/dang nh?p l?i
-- S?a C:\CODE_APPWEB\src\App.tsx: b? sung l?i import Lock t? lucide-react cho màn dang nh?p.
-- Nguyên nhân l?i runtime Illegal constructor: JSX <Lock /> b? tr? nh?m sang d?i tu?ng global Lock c?a trình duy?t khi import icon b? thi?u.
+- S?a C:\CODE_APPWEB\src\App.tsx: b? sung l?i import Lock t? lucide-react cho mÃ n dang nh?p.
+- NguyÃªn nhÃ¢n l?i runtime Illegal constructor: JSX <Lock /> b? tr? nh?m sang d?i tu?ng global Lock c?a trÃ¬nh duy?t khi import icon b? thi?u.
 - Ch?y 
 pm.cmd run lint: pass.
 - Ch?y 
 pm.cmd run build: pass.
 
 
-## 2026-04-07 - Tinh g?n giao di?n Cài d?t và b? sung l?c theo ngu?i theo dõi
-- B? h?n kh?i Các m?c cài d?t dùng d? làm gì? kh?i giao di?n C:\CODE_APPWEB\src\App.tsx theo yêu c?u.
-- B? sung b? l?c L?c theo ngu?i theo dõi trong panel Qu?n lý danh sách don v? t?i C:\CODE_APPWEB\src\App.tsx (T?t c?, Chua phân công, t?ng ngu?i theo dõi).
+## 2026-04-07 - Tinh g?n giao di?n CÃ i d?t vÃ  b? sung l?c theo ngu?i theo dÃµi
+- B? h?n kh?i CÃ¡c m?c cÃ i d?t dÃ¹ng d? lÃ m gÃ¬? kh?i giao di?n C:\CODE_APPWEB\src\App.tsx theo yÃªu c?u.
+- B? sung b? l?c L?c theo ngu?i theo dÃµi trong panel Qu?n lÃ½ danh sÃ¡ch don v? t?i C:\CODE_APPWEB\src\App.tsx (T?t c?, Chua phÃ¢n cÃ´ng, t?ng ngu?i theo dÃµi).
 - Ch?y 
 pm.cmd run lint: pass.
 - Ch?y 
 pm.cmd run build: pass.
 
 
-## 2026-04-07 - B? sung d?i m?t kh?u cho ngu?i dùng
-- Thêm updateSupabasePassword(...) t?i C:\CODE_APPWEB\src\supabase.ts, dùng supabase.auth.updateUser({ password }) d? ngu?i dùng t? d?i m?t kh?u.
-- M? nút Ð?i m?t kh?u trong kh?i tài kho?n ? C:\CODE_APPWEB\src\components\Sidebar.tsx cho m?i tài kho?n dã dang nh?p.
-- Thêm modal Ð?i m?t kh?u t?i C:\CODE_APPWEB\src\App.tsx.
-- Không tri?n khai reset password trong app; quy trình reset c?a admin th?c hi?n tr?c ti?p trong Supabase Dashboard theo nguyên t?c dã ch?t.
+## 2026-04-07 - B? sung d?i m?t kh?u cho ngu?i dÃ¹ng
+- ThÃªm updateSupabasePassword(...) t?i C:\CODE_APPWEB\src\supabase.ts, dÃ¹ng supabase.auth.updateUser({ password }) d? ngu?i dÃ¹ng t? d?i m?t kh?u.
+- M? nÃºt Ã?i m?t kh?u trong kh?i tÃ i kho?n ? C:\CODE_APPWEB\src\components\Sidebar.tsx cho m?i tÃ i kho?n dÃ£ dang nh?p.
+- ThÃªm modal Ã?i m?t kh?u t?i C:\CODE_APPWEB\src\App.tsx.
+- KhÃ´ng tri?n khai reset password trong app; quy trÃ¬nh reset c?a admin th?c hi?n tr?c ti?p trong Supabase Dashboard theo nguyÃªn t?c dÃ£ ch?t.
 - Ch?y 
 pm.cmd run lint: pass.
 - Ch?y 
@@ -517,6 +517,19 @@ pm.cmd run build: pass.
 - Khi admin da xac nhan ghi de, luong tiep nhan se xoa du lieu hien co cua don vi (theo nam dang chon), sau do ghi lai du lieu va cap nhat file moi. Neu chua xac nhan ghi de thi file bi bo qua va dua vao tong ket loi nhu cac truong hop khac.
 - Sua C:\CODE_APPWEB\src\components\ReportView.tsx: voi lua chon mot don vi cu the o muc 3. Chon don vi, nut Xuat toan bo bieu se tai truc tiep file goc da upload cua don vi do trong data_files; khong dung workbook mau de tai lap noi dung nua.
 - Truong hop Dang bo Thanh pho van giu nguyen co che xuat tong hop dua tren workbook mau cua bieu mau.
+- Chay 
+pm.cmd run lint: pass.
+- Chay 
+pm.cmd run build: pass.
+## 2026-04-07 - Khac phuc loi ma hoa o man Tiep nhan du lieu
+- Sua C:\CODE_APPWEB\src\components\ImportFiles.tsx de bo sung lop epairMojibake(...) va tu dong lam sach cac text node / placeholder trong pham vi man Tiep nhan du lieu.
+- Muc tieu la chan regression hien thi font/bo ma o giao dien Tiep nhan du lieu ma khong anh huong cac module khac.
+- Giu lai thay doi moi nhat cho admin: bo sung nut Cho phep ghi de khi file thuoc don vi da co du lieu.
+- Chay 
+pm.cmd run lint: pass.
+- Chay 
+pm.cmd run build: pass.- Bo sung map thay the text hien thi cho rieng man Tiep nhan du lieu de sua triet de cac chuoi mojibake con sot sau khi build.
+- Giu nguyen pham vi sua trong C:\CODE_APPWEB\src\components\ImportFiles.tsx, khong dong den cac man khac.
 - Chay 
 pm.cmd run lint: pass.
 - Chay 
