@@ -14,7 +14,7 @@ import {
   UserProfile,
 } from '../types';
 import { getPreferredReportingYear } from '../utils/reportingYear';
-import { uploadFile } from '../supabase';
+import { getPublicUrlByPath, uploadFile } from '../supabase';
 import { createReportExport } from '../supabaseStore';
 import { fetchAggregatedRowsFromSupabase, fetchCellDetailsFromSupabase } from '../supabaseReports';
 import {
@@ -678,6 +678,26 @@ export function ReportView({
   }, [currentUser, data, dataFiles, isUnitUser, projectTemplates, selectedProjectId, selectedYear, unitNameByCode, units]);
 
   const selectedUnitOption = reportUnitOptions.find((unit) => unit.code === selectedUnitCode) || reportUnitOptions[0] || null;
+  const selectedUnitDataFile = useMemo(() => {
+    if (!selectedProjectId || !selectedYear || !selectedUnitCode || selectedUnitCode === TOTAL_REPORT_UNIT_CODE) {
+      return null;
+    }
+
+    return (
+      [...dataFiles]
+        .filter(
+          (file) =>
+            file.projectId === selectedProjectId &&
+            file.year === selectedYear &&
+            file.unitCode === selectedUnitCode,
+        )
+        .sort((left, right) => {
+          const leftTime = new Date((left.updatedAt || left.submittedAt || 0) as string | number | Date).getTime();
+          const rightTime = new Date((right.updatedAt || right.submittedAt || 0) as string | number | Date).getTime();
+          return rightTime - leftTime;
+        })[0] || null
+    );
+  }, [dataFiles, selectedProjectId, selectedUnitCode, selectedYear]);
 
   const columnHeaders = useMemo(() => {
     if (!selectedTemplate) {
@@ -1128,6 +1148,22 @@ export function ReportView({
     });
   };
 
+  const downloadOriginalDataFile = (record: DataFileRecordSummary) => {
+    const downloadUrl = record.downloadURL?.trim() || getPublicUrlByPath(record.storagePath);
+    if (!downloadUrl) {
+      throw new Error('Không tìm thấy đường dẫn tải file gốc của đơn vị này.');
+    }
+
+    const anchor = document.createElement('a');
+    anchor.href = downloadUrl;
+    anchor.download = record.fileName || `DuLieu_${record.unitCode}_${record.year}.xlsx`;
+    anchor.rel = 'noopener noreferrer';
+    anchor.target = '_blank';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+  };
+
   const buildWorkbookForTemplates = async (
     templatesToExport: FormTemplate[],
     options?: { requireTemplateWorkbook?: boolean },
@@ -1194,6 +1230,15 @@ export function ReportView({
 
     setIsExporting(true);
     try {
+      if (selectedUnitCode !== TOTAL_REPORT_UNIT_CODE) {
+        if (!selectedUnitDataFile) {
+          throw new Error('Không tìm thấy file dữ liệu gốc của đơn vị này để tải về.');
+        }
+
+        downloadOriginalDataFile(selectedUnitDataFile);
+        return;
+      }
+
       const fileName = [
         'BaoCao',
         sanitizeFileNamePart(selectedProject?.name || 'DuAn'),
