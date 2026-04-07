@@ -5,6 +5,7 @@ import {
   BellDot,
   CheckCircle2,
   FileBarChart,
+  Lock,
   LogIn,
   LogOut,
   Users,

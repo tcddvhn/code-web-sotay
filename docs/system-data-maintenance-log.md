@@ -482,3 +482,12 @@ pm.cmd run build: pass.
 - 
 pm.cmd run check:encoding v?n báo n? k? thu?t cu trong C:\CODE_APPWEB\src\supabaseStore.ts, chua x? lý trong d?t này.
 
+
+## 2026-04-07 - S?a l?i dang xu?t/dang nh?p l?i
+- S?a C:\CODE_APPWEB\src\App.tsx: b? sung l?i import Lock t? lucide-react cho màn dang nh?p.
+- Nguyên nhân l?i runtime Illegal constructor: JSX <Lock /> b? tr? nh?m sang d?i tu?ng global Lock c?a trình duy?t khi import icon b? thi?u.
+- Ch?y 
+pm.cmd run lint: pass.
+- Ch?y 
+pm.cmd run build: pass.
+
