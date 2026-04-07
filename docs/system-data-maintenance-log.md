@@ -537,3 +537,12 @@ pm.cmd run build: pass.
 - 2026-04-07: S?a l?i tr?c ti?p các chu?i ti?ng Vi?t trong C:\CODE_APPWEB\src\components\ImportFiles.tsx thay vì vá b?ng text replacement runtime. Gi? nguyên logic ghi dè c?a admin và lu?ng n?p file hi?n t?i. Ðã ch?y 
 pm.cmd run lint và 
 pm.cmd run build thành công.
+
+## 2026-04-07 - Sua man Tiep nhan du lieu de build va hien thi on dinh
+- Go bo cach sua text bang runtime/dom-walk trong C:\CODE_APPWEB\src\components\ImportFiles.tsx vi cach nay lam hu ca text giao dien va ten don vi lay tu du lieu.
+- Sua lai cac chuoi hien thi chinh cua man Tiep nhan du lieu, modal tien do, modal tong ket va cac thao tac xoa du lieu theo nam/du an/don vi.
+- Sua loi cu phap trong handleDeleteProject (khai bao trung const confirmed) la nguyen nhan lam Vercel build fail.
+- Kiem tra lai:
+  - npm.cmd run lint: pass
+  - npm.cmd run build: pass
+
