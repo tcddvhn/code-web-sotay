@@ -98,100 +98,7 @@ function tokenize(value: string) {
     .filter(Boolean);
 }
 
-function repairMojibake(value: string) {
-  try {
-    const bytes = Uint8Array.from(value, (char) => char.charCodeAt(0) & 0xff);
-    const decoded = new TextDecoder('utf-8').decode(bytes);
-    return decoded.includes('ï¿½') ? value : decoded;
-  } catch {
-    return value;
-  }
-}
 
-const INTAKE_TEXT_REPLACEMENTS: Array<[string, string]> = [
-  ['TiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n dÃ¡Â»Â¯ liÃ¡Â»â€¡u', 'Tiáº¿p nháº­n dá»¯ liá»‡u'],
-  ['ChÃ¡Â»Ân dÃ¡Â»Â± ÃƒÂ¡n, nÃ„Æ’m vÃƒÂ  biÃ¡Â»Æ’u mÃ¡ÂºÂ«u phÃƒÂ¹ hÃ¡Â»Â£p Ã„â€˜Ã¡Â»Æ’ nhÃ¡ÂºÂ­p dÃ¡Â»Â¯ liÃ¡Â»â€¡u Excel theo Ã„â€˜ÃƒÂºng cÃ¡ÂºÂ¥u trÃƒÂºc Ã„â€˜ÃƒÂ£ phÃƒÂ¡t hÃƒÂ nh.', 'Chá»n dá»± Ã¡n, nÄƒm vÃ  biá»ƒu máº«u phÃ¹ há»£p Ä‘á»ƒ nháº­p dá»¯ liá»‡u Excel theo Ä‘Ãºng cáº¥u trÃºc Ä‘Ã£ phÃ¡t hÃ nh.'],
-  ['DÃ¡Â»Â± ÃƒÂ¡n', 'Dá»± Ã¡n'],
-  ['ChÃ¡Â»Ân Ã„â€˜ÃƒÂºng dÃ¡Â»Â± ÃƒÂ¡n Ã„â€˜Ã¡Â»Æ’ hÃ¡Â»â€¡ thÃ¡Â»â€˜ng lÃ¡Â»Âc Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ chÃ†Â°a tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n vÃƒÂ  cÃƒÂ¡c biÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜ÃƒÂ£ chÃ¡Â»â€˜t tÃ†Â°Ã†Â¡ng Ã¡Â»Â©ng.', 'Chá»n Ä‘Ãºng dá»± Ã¡n Ä‘á»ƒ há»‡ thá»‘ng lá»c Ä‘Æ¡n vá»‹ chÆ°a tiáº¿p nháº­n vÃ  cÃ¡c biá»ƒu máº«u Ä‘Ã£ chá»‘t tÆ°Æ¡ng á»©ng.'],
-  ['Ã„Âang hoÃ¡ÂºÂ¡t Ã„â€˜Ã¡Â»â„¢ng', 'Äang hoáº¡t Ä‘á»™ng'],
-  ['Ã„ÂÃƒÂ£ hoÃƒÂ n thÃƒÂ nh', 'ÄÃ£ hoÃ n thÃ nh'],
-  ['NÃ„Æ’m', 'NÄƒm'],
-  ['Ghim nÃ„Æ’m nÃƒÂ y cho lÃ¡ÂºÂ§n nhÃ¡ÂºÂ­p sau', 'Ghim nÄƒm nÃ y cho láº§n nháº­p sau'],
-  ['ChÃ†Â°a cÃƒÂ³ mÃƒÂ´ tÃ¡ÂºÂ£ dÃ¡Â»Â± ÃƒÂ¡n.', 'ChÆ°a cÃ³ mÃ´ táº£ dá»± Ã¡n.'],
-  ['Ã„ÂÃ†Â¡n vÃ¡Â»â€¹ chÃ†Â°a tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n', 'ÄÆ¡n vá»‹ chÆ°a tiáº¿p nháº­n'],
-  ['Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹', 'Ä‘Æ¡n vá»‹'],
-  ['Danh sÃƒÂ¡ch nÃƒÂ y dÃƒÂ¹ng cÃƒÂ¹ng logic vÃ¡Â»â€ºi NhÃ¡ÂºÂ­t kÃƒÂ½ vÃƒÂ  tÃ¡Â»Â± lÃ¡Â»Âc theo dÃ¡Â»Â± ÃƒÂ¡n, nÃ„Æ’m vÃƒÂ  phÃƒÂ¢n quyÃ¡Â»Ân theo dÃƒÂµi.', 'Danh sÃ¡ch nÃ y dÃ¹ng cÃ¹ng logic vá»›i Nháº­t kÃ½ vÃ  tá»± lá»c theo dá»± Ã¡n, nÄƒm vÃ  phÃ¢n quyá»n theo dÃµi.'],
-  ['ChÃ†Â°a tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n', 'ChÆ°a tiáº¿p nháº­n'],
-  ['Ã„ÂÃ†Â¡n vÃ¡Â»â€¹ cÃ¡Â»Â§a bÃ¡ÂºÂ¡n Ã„â€˜ÃƒÂ£ cÃƒÂ³ dÃ¡Â»Â¯ liÃ¡Â»â€¡u trong dÃ¡Â»Â± ÃƒÂ¡n/nÃ„Æ’m Ã„â€˜ang chÃ¡Â»Ân hoÃ¡ÂºÂ·c khÃƒÂ´ng cÃƒÂ²n mÃ¡Â»Â¥c chÃ†Â°a tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n.', 'ÄÆ¡n vá»‹ cá»§a báº¡n Ä‘Ã£ cÃ³ dá»¯ liá»‡u trong dá»± Ã¡n/nÄƒm Ä‘ang chá»n hoáº·c khÃ´ng cÃ²n má»¥c chÆ°a tiáº¿p nháº­n.'],
-  ['TÃƒÂ i khoÃ¡ÂºÂ£n nÃƒÂ y chÃ†Â°a Ã„â€˜Ã†Â°Ã¡Â»Â£c phÃƒÂ¢n cÃƒÂ´ng Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ theo dÃƒÂµi cho luÃ¡Â»â€œng tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n.', 'TÃ i khoáº£n nÃ y chÆ°a Ä‘Æ°á»£c phÃ¢n cÃ´ng Ä‘Æ¡n vá»‹ theo dÃµi cho luá»“ng tiáº¿p nháº­n.'],
-  ['KhÃƒÂ´ng cÃƒÂ²n Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ nÃƒÂ o chÃ†Â°a tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n trong dÃ¡Â»Â± ÃƒÂ¡n/nÃ„Æ’m Ã„â€˜ang chÃ¡Â»Ân.', 'KhÃ´ng cÃ²n Ä‘Æ¡n vá»‹ nÃ o chÆ°a tiáº¿p nháº­n trong dá»± Ã¡n/nÄƒm Ä‘ang chá»n.'],
-  ['BiÃ¡Â»Æ’u mÃ¡ÂºÂ«u', 'Biá»ƒu máº«u'],
-  ['HÃ¡Â»â€¡ thÃ¡Â»â€˜ng Ã„â€˜ang Ã„â€˜Ã¡Â»â€˜i chiÃ¡ÂºÂ¿u theo biÃ¡Â»Æ’u mÃ¡ÂºÂ«u bÃ¡ÂºÂ¡n chÃ¡Â»Ân. File chÃ¡Â»â€° Ã„â€˜Ã†Â°Ã¡Â»Â£c nhÃ¡ÂºÂ­n khi cÃƒÂ³ Ã„â€˜ÃƒÂºng sheet bÃ¡ÂºÂ¯t buÃ¡Â»â„¢c cÃ¡Â»Â§a biÃ¡Â»Æ’u nÃƒÂ y.', 'Há»‡ thá»‘ng Ä‘ang Ä‘á»‘i chiáº¿u theo biá»ƒu máº«u báº¡n chá»n. File chá»‰ Ä‘Æ°á»£c nháº­n khi cÃ³ Ä‘Ãºng sheet báº¯t buá»™c cá»§a biá»ƒu nÃ y.'],
-  ['Khi tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n, hÃ¡Â»â€¡ thÃ¡Â»â€˜ng sÃ¡ÂºÂ½ Ã„â€˜Ã¡Â»â€˜i chiÃ¡ÂºÂ¿u toÃƒÂ n bÃ¡Â»â„¢ biÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜ÃƒÂ£ chÃ¡Â»â€˜t cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n. File chÃ¡Â»â€° Ã„â€˜Ã†Â°Ã¡Â»Â£c nhÃ¡ÂºÂ­n khi Ã„â€˜Ã¡Â»Â§ 100% sheet bÃ¡ÂºÂ¯t buÃ¡Â»â„¢c; cÃƒÂ¡c sheet thÃ¡Â»Â«a sÃ¡ÂºÂ½ tÃ¡Â»Â± bÃ¡Â»Â qua.', 'Khi tiáº¿p nháº­n, há»‡ thá»‘ng sáº½ Ä‘á»‘i chiáº¿u toÃ n bá»™ biá»ƒu máº«u Ä‘Ã£ chá»‘t cá»§a dá»± Ã¡n. File chá»‰ Ä‘Æ°á»£c nháº­n khi Ä‘á»§ 100% sheet báº¯t buá»™c; cÃ¡c sheet thá»«a sáº½ tá»± bá» qua.'],
-  ['TÃ¡ÂºÂ¥t cÃ¡ÂºÂ£ biÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜ÃƒÂ£ chÃ¡Â»â€˜t', 'Táº¥t cáº£ biá»ƒu máº«u Ä‘Ã£ chá»‘t'],
-  ['DÃ¡Â»Â± ÃƒÂ¡n nÃƒÂ y chÃ†Â°a cÃƒÂ³ biÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜ÃƒÂ£ chÃ¡Â»â€˜t Ã„â€˜Ã¡Â»Æ’ tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n dÃ¡Â»Â¯ liÃ¡Â»â€¡u.', 'Dá»± Ã¡n nÃ y chÆ°a cÃ³ biá»ƒu máº«u Ä‘Ã£ chá»‘t Ä‘á»ƒ tiáº¿p nháº­n dá»¯ liá»‡u.'],
-  ['QuÃ¡ÂºÂ£n trÃ¡Â»â€¹ dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo nÃ„Æ’m', 'Quáº£n trá»‹ dá»¯ liá»‡u theo nÄƒm'],
-  ['-- ChÃ¡Â»Ân Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ --', '-- Chá»n Ä‘Æ¡n vá»‹ --'],
-  ['XÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹', 'XÃ³a dá»¯ liá»‡u theo Ä‘Æ¡n vá»‹'],
-  ['XÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo nÃ„Æ’m', 'XÃ³a dá»¯ liá»‡u theo nÄƒm'],
-  ['XÃƒÂ³a toÃƒÂ n bÃ¡Â»â„¢ dÃ¡Â»Â± ÃƒÂ¡n hiÃ¡Â»â€¡n tÃ¡ÂºÂ¡i', 'XÃ³a toÃ n bá»™ dá»± Ã¡n hiá»‡n táº¡i'],
-  ['PhÃƒÂª duyÃ¡Â»â€¡t ghi Ã„â€˜ÃƒÂ¨ dÃ¡Â»Â¯ liÃ¡Â»â€¡u', 'PhÃª duyá»‡t ghi Ä‘Ã¨ dá»¯ liá»‡u'],
-  ['Ã„ÂÃ†Â¡n vÃ¡Â»â€¹ Ã„â€˜ÃƒÂ£ cÃƒÂ³ dÃ¡Â»Â¯ liÃ¡Â»â€¡u muÃ¡Â»â€˜n nÃ¡Â»â„¢p lÃ¡ÂºÂ¡i file sÃ¡ÂºÂ½ Ã„â€˜Ã†Â°Ã¡Â»Â£c Ã„â€˜Ã†Â°a vÃƒÂ o danh sÃƒÂ¡ch chÃ¡Â»Â phÃƒÂª duyÃ¡Â»â€¡t. Admin duyÃ¡Â»â€¡t tÃ¡ÂºÂ¡i Ã„â€˜ÃƒÂ¢y Ã„â€˜Ã¡Â»Æ’ thay thÃ¡ÂºÂ¿ dÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃ…Â©.', 'ÄÆ¡n vá»‹ Ä‘Ã£ cÃ³ dá»¯ liá»‡u muá»‘n ná»™p láº¡i file sáº½ Ä‘Æ°á»£c Ä‘Æ°a vÃ o danh sÃ¡ch chá» phÃª duyá»‡t. Admin duyá»‡t táº¡i Ä‘Ã¢y Ä‘á»ƒ thay tháº¿ dá»¯ liá»‡u cÅ©.'],
-  ['yÃƒÂªu cÃ¡ÂºÂ§u chÃ¡Â»Â duyÃ¡Â»â€¡t', 'yÃªu cáº§u chá» duyá»‡t'],
-  ['NgÃ†Â°Ã¡Â»Âi gÃ¡Â»Â­i', 'NgÆ°á»i gá»­i'],
-  ['ChÃ†Â°a xÃƒÂ¡c Ã„â€˜Ã¡Â»â€¹nh', 'ChÆ°a xÃ¡c Ä‘á»‹nh'],
-  ['ChÃ¡Â»Â phÃƒÂª duyÃ¡Â»â€¡t', 'Chá» phÃª duyá»‡t'],
-  ['Ghi chÃƒÂº phÃƒÂª duyÃ¡Â»â€¡t / tÃ¡Â»Â« chÃ¡Â»â€˜i', 'Ghi chÃº phÃª duyá»‡t / tá»« chá»‘i'],
-  ['PhÃƒÂª duyÃ¡Â»â€¡t ghi Ã„â€˜ÃƒÂ¨', 'PhÃª duyá»‡t ghi Ä‘Ã¨'],
-  ['TÃ¡Â»Â« chÃ¡Â»â€˜i', 'Tá»« chá»‘i'],
-  ['KÃƒÂ©o thÃ¡ÂºÂ£ hoÃ¡ÂºÂ·c bÃ¡ÂºÂ¥m Ã„â€˜Ã¡Â»Æ’ chÃ¡Â»Ân file', 'KÃ©o tháº£ hoáº·c báº¥m Ä‘á»ƒ chá»n file'],
-  ['TÃƒÂ i khoÃ¡ÂºÂ£n Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ chÃ¡Â»â€° nÃ¡Â»â„¢p 1 file vÃƒÂ  hÃ¡Â»â€¡ thÃ¡Â»â€˜ng tÃ¡Â»Â± gÃ¡ÂºÂ¯n Ã„â€˜ÃƒÂºng Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p.', 'TÃ i khoáº£n Ä‘Æ¡n vá»‹ chá»‰ ná»™p 1 file vÃ  há»‡ thá»‘ng tá»± gáº¯n Ä‘Ãºng Ä‘Æ¡n vá»‹ Ä‘Äƒng nháº­p.'],
-  ['PhÃƒÂ¹ hÃ¡Â»Â£p khi nhÃ¡ÂºÂ­n tÃ¡Â»Â«ng file lÃ¡ÂºÂ».', 'PhÃ¹ há»£p khi nháº­n tá»«ng file láº».'],
-  ['ChÃ¡Â»Ân cÃ¡ÂºÂ£ thÃ†Â° mÃ¡Â»Â¥c dÃ¡Â»Â¯ liÃ¡Â»â€¡u', 'Chá»n cáº£ thÆ° má»¥c dá»¯ liá»‡u'],
-  ['HÃ¡Â»â€¡ thÃ¡Â»â€˜ng sÃ¡ÂºÂ½ gÃ¡Â»Â£i ÃƒÂ½ Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ tÃ¡Â»Â« tÃƒÂªn file trong thÃ†Â° mÃ¡Â»Â¥c.', 'Há»‡ thá»‘ng sáº½ gá»£i Ã½ Ä‘Æ¡n vá»‹ tá»« tÃªn file trong thÆ° má»¥c.'],
-  ['Danh sÃƒÂ¡ch file chÃ¡Â»Â tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n', 'Danh sÃ¡ch file chá» tiáº¿p nháº­n'],
-  ['HÃ¡Â»â€¡ thÃ¡Â»â€˜ng tÃ¡Â»Â± gÃ¡ÂºÂ¯n Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ theo tÃƒÂ i khoÃ¡ÂºÂ£n Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p vÃƒÂ  chÃ¡Â»â€° nhÃ¡ÂºÂ­n 1 file mÃ¡Â»â€”i lÃ¡ÂºÂ§n gÃ¡Â»Â­i.', 'Há»‡ thá»‘ng tá»± gáº¯n Ä‘Æ¡n vá»‹ theo tÃ i khoáº£n Ä‘Äƒng nháº­p vÃ  chá»‰ nháº­n 1 file má»—i láº§n gá»­i.'],
-  ['HÃ¡Â»â€¡ thÃ¡Â»â€˜ng Ã„â€˜ÃƒÂ£ cÃ¡Â»â€˜ gÃ¡ÂºÂ¯ng tÃ¡Â»Â± nhÃ¡ÂºÂ­n diÃ¡Â»â€¡n Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ tÃ¡Â»Â« tÃƒÂªn file. BÃ¡ÂºÂ¡n chÃ¡Â»â€° cÃ¡ÂºÂ§n rÃƒÂ  lÃ¡ÂºÂ¡i cÃƒÂ¡c file cÃ¡ÂºÂ§n xÃƒÂ¡c nhÃ¡ÂºÂ­n.', 'Há»‡ thá»‘ng Ä‘Ã£ cá»‘ gáº¯ng tá»± nháº­n diá»‡n Ä‘Æ¡n vá»‹ tá»« tÃªn file. Báº¡n chá»‰ cáº§n rÃ  láº¡i cÃ¡c file cáº§n xÃ¡c nháº­n.'],
-  ['HiÃ¡Â»â€¡n tÃ¡ÂºÂ¥t cÃ¡ÂºÂ£ file', 'Hiá»‡n táº¥t cáº£ file'],
-  ['ChÃ¡Â»â€° hiÃ¡Â»â€¡n file Ã„â€˜ÃƒÂ£ sÃ¡ÂºÂµn sÃƒÂ ng', 'Chá»‰ hiá»‡n file Ä‘Ã£ sáºµn sÃ ng'],
-  ['ChÃ¡Â»â€° hiÃ¡Â»â€¡n file cÃ¡ÂºÂ§n xÃƒÂ¡c nhÃ¡ÂºÂ­n', 'Chá»‰ hiá»‡n file cáº§n xÃ¡c nháº­n'],
-  ['Ã„ÂÃ†Â¡n vÃ¡Â»â€¹ Ã„â€˜ÃƒÂ£ cÃƒÂ³ dÃ¡Â»Â¯ liÃ¡Â»â€¡u', 'ÄÆ¡n vá»‹ Ä‘Ã£ cÃ³ dá»¯ liá»‡u'],
-  ['ChÃ¡Â»â€° hiÃ¡Â»â€¡n file lÃ¡Â»â€”i sheet', 'Chá»‰ hiá»‡n file lá»—i sheet'],
-  ['XÃƒÂ¡c nhÃ¡ÂºÂ­n tÃ¡ÂºÂ¥t cÃ¡ÂºÂ£ gÃ¡Â»Â£i ÃƒÂ½ hÃ¡Â»Â£p lÃ¡Â»â€¡', 'XÃ¡c nháº­n táº¥t cáº£ gá»£i Ã½ há»£p lá»‡'],
-  ['XuÃ¡ÂºÂ¥t danh sÃƒÂ¡ch file lÃ¡Â»â€”i', 'Xuáº¥t danh sÃ¡ch file lá»—i'],
-  ['NÃ¡Â»â„¢p biÃ¡Â»Æ’u bÃƒÂ¡o cÃƒÂ¡o', 'Ná»™p biá»ƒu bÃ¡o cÃ¡o'],
-  ['BÃ¡ÂºÂ¯t Ã„â€˜Ã¡ÂºÂ§u tÃ¡Â»â€¢ng hÃ¡Â»Â£p', 'Báº¯t Ä‘áº§u tá»•ng há»£p'],
-  ['BÃ¡Â»â„¢ lÃ¡Â»Âc', 'Bá»™ lá»c'],
-  ['Ã„â€˜ang dÃƒÂ¹ng cÃƒÂ¹ng Ã„â€˜iÃ¡Â»Âu kiÃ¡Â»â€¡n vÃ¡Â»â€ºi NhÃ¡ÂºÂ­t kÃƒÂ½', 'Ä‘ang dÃ¹ng cÃ¹ng Ä‘iá»u kiá»‡n vá»›i Nháº­t kÃ½'],
-  ['BÃ¡Â»Â file', 'Bá» file'],
-  ['Ã„ÂÃ†Â¡n vÃ¡Â»â€¹ nÃ¡Â»â„¢p dÃ¡Â»Â¯ liÃ¡Â»â€¡u', 'ÄÆ¡n vá»‹ ná»™p dá»¯ liá»‡u'],
-  ['HÃ¡Â»â€¡ thÃ¡Â»â€˜ng tÃ¡Â»Â± gÃ¡ÂºÂ¯n Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ theo tÃƒÂ i khoÃ¡ÂºÂ£n Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p, khÃƒÂ´ng cÃ¡ÂºÂ§n chÃ¡Â»Ân lÃ¡ÂºÂ¡i.', 'Há»‡ thá»‘ng tá»± gáº¯n Ä‘Æ¡n vá»‹ theo tÃ i khoáº£n Ä‘Äƒng nháº­p, khÃ´ng cáº§n chá»n láº¡i.'],
-  ['GÃƒÂµ tÃƒÂªn Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ Ã„â€˜Ã¡Â»Æ’ gÃ¡Â»Â£i ÃƒÂ½', 'GÃµ tÃªn Ä‘Æ¡n vá»‹ Ä‘á»ƒ gá»£i Ã½'],
-  ['-- HoÃ¡ÂºÂ·c chÃ¡Â»Ân nhanh Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ --', '-- Hoáº·c chá»n nhanh Ä‘Æ¡n vá»‹ --'],
-  ['GÃ¡Â»Â£i ÃƒÂ½', 'Gá»£i Ã½'],
-  ['File hÃ¡Â»Â£p lÃ¡Â»â€¡. Ã„ÂÃƒÂ£ nhÃ¡ÂºÂ­n Ã„â€˜Ã¡Â»Â§ cÃƒÂ¡c sheet bÃ¡ÂºÂ¯t buÃ¡Â»â„¢c', 'File há»£p lá»‡. ÄÃ£ nháº­n Ä‘á»§ cÃ¡c sheet báº¯t buá»™c'],
-  ['ThiÃ¡ÂºÂ¿u sheet', 'Thiáº¿u sheet'],
-  ['Ã„Âang kiÃ¡Â»Æ’m tra cÃ¡ÂºÂ¥u trÃƒÂºc file...', 'Äang kiá»ƒm tra cáº¥u trÃºc file...'],
-  ['TiÃ¡ÂºÂ¿n Ã„â€˜Ã¡Â»â„¢ xÃ¡Â»Â­ lÃƒÂ½', 'Tiáº¿n Ä‘á»™ xá»­ lÃ½'],
-  ['HoÃƒÂ n thÃƒÂ nh', 'HoÃ n thÃ nh'],
-  ['Ã„ÂÃƒÂ£ hiÃ¡Â»Æ’u', 'ÄÃ£ hiá»ƒu'],
-  ['KÃ¡ÂºÂ¿t quÃ¡ÂºÂ£ tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n', 'Káº¿t quáº£ tiáº¿p nháº­n'],
-  ['TÃ¡Â»â€¢ng hÃ¡Â»Â£p file Ã„â€˜ÃƒÂ£ hoÃƒÂ n tÃ¡ÂºÂ¥t', 'Tá»•ng há»£p file Ä‘Ã£ hoÃ n táº¥t'],
-  ['Ã„ÂÃƒÂ£ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t', 'ÄÃ£ cáº­p nháº­t'],
-  ['KhÃƒÂ´ng cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t Ã„â€˜Ã†Â°Ã¡Â»Â£c', 'KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c'],
-  ['Danh sÃƒÂ¡ch Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ khÃƒÂ´ng cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t Ã„â€˜Ã†Â°Ã¡Â»Â£c', 'Danh sÃ¡ch Ä‘Æ¡n vá»‹ khÃ´ng cáº­p nháº­t Ä‘Æ°á»£c'],
-  ['LÃƒÂ½ do', 'LÃ½ do'],
-  ['TÃ¡ÂºÂ¥t cÃ¡ÂºÂ£ cÃƒÂ¡c Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ Ã„â€˜ÃƒÂ£ chÃ¡Â»Ân Ã„â€˜Ã¡Â»Âu Ã„â€˜ÃƒÂ£ Ã„â€˜Ã†Â°Ã¡Â»Â£c cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t thÃƒÂ nh cÃƒÂ´ng.', 'Táº¥t cáº£ cÃ¡c Ä‘Æ¡n vá»‹ Ä‘Ã£ chá»n Ä‘á»u Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t thÃ nh cÃ´ng.'],
-  ['CÃƒÂ¡c Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n mÃ¡Â»â„¢t phÃ¡ÂºÂ§n', 'CÃ¡c Ä‘Æ¡n vá»‹ tiáº¿p nháº­n má»™t pháº§n'],
-];
-
-function normalizeIntakeDisplayText(value: string) {
-  let next = value;
-  for (const [bad, good] of INTAKE_TEXT_REPLACEMENTS) {
-    next = next.split(bad).join(good);
-  }
-  return next;
-}
 
 function extractSearchText(file: File) {
   const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || '';
@@ -217,7 +124,7 @@ function findBestUnitMatch(searchText: string, units: ManagedUnit[]): UnitMatchR
       unitName: codeMatch.name,
       type: 'CODE',
       score: 1,
-      reason: `KhÃ¡Â»â€ºp theo mÃƒÂ£ Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ ${codeMatch.code}.`,
+      reason: `Khớp theo mã đơn vị ${codeMatch.code}.`,
     };
   }
 
@@ -242,7 +149,7 @@ function findBestUnitMatch(searchText: string, units: ManagedUnit[]): UnitMatchR
         unitName: unit.name,
         type: 'NAME',
         score,
-        reason: 'KhÃ¡Â»â€ºp mÃ¡ÂºÂ¡nh theo tÃƒÂªn Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹.',
+        reason: 'Khớp mạnh theo tên đơn vị.',
       };
       if (!bestMatch || next.score > bestMatch.score) {
         bestMatch = next;
@@ -264,7 +171,7 @@ function findBestUnitMatch(searchText: string, units: ManagedUnit[]): UnitMatchR
       unitName: unit.name,
       type: 'FUZZY',
       score,
-      reason: `G?i ? g?n ??ng ${Math.round(score * 100)}%.`,
+      reason: `Gợi ý gần đúng ${Math.round(score * 100)}%.`,
     };
 
     if (!bestMatch || next.score > bestMatch.score) {
@@ -278,17 +185,17 @@ function findBestUnitMatch(searchText: string, units: ManagedUnit[]): UnitMatchR
 function getMatchBadgeLabel(fileItem: PendingFile) {
   switch (fileItem.matchStatus) {
     case 'AUTO_FILLED':
-      if (fileItem.matchType === 'CODE') return '?? t? ?i?n theo m?';
-      if (fileItem.matchType === 'NAME') return '?? t? ?i?n theo t?n';
-      return '?? t? ?i?n';
+      if (fileItem.matchType === 'CODE') return 'Đã tự điền theo mã';
+      if (fileItem.matchType === 'NAME') return 'Đã tự điền theo tên';
+      return 'Đã tự điền';
     case 'NEEDS_CONFIRMATION':
-      return `C?n x?c nh?n ${Math.round(fileItem.matchScore * 100)}%`;
+      return `Cần xác nhận ${Math.round(fileItem.matchScore * 100)}%`;
     case 'MANUAL':
-      return '?? ch?n th? c?ng';
+      return 'Đã chọn thủ công';
     case 'CONFLICT':
-      return '??n v? ?? c? d? li?u';
+      return 'Đơn vị đã có dữ liệu';
     default:
-      return 'Ch?a nh?n di?n';
+      return 'Chưa nhận diện';
   }
 }
 
@@ -330,7 +237,7 @@ function buildPendingFiles(
       matchType: 'NONE',
       matchStatus: 'UNMATCHED',
       matchScore: 0,
-      matchReason: 'Ch?a nh?n di?n ???c ??n v? t? t?n file.',
+      matchReason: 'Chưa nhận diện được đơn vị từ tên file.',
     };
 
     if (!match) {
@@ -346,7 +253,7 @@ function buildPendingFiles(
         matchType: match.type,
         matchStatus: 'CONFLICT',
         matchScore: match.score,
-        matchReason: `${match.reason} ??n v? n?y ?? c? d? li?u trong d? ?n/n?m ?ang ch?n ho?c ?? ???c ch?n trong ??t hi?n t?i.`,
+        matchReason: `${match.reason} Đơn vị này đã có dữ liệu trong dự án/năm đang chọn hoặc đã được chọn trong đợt hiện tại.`,
       };
     }
 
@@ -498,7 +405,6 @@ export function ImportFiles({
   const [overwriteReviewNote, setOverwriteReviewNote] = useState<Record<string, string>>({});
   const [overwriteApprovedIds, setOverwriteApprovedIds] = useState<Record<string, boolean>>({});
   const folderInputRef = useRef<HTMLInputElement | null>(null);
-  const rootRef = useRef<HTMLDivElement | null>(null);
   const isUnitUser = currentUser?.role === 'unit_user';
   const canOverwriteDirectly = isAdmin && !isUnitUser;
 
@@ -591,7 +497,6 @@ export function ImportFiles({
     return scopedUnits
       .map((unit) => {
         const unitRows = rowsForYear.filter((row) => row.unitCode === unit.code);
-        const isSubmitted = unitCodesWithStoredData.has(unit.code) || unitRows.length > 0;
         return {
           code: unit.code,
           name: unit.name,
@@ -648,7 +553,7 @@ export function ImportFiles({
         }
       })
       .catch((error) => {
-        console.error('KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i yÃƒÂªu cÃ¡ÂºÂ§u ghi Ã„â€˜ÃƒÂ¨ dÃ¡Â»Â¯ liÃ¡Â»â€¡u:', error);
+        console.error('Không thể tải yêu cầu ghi đè dữ liệu:', error);
       });
 
     return () => {
@@ -703,7 +608,7 @@ export function ImportFiles({
                 status: 'invalid',
                 missingSheets: validation.missingSheets,
                 matchedSheets,
-                reason: 'ThiÃ¡ÂºÂ¿u biÃ¡Â»Æ’u mÃ¡ÂºÂ«u bÃ¡ÂºÂ¯t buÃ¡Â»â„¢c cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n.',
+      reason: 'Thiếu biểu mẫu bắt buộc của dự án.',
               } satisfies FileValidationState,
             ] as const;
           }
@@ -715,7 +620,7 @@ export function ImportFiles({
                 status: 'invalid',
                 missingSheets: [],
                 matchedSheets: [],
-                reason: 'KhÃƒÂ´ng cÃƒÂ³ sheet nÃƒÂ o trÃƒÂ¹ng tÃƒÂªn biÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜ÃƒÂ£ chÃ¡Â»â€˜t.',
+      reason: 'Không có sheet nào trùng tên biểu mẫu đã chốt.',
               } satisfies FileValidationState,
             ] as const;
           }
@@ -748,7 +653,7 @@ export function ImportFiles({
               status: 'invalid',
               missingSheets: [],
               matchedSheets: [],
-              reason: error instanceof Error ? error.message : 'KhÃƒÂ´ng Ã„â€˜Ã¡Â»Âc Ã„â€˜Ã†Â°Ã¡Â»Â£c file Excel.',
+      reason: error instanceof Error ? error.message : 'Không đọc được file Excel.',
             } satisfies FileValidationState,
           ] as const;
         }
@@ -798,8 +703,8 @@ export function ImportFiles({
           matchStatus: unitCodesWithStoredData.has(currentUser.unitCode) ? ('CONFLICT' as const) : ('MANUAL' as const),
           matchScore: 1,
           matchReason: unitCodesWithStoredData.has(currentUser.unitCode)
-            ? 'Ã„ÂÃ†Â¡n vÃ¡Â»â€¹ cÃ¡Â»Â§a tÃƒÂ i khoÃ¡ÂºÂ£n nÃƒÂ y Ã„â€˜ÃƒÂ£ cÃƒÂ³ dÃ¡Â»Â¯ liÃ¡Â»â€¡u trong dÃ¡Â»Â± ÃƒÂ¡n/nÃ„Æ’m Ã„â€˜ang chÃ¡Â»Ân. NÃ¡Â»â„¢p file mÃ¡Â»â€ºi sÃ¡ÂºÂ½ chuyÃ¡Â»Æ’n sang yÃƒÂªu cÃ¡ÂºÂ§u ghi Ã„â€˜ÃƒÂ¨ chÃ¡Â»Â admin phÃƒÂª duyÃ¡Â»â€¡t.'
-            : 'HÃ¡Â»â€¡ thÃ¡Â»â€˜ng tÃ¡Â»Â± gÃ¡ÂºÂ¯n Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ theo tÃƒÂ i khoÃ¡ÂºÂ£n Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p.',
+            ? 'Đơn vị của tài khoản này đã có dữ liệu trong dự án/năm đang chọn. Nộp file mới sẽ chuyển sang yêu cầu ghi đè chờ admin phê duyệt.'
+            : 'Hệ thống tự gắn đơn vị theo tài khoản đăng nhập.',
         };
       });
 
@@ -846,7 +751,7 @@ export function ImportFiles({
     if (
       nextValue &&
       !window.confirm(
-        'ÄÆ¡n vá»‹ nÃ y Ä‘Ã£ cÃ³ dá»¯ liá»‡u. Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n cho phÃ©p ghi Ä‘Ã¨ dá»¯ liá»‡u hiá»‡n cÃ³ khi xá»­ lÃ½ file nÃ y khÃ´ng?',
+      'Đơn vị này đã có dữ liệu. Bạn có chắc chắn muốn cho phép ghi đè dữ liệu hiện có khi xử lý file này không?',
       )
     ) {
       return;
@@ -871,7 +776,7 @@ export function ImportFiles({
             unitCode: '',
             matchStatus: 'UNMATCHED',
             matchType: 'NONE',
-            matchReason: 'ChÃ†Â°a nhÃ¡ÂºÂ­n diÃ¡Â»â€¡n Ã„â€˜Ã†Â°Ã¡Â»Â£c Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ tÃ¡Â»Â« tÃƒÂªn file.',
+      matchReason: 'Chưa nhận diện được đơn vị từ tên file.',
           };
         }
 
@@ -883,8 +788,8 @@ export function ImportFiles({
           matchType: 'MANUAL',
           matchStatus: hasExistingData ? 'CONFLICT' : 'MANUAL',
           matchReason: hasExistingData
-            ? 'Ã„ÂÃ†Â¡n vÃ¡Â»â€¹ nÃƒÂ y Ã„â€˜ÃƒÂ£ cÃƒÂ³ dÃ¡Â»Â¯ liÃ¡Â»â€¡u trong hÃ¡Â»â€¡ thÃ¡Â»â€˜ng cho dÃ¡Â»Â± ÃƒÂ¡n/nÃ„Æ’m Ã„â€˜ang chÃ¡Â»Ân.'
-            : 'NgÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng Ã„â€˜ÃƒÂ£ chÃ¡Â»Ân Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ thÃ¡Â»Â§ cÃƒÂ´ng.',
+            ? 'Đơn vị này đã có dữ liệu trong hệ thống cho dự án/năm đang chọn.'
+            : 'Người dùng đã chọn đơn vị thủ công.',
         };
       }),
     );
@@ -914,7 +819,7 @@ export function ImportFiles({
               matchType: matchedUnit ? 'MANUAL' : item.matchType,
               matchStatus: matchedUnit ? 'MANUAL' : item.matchStatus,
               matchReason: matchedUnit
-                ? 'NgÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng Ã„â€˜ÃƒÂ£ xÃƒÂ¡c nhÃ¡ÂºÂ­n Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ bÃ¡ÂºÂ±ng cÃƒÂ¡ch nhÃ¡ÂºÂ­p trÃ¡Â»Â±c tiÃ¡ÂºÂ¿p.'
+                ? 'Người dùng đã xác nhận đơn vị bằng cách nhập trực tiếp.'
                 : item.matchReason,
             }
           : item,
@@ -937,7 +842,7 @@ export function ImportFiles({
             unitQuery: item.suggestedUnitName,
             matchType: 'MANUAL',
             matchStatus: 'MANUAL',
-            matchReason: 'Ã„ÂÃƒÂ£ xÃƒÂ¡c nhÃ¡ÂºÂ­n tÃ¡Â»Â± Ã„â€˜Ã¡Â»â„¢ng tÃ¡Â»Â« gÃ¡Â»Â£i ÃƒÂ½ hÃ¡Â»Â£p lÃ¡Â»â€¡.',
+        matchReason: 'Đã xác nhận tự động từ gợi ý hợp lệ.',
           };
         }
 
@@ -951,19 +856,19 @@ export function ImportFiles({
 
     setManagementMessage(
       confirmedCount > 0
-        ? `Ã„ÂÃƒÂ£ xÃƒÂ¡c nhÃ¡ÂºÂ­n ${confirmedCount} gÃ¡Â»Â£i ÃƒÂ½ hÃ¡Â»Â£p lÃ¡Â»â€¡.`
-        : 'KhÃƒÂ´ng cÃƒÂ³ gÃ¡Â»Â£i ÃƒÂ½ hÃ¡Â»Â£p lÃ¡Â»â€¡ nÃƒÂ o Ã„â€˜Ã¡Â»Æ’ xÃƒÂ¡c nhÃ¡ÂºÂ­n thÃƒÂªm.',
+        ? `Đã xác nhận ${confirmedCount} gợi ý hợp lệ.`
+        : 'Không có gợi ý hợp lệ nào để xác nhận thêm.',
     );
   };
 
   const exportFailedFiles = () => {
     if (lastFailedFiles.length === 0) {
-      setManagementMessage('ChÃ†Â°a cÃƒÂ³ danh sÃƒÂ¡ch file lÃ¡Â»â€”i Ã„â€˜Ã¡Â»Æ’ xuÃ¡ÂºÂ¥t.');
+      setManagementMessage('Chưa có danh sách file lỗi để xuất.');
       return;
     }
 
     const rows = [
-      ['TÃƒÂªn Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹', 'TÃƒÂªn file', 'ThiÃ¡ÂºÂ¿u sheet', 'LÃƒÂ½ do', 'Ã„ÂÃ†Â°Ã¡Â»Âng dÃ¡ÂºÂ«n tÃ†Â°Ã†Â¡ng Ã„â€˜Ã¡Â»â€˜i'],
+      ['Tên đơn vị', 'Tên file', 'Thiếu sheet', 'Lý do', 'Đường dẫn tương đối'],
       ...lastFailedFiles.map((item) => [
         item.unitName,
         item.fileName,
@@ -977,7 +882,7 @@ export function ImportFiles({
     const worksheet = XLSX.utils.aoa_to_sheet(rows);
     XLSX.utils.book_append_sheet(workbook, worksheet, 'File loi');
     XLSX.writeFile(workbook, `danh_sach_file_loi_${selectedProjectId || 'du_an'}.xlsx`);
-    setManagementMessage('Ã„ÂÃƒÂ£ xuÃ¡ÂºÂ¥t danh sÃƒÂ¡ch file lÃ¡Â»â€”i ra Excel.');
+    setManagementMessage('Đã xuất danh sách file lỗi ra Excel.');
   };
 
   const handleYearChange = (nextYear: string) => {
@@ -1103,11 +1008,11 @@ export function ImportFiles({
       await refreshOverwriteRequests();
       setManagementMessage(
         decision === 'APPROVED'
-          ? `Ã„ÂÃƒÂ£ phÃƒÂª duyÃ¡Â»â€¡t yÃƒÂªu cÃ¡ÂºÂ§u ghi Ã„â€˜ÃƒÂ¨ cho ${request.unitName} (${request.year}).`
-          : `Ã„ÂÃƒÂ£ tÃ¡Â»Â« chÃ¡Â»â€˜i yÃƒÂªu cÃ¡ÂºÂ§u ghi Ã„â€˜ÃƒÂ¨ cho ${request.unitName} (${request.year}).`,
+          ? `?? ph? duy?t y?u c?u ghi ?? cho ${request.unitName} (${request.year}).`
+          : `?? t? ch?i y?u c?u ghi ?? cho ${request.unitName} (${request.year}).`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃ¡Â»Â­ lÃƒÂ½ yÃƒÂªu cÃ¡ÂºÂ§u ghi Ã„â€˜ÃƒÂ¨.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? x? l? y?u c?u ghi ??.');
     } finally {
       setIsManagingData(false);
     }
@@ -1115,26 +1020,26 @@ export function ImportFiles({
 
   const processFiles = async () => {
     if (!currentProject) {
-      setManagementMessage('Vui lÃƒÂ²ng chÃ¡Â»Ân dÃ¡Â»Â± ÃƒÂ¡n trÃ†Â°Ã¡Â»â€ºc khi tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n dÃ¡Â»Â¯ liÃ¡Â»â€¡u.');
+      setManagementMessage('Vui l?ng ch?n d? ?n tr??c khi ti?p nh?n d? li?u.');
       return;
     }
 
     if (publishedTemplates.length === 0) {
       const message =
         projectTemplates.length === 0
-          ? 'DÃ¡Â»Â± ÃƒÂ¡n nÃƒÂ y chÃ†Â°a cÃƒÂ³ biÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜Ã¡Â»Æ’ tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n dÃ¡Â»Â¯ liÃ¡Â»â€¡u.'
-          : 'DÃ¡Â»Â± ÃƒÂ¡n nÃƒÂ y Ã„â€˜ÃƒÂ£ cÃƒÂ³ biÃ¡Â»Æ’u mÃ¡ÂºÂ«u nhÃ†Â°ng chÃ†Â°a chÃ¡Â»â€˜t mÃ¡ÂºÂ«u nÃƒÂ o. HÃƒÂ£y vÃƒÂ o mÃ¡Â»Â¥c BiÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜Ã¡Â»Æ’ chÃ¡Â»â€˜t trÃ†Â°Ã¡Â»â€ºc khi tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n dÃ¡Â»Â¯ liÃ¡Â»â€¡u.';
+        ? 'D? ?n n?y ch?a c? bi?u m?u ?? ti?p nh?n d? li?u.'
+        : 'D? ?n n?y ?? c? bi?u m?u nh?ng ch?a ch?t m?u n?o. H?y v?o m?c Bi?u m?u ?? ch?t tr??c khi ti?p nh?n d? li?u.';
       setManagementMessage(message);
       return;
     }
 
     if (activeTemplates.length === 0) {
-      setManagementMessage('BiÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜ÃƒÂ£ chÃ¡Â»Ân khÃƒÂ´ng cÃƒÂ²n hiÃ¡Â»â€¡u lÃ¡Â»Â±c. Vui lÃƒÂ²ng chÃ¡Â»Ân lÃ¡ÂºÂ¡i biÃ¡Â»Æ’u mÃ¡ÂºÂ«u cÃ¡ÂºÂ§n tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n.');
+      setManagementMessage('Bi?u m?u ?? ch?n kh?ng c?n hi?u l?c. Vui l?ng ch?n l?i bi?u m?u c?n ti?p nh?n.');
       return;
     }
 
     if (files.length === 0) {
-      setManagementMessage('Vui lÃƒÂ²ng chÃ¡Â»Ân ÃƒÂ­t nhÃ¡ÂºÂ¥t mÃ¡Â»â„¢t file Excel Ã„â€˜Ã¡Â»Æ’ tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n.');
+      setManagementMessage('Vui l?ng ch?n ?t nh?t m?t file Excel ?? ti?p nh?n.');
       return;
     }
 
@@ -1142,7 +1047,7 @@ export function ImportFiles({
     setIsManagingData(true);
     setManagementMessage(null);
     setLastFailedFiles([]);
-    showProgress('Ã„Âang tÃ¡Â»â€¢ng hÃ¡Â»Â£p dÃ¡Â»Â¯ liÃ¡Â»â€¡u', 'Ã„Âang chuÃ¡ÂºÂ©n bÃ¡Â»â€¹ Ã„â€˜Ã¡Â»Âc cÃƒÂ¡c file Excel...', 3);
+    showProgress('?ang t?ng h?p d? li?u', '?ang chu?n b? ??c c?c file Excel...', 3);
 
     try {
       const importedRows: DataRow[] = [];
@@ -1155,8 +1060,8 @@ export function ImportFiles({
 
       for (const [index, fileItem] of files.entries()) {
         showProgress(
-          'Ã„Âang tÃ¡Â»â€¢ng hÃ¡Â»Â£p dÃ¡Â»Â¯ liÃ¡Â»â€¡u',
-          `Ã„Âang xÃ¡Â»Â­ lÃƒÂ½ file ${index + 1}/${files.length}: ${fileItem.file.name}`,
+          '?ang t?ng h?p d? li?u',
+          `?ang x? l? file ${index + 1}/${files.length}: ${fileItem.file.name}`,
           5 + ((index + 0.25) / totalFiles) * 75,
         );
         const unitName = unitNameByCode[fileItem.unitCode] || fileItem.unitQuery || fileItem.file.name;
@@ -1166,7 +1071,7 @@ export function ImportFiles({
             unitName,
             fileName: fileItem.file.name,
             missingSheets: [],
-            reason: 'ChÃ†Â°a xÃƒÂ¡c nhÃ¡ÂºÂ­n Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ cho file nÃƒÂ y.',
+              reason: 'Ch?a x?c nh?n ??n v? cho file n?y.',
             relativePath: fileItem.relativePath,
           });
           continue;
@@ -1192,8 +1097,8 @@ export function ImportFiles({
           cellText: false,
         });
         showProgress(
-          'Ã„Âang tÃ¡Â»â€¢ng hÃ¡Â»Â£p dÃ¡Â»Â¯ liÃ¡Â»â€¡u',
-          `Ã„ÂÃƒÂ£ Ã„â€˜Ã¡Â»Âc file ${index + 1}/${files.length}, Ã„â€˜ang kiÃ¡Â»Æ’m tra sheet vÃƒÂ  lÃ¡ÂºÂ¥y dÃ¡Â»Â¯ liÃ¡Â»â€¡u...`,
+            '?ang t?ng h?p d? li?u',
+            `?? ??c file ${index + 1}/${files.length}, ?ang ki?m tra sheet v? l?y d? li?u...`,
           5 + ((index + 0.6) / totalFiles) * 75,
         );
 
@@ -1203,7 +1108,7 @@ export function ImportFiles({
             unitName,
             fileName: fileItem.file.name,
             missingSheets: sheetValidation.missingSheets,
-            reason: 'ThiÃ¡ÂºÂ¿u biÃ¡Â»Æ’u mÃ¡ÂºÂ«u bÃ¡ÂºÂ¯t buÃ¡Â»â„¢c cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n.',
+              reason: 'Thi?u bi?u m?u b?t bu?c c?a d? ?n.',
             relativePath: fileItem.relativePath,
           });
           continue;
@@ -1215,7 +1120,7 @@ export function ImportFiles({
             unitName,
             fileName: fileItem.file.name,
             missingSheets: [],
-            reason: 'KhÃƒÂ´ng cÃƒÂ³ sheet nÃƒÂ o trÃƒÂ¹ng tÃƒÂªn biÃ¡Â»Æ’u mÃ¡ÂºÂ«u Ã„â€˜ÃƒÂ£ chÃ¡Â»â€˜t.',
+              reason: 'Kh?ng c? sheet n?o tr?ng t?n bi?u m?u ?? ch?t.',
             relativePath: fileItem.relativePath,
           });
           continue;
@@ -1240,7 +1145,7 @@ export function ImportFiles({
           try {
             parsedRowsForFile.push(...parseRowsForTemplate(workbook, template, fileItem.unitCode, importYear));
           } catch (error) {
-            const reason = error instanceof Error ? error.message : 'LÃ¡Â»â€”i khÃƒÂ´ng xÃƒÂ¡c Ã„â€˜Ã¡Â»â€¹nh.';
+          const reason = error instanceof Error ? error.message : 'L?i kh?ng x?c ??nh.';
             templateErrors.push(`${template.name}: ${reason}`);
           }
         });
@@ -1252,8 +1157,8 @@ export function ImportFiles({
             missingSheets: [],
             reason:
               templateErrors.length > 0
-                ? `KhÃƒÂ´ng Ã„â€˜Ã¡Â»Âc Ã„â€˜Ã†Â°Ã¡Â»Â£c dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»Â« biÃ¡Â»Æ’u Ã„â€˜ÃƒÂ£ khÃ¡Â»â€ºp. ${templateErrors.join(' | ')}`
-                : 'KhÃƒÂ´ng Ã„â€˜Ã¡Â»Âc Ã„â€˜Ã†Â°Ã¡Â»Â£c dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»Â« file.',
+            ? `Kh?ng ??c ???c d? li?u t? bi?u ?? kh?p. ${templateErrors.join(" | ")}`
+            : 'Kh?ng ??c ???c d? li?u t? file.',
             relativePath: fileItem.relativePath,
           });
           continue;
@@ -1292,7 +1197,7 @@ export function ImportFiles({
               reviewNote: null,
             });
             partialWarnings.push(
-              `${unitName} (${fileItem.file.name}) Ã„â€˜ÃƒÂ£ gÃ¡Â»Â­i yÃƒÂªu cÃ¡ÂºÂ§u ghi Ã„â€˜ÃƒÂ¨, chÃ¡Â»Â admin phÃƒÂª duyÃ¡Â»â€¡t trÃ†Â°Ã¡Â»â€ºc khi cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t dÃ¡Â»Â¯ liÃ¡Â»â€¡u.`,
+              `${unitName} (${fileItem.file.name}) ?? g?i y?u c?u ghi ??, ch? admin ph? duy?t tr??c khi c?p nh?t d? li?u.`,
             );
             completedFileKeys.add(`${fileItem.file.name}__${fileItem.relativePath || ''}`);
           } catch (requestError) {
@@ -1303,7 +1208,7 @@ export function ImportFiles({
               reason:
                 requestError instanceof Error
                   ? requestError.message
-                  : 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ¡o yÃƒÂªu cÃ¡ÂºÂ§u ghi Ã„â€˜ÃƒÂ¨ dÃ¡Â»Â¯ liÃ¡Â»â€¡u.',
+              : 'Kh?ng th? t?o y?u c?u ghi ?? d? li?u.',
               relativePath: fileItem.relativePath,
             });
           }
@@ -1343,28 +1248,28 @@ export function ImportFiles({
         try {
           await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, importYear, unitName);
         } catch (uploadError) {
-          console.error('KhÃƒÂ´ng thÃ¡Â»Æ’ upload file dÃ¡Â»Â¯ liÃ¡Â»â€¡u Ã„â€˜ÃƒÂ£ tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n:', uploadError);
+            console.error('Kh?ng th? upload file d? li?u ?? ti?p nh?n:', uploadError);
         }
         acceptedFiles += 1;
         completedFileKeys.add(`${fileItem.file.name}__${fileItem.relativePath || ''}`);
         if (canOverwriteDirectly && unitAlreadyHasData) {
-          partialWarnings.push(`${unitName} (${fileItem.file.name}) Ä‘Ã£ Ä‘Æ°á»£c admin ghi Ä‘Ã¨ dá»¯ liá»‡u hiá»‡n cÃ³.`);
+            partialWarnings.push(`${unitName} (${fileItem.file.name}) ?? ???c admin ghi ?? d? li?u hi?n c?.`);
         }
         showProgress(
-          'Ã„Âang tÃ¡Â»â€¢ng hÃ¡Â»Â£p dÃ¡Â»Â¯ liÃ¡Â»â€¡u',
-          `Ã„ÂÃƒÂ£ xÃ¡Â»Â­ lÃƒÂ½ ${index + 1}/${files.length} file. Ã„Âang tiÃ¡ÂºÂ¿p tÃ¡Â»Â¥c...`,
+          '?ang t?ng h?p d? li?u',
+          `?? x? l? ${index + 1}/${files.length} file. ?ang ti?p t?c...`,
           5 + ((index + 1) / totalFiles) * 75,
         );
 
         if (templateErrors.length > 0) {
           partialWarnings.push(
-            `${unitName} (${fileItem.file.name}) chÃ¡Â»â€° tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n mÃ¡Â»â„¢t phÃ¡ÂºÂ§n. BÃ¡Â»Â qua: ${templateErrors.join(' | ')}`,
+            `${unitName} (${fileItem.file.name}) ch? ti?p nh?n m?t ph?n. B? qua: ${templateErrors.join(" | ")}`,
           );
         }
       }
 
       if (importedRows.length > 0) {
-        showProgress('Ã„Âang tÃ¡Â»â€¢ng hÃ¡Â»Â£p dÃ¡Â»Â¯ liÃ¡Â»â€¡u', 'Ã„Âang ghi dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»â€¢ng hÃ¡Â»Â£p vÃƒÂ o hÃ¡Â»â€¡ thÃ¡Â»â€˜ng...', 90);
+      showProgress('?ang t?ng h?p d? li?u', '?ang ghi d? li?u t?ng h?p v?o h? th?ng...', 90);
         await onDataImported(importedRows);
       }
 
@@ -1372,26 +1277,26 @@ export function ImportFiles({
 
       const summaryLines: string[] = [];
       if (acceptedFiles > 0) {
-        summaryLines.push(`Ã„ÂÃƒÂ£ tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n ${acceptedFiles} file hÃ¡Â»Â£p lÃ¡Â»â€¡.`);
+      summaryLines.push(`?? ti?p nh?n ${acceptedFiles} file h?p l?.`);
       }
 
       if (failedFiles.length > 0) {
-        summaryLines.push('CÃƒÂ¡c file chÃ†Â°a Ã„â€˜Ã†Â°Ã¡Â»Â£c tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n:');
+      summaryLines.push('C?c file ch?a ???c ti?p nh?n:');
         failedFiles.forEach((item) => {
-          const suffix = item.missingSheets.length > 0 ? ` - thiÃ¡ÂºÂ¿u sheet: ${item.missingSheets.join(', ')}` : '';
+        const suffix = item.missingSheets.length > 0 ? ` - thi?u sheet: ${item.missingSheets.join(", ")}` : "";
           summaryLines.push(`- ${item.unitName} (${item.fileName})${suffix}${item.reason ? ` - ${item.reason}` : ''}`);
         });
       }
 
       if (partialWarnings.length > 0) {
-        summaryLines.push('CÃƒÂ¡c file tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n mÃ¡Â»â„¢t phÃ¡ÂºÂ§n:');
+      summaryLines.push('C?c file ti?p nh?n m?t ph?n:');
         partialWarnings.forEach((warning) => {
           summaryLines.push(`- ${warning}`);
         });
       }
 
       if (summaryLines.length === 0) {
-        summaryLines.push('KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y dÃ¡Â»Â¯ liÃ¡Â»â€¡u phÃƒÂ¹ hÃ¡Â»Â£p trong cÃƒÂ¡c file Ã„â€˜ÃƒÂ£ chÃ¡Â»Ân.');
+      summaryLines.push('Kh?ng t?m th?y d? li?u ph? h?p trong c?c file ?? ch?n.');
       }
 
       setManagementMessage(summaryLines.join('\n'));
@@ -1420,7 +1325,7 @@ export function ImportFiles({
       }
     } catch (error) {
       closeProgress();
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃƒÂ´ng thÃ¡Â»Æ’ Ã„â€˜Ã¡Â»Âc file Excel nÃƒÂ y.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? ??c file Excel n?y.');
     } finally {
       setIsManagingData(false);
     }
@@ -1428,14 +1333,14 @@ export function ImportFiles({
 
   const handleDeleteUnit = async () => {
     if (!selectedUnitToDelete) {
-      setManagementMessage('Vui lÃƒÂ²ng chÃ¡Â»Ân Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ cÃ¡ÂºÂ§n xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u.');
+      setManagementMessage('Vui l?ng ch?n ??n v? c?n x?a d? li?u.');
       return;
     }
 
     const yearToDelete = selectedYear;
     const unitName = unitNameByCode[selectedUnitToDelete] || selectedUnitToDelete;
     const confirmed = window.confirm(
-      `XÃƒÂ³a toÃƒÂ n bÃ¡Â»â„¢ dÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃ¡Â»Â§a Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ "${unitName}" trong nÃ„Æ’m ${yearToDelete} thuÃ¡Â»â„¢c dÃ¡Â»Â± ÃƒÂ¡n hiÃ¡Â»â€¡n tÃ¡ÂºÂ¡i?`,
+      `X?a to?n b? d? li?u c?a ??n v? "${unitName}" trong n?m ${yearToDelete} thu?c d? ?n hi?n t?i?`,
     );
     if (!confirmed) {
       return;
@@ -1448,11 +1353,11 @@ export function ImportFiles({
       const deletedCount = await onDeleteUnitData(yearToDelete, selectedUnitToDelete);
       setManagementMessage(
         deletedCount > 0
-          ? `Ã„ÂÃƒÂ£ xÃƒÂ³a ${deletedCount} dÃƒÂ²ng dÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃ¡Â»Â§a Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ ${unitName} trong nÃ„Æ’m ${yearToDelete}.`
-          : `KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y dÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃ¡Â»Â§a Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ ${unitName} trong nÃ„Æ’m ${yearToDelete}.`,
+        ? `?? x?a ${deletedCount} d?ng d? li?u c?a ??n v? ${unitName} trong n?m ${yearToDelete}.`
+        : `Kh?ng t?m th?y d? li?u c?a ??n v? ${unitName} trong n?m ${yearToDelete}.`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃ¡Â»Â§a Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? x?a d? li?u c?a ??n v?.');
     } finally {
       setIsManagingData(false);
     }
@@ -1460,30 +1365,30 @@ export function ImportFiles({
 
   const handleDeleteYear = async () => {
     const yearToDelete = selectedYear;
-    const confirmed = window.confirm(`XÃƒÂ³a toÃƒÂ n bÃ¡Â»â„¢ dÃ¡Â»Â¯ liÃ¡Â»â€¡u Ã„â€˜ÃƒÂ£ lÃ†Â°u cÃ¡Â»Â§a nÃ„Æ’m ${yearToDelete} trong dÃ¡Â»Â± ÃƒÂ¡n hiÃ¡Â»â€¡n tÃ¡ÂºÂ¡i?`);
+    const confirmed = window.confirm(`X?a to?n b? d? li?u ?? l?u c?a n?m ${yearToDelete} trong d? ?n hi?n t?i?`);
     if (!confirmed) {
       return;
     }
 
     setIsManagingData(true);
     setManagementMessage(null);
-    showProgress('Ã„Âang xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo nÃ„Æ’m', `Ã„Âang chuÃ¡ÂºÂ©n bÃ¡Â»â€¹ xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u nÃ„Æ’m ${yearToDelete}...`, 10);
+    showProgress('?ang x?a d? li?u theo n?m', `?ang chu?n b? x?a d? li?u n?m ${yearToDelete}...`, 10);
 
     try {
-      showProgress('Ã„Âang xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo nÃ„Æ’m', `Ã„Âang xÃƒÂ³a cÃƒÂ¡c dÃƒÂ²ng dÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃ¡Â»Â§a nÃ„Æ’m ${yearToDelete}...`, 65);
+      showProgress('?ang x?a d? li?u theo n?m', `?ang x?a c?c d?ng d? li?u c?a n?m ${yearToDelete}...`, 65);
       const deletedCount = await onDeleteYearData(yearToDelete);
       setManagementMessage(
         deletedCount > 0
-          ? `Ã„ÂÃƒÂ£ xÃƒÂ³a ${deletedCount} dÃƒÂ²ng dÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃ¡Â»Â§a nÃ„Æ’m ${yearToDelete}.`
-          : `KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y dÃ¡Â»Â¯ liÃ¡Â»â€¡u nÃƒÂ o cÃ¡Â»Â§a nÃ„Æ’m ${yearToDelete} Ã„â€˜Ã¡Â»Æ’ xÃƒÂ³a.`,
+        ? `?? x?a ${deletedCount} d?ng d? li?u c?a n?m ${yearToDelete}.`
+        : `Kh?ng t?m th?y d? li?u n?o c?a n?m ${yearToDelete} ?? x?a.`,
       );
       completeProgress(
-        'HoÃƒÂ n tÃ¡ÂºÂ¥t xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo nÃ„Æ’m',
-        deletedCount > 0 ? `Ã„ÂÃƒÂ£ xÃ¡Â»Â­ lÃƒÂ½ xong dÃ¡Â»Â¯ liÃ¡Â»â€¡u nÃ„Æ’m ${yearToDelete}.` : `KhÃƒÂ´ng cÃƒÂ³ dÃ¡Â»Â¯ liÃ¡Â»â€¡u nÃ„Æ’m ${yearToDelete} Ã„â€˜Ã¡Â»Æ’ xÃƒÂ³a.`,
+        'Ho?n t?t x?a d? li?u theo n?m',
+        deletedCount > 0 ? `?? x? l? xong d? li?u n?m ${yearToDelete}.` : `Kh?ng c? d? li?u n?m ${yearToDelete} ?? x?a.`,
       );
     } catch (error) {
       closeProgress();
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo nÃ„Æ’m.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? x?a d? li?u theo n?m.');
     } finally {
       setIsManagingData(false);
     }
@@ -1491,12 +1396,12 @@ export function ImportFiles({
 
   const handleDeleteProject = async () => {
     if (!currentProject) {
-      setManagementMessage('Vui lÃƒÂ²ng chÃ¡Â»Ân dÃ¡Â»Â± ÃƒÂ¡n trÃ†Â°Ã¡Â»â€ºc khi xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u.');
+      setManagementMessage('Vui l?ng ch?n d? ?n tr??c khi x?a d? li?u.');
       return;
     }
 
     const confirmed = window.confirm(
-      `XÃƒÂ³a toÃƒÂ n bÃ¡Â»â„¢ dÃ¡Â»Â¯ liÃ¡Â»â€¡u, biÃ¡Â»Æ’u mÃ¡ÂºÂ«u, phÃƒÂ¢n cÃƒÂ´ng vÃƒÂ  lÃ¡Â»â€¹ch sÃ¡Â»Â­ xuÃ¡ÂºÂ¥t bÃƒÂ¡o cÃƒÂ¡o cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n "${currentProject.name}"?`,
+    const confirmed = window.confirm(`X?a to?n b? d? li?u, bi?u m?u, ph?n c?ng v? l?ch s? xu?t b?o c?o c?a d? ?n "${currentProject.name}"?`);
     );
     if (!confirmed) {
       return;
@@ -1504,23 +1409,23 @@ export function ImportFiles({
 
     setIsManagingData(true);
     setManagementMessage(null);
-    showProgress('Ã„Âang xÃƒÂ³a toÃƒÂ n bÃ¡Â»â„¢ dÃ¡Â»Â± ÃƒÂ¡n', `Ã„Âang chuÃ¡ÂºÂ©n bÃ¡Â»â€¹ xÃƒÂ³a dÃ¡Â»Â± ÃƒÂ¡n "${currentProject.name}"...`, 5);
+    showProgress('?ang x?a to?n b? d? ?n', `?ang chu?n b? x?a d? ?n "${currentProject.name}"...`, 5);
 
     try {
-      showProgress('Ã„Âang xÃƒÂ³a toÃƒÂ n bÃ¡Â»â„¢ dÃ¡Â»Â± ÃƒÂ¡n', `Ã„Âang xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u, biÃ¡Â»Æ’u mÃ¡ÂºÂ«u vÃƒÂ  file cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n "${currentProject.name}"...`, 70);
+      showProgress('?ang x?a to?n b? d? ?n', `?ang x?a d? li?u, bi?u m?u v? file c?a d? ?n "${currentProject.name}"...`, 70);
       const deletedCount = await onDeleteProjectData(currentProject.id);
       setManagementMessage(
         deletedCount > 0
-          ? `Ã„ÂÃƒÂ£ xÃƒÂ³a dÃ¡Â»Â± ÃƒÂ¡n "${currentProject.name}" vÃƒÂ  ${deletedCount - 1} bÃ¡ÂºÂ£n ghi liÃƒÂªn quan.`
-          : `KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â± ÃƒÂ¡n "${currentProject.name}".`,
+          ? `?? x?a d? ?n "${currentProject.name}" v? ${deletedCount - 1} b?n ghi li?n quan.`
+          : `Kh?ng th? x?a d? ?n "${currentProject.name}".`,
       );
       completeProgress(
-        deletedCount > 0 ? 'Ã„ÂÃƒÂ£ xÃƒÂ³a toÃƒÂ n bÃ¡Â»â„¢ dÃ¡Â»Â± ÃƒÂ¡n' : 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â± ÃƒÂ¡n',
-        deletedCount > 0 ? `DÃ¡Â»Â± ÃƒÂ¡n "${currentProject.name}" Ã„â€˜ÃƒÂ£ Ã„â€˜Ã†Â°Ã¡Â»Â£c xÃ¡Â»Â­ lÃƒÂ½ xong.` : `KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â± ÃƒÂ¡n "${currentProject.name}".`,
+        deletedCount > 0 ? '?? x?a to?n b? d? ?n' : 'Kh?ng th? x?a d? ?n',
+        deletedCount > 0 ? `D? ?n "${currentProject.name}" ?? ???c x? l? xong.` : `Kh?ng th? x?a d? ?n "${currentProject.name}".`,
       );
     } catch (error) {
       closeProgress();
-      setManagementMessage(error instanceof Error ? error.message : 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? x?a d? li?u c?a d? ?n.');
     } finally {
       setIsManagingData(false);
     }
@@ -1553,47 +1458,10 @@ export function ImportFiles({
 
   const showExportErrors = lastFailedFiles.length > 0;
 
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) {
-      return;
-    }
-
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const touchedNodes: Array<{ node: Text; value: string }> = [];
-
-    while (walker.nextNode()) {
-      const node = walker.currentNode as Text;
-      if (!node.nodeValue?.trim()) {
-        continue;
-      }
-
-      const repaired = normalizeIntakeDisplayText(repairMojibake(node.nodeValue));
-      if (repaired !== node.nodeValue) {
-        touchedNodes.push({ node, value: repaired });
-      }
-    }
-
-    touchedNodes.forEach(({ node, value }) => {
-      node.nodeValue = value;
-    });
-
-    root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input[placeholder], textarea[placeholder]').forEach((element) => {
-      const placeholder = element.getAttribute('placeholder');
-      if (!placeholder) {
-        return;
-      }
-
-      const repaired = normalizeIntakeDisplayText(repairMojibake(placeholder));
-      if (repaired !== placeholder) {
-        element.setAttribute('placeholder', repaired);
-      }
-    });
-  });
 
   return (
     <>
-      <div ref={rootRef} className="space-y-6 p-6 md:p-8">
+      <div className="space-y-6 p-6 md:p-8">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 className="page-title">Ti?p nh?n d? li?u</h2>
@@ -1716,7 +1584,7 @@ export function ImportFiles({
                 ) : (
                   <div className="rounded-[16px] border border-dashed border-[var(--line)] bg-white px-3 py-4 text-sm text-[var(--ink-soft)]">
                     {isUnitUser
-                      ? 'ÄÆ¡n vá»‹ cá»§a báº¡n Ä‘Ã£ cÃ³ dá»¯ liá»‡u trong dá»± Ã¡n/nÄƒm Ä‘ang chá»n hoáº·c khÃ´ng cÃ²n má»¥c chÆ°a tiáº¿p nháº­n.'
+                      ? '??n v? c?a b?n ?? c? d? li?u trong d? ?n/n?m ?ang ch?n ho?c kh?ng c?n m?c ch?a ti?p nh?n.'
                       : !isAdmin && currentAssignedUnitCodes.length === 0
                       ? 'T?i kho?n n?y ch?a ???c ph?n c?ng ??n v? theo d?i cho lu?ng ti?p nh?n.'
                       : 'Kh?ng c?n ??n v? n?o ch?a ti?p nh?n trong d? ?n/n?m ?ang ch?n.'}
@@ -2094,13 +1962,13 @@ export function ImportFiles({
                       )}
                       {validation?.status === 'valid' && (
                         <p className="mt-2 text-xs text-emerald-700">
-                          File h?p l?. ?? nh?n ?? c?c sheet b?t bu?c: {validation.matchedSheets.join(', ')}
+                          File h?p l?. ?? nh?n ?? c?c sheet b?t bu?c: {validation.matchedSheets.join(", ")}
                         </p>
                       )}
                       {validation?.status === 'invalid' && (
                         <>
                           {validation.missingSheets.length > 0 && (
-                            <p className="mt-2 text-xs text-red-700">Thi?u sheet: {validation.missingSheets.join(', ')}</p>
+                            <p className="mt-2 text-xs text-red-700">Thi?u sheet: {validation.missingSheets.join(", ")}</p>
                           )}
                           {validation.reason && <p className="mt-2 text-xs text-red-700">{validation.reason}</p>}
                         </>
