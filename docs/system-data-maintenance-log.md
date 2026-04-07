@@ -534,3 +534,6 @@ pm.cmd run build: pass.- Bo sung map thay the text hien thi cho rieng man Tiep n
 pm.cmd run lint: pass.
 - Chay 
 pm.cmd run build: pass.
+- 2026-04-07: S?a l?i tr?c ti?p các chu?i ti?ng Vi?t trong C:\CODE_APPWEB\src\components\ImportFiles.tsx thay vì vá b?ng text replacement runtime. Gi? nguyên logic ghi dè c?a admin và lu?ng n?p file hi?n t?i. Ðã ch?y 
+pm.cmd run lint và 
+pm.cmd run build thành công.
