@@ -546,3 +546,11 @@ pm.cmd run build thành công.
   - npm.cmd run lint: pass
   - npm.cmd run build: pass
 
+
+## 2026-04-07 - Sua tiep chuoi hien thi o man Tiep nhan du lieu
+- Sua tiep cac chuoi user-facing trong C:\CODE_APPWEB\src\components\ImportFiles.tsx, uu tien luong tong hop va khung tien do dang gay loi hien thi.
+- Chuyen mot phan chuoi sang dang Unicode escape de tranh tai phat loi ma hoa khi ghi file.
+- Kiem tra lai:
+  - npm.cmd run lint: pass
+  - npm.cmd run build: pass
+

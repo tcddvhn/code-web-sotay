@@ -1009,11 +1009,11 @@ export function ImportFiles({
       await refreshOverwriteRequests();
       setManagementMessage(
         decision === 'APPROVED'
-          ? `?? ph? duy?t y?u c?u ghi ?? cho ${request.unitName} (${request.year}).`
-          : `?? t? ch?i y?u c?u ghi ?? cho ${request.unitName} (${request.year}).`,
+          ? `\u0110\u00e3 ph\u00ea duy\u1ec7t y\u00eau c\u1ea7u ghi \u0111\u00e8 cho ${request.unitName} (${request.year}).`
+          : `\u0110\u00e3 t\u1eeb ch\u1ed1i y\u00eau c\u1ea7u ghi \u0111\u00e8 cho ${request.unitName} (${request.year}).`,
       );
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : 'Kh?ng th? x? l? y?u c?u ghi ??.');
+      setManagementMessage(error instanceof Error ? error.message : 'Kh\u00f4ng th\u1ec3 x\u1eed l\u00fd y\u00eau c\u1ea7u ghi \u0111\u00e8.');
     } finally {
       setIsManagingData(false);
     }
@@ -1021,26 +1021,26 @@ export function ImportFiles({
 
   const processFiles = async () => {
     if (!currentProject) {
-      setManagementMessage('Vui l?ng ch?n d? ?n tr??c khi ti?p nh?n d? li?u.');
+      setManagementMessage('Vui l\u00f2ng ch\u1ecdn d\u1ef1 \u00e1n tr\u01b0\u1edbc khi ti\u1ebfp nh\u1eadn d\u1eef li\u1ec7u.');
       return;
     }
 
     if (publishedTemplates.length === 0) {
       const message =
         projectTemplates.length === 0
-        ? 'D? ?n n?y ch?a c? bi?u m?u ?? ti?p nh?n d? li?u.'
-        : 'D? ?n n?y ?? c? bi?u m?u nh?ng ch?a ch?t m?u n?o. H?y v?o m?c Bi?u m?u ?? ch?t tr??c khi ti?p nh?n d? li?u.';
+        ? 'D\u1ef1 \u00e1n n\u00e0y ch\u01b0a c\u00f3 bi\u1ec3u m\u1eabu \u0111\u1ec3 ti\u1ebfp nh\u1eadn d\u1eef li\u1ec7u.'
+        : 'D\u1ef1 \u00e1n n\u00e0y \u0111\u00e3 c\u00f3 bi\u1ec3u m\u1eabu nh\u01b0ng ch\u01b0a ch\u1ed1t m\u1eabu n\u00e0o. H\u00e3y v\u00e0o m\u1ee5c Bi\u1ec3u m\u1eabu \u0111\u1ec3 ch\u1ed1t tr\u01b0\u1edbc khi ti\u1ebfp nh\u1eadn d\u1eef li\u1ec7u.';
       setManagementMessage(message);
       return;
     }
 
     if (activeTemplates.length === 0) {
-      setManagementMessage('Bi?u m?u ?? ch?n kh?ng c?n hi?u l?c. Vui l?ng ch?n l?i bi?u m?u c?n ti?p nh?n.');
+      setManagementMessage('Bi\u1ec3u m\u1eabu \u0111\u00e3 ch\u1ecdn kh\u00f4ng c\u00f2n hi\u1ec7u l\u1ef1c. Vui l\u00f2ng ch\u1ecdn l\u1ea1i bi\u1ec3u m\u1eabu c\u1ea7n ti\u1ebfp nh\u1eadn.');
       return;
     }
 
     if (files.length === 0) {
-      setManagementMessage('Vui l?ng ch?n ?t nh?t m?t file Excel ?? ti?p nh?n.');
+      setManagementMessage('Vui l\u00f2ng ch\u1ecdn \u00edt nh\u1ea5t m\u1ed9t file Excel \u0111\u1ec3 ti\u1ebfp nh\u1eadn.');
       return;
     }
 
@@ -1048,7 +1048,7 @@ export function ImportFiles({
     setIsManagingData(true);
     setManagementMessage(null);
     setLastFailedFiles([]);
-    showProgress('?ang t?ng h?p d? li?u', '?ang chu?n b? ??c c?c file Excel...', 3);
+    showProgress('\u0110ang t\u1ed5ng h\u1ee3p d\u1eef li\u1ec7u', '\u0110ang chu\u1ea9n b\u1ecb \u0111\u1ecdc c\u00e1c file Excel...', 3);
 
     try {
       const importedRows: DataRow[] = [];
@@ -1061,8 +1061,8 @@ export function ImportFiles({
 
       for (const [index, fileItem] of files.entries()) {
         showProgress(
-          '?ang t?ng h?p d? li?u',
-          `?ang x? l? file ${index + 1}/${files.length}: ${fileItem.file.name}`,
+          '\u0110ang t\u1ed5ng h\u1ee3p d\u1eef li\u1ec7u',
+          `\u0110ang x\u1eed l\u00fd file ${index + 1}/${files.length}: ${fileItem.file.name}`,
           5 + ((index + 0.25) / totalFiles) * 75,
         );
         const unitName = unitNameByCode[fileItem.unitCode] || fileItem.unitQuery || fileItem.file.name;
@@ -1070,9 +1070,9 @@ export function ImportFiles({
         if (!fileItem.unitCode) {
           failedFiles.push({
             unitName,
-            fileName: fileItem.file.name,
-            missingSheets: [],
-              reason: 'Ch?a x?c nh?n ??n v? cho file n?y.',
+              fileName: fileItem.file.name,
+              missingSheets: [],
+              reason: 'Ch\u01b0a x\u00e1c nh\u1eadn \u0111\u01a1n v\u1ecb cho file n\u00e0y.',
             relativePath: fileItem.relativePath,
           });
           continue;
@@ -1098,8 +1098,8 @@ export function ImportFiles({
           cellText: false,
         });
         showProgress(
-            '?ang t?ng h?p d? li?u',
-            `?? ??c file ${index + 1}/${files.length}, ?ang ki?m tra sheet v? l?y d? li?u...`,
+            '\u0110ang t\u1ed5ng h\u1ee3p d\u1eef li\u1ec7u',
+            `\u0110\u00e3 \u0111\u1ecdc file ${index + 1}/${files.length}, \u0111ang ki\u1ec3m tra sheet v\u00e0 l\u1ea5y d\u1eef li\u1ec7u...`,
           5 + ((index + 0.6) / totalFiles) * 75,
         );
 
@@ -1107,9 +1107,9 @@ export function ImportFiles({
         if (sheetValidation.missingSheets.length > 0) {
           failedFiles.push({
             unitName,
-            fileName: fileItem.file.name,
-            missingSheets: sheetValidation.missingSheets,
-              reason: 'Thi?u bi?u m?u b?t bu?c c?a d? ?n.',
+              fileName: fileItem.file.name,
+              missingSheets: sheetValidation.missingSheets,
+              reason: 'Thi\u1ebfu bi\u1ec3u m\u1eabu b\u1eaft bu\u1ed9c c\u1ee7a d\u1ef1 \u00e1n.',
             relativePath: fileItem.relativePath,
           });
           continue;
@@ -1119,9 +1119,9 @@ export function ImportFiles({
         if (matchedTemplates.length === 0) {
           failedFiles.push({
             unitName,
-            fileName: fileItem.file.name,
-            missingSheets: [],
-              reason: 'Kh?ng c? sheet n?o tr?ng t?n bi?u m?u ?? ch?t.',
+              fileName: fileItem.file.name,
+              missingSheets: [],
+              reason: 'Kh\u00f4ng c\u00f3 sheet n\u00e0o tr\u00f9ng t\u00ean bi\u1ec3u m\u1eabu \u0111\u00e3 ch\u1ed1t.',
             relativePath: fileItem.relativePath,
           });
           continue;
@@ -1146,7 +1146,7 @@ export function ImportFiles({
           try {
             parsedRowsForFile.push(...parseRowsForTemplate(workbook, template, fileItem.unitCode, importYear));
           } catch (error) {
-          const reason = error instanceof Error ? error.message : 'L?i kh?ng x?c ??nh.';
+          const reason = error instanceof Error ? error.message : 'L\u1ed7i kh\u00f4ng x\u00e1c \u0111\u1ecbnh.';
             templateErrors.push(`${template.name}: ${reason}`);
           }
         });
@@ -1158,8 +1158,8 @@ export function ImportFiles({
             missingSheets: [],
             reason:
               templateErrors.length > 0
-            ? `Kh?ng ??c ???c d? li?u t? bi?u ?? kh?p. ${templateErrors.join(" | ")}`
-            : 'Kh?ng ??c ???c d? li?u t? file.',
+            ? `Kh\u00f4ng \u0111\u1ecdc \u0111\u01b0\u1ee3c d\u1eef li\u1ec7u t\u1eeb bi\u1ec3u \u0111\u00e3 kh\u1edbp. ${templateErrors.join(" | ")}`
+            : 'Kh\u00f4ng \u0111\u1ecdc \u0111\u01b0\u1ee3c d\u1eef li\u1ec7u t\u1eeb file.',
             relativePath: fileItem.relativePath,
           });
           continue;
@@ -1198,7 +1198,7 @@ export function ImportFiles({
               reviewNote: null,
             });
             partialWarnings.push(
-              `${unitName} (${fileItem.file.name}) ?? g?i y?u c?u ghi ??, ch? admin ph? duy?t tr??c khi c?p nh?t d? li?u.`,
+              `${unitName} (${fileItem.file.name}) \u0111\u00e3 g\u1eedi y\u00eau c\u1ea7u ghi \u0111\u00e8, ch\u1edd admin ph\u00ea duy\u1ec7t tr\u01b0\u1edbc khi c\u1eadp nh\u1eadt d\u1eef li\u1ec7u.`,
             );
             completedFileKeys.add(`${fileItem.file.name}__${fileItem.relativePath || ''}`);
           } catch (requestError) {
@@ -1209,7 +1209,7 @@ export function ImportFiles({
               reason:
                 requestError instanceof Error
                   ? requestError.message
-              : 'Kh?ng th? t?o y?u c?u ghi ?? d? li?u.',
+              : 'Kh\u00f4ng th\u1ec3 t\u1ea1o y\u00eau c\u1ea7u ghi \u0111\u00e8 d\u1eef li\u1ec7u.',
               relativePath: fileItem.relativePath,
             });
           }
@@ -1249,28 +1249,28 @@ export function ImportFiles({
         try {
           await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, importYear, unitName);
         } catch (uploadError) {
-            console.error('Kh?ng th? upload file d? li?u ?? ti?p nh?n:', uploadError);
+            console.error('Kh\u00f4ng th\u1ec3 upload file d\u1eef li\u1ec7u \u0111\u1ec3 ti\u1ebfp nh\u1eadn:', uploadError);
         }
         acceptedFiles += 1;
         completedFileKeys.add(`${fileItem.file.name}__${fileItem.relativePath || ''}`);
         if (canOverwriteDirectly && unitAlreadyHasData) {
-            partialWarnings.push(`${unitName} (${fileItem.file.name}) ?? ???c admin ghi ?? d? li?u hi?n c?.`);
+            partialWarnings.push(`${unitName} (${fileItem.file.name}) \u0111\u00e3 \u0111\u01b0\u1ee3c admin ghi \u0111\u00e8 d\u1eef li\u1ec7u hi\u1ec7n c\u00f3.`);
         }
         showProgress(
-          '?ang t?ng h?p d? li?u',
-          `?? x? l? ${index + 1}/${files.length} file. ?ang ti?p t?c...`,
+          '\u0110ang t\u1ed5ng h\u1ee3p d\u1eef li\u1ec7u',
+          `\u0110\u00e3 x\u1eed l\u00fd ${index + 1}/${files.length} file. \u0110ang ti\u1ebfp t\u1ee5c...`,
           5 + ((index + 1) / totalFiles) * 75,
         );
 
         if (templateErrors.length > 0) {
           partialWarnings.push(
-            `${unitName} (${fileItem.file.name}) ch? ti?p nh?n m?t ph?n. B? qua: ${templateErrors.join(" | ")}`,
+            `${unitName} (${fileItem.file.name}) ch\u1ec9 ti\u1ebfp nh\u1eadn m\u1ed9t ph\u1ea7n. B\u1ecf qua: ${templateErrors.join(" | ")}`,
           );
         }
       }
 
       if (importedRows.length > 0) {
-      showProgress('?ang t?ng h?p d? li?u', '?ang ghi d? li?u t?ng h?p v?o h? th?ng...', 90);
+      showProgress('\u0110ang t\u1ed5ng h\u1ee3p d\u1eef li\u1ec7u', '\u0110ang ghi d\u1eef li\u1ec7u t\u1ed5ng h\u1ee3p v\u00e0o h\u1ec7 th\u1ed1ng...', 90);
         await onDataImported(importedRows);
       }
 
@@ -1278,7 +1278,7 @@ export function ImportFiles({
 
       const summaryLines: string[] = [];
       if (acceptedFiles > 0) {
-      summaryLines.push(`?? ti?p nh?n ${acceptedFiles} file h?p l?.`);
+      summaryLines.push(`\u0110\u00e3 ti\u1ebfp nh\u1eadn ${acceptedFiles} file h\u1ee3p l\u1ec7.`);
       }
 
       if (failedFiles.length > 0) {
