@@ -481,3 +481,8 @@ Rui ro con mo:
 - Dashboard không còn ch?a UI phân công theo dõi don v?.
 - Các h? so tài kho?n don v? trong UI dang qu?n lý b?ng user_profiles; vi?c t?o/xóa Supabase Auth user th?t v?n là tác v? admin riêng ngoài frontend.
 
+[2026-04-07 14:37:15] Project unit scope model
+- New projects can now be created with a fixed unit scope.
+- Scope is stored in project_units(project_id, unit_code).
+- Runtime fallback: projects without explicit scope continue to behave as full-scope projects.
+- UI editing of project scope after creation is intentionally not implemented.

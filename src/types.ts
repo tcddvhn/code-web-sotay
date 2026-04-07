@@ -141,6 +141,10 @@ export interface Project {
   updatedAt: any;
 }
 
+export interface ProjectUnitScope {
+  [projectId: string]: string[];
+}
+
 export type TemplateMode = 'AI' | 'MANUAL' | 'LEGACY';
 
 export interface HeaderCell {

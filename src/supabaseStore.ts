@@ -1,6 +1,6 @@
 import { getAssignmentKey } from './access';
 import { supabase } from './supabase';
-import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, UserProfile } from './types';
+import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile } from './types';
 
 const SETTINGS_ROW_ID = 'global';
 const SUPABASE_PAGE_SIZE = 1000;
@@ -12,6 +12,11 @@ type SupabaseProjectRow = {
   status: 'ACTIVE' | 'COMPLETED';
   created_at: string | null;
   updated_at: string | null;
+};
+
+type SupabaseProjectUnitRow = {
+  project_id: string;
+  unit_code: string;
 };
 
 type SupabaseTemplateRow = {
@@ -251,6 +256,55 @@ export async function upsertProject(project: Project) {
   const { error } = await supabase.from('projects').upsert(payload, { onConflict: 'id' });
   if (error) {
     throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u dÃ¡Â»Â± ÃƒÂ¡n lÃƒÂªn Supabase.');
+  }
+}
+
+export async function listProjectUnitScope() {
+  const { data, error } = await supabase
+    .from('project_units')
+    .select('project_id, unit_code')
+    .order('project_id', { ascending: true })
+    .order('unit_code', { ascending: true });
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.project_units'")) {
+      return {} satisfies ProjectUnitScope;
+    }
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+  }
+
+  const scope: ProjectUnitScope = {};
+  ((data || []) as SupabaseProjectUnitRow[]).forEach((row) => {
+    if (!scope[row.project_id]) {
+      scope[row.project_id] = [];
+    }
+    scope[row.project_id].push(row.unit_code);
+  });
+
+  return scope;
+}
+
+export async function replaceProjectUnits(projectId: string, unitCodes: string[]) {
+  const { error: deleteError } = await supabase.from('project_units').delete().eq('project_id', projectId);
+  if (deleteError) {
+    if (deleteError.message?.includes("Could not find the table 'public.project_units'")) {
+      throw new Error('Bang project_units chua duoc khoi tao. Hay chay file supabase/project_units_rollout.sql truoc.');
+    }
+    throw new Error(deleteError.message || 'Khong the lam moi danh sach don vi cua du an tren Supabase.');
+  }
+
+  if (unitCodes.length === 0) {
+    return;
+  }
+
+  const payload = unitCodes.map((unitCode) => ({
+    project_id: projectId,
+    unit_code: unitCode,
+  }));
+
+  const { error } = await supabase.from('project_units').insert(payload);
+  if (error) {
+    throw new Error(error.message || 'Khong the luu danh sach don vi cua du an tren Supabase.');
   }
 }
 

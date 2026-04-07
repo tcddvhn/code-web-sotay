@@ -28,7 +28,7 @@ import {
   onSupabaseAuthStateChange,
   updateSupabasePassword,
 } from './supabase';
-import { AppSettings, AssignmentUser, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, UserProfile, ViewMode } from './types';
+import { AppSettings, AssignmentUser, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAssignmentKey } from './access';
 import {
@@ -53,6 +53,7 @@ import {
   listAssignments as listAssignmentsFromSupabase,
   listGlobalAssignments as listGlobalAssignmentsFromSupabase,
   listOverwriteRequests as listOverwriteRequestsFromSupabase,
+  listProjectUnitScope as listProjectUnitScopeFromSupabase,
   listProjects as listProjectsFromSupabase,
   listRowsByProject as listRowsByProjectFromSupabase,
   listTemplates as listTemplatesFromSupabase,
@@ -60,6 +61,7 @@ import {
   markOverwriteRequestsSeen as markOverwriteRequestsSeenInSupabase,
   replaceAssignments as replaceAssignmentsInSupabase,
   replaceGlobalAssignments as replaceGlobalAssignmentsInSupabase,
+  replaceProjectUnits as replaceProjectUnitsInSupabase,
   seedUnits as seedUnitsToSupabase,
   touchUserProfileSession,
   updateUserProfile as updateUserProfileInSupabase,
@@ -176,6 +178,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('DASHBOARD');
   const [data, setData] = useState<ConsolidatedData>({});
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectUnitScopeByProjectId, setProjectUnitScopeByProjectId] = useState<ProjectUnitScope>({});
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
@@ -209,9 +212,25 @@ export default function App() {
   }, [user, userProfile]);
   const isAdmin = useMemo(() => effectiveUserProfile?.role === 'admin', [effectiveUserProfile]);
   const isUnitUser = useMemo(() => effectiveUserProfile?.role === 'unit_user', [effectiveUserProfile]);
+  const getProjectScopedUnitCodes = (projectId?: string | null) => {
+    if (!projectId) {
+      return null;
+    }
+    const scopedUnitCodes = projectUnitScopeByProjectId[projectId];
+    return Array.isArray(scopedUnitCodes) && scopedUnitCodes.length > 0 ? scopedUnitCodes : null;
+  };
   const visibleProjects = useMemo(
-    () => (isUnitUser ? projects.filter((project) => project.status === 'ACTIVE') : projects),
-    [isUnitUser, projects],
+    () =>
+      isUnitUser && effectiveUserProfile?.unitCode
+        ? projects.filter((project) => {
+            if (project.status !== 'ACTIVE') {
+              return false;
+            }
+            const scopedUnitCodes = getProjectScopedUnitCodes(project.id);
+            return !scopedUnitCodes || scopedUnitCodes.includes(effectiveUserProfile.unitCode || '');
+          })
+        : projects,
+    [effectiveUserProfile, isUnitUser, projectUnitScopeByProjectId, projects],
   );
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
@@ -220,6 +239,10 @@ export default function App() {
   const allUnits = useMemo<ManagedUnit[]>(
     () => (units.length > 0 ? units : UNITS.map((unit) => ({ ...unit, isDeleted: false }))),
     [units],
+  );
+  const activeUnits = useMemo(
+    () => allUnits.filter((unit) => !unit.isDeleted),
+    [allUnits],
   );
   const unitWatcherByCode = useMemo<Record<string, string>>(() => {
     const next: Record<string, string> = {};
@@ -243,13 +266,22 @@ export default function App() {
   );
   const availableUnitsForProject = useMemo(
     () => {
-      const visibleUnits = allUnits.filter((unit) => isUnitVisibleForProject(unit, currentProject));
+      const scopedUnitCodes = getProjectScopedUnitCodes(currentProject?.id);
+      const visibleUnits = allUnits.filter((unit) => {
+        if (!isUnitVisibleForProject(unit, currentProject)) {
+          return false;
+        }
+        if (!scopedUnitCodes) {
+          return true;
+        }
+        return scopedUnitCodes.includes(unit.code);
+      });
       if (effectiveUserProfile?.role === 'unit_user' && effectiveUserProfile.unitCode) {
         return visibleUnits.filter((unit) => unit.code === effectiveUserProfile.unitCode);
       }
       return visibleUnits;
     },
-    [allUnits, currentProject, effectiveUserProfile],
+    [allUnits, currentProject, effectiveUserProfile, projectUnitScopeByProjectId],
   );
 
   useEffect(() => {
@@ -432,6 +464,28 @@ export default function App() {
       })
       .catch((error) => {
         console.error('Supabase projects load error:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthReady]);
+
+  useEffect(() => {
+    if (!isAuthReady) {
+      return;
+    }
+
+    let cancelled = false;
+
+    listProjectUnitScopeFromSupabase()
+      .then((scope) => {
+        if (!cancelled) {
+          setProjectUnitScopeByProjectId(scope);
+        }
+      })
+      .catch((error) => {
+        console.error('Supabase project unit scope load error:', error);
       });
 
     return () => {
@@ -811,6 +865,11 @@ export default function App() {
 
       const nextProjects = await listProjectsFromSupabase();
       setProjects(nextProjects);
+      setProjectUnitScopeByProjectId((prev) => {
+        const nextScope = { ...prev };
+        delete nextScope[projectId];
+        return nextScope;
+      });
       setTemplates((prev) => prev.filter((template) => template.projectId !== projectId));
       setData((prev) => {
         const nextData: ConsolidatedData = {};
@@ -837,7 +896,7 @@ export default function App() {
     }
   };
 
-  const handleCreateProject = async (payload: { name: string; description: string }) => {
+  const handleCreateProject = async (payload: { name: string; description: string; unitCodes: string[] }) => {
     const normalizedName = normalizeProjectName(payload.name);
     const duplicateProject = projects.find((project) => normalizeProjectName(project.name) === normalizedName);
 
@@ -855,8 +914,13 @@ export default function App() {
     };
 
     await upsertProjectToSupabase(project);
+    await replaceProjectUnitsInSupabase(project.id, payload.unitCodes);
     const nextProjects = await listProjectsFromSupabase();
     setProjects(nextProjects);
+    setProjectUnitScopeByProjectId((prev) => ({
+      ...prev,
+      [project.id]: [...payload.unitCodes],
+    }));
     return project;
   };
 
@@ -1456,6 +1520,7 @@ export default function App() {
         return isAdmin ? (
           <ProjectManager
             projects={visibleProjects}
+            units={activeUnits}
             onSelectProject={(project) => {
               setSelectedProjectId(project.id);
               setCurrentView('LEARN_FORM');

@@ -37,6 +37,15 @@ create table if not exists units (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists project_units (
+  project_id text not null references projects(id) on delete cascade,
+  unit_code text not null references units(code) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (project_id, unit_code)
+);
+
+create index if not exists idx_project_units_unit_code on project_units(unit_code);
+
 create table if not exists app_settings (
   id text primary key,
   one_drive_link text not null default '',
@@ -290,14 +299,14 @@ create table if not exists report_exports (
 
 insert into user_profiles (email, display_name, role, is_active)
 values
-  ('admin@sotay.com', 'Lê Đình Kiên', 'admin', true),
-  ('trieuthingoc@sotay.com', 'Triệu Thị Ngọc', 'contributor', true),
-  ('tranthikieuanh@sotay.com', 'Trần Thị Kiều Anh', 'contributor', true),
-  ('tranphuongha@sotay.com', 'Trần Phương Hà', 'contributor', true),
-  ('phamthithuhanh@sotay.com', 'Phạm Thị Thu Hạnh', 'contributor', true),
-  ('nguyenthugiang@sotay.com', 'Nguyễn Thu Giang', 'contributor', true),
-  ('nguyensinghiem@sotay.com', 'Nguyễn Sĩ Nghiêm', 'contributor', true),
-  ('nguyenhuuhung@sotay.com', 'Nguyễn Hữu Hùng', 'contributor', true)
+  ('admin@sotay.com', 'LÃƒÂª Ã„ÂÃƒÂ¬nh KiÃƒÂªn', 'admin', true),
+  ('trieuthingoc@sotay.com', 'TriÃ¡Â»â€¡u ThÃ¡Â»â€¹ NgÃ¡Â»Âc', 'contributor', true),
+  ('tranthikieuanh@sotay.com', 'TrÃ¡ÂºÂ§n ThÃ¡Â»â€¹ KiÃ¡Â»Âu Anh', 'contributor', true),
+  ('tranphuongha@sotay.com', 'TrÃ¡ÂºÂ§n PhÃ†Â°Ã†Â¡ng HÃƒÂ ', 'contributor', true),
+  ('phamthithuhanh@sotay.com', 'PhÃ¡ÂºÂ¡m ThÃ¡Â»â€¹ Thu HÃ¡ÂºÂ¡nh', 'contributor', true),
+  ('nguyenthugiang@sotay.com', 'NguyÃ¡Â»â€¦n Thu Giang', 'contributor', true),
+  ('nguyensinghiem@sotay.com', 'NguyÃ¡Â»â€¦n SÃ„Â© NghiÃƒÂªm', 'contributor', true),
+  ('nguyenhuuhung@sotay.com', 'NguyÃ¡Â»â€¦n HÃ¡Â»Â¯u HÃƒÂ¹ng', 'contributor', true)
 on conflict (email) do update
 set
   display_name = excluded.display_name,
@@ -312,6 +321,7 @@ alter table app_settings enable row level security;
 alter table user_profiles enable row level security;
 alter table assignments enable row level security;
 alter table global_assignments enable row level security;
+alter table project_units enable row level security;
 alter table consolidated_rows enable row level security;
 alter table data_files enable row level security;
 alter table report_exports enable row level security;
@@ -351,6 +361,17 @@ drop policy if exists "admin_delete_units" on units;
 create policy "admin_insert_units" on units for insert to authenticated with check (public.is_admin_user());
 create policy "admin_update_units" on units for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
 create policy "admin_delete_units" on units for delete to authenticated using (public.is_admin_user());
+
+drop policy if exists "public_read_project_units" on project_units;
+drop policy if exists "auth_read_project_units" on project_units;
+drop policy if exists "admin_insert_project_units" on project_units;
+drop policy if exists "admin_update_project_units" on project_units;
+drop policy if exists "admin_delete_project_units" on project_units;
+create policy "public_read_project_units" on project_units for select using (true);
+create policy "auth_read_project_units" on project_units for select to authenticated using (public.is_active_user());
+create policy "admin_insert_project_units" on project_units for insert to authenticated with check (public.is_admin_user());
+create policy "admin_update_project_units" on project_units for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
+create policy "admin_delete_project_units" on project_units for delete to authenticated using (public.is_admin_user());
 
 drop policy if exists "auth_read_settings" on app_settings;
 create policy "auth_read_settings" on app_settings for select to authenticated using (public.is_active_user());

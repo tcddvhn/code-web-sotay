@@ -554,3 +554,10 @@ pm.cmd run build thành công.
   - npm.cmd run lint: pass
   - npm.cmd run build: pass
 
+[2026-04-07 14:37:15] Project-scoped units for new projects only
+- Added project_units storage helper support in src/supabaseStore.ts.
+- Added rollout SQL at supabase/project_units_rollout.sql and updated supabase/schema.sql.
+- Extended src/components/ProjectManager.tsx with inline unit selector in create-project form; all active units are preselected by default.
+- Updated src/App.tsx so Dashboard, Import, Report, and unit_user project visibility honor project-specific unit scope when it exists.
+- Existing projects remain unchanged unless project_units rows are created; rollout SQL backfills current projects to all active units at execution time.
+- Validation: npm.cmd run lint = pass; npm.cmd run build = pass.

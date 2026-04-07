@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, CheckCircle, Clock, FolderOpen, Pencil, Save, X } from 'lucide-react';
-import { Project } from '../types';
+import React, { useMemo, useState } from 'react';
+import { CheckCircle, Clock, FolderOpen, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { ManagedUnit, Project } from '../types';
+
+type CreateProjectPayload = {
+  name: string;
+  description: string;
+  unitCodes: string[];
+};
 
 export function ProjectManager({
   projects,
+  units,
   onSelectProject,
   onDeleteProject,
   onCreateProject,
@@ -11,24 +18,70 @@ export function ProjectManager({
   onToggleProjectStatus,
 }: {
   projects: Project[];
-  onSelectProject: (p: Project) => void;
+  units: ManagedUnit[];
+  onSelectProject: (project: Project) => void;
   onDeleteProject: (project: Project) => Promise<boolean>;
-  onCreateProject: (payload: { name: string; description: string }) => Promise<Project>;
+  onCreateProject: (payload: CreateProjectPayload) => Promise<Project>;
   onUpdateProject: (project: Project, payload: { name: string; description: string }) => Promise<Project>;
   onToggleProjectStatus: (project: Project) => Promise<Project>;
 }) {
+  const activeUnits = useMemo(() => units.filter((unit) => !unit.isDeleted), [units]);
+  const defaultUnitCodes = useMemo(() => activeUnits.map((unit) => unit.code), [activeUnits]);
+
   const [isAdding, setIsAdding] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [newProject, setNewProject] = useState({ name: '', description: '' });
+  const [newProjectUnitCodes, setNewProjectUnitCodes] = useState<string[]>(defaultUnitCodes);
+  const [unitSearch, setUnitSearch] = useState('');
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingProjectDraft, setEditingProjectDraft] = useState({ name: '', description: '' });
   const [message, setMessage] = useState<string | null>(null);
 
+  const normalizedUnitSearch = unitSearch.trim().toLocaleLowerCase('vi');
+  const filteredUnits = useMemo(() => {
+    if (!normalizedUnitSearch) {
+      return activeUnits;
+    }
+    return activeUnits.filter((unit) => {
+      const normalizedName = unit.name.toLocaleLowerCase('vi');
+      const normalizedCode = unit.code.toLocaleLowerCase('vi');
+      return normalizedName.includes(normalizedUnitSearch) || normalizedCode.includes(normalizedUnitSearch);
+    });
+  }, [activeUnits, normalizedUnitSearch]);
+
+  const openAddProject = () => {
+    setIsAdding(true);
+    setMessage(null);
+    setNewProject({ name: '', description: '' });
+    setNewProjectUnitCodes(defaultUnitCodes);
+    setUnitSearch('');
+  };
+
+  const closeAddProject = () => {
+    setIsAdding(false);
+    setNewProject({ name: '', description: '' });
+    setNewProjectUnitCodes(defaultUnitCodes);
+    setUnitSearch('');
+  };
+
+  const toggleProjectUnit = (unitCode: string) => {
+    setNewProjectUnitCodes((previous) =>
+      previous.includes(unitCode)
+        ? previous.filter((code) => code !== unitCode)
+        : [...previous, unitCode],
+    );
+  };
+
   const handleAddProject = async () => {
     if (!newProject.name.trim()) {
       setMessage('Vui lòng nhập tên dự án trước khi lưu.');
+      return;
+    }
+
+    if (newProjectUnitCodes.length === 0) {
+      setMessage('Vui lòng chọn ít nhất một đơn vị thực hiện dự án trước khi lưu.');
       return;
     }
 
@@ -38,10 +91,10 @@ export function ProjectManager({
       const project = await onCreateProject({
         name: newProject.name.trim(),
         description: newProject.description.trim(),
+        unitCodes: newProjectUnitCodes,
       });
       onSelectProject(project);
-      setIsAdding(false);
-      setNewProject({ name: '', description: '' });
+      closeAddProject();
       setMessage(`Đã lưu dự án "${project.name}".`);
     } catch (error) {
       console.error('Create project error:', error);
@@ -102,7 +155,10 @@ export function ProjectManager({
   };
 
   const deleteProject = async (project: Project) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ dữ liệu của dự án "${project.name}"?`)) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ dữ liệu của dự án "${project.name}"?`)) {
+      return;
+    }
+
     setDeletingProjectId(project.id);
     try {
       const deleted = await onDeleteProject(project);
@@ -119,8 +175,8 @@ export function ProjectManager({
   return (
     <div className="p-6 md:p-8">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h2 className="page-title">Quản lý Dự án</h2>
-        <button onClick={() => setIsAdding(true)} className="primary-btn flex items-center gap-2">
+        <h2 className="page-title">Quản lý dự án</h2>
+        <button onClick={openAddProject} className="primary-btn flex items-center gap-2">
           <Plus size={16} />
           Tạo dự án mới
         </button>
@@ -140,16 +196,83 @@ export function ProjectManager({
               type="text"
               placeholder="Tên dự án (ví dụ: Tổng hợp quý 1/2026)"
               value={newProject.name}
-              onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+              onChange={(event) => setNewProject({ ...newProject, name: event.target.value })}
               className="field-input"
             />
             <textarea
               placeholder="Mô tả chi tiết dự án..."
               value={newProject.description}
-              onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+              onChange={(event) => setNewProject({ ...newProject, description: event.target.value })}
               className="field-input"
               rows={3}
             />
+
+            <div className="rounded-[20px] border border-[var(--line)] bg-[rgba(255,255,255,0.9)] p-4">
+              <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
+                    Danh sách đơn vị thực hiện dự án
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                    Đã chọn {newProjectUnitCodes.length}/{activeUnits.length} đơn vị. Mặc định toàn bộ đơn vị đang hoạt động được chọn sẵn.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewProjectUnitCodes(defaultUnitCodes)}
+                    className="secondary-btn !px-4 !py-2 text-xs"
+                  >
+                    Chọn tất cả
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewProjectUnitCodes([])}
+                    className="secondary-btn !px-4 !py-2 text-xs"
+                  >
+                    Bỏ chọn tất cả
+                  </button>
+                </div>
+              </div>
+
+              <input
+                type="text"
+                value={unitSearch}
+                onChange={(event) => setUnitSearch(event.target.value)}
+                placeholder="Tìm theo mã hoặc tên đơn vị..."
+                className="field-input !h-11"
+              />
+
+              <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto rounded-[18px] border border-[var(--line)] bg-white p-3">
+                {filteredUnits.map((unit) => {
+                  const checked = newProjectUnitCodes.includes(unit.code);
+                  return (
+                    <label
+                      key={unit.code}
+                      className="flex cursor-pointer items-start gap-3 rounded-[16px] border border-transparent px-3 py-2 transition hover:border-[var(--line)] hover:bg-[rgba(255,248,240,0.7)]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleProjectUnit(unit.code)}
+                        className="mt-1 h-4 w-4 rounded border-[var(--line)] text-[var(--primary)] focus:ring-[var(--primary)]"
+                      />
+                      <div className="min-w-0">
+                        <div className="font-medium text-[var(--ink)]">{unit.name}</div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+
+                {filteredUnits.length === 0 && (
+                  <div className="rounded-[16px] border border-dashed border-[var(--line)] px-4 py-6 text-center text-sm text-[var(--ink-soft)]">
+                    Không tìm thấy đơn vị phù hợp.
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <button
                 onClick={handleAddProject}
@@ -159,7 +282,7 @@ export function ProjectManager({
                 {isSavingProject ? 'Đang lưu...' : 'Lưu dự án'}
               </button>
               <button
-                onClick={() => setIsAdding(false)}
+                onClick={closeAddProject}
                 disabled={isSavingProject}
                 className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
               >
