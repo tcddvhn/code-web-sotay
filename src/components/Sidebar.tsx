@@ -40,6 +40,7 @@ interface SidebarProps {
   selectedReportUnitCode?: string;
   expandedReportProjectIds?: string[];
   onToggleReportProject?: (projectId: string) => void;
+  onCollapseAllReportProjects?: () => void;
   onSelectReportProject?: (projectId: string) => void;
   onSelectReportUnit?: (projectId: string, unitCode: string) => void;
   reportTreeSearchTerm?: string;
@@ -65,6 +66,7 @@ export function Sidebar({
   selectedReportUnitCode,
   expandedReportProjectIds = [],
   onToggleReportProject,
+  onCollapseAllReportProjects,
   onSelectReportProject,
   onSelectReportUnit,
   reportTreeSearchTerm = '',
@@ -182,11 +184,12 @@ export function Sidebar({
         <p className="sidebar-meta mt-3 text-[10px] uppercase tracking-[0.24em]">v2.0.0 / Enterprise</p>
       </div>
 
-      <nav className="flex-1 min-h-0 overflow-hidden py-4">
+      <nav className="flex-1 min-h-0 overflow-y-auto py-4">
         {menuItems.map((item) => (
           <div key={item.id}>
             <button
               onClick={() => onViewChange(item.id)}
+              onDoubleClick={item.id === 'REPORTS' ? onCollapseAllReportProjects : undefined}
               className={twMerge(
                 clsx(
                   'sidebar-item w-full flex items-center gap-3 px-8 py-4 text-sm font-medium transition-all duration-200',

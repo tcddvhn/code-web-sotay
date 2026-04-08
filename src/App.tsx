@@ -1686,6 +1686,10 @@ export default function App() {
     );
   };
 
+  const handleCollapseAllReportProjects = () => {
+    setExpandedReportProjectIds([]);
+  };
+
   const handleSelectReportProject = (projectId: string) => {
     setSelectedProjectId(projectId);
     if (!isUnitUser) {
@@ -1975,6 +1979,7 @@ export default function App() {
           selectedReportUnitCode={reportSelectedUnitSummary.code}
           expandedReportProjectIds={expandedReportProjectIds}
           onToggleReportProject={handleToggleReportProject}
+          onCollapseAllReportProjects={handleCollapseAllReportProjects}
           onSelectReportProject={handleSelectReportProject}
           onSelectReportUnit={handleSelectReportUnit}
           reportTreeSearchTerm={reportTreeSearchTerm}
