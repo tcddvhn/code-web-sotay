@@ -561,3 +561,25 @@ pm.cmd run build thành công.
 - Updated src/App.tsx so Dashboard, Import, Report, and unit_user project visibility honor project-specific unit scope when it exists.
 - Existing projects remain unchanged unless project_units rows are created; rollout SQL backfills current projects to all active units at execution time.
 - Validation: npm.cmd run lint = pass; npm.cmd run build = pass.
+[2026-04-08 07:51:14] Report tree navigation and dashboard banner refresh
+- Updated src/components/ReportView.tsx to use a left-side tree: project -> Ð?ng b? Thành ph? -> scoped unit list.
+- Projects in the report tree are sorted by createdAt descending.
+- Removed the right-side project selector card from the report filter area; year/unit/search remain on the right.
+- Clicking a project node selects total-city view for that project; clicking a unit node selects that unit while preserving the existing report rendering panel.
+- Added banner background asset src/assets/dashboard-dong-son.jpg and applied it to the Dashboard hero in src/App.tsx.
+- Validation: npm.cmd run lint = pass; npm.cmd run build = pass.
+[2026-04-08 08:00:21] Report tree status badges
+- Updated src/components/ReportView.tsx to show per-project imported-unit count badges in the left report tree.
+- Added unit-level status badges in the report tree: Da co du lieu / Chua co du lieu, based on the selected reporting year.
+- Kept the existing right-side unit dropdown to minimize workflow disruption during rollout.
+- Validation: npm.cmd run lint = pass; npm.cmd run build = pass.
+[2026-04-08 08:10:55] Report tree as primary unit selector
+- Removed the interactive unit dropdown from the right-side report filter area in src/components/ReportView.tsx.
+- Replaced it with a read-only 'Don vi dang xem' summary card that mirrors the current tree selection.
+- Report unit selection is now driven by the left report tree while preserving the rest of the report layout.
+- Validation: npm.cmd run lint = pass; npm.cmd run build = pass.
+[2026-04-08 08:14:32] Report tree search and overwrite badges
+- Updated src/components/ReportView.tsx to add a quick search box for projects and units in the left report tree.
+- Added pending overwrite badges in the report tree for admins: project-level pending counts and unit-level 'Cho duyet ghi de' state.
+- Pending overwrite status is derived from overwrite requests for the selected year.
+- Validation: npm.cmd run lint = pass; npm.cmd run build = pass.

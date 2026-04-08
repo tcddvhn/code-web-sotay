@@ -18,6 +18,7 @@ import { AIAnalysisView } from './components/AIAnalysisView';
 import { Sidebar } from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
+import dashboardDongSon from './assets/dashboard-dong-son.jpg';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS, YEARS } from './constants';
 import {
   deleteFileByPath,
@@ -1630,6 +1631,8 @@ export default function App() {
             projects={visibleProjects}
             templates={templates}
             units={availableUnitsForProject}
+            allUnits={allUnits}
+            projectUnitScopeByProjectId={projectUnitScopeByProjectId}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
             currentUser={effectiveUserProfile}
@@ -2906,9 +2909,11 @@ function DashboardOverview({
           className="overflow-hidden rounded-[24px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
           style={{
             backgroundColor: '#8f1115',
-            backgroundImage:
-              'radial-gradient(circle at 28px 28px, rgba(201,167,92,0.15) 0, rgba(201,167,92,0.15) 2px, transparent 2px), radial-gradient(circle at 0 0, rgba(201,167,92,0.10) 0, rgba(201,167,92,0.10) 1px, transparent 1px), linear-gradient(135deg, rgba(255,255,255,0.06), transparent 40%), linear-gradient(45deg, rgba(201,167,92,0.08) 25%, transparent 25%, transparent 50%, rgba(201,167,92,0.08) 50%, rgba(201,167,92,0.08) 75%, transparent 75%, transparent)',
-            backgroundSize: '56px 56px, 28px 28px, auto, 84px 84px',
+            backgroundImage: `linear-gradient(135deg, rgba(68,5,5,0.14), rgba(68,5,5,0.06) 35%, rgba(255,255,255,0.03) 100%), linear-gradient(90deg, rgba(92,8,10,0.92) 0%, rgba(146,18,22,0.82) 45%, rgba(124,12,16,0.90) 100%), url(${dashboardDongSon})`,
+            backgroundSize: 'auto, auto, min(72vw, 820px)',
+            backgroundPosition: 'center, center, right -60px center',
+            backgroundRepeat: 'no-repeat',
+            backgroundBlendMode: 'overlay, normal, screen',
           }}
         >
           {canUseNotifications && (

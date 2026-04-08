@@ -486,3 +486,8 @@ Rui ro con mo:
 - Scope is stored in project_units(project_id, unit_code).
 - Runtime fallback: projects without explicit scope continue to behave as full-scope projects.
 - UI editing of project scope after creation is intentionally not implemented.
+[2026-04-08 07:51:14] Report navigation model
+- Report navigation now uses a tree in the left panel: project -> unit.
+- Right panel remains report-centric: year filter, unit filter, search, template tabs, report table, export actions.
+- The project selector dropdown in ReportView has been removed.
+- Dashboard banner now uses the Dong Son drum background asset from the repository.
