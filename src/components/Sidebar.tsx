@@ -31,6 +31,8 @@ interface SidebarProps {
   userProfile?: UserProfile | null;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  sidebarWidth?: number;
+  onSidebarWidthChange?: (width: number) => void;
   isMobile?: boolean;
   reportTreeProjects?: ReportTreeProjectNode[];
   selectedReportProjectId?: string;
@@ -52,6 +54,8 @@ export function Sidebar({
   userProfile,
   isCollapsed = false,
   onToggleCollapse,
+  sidebarWidth = 288,
+  onSidebarWidthChange,
   isMobile = false,
   reportTreeProjects = [],
   selectedReportProjectId,
@@ -85,8 +89,32 @@ export function Sidebar({
           : []),
       ];
 
+  const beginResize = (startX: number) => {
+    if (!onSidebarWidthChange || isCollapsed || isMobile) {
+      return;
+    }
+
+    const startWidth = sidebarWidth;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const nextWidth = Math.max(280, Math.min(520, startWidth + (event.clientX - startX)));
+      onSidebarWidthChange(nextWidth);
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
   return (
-    <div className={`sidebar-shell flex h-screen w-72 flex-col ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <div
+      className={`sidebar-shell relative flex h-screen flex-col ${isCollapsed ? 'sidebar-collapsed' : ''}`}
+      style={!isCollapsed ? { width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` } : undefined}
+    >
       <div className="border-b border-[var(--sidebar-border)] p-8 relative">
         {onToggleCollapse && !isMobile && (
           <button
@@ -120,8 +148,8 @@ export function Sidebar({
             </button>
 
             {item.id === 'REPORTS' && isReportsTreeVisible && (
-              <div className="px-5 pb-4">
-                <div className="max-h-[calc(100vh-330px)] overflow-y-auto pr-2 sidebar-report-tree">
+              <div className="px-3 pb-4">
+                <div className="max-h-[calc(100vh-300px)] overflow-y-auto pr-1 sidebar-report-tree">
                   <div className="space-y-1">
                     {reportTreeProjects.map(({ project, importedCount, pendingCount, units }) => {
                       const isExpanded = expandedReportProjectIds.includes(project.id);
@@ -134,7 +162,7 @@ export function Sidebar({
                             <button
                               type="button"
                               onClick={() => onToggleReportProject?.(project.id)}
-                              className="mt-[2px] flex h-5 w-5 shrink-0 items-center justify-center text-white/70 transition hover:text-white"
+                              className="mt-[1px] flex h-5 w-5 shrink-0 items-center justify-center text-white/70 transition hover:text-white"
                               title={isExpanded ? 'Thu gọn dự án' : 'Mở rộng dự án'}
                             >
                               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -144,14 +172,16 @@ export function Sidebar({
                               onClick={() => onSelectReportProject?.(project.id)}
                               className={twMerge(
                                 clsx(
-                                  'group flex min-w-0 flex-1 items-start gap-2 rounded-[10px] px-2 py-1.5 text-left transition',
-                                  isProjectActive ? 'bg-white/12 text-white' : 'text-white/88 hover:bg-white/8',
+                                  'group flex min-w-0 flex-1 items-start gap-2 px-1 py-1 text-left transition',
+                                  isProjectActive
+                                    ? 'text-white'
+                                    : 'text-white/88 hover:text-white',
                                 ),
                               )}
                             >
                               <Building2 size={14} className="mt-[2px] shrink-0 text-[#f6d080]" />
                               <div className="min-w-0 flex-1">
-                                <div className="truncate text-[13px] font-semibold leading-5">{project.name}</div>
+                                <div className="break-words text-[13px] font-semibold leading-5">{project.name}</div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-white/52">
                                   <span>{units.length} đơn vị</span>
                                   <span>{importedCount}/{units.length}</span>
@@ -171,15 +201,15 @@ export function Sidebar({
                                     onClick={() => onSelectReportUnit?.(project.id, '__TOTAL_CITY__')}
                                     className={twMerge(
                                       clsx(
-                                        'flex min-w-0 flex-1 items-center justify-between gap-2 rounded-[10px] px-2 py-1.5 text-left text-[13px] transition',
+                                        'flex min-w-0 flex-1 items-center justify-between gap-2 px-1 py-1 text-left text-[13px] transition',
                                         selectedReportProjectId === project.id &&
                                           selectedReportUnitCode === '__TOTAL_CITY__'
-                                          ? 'bg-white/10 text-white'
-                                          : 'text-white/78 hover:bg-white/8',
+                                          ? 'text-white'
+                                          : 'text-white/78 hover:text-white',
                                       ),
                                     )}
                                   >
-                                    <span className="truncate leading-5">Đảng bộ Thành phố</span>
+                                    <span className="break-words leading-5">Đảng bộ Thành phố</span>
                                     <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-[#f6d080]">
                                       {importedCount}/{units.length}
                                     </span>
@@ -199,12 +229,12 @@ export function Sidebar({
                                       onClick={() => onSelectReportUnit?.(project.id, unit.code)}
                                       className={twMerge(
                                         clsx(
-                                          'flex min-w-0 flex-1 items-center justify-between gap-2 rounded-[10px] px-2 py-1.5 text-left text-[13px] transition',
-                                          isUnitActive ? 'bg-white/10 text-white' : 'text-white/78 hover:bg-white/8',
+                                          'flex min-w-0 flex-1 items-center justify-between gap-2 px-1 py-1 text-left text-[13px] transition',
+                                          isUnitActive ? 'text-white' : 'text-white/78 hover:text-white',
                                         ),
                                       )}
                                     >
-                                      <span className="truncate leading-5">{unit.name}</span>
+                                      <span className="break-words leading-5">{unit.name}</span>
                                       <div className="flex shrink-0 items-center gap-2 text-[10px] uppercase tracking-[0.14em]">
                                         {unit.hasPendingOverwrite && <span className="text-white/76">Chờ duyệt</span>}
                                         <span className={unit.hasData ? 'text-[#d8f3de]' : 'text-[#f6d080]'}>
@@ -286,6 +316,19 @@ export function Sidebar({
           </button>
         )}
       </div>
+
+      {!isMobile && !isCollapsed && onSidebarWidthChange && (
+        <button
+          type="button"
+          className="sidebar-resize-handle"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            beginResize(event.clientX);
+          }}
+          aria-label="Thay đổi độ rộng menu"
+          title="Kéo để thay đổi độ rộng menu"
+        />
+      )}
     </div>
   );
 }

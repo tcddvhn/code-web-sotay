@@ -284,6 +284,33 @@ textarea {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 10px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 30;
+}
+
+.sidebar-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 4px;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-resize-handle:hover::after {
+  background: rgba(255, 255, 255, 0.32);
+}
+
 .sidebar-report-tree {
   overscroll-behavior: contain;
   scrollbar-width: thin;

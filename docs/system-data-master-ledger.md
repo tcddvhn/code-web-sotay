@@ -502,3 +502,4 @@ Rui ro con mo:
 - Current report UX keeps the tree in the red sidebar with a compact, unframed folder-tree presentation.
 - The report canvas should maximize width for templates and tables; avoid reintroducing boxed tree controls or extra selector cards in the content panel.
 
+- Report mode UI note (2026-04-08): report project/unit navigation now lives in the red left sidebar, not inside ReportView content. Sidebar width is user-resizable and persisted locally. Dashboard top project/year/status controls were flattened to inline underlined controls to reduce chrome and preserve horizontal space.

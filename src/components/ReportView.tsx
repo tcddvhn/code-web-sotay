@@ -1329,7 +1329,7 @@ export function ReportView({
   );
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="p-4 md:p-6">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="page-title">Báo cáo tổng hợp</h2>
@@ -1347,24 +1347,26 @@ export function ReportView({
         </div>
       </div>
 
-      <div className="min-w-0">
-        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="panel-card w-full rounded-[20px] px-4 py-4 lg:max-w-[280px]">
+      <div className="min-w-0 w-full">
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,220px)_minmax(0,1fr)] lg:items-end">
+          <div className="w-full">
             <label className="col-header mb-2 block">2. Chọn năm</label>
-            <select
-              value={selectedYear}
-              onChange={(event) => onSelectedYearChange(event.target.value)}
-              className="field-select text-sm font-bold"
-            >
-              {YEARS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center border-b border-[var(--line-strong)] py-2">
+              <select
+                value={selectedYear}
+                onChange={(event) => onSelectedYearChange(event.target.value)}
+                className="field-select w-full border-0 py-0 text-sm font-bold"
+              >
+                {YEARS.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="w-full lg:flex-1">
+          <div className="w-full">
             <label className="col-header mb-2 block">3. Tìm kiếm tiêu chí</label>
             <div className="flex items-center gap-2 border-b border-[var(--line-strong)] py-2">
               <Search size={16} className="text-[var(--ink-soft)]" />
@@ -1376,15 +1378,11 @@ export function ReportView({
                 className="w-full bg-transparent text-sm font-medium focus:outline-none"
               />
             </div>
-            <p className="mt-2 text-xs text-[var(--ink-soft)]">
-              Đang xem: {selectedUnitOption?.name || 'Chưa chọn đơn vị'}
-              {selectedUnitOption?.code && selectedUnitOption.code !== TOTAL_REPORT_UNIT_CODE ? ` (${selectedUnitOption.code})` : ''}
-            </p>
           </div>
         </div>
 
         {projectTemplates.length > 0 && (
-          <div className="mb-6 overflow-x-auto pb-2">
+          <div className="mb-4 overflow-x-auto pb-2">
             <div className="flex w-max min-w-full gap-3">
               {projectTemplates.map((template) => {
                 const isActive = selectedTemplateId === template.id;
