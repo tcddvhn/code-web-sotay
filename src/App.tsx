@@ -187,7 +187,6 @@ export default function App() {
   const [selectedReportUnitCode, setSelectedReportUnitCode] = useState<string>(TOTAL_REPORT_UNIT_CODE);
   const [selectedReportYear, setSelectedReportYear] = useState<string>(() => getPreferredReportingYear());
   const [expandedReportProjectIds, setExpandedReportProjectIds] = useState<string[]>(DEFAULT_PROJECT_ID ? [DEFAULT_PROJECT_ID] : []);
-  const [reportTreeSearchTerm, setReportTreeSearchTerm] = useState('');
   const [reportTreeDataFiles, setReportTreeDataFiles] = useState<DataFileRecordSummary[]>([]);
   const [reportOverwriteRequests, setReportOverwriteRequests] = useState<OverwriteRequestRecord[]>([]);
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
@@ -316,10 +315,8 @@ export default function App() {
       }),
     [visibleProjects],
   );
-  const filteredReportTreeProjects = useMemo<ReportTreeProjectNode[]>(() => {
-    const normalizedSearch = reportTreeSearchTerm.trim().toLocaleLowerCase('vi');
-
-    const tree = sortedReportProjects.map((project) => {
+  const reportTreeProjects = useMemo<ReportTreeProjectNode[]>(() => {
+    return sortedReportProjects.map((project) => {
       const scopedCodes = getProjectScopedUnitCodes(project.id);
       const projectUnits = (scopedCodes && scopedCodes.length > 0
         ? allUnits.filter((unit) => scopedCodes.includes(unit.code))
@@ -355,34 +352,6 @@ export default function App() {
         units: projectUnits,
       } satisfies ReportTreeProjectNode;
     });
-
-    if (!normalizedSearch) {
-      return tree;
-    }
-
-    return tree
-      .map((node) => {
-        const projectMatches = node.project.name.toLocaleLowerCase('vi').includes(normalizedSearch);
-        if (projectMatches) {
-          return node;
-        }
-
-        const matchedUnits = node.units.filter(
-          (unit) =>
-            unit.name.toLocaleLowerCase('vi').includes(normalizedSearch) ||
-            unit.code.toLocaleLowerCase('vi').includes(normalizedSearch),
-        );
-
-        if (matchedUnits.length === 0) {
-          return null;
-        }
-
-        return {
-          ...node,
-          units: matchedUnits,
-        } satisfies ReportTreeProjectNode;
-      })
-      .filter((node): node is ReportTreeProjectNode => Boolean(node));
   }, [
     allUnits,
     effectiveUserProfile?.unitCode,
@@ -390,7 +359,6 @@ export default function App() {
     isUnitUser,
     reportOverwriteRequests,
     reportTreeDataFiles,
-    reportTreeSearchTerm,
     selectedReportYear,
     sortedReportProjects,
   ]);
@@ -1975,11 +1943,9 @@ export default function App() {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
           isMobile={isMobile}
-          reportTreeProjects={filteredReportTreeProjects}
+          reportTreeProjects={reportTreeProjects}
           selectedReportProjectId={selectedProjectId}
           selectedReportUnitCode={reportSelectedUnitSummary.code}
-          reportTreeSearchTerm={reportTreeSearchTerm}
-          onReportTreeSearchChange={setReportTreeSearchTerm}
           expandedReportProjectIds={expandedReportProjectIds}
           onToggleReportProject={handleToggleReportProject}
           onSelectReportProject={handleSelectReportProject}

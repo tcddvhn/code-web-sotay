@@ -1348,83 +1348,71 @@ export function ReportView({
       </div>
 
       <div className="min-w-0">
-        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">2. Chọn năm</label>
-          <select
-            value={selectedYear}
-            onChange={(event) => onSelectedYearChange(event.target.value)}
-            className="field-select text-sm font-bold"
-          >
-            {YEARS.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
+        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="panel-card w-full rounded-[20px] px-4 py-4 lg:max-w-[280px]">
+            <label className="col-header mb-2 block">2. Chọn năm</label>
+            <select
+              value={selectedYear}
+              onChange={(event) => onSelectedYearChange(event.target.value)}
+              className="field-select text-sm font-bold"
+            >
+              {YEARS.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">3. Đơn vị đang xem</label>
-          <div className="rounded-[16px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3">
-            <div className="text-sm font-bold text-[var(--ink)]">
-              {selectedUnitOption?.name || 'Chưa chọn đơn vị'}
+          <div className="w-full lg:flex-1">
+            <label className="col-header mb-2 block">3. Tìm kiếm tiêu chí</label>
+            <div className="flex items-center gap-2 border-b border-[var(--line-strong)] py-2">
+              <Search size={16} className="text-[var(--ink-soft)]" />
+              <input
+                type="text"
+                placeholder="Tên tiêu chí..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full bg-transparent text-sm font-medium focus:outline-none"
+              />
             </div>
-            {selectedUnitOption?.code && selectedUnitOption.code !== TOTAL_REPORT_UNIT_CODE && (
-              <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-[var(--ink-soft)]">
-                {selectedUnitOption.code}
-              </div>
-            )}
-            <p className="mt-3 text-xs text-[var(--ink-soft)]">
-              Chọn đơn vị trực tiếp ở cây báo cáo bên trái.
+            <p className="mt-2 text-xs text-[var(--ink-soft)]">
+              Đang xem: {selectedUnitOption?.name || 'Chưa chọn đơn vị'}
+              {selectedUnitOption?.code && selectedUnitOption.code !== TOTAL_REPORT_UNIT_CODE ? ` (${selectedUnitOption.code})` : ''}
             </p>
           </div>
         </div>
 
-        <div className="panel-card rounded-[20px] p-4">
-          <label className="col-header mb-2 block">4. Tìm kiếm tiêu chí</label>
-          <div className="flex items-center gap-2 border-b border-[var(--line-strong)] py-2">
-            <Search size={16} className="text-[var(--ink-soft)]" />
-            <input
-              type="text"
-              placeholder="Tên tiêu chí..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="w-full bg-transparent text-sm font-medium focus:outline-none"
-            />
+        {projectTemplates.length > 0 && (
+          <div className="mb-6 overflow-x-auto pb-2">
+            <div className="flex w-max min-w-full gap-3">
+              {projectTemplates.map((template) => {
+                const isActive = selectedTemplateId === template.id;
+
+                return (
+                  <button
+                    key={template.id}
+                    onClick={() => setSelectedTemplateId(template.id)}
+                    className={`h-11 min-w-[140px] rounded-[14px] border px-4 text-[12px] font-bold uppercase tracking-[0.04em] transition-colors ${
+                      isActive
+                        ? 'border-[rgba(67,122,87,0.35)] bg-[rgba(232,241,233,1)] text-[var(--success)]'
+                        : 'border-[rgba(214,171,96,0.45)] bg-[rgba(255,249,236,1)] text-[rgba(145,94,15,0.95)] hover:bg-[rgba(252,240,215,1)]'
+                    }`}
+                  >
+                    <span className="whitespace-nowrap">{template.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-      {projectTemplates.length > 0 && (
-        <div className="mb-6 overflow-x-auto pb-2">
-          <div className="flex w-max gap-3 pl-1">
-            {projectTemplates.map((template) => {
-              const isActive = selectedTemplateId === template.id;
-
-              return (
-                <button
-                  key={template.id}
-                  onClick={() => setSelectedTemplateId(template.id)}
-                  className={`h-11 min-w-[120px] rounded-[14px] border px-4 text-[12px] font-bold uppercase tracking-[0.04em] transition-colors ${
-                    isActive
-                      ? 'border-[rgba(67,122,87,0.35)] bg-[rgba(232,241,233,1)] text-[var(--success)]'
-                      : 'border-[rgba(214,171,96,0.45)] bg-[rgba(255,249,236,1)] text-[rgba(145,94,15,0.95)] hover:bg-[rgba(252,240,215,1)]'
-                  }`}
-                >
-                  <span className="whitespace-nowrap">{template.name}</span>
-                </button>
-              );
-            })}
+        {!selectedTemplate ? (
+          <div className="panel-card rounded-[24px] p-10 text-center opacity-60">
+            Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
           </div>
-      </div>
-      )}
-
-      {!selectedTemplate ? (
-        <div className="panel-card rounded-[24px] p-10 text-center opacity-60">
-          Chưa chọn biểu mẫu. Vui lòng chọn dự án và biểu mẫu để hiển thị báo cáo.
-        </div>
-      ) : usesWorkbookBasedLayout ? (
-        <div className="table-shell overflow-hidden rounded-[24px] border border-[var(--line-strong)] bg-white">
+        ) : usesWorkbookBasedLayout ? (
+          <div className="table-shell overflow-hidden rounded-[24px] border border-[var(--line-strong)] bg-white">
           {isWorkbookLayoutLoading ? (
             <div className="p-12 text-center italic opacity-60">Đang dựng khung biểu theo file mẫu...</div>
           ) : advancedRenderedSections.length > 0 ? (
@@ -1636,9 +1624,8 @@ export function ReportView({
               </button>
             </div>
           )}
-        </div>
-      )}
-        </div>
+          </div>
+        )}
       </div>
 
       {activeCellDetail && (

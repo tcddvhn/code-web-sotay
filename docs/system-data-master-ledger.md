@@ -497,3 +497,8 @@ Rui ro con mo:
 - Tree structure: Project -> Tong hop cap thanh pho + project units.
 - Report content panel no longer owns project/unit tree state; App.tsx owns that state and Sidebar is the primary selector.
 
+
+## Report Layout Notes
+- Current report UX keeps the tree in the red sidebar with a compact, unframed folder-tree presentation.
+- The report canvas should maximize width for templates and tables; avoid reintroducing boxed tree controls or extra selector cards in the content panel.
+

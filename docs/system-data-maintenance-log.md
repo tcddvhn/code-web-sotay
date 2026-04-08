@@ -591,3 +591,10 @@ pm.cmd run build thành công.
 - ReportView now uses sidebar-driven project/unit selection and keeps the right panel focused on year, current unit, tabs, table, and export.
 - Validation: npm.cmd run lint = pass; npm.cmd run build = pass.
 
+
+## 2026-04-08 - Report UI compact sidebar tree
+- Removed report tree search box and project card shells from the red sidebar; report navigation now uses a compact folder-tree style to preserve horizontal space for the report canvas.
+- Enabled practical wheel scrolling in the sidebar report tree by keeping the tree container independently scrollable inside the sidebar.
+- Simplified the report header area: reduced the year selector width, removed the separate current-unit card, converted the criteria search into icon + underline only, and restored more width for tab rows and report tables.
+- Validation: npm.cmd run lint = pass; npm.cmd run build = pass.
+
