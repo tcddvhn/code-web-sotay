@@ -583,3 +583,11 @@ pm.cmd run build thành công.
 - Added pending overwrite badges in the report tree for admins: project-level pending counts and unit-level 'Cho duyet ghi de' state.
 - Pending overwrite status is derived from overwrite requests for the selected year.
 - Validation: npm.cmd run lint = pass; npm.cmd run build = pass.
+
+## 2026-04-08 - Report tree moved into sidebar
+- Moved report project/unit tree out of ReportView content and into the shared red Sidebar when currentView = REPORTS.
+- Lifted report selection state to App.tsx: selectedReportYear, selectedReportUnitCode, expandedReportProjectIds, reportTreeSearchTerm.
+- Sidebar now renders project -> total city/unit nodes, search box, imported badges, and pending overwrite badges without consuming report content width.
+- ReportView now uses sidebar-driven project/unit selection and keeps the right panel focused on year, current unit, tabs, table, and export.
+- Validation: npm.cmd run lint = pass; npm.cmd run build = pass.
+

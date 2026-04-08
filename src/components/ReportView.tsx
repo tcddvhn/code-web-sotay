@@ -1,7 +1,7 @@
 ﻿
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Building2, ChevronDown, ChevronRight, Download, FileText, LoaderCircle, Search, X } from 'lucide-react';
+import { Download, LoaderCircle, Search, X } from 'lucide-react';
 import { YEARS } from '../constants';
 import {
   ConsolidatedData,
@@ -10,14 +10,11 @@ import {
   FormTemplate,
   HeaderLayout,
   ManagedUnit,
-  OverwriteRequestRecord,
   Project,
-  ProjectUnitScope,
   UserProfile,
 } from '../types';
-import { getPreferredReportingYear } from '../utils/reportingYear';
 import { getPublicUrlByPath, uploadFile } from '../supabase';
-import { createReportExport, listOverwriteRequests as listOverwriteRequestsFromSupabase } from '../supabaseStore';
+import { createReportExport } from '../supabaseStore';
 import { fetchAggregatedRowsFromSupabase, fetchCellDetailsFromSupabase } from '../supabaseReports';
 import {
   buildWorksheetLayoutFromWorksheet,
@@ -34,10 +31,10 @@ interface ReportViewProps {
   projects: Project[];
   templates: FormTemplate[];
   units: ManagedUnit[];
-  allUnits: ManagedUnit[];
-  projectUnitScopeByProjectId: ProjectUnitScope;
   selectedProjectId: string;
-  onSelectProject: (id: string) => void;
+  selectedUnitCode: string;
+  selectedYear: string;
+  onSelectedYearChange: (year: string) => void;
   currentUser: UserProfile | null;
 }
 
@@ -601,20 +598,15 @@ export function ReportView({
   projects,
   templates,
   units,
-  allUnits,
-  projectUnitScopeByProjectId,
   selectedProjectId,
-  onSelectProject,
+  selectedUnitCode,
+  selectedYear,
+  onSelectedYearChange,
   currentUser,
 }: ReportViewProps) {
   const isUnitUser = currentUser?.role === 'unit_user';
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
-  const [selectedYear, setSelectedYear] = useState(() => getPreferredReportingYear());
-  const [selectedUnitCode, setSelectedUnitCode] = useState(TOTAL_REPORT_UNIT_CODE);
-  const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>(selectedProjectId ? [selectedProjectId] : []);
-  const [treeSearchTerm, setTreeSearchTerm] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [overwriteRequests, setOverwriteRequests] = useState<OverwriteRequestRecord[]>([]);
   const [activeCellDetail, setActiveCellDetail] = useState<ActiveCellDetail | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState<string | null>(null);
@@ -635,107 +627,14 @@ export function ReportView({
     minWidth: number;
   } | null>(null);
   const unitNameByCode = useMemo(() => new Map(units.map((unit) => [unit.code, unit.name])), [units]);
-  const normalizedTreeSearchTerm = treeSearchTerm.trim().toLocaleLowerCase('vi');
 
   const projectTemplates = useMemo(
     () => templates.filter((template) => template.projectId === selectedProjectId),
     [templates, selectedProjectId],
   );
-  const projectTemplateIdsByProjectId = useMemo(() => {
-    const next = new Map<string, string[]>();
-    templates.forEach((template) => {
-      const bucket = next.get(template.projectId) || [];
-      bucket.push(template.id);
-      next.set(template.projectId, bucket);
-    });
-    return next;
-  }, [templates]);
   const selectedTemplate = projectTemplates.find((template) => template.id === selectedTemplateId) || null;
   const usesWorkbookBasedLayout = templateUsesWorkbookRender(selectedTemplate) && templateHasWorkbookSource(selectedTemplate);
   const selectedProject = projects.find((project) => project.id === selectedProjectId) || null;
-  const sortedProjects = useMemo(
-    () =>
-      [...projects].sort((left, right) => {
-        const leftTime = new Date(left.createdAt as string | number | Date).getTime();
-        const rightTime = new Date(right.createdAt as string | number | Date).getTime();
-        return rightTime - leftTime;
-      }),
-    [projects],
-  );
-  const reportTreeProjects = useMemo(
-    () =>
-      sortedProjects.map((project) => {
-        const scopedCodes = projectUnitScopeByProjectId[project.id];
-        const importedUnitCodes = new Set<string>();
-        const pendingUnitCodes = new Set<string>();
-        const pendingRequests = overwriteRequests.filter(
-          (request) => request.projectId === project.id && request.year === selectedYear && request.status === 'PENDING',
-        );
-        pendingRequests.forEach((request) => pendingUnitCodes.add(request.unitCode));
-        dataFiles
-          .filter((file) => file.projectId === project.id && file.year === selectedYear)
-          .forEach((file) => {
-            if (file.unitCode) {
-              importedUnitCodes.add(file.unitCode);
-            }
-          });
-
-        const projectTemplateIds = projectTemplateIdsByProjectId.get(project.id) || [];
-        projectTemplateIds.forEach((templateId) => {
-          (data[templateId] || [])
-            .filter((row) => row.projectId === project.id && row.year === selectedYear)
-            .forEach((row) => importedUnitCodes.add(row.unitCode));
-        });
-
-        const projectUnits = (scopedCodes && scopedCodes.length > 0
-          ? allUnits.filter((unit) => scopedCodes.includes(unit.code))
-          : allUnits
-        )
-          .filter((unit) => !unit.isDeleted)
-          .sort((left, right) => left.code.localeCompare(right.code, 'vi'));
-
-        return {
-          project,
-          importedCount: projectUnits.filter((unit) => importedUnitCodes.has(unit.code)).length,
-          pendingCount: pendingRequests.length,
-          units: isUnitUser && currentUser?.unitCode
-            ? projectUnits
-                .filter((unit) => unit.code === currentUser.unitCode)
-                .map((unit) => ({ ...unit, hasData: importedUnitCodes.has(unit.code), hasPendingOverwrite: pendingUnitCodes.has(unit.code) }))
-            : projectUnits.map((unit) => ({ ...unit, hasData: importedUnitCodes.has(unit.code), hasPendingOverwrite: pendingUnitCodes.has(unit.code) })),
-        };
-      }),
-    [allUnits, currentUser?.unitCode, data, dataFiles, isUnitUser, overwriteRequests, projectTemplateIdsByProjectId, projectUnitScopeByProjectId, selectedYear, sortedProjects],
-  );
-  const filteredTreeProjects = useMemo(() => {
-    if (!normalizedTreeSearchTerm) {
-      return reportTreeProjects;
-    }
-
-    return reportTreeProjects
-      .map((node) => {
-        const projectMatches = node.project.name.toLocaleLowerCase('vi').includes(normalizedTreeSearchTerm);
-        if (projectMatches) {
-          return node;
-        }
-
-        const matchedUnits = node.units.filter(
-          (unit) =>
-            unit.name.toLocaleLowerCase('vi').includes(normalizedTreeSearchTerm) ||
-            unit.code.toLocaleLowerCase('vi').includes(normalizedTreeSearchTerm),
-        );
-
-        if (matchedUnits.length === 0) {
-          return null;
-        }
-
-        return {
-          ...node,
-          units: matchedUnits,
-        };
-      })
-      .filter((node): node is (typeof reportTreeProjects)[number] => !!node);
-  }, [normalizedTreeSearchTerm, reportTreeProjects]);
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const headerRows = useMemo(
     () => (resolvedHeaderLayout ? buildHeaderRows(resolvedHeaderLayout) : null),
@@ -823,58 +722,6 @@ export function ReportView({
       setSelectedTemplateId(projectTemplates[0].id);
     }
   }, [projectTemplates, selectedTemplateId]);
-
-  useEffect(() => {
-    if (currentUser?.role !== 'admin') {
-      setOverwriteRequests([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    listOverwriteRequestsFromSupabase()
-      .then((items) => {
-        if (!cancelled) {
-          setOverwriteRequests(items);
-        }
-      })
-      .catch((error) => {
-        console.error('Không thể tải trạng thái ghi đè cho cây báo cáo:', error);
-        if (!cancelled) {
-          setOverwriteRequests([]);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser?.role]);
-
-  useEffect(() => {
-    if (!selectedProjectId) {
-      return;
-    }
-
-    setExpandedProjectIds((previous) =>
-      previous.includes(selectedProjectId) ? previous : [...previous, selectedProjectId],
-    );
-  }, [selectedProjectId]);
-
-  useEffect(() => {
-    if (isUnitUser && currentUser?.unitCode) {
-      setSelectedUnitCode(currentUser.unitCode);
-      return;
-    }
-
-    if (reportUnitOptions.length === 0) {
-      setSelectedUnitCode(TOTAL_REPORT_UNIT_CODE);
-      return;
-    }
-
-    if (!reportUnitOptions.find((unit) => unit.code === selectedUnitCode)) {
-      setSelectedUnitCode(reportUnitOptions[0].code);
-    }
-  }, [currentUser?.unitCode, isUnitUser, reportUnitOptions, selectedUnitCode]);
 
   useEffect(() => {
     setVisibleRowCount(INITIAL_VISIBLE_ROWS);
@@ -1463,28 +1310,6 @@ export function ReportView({
     }
   };
 
-  const toggleProjectTree = (projectId: string) => {
-    setExpandedProjectIds((previous) =>
-      previous.includes(projectId)
-        ? previous.filter((id) => id !== projectId)
-        : [...previous, projectId],
-    );
-  };
-
-  const handleSelectProjectFromTree = (projectId: string) => {
-    onSelectProject(projectId);
-    if (!isUnitUser) {
-      setSelectedUnitCode(TOTAL_REPORT_UNIT_CODE);
-    }
-    setExpandedProjectIds((previous) => (previous.includes(projectId) ? previous : [...previous, projectId]));
-  };
-
-  const handleSelectUnitFromTree = (projectId: string, unitCode: string) => {
-    onSelectProject(projectId);
-    setSelectedUnitCode(unitCode);
-    setExpandedProjectIds((previous) => (previous.includes(projectId) ? previous : [...previous, projectId]));
-  };
-
   const renderResizeHandle = (columnIndex: number, label: string) => (
     <button
       type="button"
@@ -1522,145 +1347,13 @@ export function ReportView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="panel-card h-fit rounded-[24px] p-4 xl:sticky xl:top-6">
-          <div className="mb-4">
-            <h3 className="section-title text-[1.1rem]">Cây báo cáo</h3>
-            <p className="page-subtitle mt-2 text-sm">
-              Chọn dự án và đơn vị ở cây bên trái. Dự án mới nhất được xếp lên trên.
-            </p>
-          </div>
-          <div className="mb-4 flex items-center gap-2 rounded-[16px] border border-[var(--line)] bg-white px-3 py-2">
-            <Search size={15} className="text-[var(--ink-soft)]" />
-            <input
-              type="text"
-              value={treeSearchTerm}
-              onChange={(event) => setTreeSearchTerm(event.target.value)}
-              placeholder="Tìm dự án hoặc đơn vị..."
-              className="w-full bg-transparent text-sm font-medium text-[var(--ink)] focus:outline-none"
-            />
-          </div>
-          <div className="max-h-[calc(100vh-220px)] space-y-3 overflow-y-auto pr-1">
-            {filteredTreeProjects.map(({ project, importedCount, pendingCount, units: treeUnits }) => {
-              const isExpanded = expandedProjectIds.includes(project.id);
-              const isProjectActive = selectedProjectId === project.id && selectedUnitCode === TOTAL_REPORT_UNIT_CODE;
-
-              return (
-                <div key={project.id} className="rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] p-2">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleProjectTree(project.id)}
-                      className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] bg-white text-[var(--ink-soft)]"
-                      title={isExpanded ? 'Thu gọn dự án' : 'Mở rộng dự án'}
-                    >
-                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectProjectFromTree(project.id)}
-                      className={`flex min-w-0 flex-1 items-center gap-3 rounded-[14px] px-3 py-2 text-left transition ${
-                        isProjectActive
-                          ? 'bg-[rgba(152,22,22,0.12)] text-[var(--primary-dark)]'
-                          : 'hover:bg-white'
-                      }`}
-                    >
-                      <Building2 size={16} className="shrink-0" />
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{project.name}</div>
-                        <div className="text-xs text-[var(--ink-soft)]">{treeUnits.length} đơn vị</div>
-                      </div>
-                      <div className="shrink-0 rounded-full border border-[rgba(210,154,39,0.35)] bg-[rgba(255,249,236,0.95)] px-2 py-1 text-[10px] font-bold text-[rgba(145,94,15,0.95)]">
-                        {importedCount}/{treeUnits.length}
-                      </div>
-                      {pendingCount > 0 && (
-                        <div className="shrink-0 rounded-full border border-[rgba(152,22,22,0.22)] bg-[rgba(255,236,236,1)] px-2 py-1 text-[10px] font-bold text-[var(--primary-dark)]">
-                          {pendingCount} chờ duyệt
-                        </div>
-                      )}
-                    </button>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="mt-2 space-y-1 pl-4">
-                      {!isUnitUser && (
-                        <button
-                          type="button"
-                          onClick={() => handleSelectUnitFromTree(project.id, TOTAL_REPORT_UNIT_CODE)}
-                          className={`flex w-full items-center gap-3 rounded-[14px] px-3 py-2 text-left text-sm transition ${
-                            selectedProjectId === project.id && selectedUnitCode === TOTAL_REPORT_UNIT_CODE
-                              ? 'bg-[rgba(152,22,22,0.10)] text-[var(--primary-dark)]'
-                              : 'hover:bg-white'
-                          }`}
-                        >
-                          <FileText size={15} className="shrink-0" />
-                          <span className="truncate font-medium">Đảng bộ Thành phố</span>
-                          <span className="ml-auto shrink-0 rounded-full border border-[rgba(210,154,39,0.35)] bg-[rgba(255,249,236,0.95)] px-2 py-1 text-[10px] font-bold text-[rgba(145,94,15,0.95)]">
-                            {importedCount}/{treeUnits.length}
-                          </span>
-                          {pendingCount > 0 && (
-                            <span className="shrink-0 rounded-full border border-[rgba(152,22,22,0.22)] bg-[rgba(255,236,236,1)] px-2 py-1 text-[10px] font-bold text-[var(--primary-dark)]">
-                              {pendingCount} chờ duyệt
-                            </span>
-                          )}
-                        </button>
-                      )}
-                      {treeUnits.map((unit) => {
-                        const isUnitActive = selectedProjectId === project.id && selectedUnitCode === unit.code;
-                        return (
-                          <button
-                            key={`${project.id}-${unit.code}`}
-                            type="button"
-                            onClick={() => handleSelectUnitFromTree(project.id, unit.code)}
-                            className={`flex w-full items-center justify-between gap-3 rounded-[14px] px-3 py-2 text-left text-sm transition ${
-                              isUnitActive
-                                ? 'bg-[rgba(210,154,39,0.14)] text-[var(--primary-dark)]'
-                                : 'hover:bg-white'
-                            }`}
-                          >
-                            <span className="truncate font-medium">{unit.name}</span>
-                            <div className="ml-auto flex shrink-0 items-center gap-2">
-                              {unit.hasPendingOverwrite && (
-                                <span className="rounded-full border border-[rgba(152,22,22,0.22)] bg-[rgba(255,236,236,1)] px-2 py-1 text-[10px] font-bold text-[var(--primary-dark)]">
-                                  Chờ duyệt ghi đè
-                                </span>
-                              )}
-                              <span
-                                className={`rounded-full border px-2 py-1 text-[10px] font-bold ${
-                                  unit.hasData
-                                    ? 'border-[rgba(67,122,87,0.28)] bg-[rgba(232,241,233,1)] text-[var(--success)]'
-                                    : 'border-[rgba(210,154,39,0.35)] bg-[rgba(255,249,236,0.95)] text-[rgba(145,94,15,0.95)]'
-                                }`}
-                              >
-                                {unit.hasData ? 'Đã có dữ liệu' : 'Chưa có dữ liệu'}
-                              </span>
-                              <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                                {unit.code}
-                              </span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {filteredTreeProjects.length === 0 && (
-              <div className="rounded-[18px] border border-dashed border-[var(--line)] px-4 py-8 text-center text-sm text-[var(--ink-soft)]">
-                Không tìm thấy dự án hoặc đơn vị phù hợp.
-              </div>
-            )}
-          </div>
-        </aside>
-
-        <div className="min-w-0">
-      <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="min-w-0">
+        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="panel-card rounded-[20px] p-4">
           <label className="col-header mb-2 block">2. Chọn năm</label>
           <select
             value={selectedYear}
-            onChange={(event) => setSelectedYear(event.target.value)}
+            onChange={(event) => onSelectedYearChange(event.target.value)}
             className="field-select text-sm font-bold"
           >
             {YEARS.map((year) => (
@@ -1701,7 +1394,6 @@ export function ReportView({
             />
           </div>
         </div>
-      </div>
 
       {projectTemplates.length > 0 && (
         <div className="mb-6 overflow-x-auto pb-2">
@@ -1724,7 +1416,7 @@ export function ReportView({
               );
             })}
           </div>
-        </div>
+      </div>
       )}
 
       {!selectedTemplate ? (

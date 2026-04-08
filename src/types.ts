@@ -145,6 +145,20 @@ export interface ProjectUnitScope {
   [projectId: string]: string[];
 }
 
+export interface ReportTreeUnitNode {
+  code: string;
+  name: string;
+  hasData: boolean;
+  hasPendingOverwrite: boolean;
+}
+
+export interface ReportTreeProjectNode {
+  project: Project;
+  importedCount: number;
+  pendingCount: number;
+  units: ReportTreeUnitNode[];
+}
+
 export type TemplateMode = 'AI' | 'MANUAL' | 'LEGACY';
 
 export interface HeaderCell {

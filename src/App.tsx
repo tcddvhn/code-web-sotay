@@ -29,7 +29,7 @@ import {
   onSupabaseAuthStateChange,
   updateSupabasePassword,
 } from './supabase';
-import { AppSettings, AssignmentUser, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile, ViewMode } from './types';
+import { AppSettings, AssignmentUser, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, ReportTreeProjectNode, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAssignmentKey } from './access';
 import {
@@ -40,6 +40,7 @@ import {
   getUserProfileByEmail,
   getSettings as getSettingsFromSupabase,
   listDataFilesByProject as listDataFilesByProjectFromSupabase,
+  listDataFilesByScope as listDataFilesByScopeFromSupabase,
   listUserProfiles as listUserProfilesFromSupabase,
   deleteDataFilesByProject,
   deleteProjectById as deleteProjectFromSupabase,
@@ -85,6 +86,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   storagePath: 'C:\\TongHop\\02_LuuFileGoc',
   receivedPath: 'C:\\TongHop\\01_DaTiepNhan',
 };
+const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
 
 type UnitLog = {
   code: string;
@@ -182,6 +184,12 @@ export default function App() {
   const [projectUnitScopeByProjectId, setProjectUnitScopeByProjectId] = useState<ProjectUnitScope>({});
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
+  const [selectedReportUnitCode, setSelectedReportUnitCode] = useState<string>(TOTAL_REPORT_UNIT_CODE);
+  const [selectedReportYear, setSelectedReportYear] = useState<string>(() => getPreferredReportingYear());
+  const [expandedReportProjectIds, setExpandedReportProjectIds] = useState<string[]>(DEFAULT_PROJECT_ID ? [DEFAULT_PROJECT_ID] : []);
+  const [reportTreeSearchTerm, setReportTreeSearchTerm] = useState('');
+  const [reportTreeDataFiles, setReportTreeDataFiles] = useState<DataFileRecordSummary[]>([]);
+  const [reportOverwriteRequests, setReportOverwriteRequests] = useState<OverwriteRequestRecord[]>([]);
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -284,6 +292,108 @@ export default function App() {
     },
     [allUnits, currentProject, effectiveUserProfile, projectUnitScopeByProjectId],
   );
+  const reportSelectedUnitSummary = useMemo(() => {
+    if (isUnitUser && effectiveUserProfile?.unitCode) {
+      return {
+        code: effectiveUserProfile.unitCode,
+        name: effectiveUserProfile.unitName || availableUnitsForProject.find((unit) => unit.code === effectiveUserProfile.unitCode)?.name || effectiveUserProfile.unitCode,
+      };
+    }
+
+    if (selectedReportUnitCode === TOTAL_REPORT_UNIT_CODE) {
+      return { code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' };
+    }
+
+    const matchedUnit = availableUnitsForProject.find((unit) => unit.code === selectedReportUnitCode);
+    return matchedUnit ? { code: matchedUnit.code, name: matchedUnit.name } : { code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' };
+  }, [availableUnitsForProject, effectiveUserProfile, isUnitUser, selectedReportUnitCode]);
+  const sortedReportProjects = useMemo(
+    () =>
+      [...visibleProjects].sort((left, right) => {
+        const leftTime = new Date(left.createdAt as string | number | Date).getTime();
+        const rightTime = new Date(right.createdAt as string | number | Date).getTime();
+        return rightTime - leftTime;
+      }),
+    [visibleProjects],
+  );
+  const filteredReportTreeProjects = useMemo<ReportTreeProjectNode[]>(() => {
+    const normalizedSearch = reportTreeSearchTerm.trim().toLocaleLowerCase('vi');
+
+    const tree = sortedReportProjects.map((project) => {
+      const scopedCodes = getProjectScopedUnitCodes(project.id);
+      const projectUnits = (scopedCodes && scopedCodes.length > 0
+        ? allUnits.filter((unit) => scopedCodes.includes(unit.code))
+        : allUnits
+      )
+        .filter((unit) => !unit.isDeleted)
+        .sort((left, right) => left.code.localeCompare(right.code, 'vi'))
+        .filter((unit) => !isUnitUser || unit.code === effectiveUserProfile?.unitCode)
+        .map((unit) => ({
+          code: unit.code,
+          name: unit.name,
+          hasData: reportTreeDataFiles.some(
+            (file) => file.projectId === project.id && file.year === selectedReportYear && file.unitCode === unit.code,
+          ),
+          hasPendingOverwrite: reportOverwriteRequests.some(
+            (request) =>
+              request.projectId === project.id &&
+              request.year === selectedReportYear &&
+              request.unitCode === unit.code &&
+              request.status === 'PENDING',
+          ),
+        }));
+
+      const importedCount = projectUnits.filter((unit) => unit.hasData).length;
+      const pendingCount = reportOverwriteRequests.filter(
+        (request) => request.projectId === project.id && request.year === selectedReportYear && request.status === 'PENDING',
+      ).length;
+
+      return {
+        project,
+        importedCount,
+        pendingCount,
+        units: projectUnits,
+      } satisfies ReportTreeProjectNode;
+    });
+
+    if (!normalizedSearch) {
+      return tree;
+    }
+
+    return tree
+      .map((node) => {
+        const projectMatches = node.project.name.toLocaleLowerCase('vi').includes(normalizedSearch);
+        if (projectMatches) {
+          return node;
+        }
+
+        const matchedUnits = node.units.filter(
+          (unit) =>
+            unit.name.toLocaleLowerCase('vi').includes(normalizedSearch) ||
+            unit.code.toLocaleLowerCase('vi').includes(normalizedSearch),
+        );
+
+        if (matchedUnits.length === 0) {
+          return null;
+        }
+
+        return {
+          ...node,
+          units: matchedUnits,
+        } satisfies ReportTreeProjectNode;
+      })
+      .filter((node): node is ReportTreeProjectNode => Boolean(node));
+  }, [
+    allUnits,
+    effectiveUserProfile?.unitCode,
+    getProjectScopedUnitCodes,
+    isUnitUser,
+    reportOverwriteRequests,
+    reportTreeDataFiles,
+    reportTreeSearchTerm,
+    selectedReportYear,
+    sortedReportProjects,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -442,6 +552,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!isMobile && currentView === 'REPORTS' && isSidebarCollapsed) {
+      setIsSidebarCollapsed(false);
+    }
+  }, [currentView, isMobile, isSidebarCollapsed]);
+
+  useEffect(() => {
     if (isAuthenticated) {
       return;
     }
@@ -519,6 +635,65 @@ export default function App() {
       cancelled = true;
     };
   }, [isAuthReady, selectedProjectId]);
+
+  useEffect(() => {
+    if (!isAuthReady || visibleProjects.length === 0) {
+      setReportTreeDataFiles([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all(
+      visibleProjects.map((project) =>
+        listDataFilesByScopeFromSupabase({
+          projectId: project.id,
+          years: [selectedReportYear],
+        }),
+      ),
+    )
+      .then((items) => {
+        if (!cancelled) {
+          setReportTreeDataFiles(items.flat());
+        }
+      })
+      .catch((error) => {
+        console.error('Supabase report tree data files load error:', error);
+        if (!cancelled) {
+          setReportTreeDataFiles([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthReady, selectedReportYear, visibleProjects]);
+
+  useEffect(() => {
+    if (!isAuthReady || !isAdmin) {
+      setReportOverwriteRequests([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    listOverwriteRequestsFromSupabase()
+      .then((items) => {
+        if (!cancelled) {
+          setReportOverwriteRequests(items);
+        }
+      })
+      .catch((error) => {
+        console.error('Supabase report overwrite requests load error:', error);
+        if (!cancelled) {
+          setReportOverwriteRequests([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, isAuthReady]);
 
   const refreshTemplatesForProject = async (projectId: string) => {
     if (!projectId) {
@@ -787,6 +962,37 @@ export default function App() {
       setSelectedProjectId(visibleProjects[0].id);
     }
   }, [isUnitUser, selectedProjectId, visibleProjects]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      return;
+    }
+
+    setExpandedReportProjectIds((current) =>
+      current.includes(selectedProjectId) ? current : [...current, selectedProjectId],
+    );
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (isUnitUser && effectiveUserProfile?.unitCode) {
+      setSelectedReportUnitCode(effectiveUserProfile.unitCode);
+      return;
+    }
+
+    if (!selectedProjectId) {
+      setSelectedReportUnitCode(TOTAL_REPORT_UNIT_CODE);
+      return;
+    }
+
+    if (selectedReportUnitCode === TOTAL_REPORT_UNIT_CODE) {
+      return;
+    }
+
+    const validUnitCodes = new Set(availableUnitsForProject.map((unit) => unit.code));
+    if (!validUnitCodes.has(selectedReportUnitCode)) {
+      setSelectedReportUnitCode(TOTAL_REPORT_UNIT_CODE);
+    }
+  }, [availableUnitsForProject, effectiveUserProfile?.unitCode, isUnitUser, selectedProjectId, selectedReportUnitCode]);
 
   const deleteReportExports = async (projectId: string) => {
     const storagePaths = await deleteReportExportsByProjectFromSupabase(projectId);
@@ -1481,6 +1687,26 @@ export default function App() {
     setCurrentView('IMPORT');
   };
 
+  const handleToggleReportProject = (projectId: string) => {
+    setExpandedReportProjectIds((current) =>
+      current.includes(projectId) ? current.filter((id) => id !== projectId) : [...current, projectId],
+    );
+  };
+
+  const handleSelectReportProject = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    if (!isUnitUser) {
+      setSelectedReportUnitCode(TOTAL_REPORT_UNIT_CODE);
+    }
+    setExpandedReportProjectIds((current) => (current.includes(projectId) ? current : [...current, projectId]));
+  };
+
+  const handleSelectReportUnit = (projectId: string, unitCode: string) => {
+    setSelectedProjectId(projectId);
+    setSelectedReportUnitCode(unitCode);
+    setExpandedReportProjectIds((current) => (current.includes(projectId) ? current : [...current, projectId]));
+  };
+
   if (!isAuthReady) {
     return (
       <div className="app-shell h-screen flex items-center justify-center">
@@ -1631,10 +1857,10 @@ export default function App() {
             projects={visibleProjects}
             templates={templates}
             units={availableUnitsForProject}
-            allUnits={allUnits}
-            projectUnitScopeByProjectId={projectUnitScopeByProjectId}
             selectedProjectId={selectedProjectId}
-            onSelectProject={setSelectedProjectId}
+            selectedUnitCode={reportSelectedUnitSummary.code}
+            selectedYear={selectedReportYear}
+            onSelectedYearChange={setSelectedReportYear}
             currentUser={effectiveUserProfile}
           />
         );
@@ -1749,6 +1975,15 @@ export default function App() {
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
           isMobile={isMobile}
+          reportTreeProjects={filteredReportTreeProjects}
+          selectedReportProjectId={selectedProjectId}
+          selectedReportUnitCode={reportSelectedUnitSummary.code}
+          reportTreeSearchTerm={reportTreeSearchTerm}
+          onReportTreeSearchChange={setReportTreeSearchTerm}
+          expandedReportProjectIds={expandedReportProjectIds}
+          onToggleReportProject={handleToggleReportProject}
+          onSelectReportProject={handleSelectReportProject}
+          onSelectReportUnit={handleSelectReportUnit}
         />
       )}
       <main className="app-main flex-1 overflow-auto">{renderContent()}</main>

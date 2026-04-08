@@ -491,3 +491,9 @@ Rui ro con mo:
 - Right panel remains report-centric: year filter, unit filter, search, template tabs, report table, export actions.
 - The project selector dropdown in ReportView has been removed.
 - Dashboard banner now uses the Dong Son drum background asset from the repository.
+
+## Report Navigation Model
+- Current production direction: report tree lives in the left red sidebar, not inside the report content canvas.
+- Tree structure: Project -> Tong hop cap thanh pho + project units.
+- Report content panel no longer owns project/unit tree state; App.tsx owns that state and Sidebar is the primary selector.
+
