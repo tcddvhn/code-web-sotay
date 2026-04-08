@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   Building2,
+  Search,
 } from 'lucide-react';
 import { AuthenticatedUser, ReportTreeProjectNode, UserProfile, ViewMode } from '../types';
 import { clsx } from 'clsx';
@@ -41,6 +42,8 @@ interface SidebarProps {
   onToggleReportProject?: (projectId: string) => void;
   onSelectReportProject?: (projectId: string) => void;
   onSelectReportUnit?: (projectId: string, unitCode: string) => void;
+  reportTreeSearchTerm?: string;
+  onReportTreeSearchTermChange?: (value: string) => void;
 }
 
 export function Sidebar({
@@ -64,10 +67,58 @@ export function Sidebar({
   onToggleReportProject,
   onSelectReportProject,
   onSelectReportUnit,
+  reportTreeSearchTerm = '',
+  onReportTreeSearchTermChange,
 }: SidebarProps) {
+  const normalizeSearchText = React.useCallback((value: string) => {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'd')
+      .toLocaleLowerCase('vi-VN')
+      .trim();
+  }, []);
   const isUnitUser = userProfile?.role === 'unit_user';
   const isReportsTreeVisible = currentView === 'REPORTS' && !isCollapsed && !isMobile;
   const baseMenu = [{ id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: LayoutDashboard }];
+  const normalizedReportTreeSearchTerm = normalizeSearchText(reportTreeSearchTerm);
+  const firstMatchedProjectRef = React.useRef<HTMLDivElement | null>(null);
+
+  const visibleReportTreeProjects = React.useMemo(() => {
+    if (!normalizedReportTreeSearchTerm) {
+      return reportTreeProjects;
+    }
+
+    const filterUnit = (unit: ReportTreeProjectNode['units'][number]) =>
+      normalizeSearchText(unit.name).includes(normalizedReportTreeSearchTerm) ||
+      normalizeSearchText(unit.code).includes(normalizedReportTreeSearchTerm);
+
+    if (selectedReportProjectId) {
+      return reportTreeProjects
+        .filter(({ project }) => project.id === selectedReportProjectId)
+        .map((node) => ({
+          ...node,
+          units: node.units.filter(filterUnit),
+        }))
+        .filter(({ units }) => units.length > 0);
+    }
+
+    return reportTreeProjects
+      .map((node) => ({
+        ...node,
+        units: node.units.filter(filterUnit),
+      }))
+      .filter(({ units }) => units.length > 0);
+  }, [normalizeSearchText, normalizedReportTreeSearchTerm, reportTreeProjects, selectedReportProjectId]);
+
+  React.useEffect(() => {
+    if (!normalizedReportTreeSearchTerm) {
+      return;
+    }
+
+    firstMatchedProjectRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [normalizedReportTreeSearchTerm, visibleReportTreeProjects]);
 
   const menuItems = isMobile
     ? baseMenu
@@ -149,15 +200,38 @@ export function Sidebar({
 
             {item.id === 'REPORTS' && isReportsTreeVisible && (
               <div className="px-3 pb-4">
+                <div className="mb-3 px-1">
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                    Tìm kiếm
+                  </div>
+                  <div className="flex items-center gap-2 border-b border-[rgba(255,255,255,0.28)] pb-2">
+                    <Search size={14} className="shrink-0 text-white/45" />
+                    <input
+                      type="text"
+                      value={reportTreeSearchTerm}
+                      onChange={(event) => onReportTreeSearchTermChange?.(event.target.value)}
+                      placeholder="Tìm đơn vị..."
+                      className="w-full bg-transparent text-[13px] text-white/88 placeholder:text-white/38 focus:outline-none"
+                    />
+                  </div>
+                </div>
                 <div className="max-h-[calc(100vh-300px)] overflow-y-auto pr-1 sidebar-report-tree">
                   <div className="space-y-1">
-                    {reportTreeProjects.map(({ project, importedCount, pendingCount, units }) => {
-                      const isExpanded = expandedReportProjectIds.includes(project.id);
+                    {visibleReportTreeProjects.length === 0 && normalizedReportTreeSearchTerm ? (
+                      <div className="px-1 py-2 text-[12px] text-white/60">Không tìm thấy đơn vị phù hợp.</div>
+                    ) : (
+                      visibleReportTreeProjects.map(({ project, importedCount, pendingCount, units }, index) => {
+                      const isExpanded = normalizedReportTreeSearchTerm
+                        ? true
+                        : expandedReportProjectIds.includes(project.id);
                       const isProjectActive =
                         selectedReportProjectId === project.id && selectedReportUnitCode === '__TOTAL_CITY__';
 
                       return (
-                        <div key={project.id}>
+                        <div
+                          key={project.id}
+                          ref={index === 0 && normalizedReportTreeSearchTerm ? firstMatchedProjectRef : null}
+                        >
                           <div className="flex items-start gap-2">
                             <button
                               type="button"
@@ -249,7 +323,7 @@ export function Sidebar({
                           )}
                         </div>
                       );
-                    })}
+                    }))}
                   </div>
                 </div>
               </div>

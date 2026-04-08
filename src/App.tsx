@@ -187,6 +187,7 @@ export default function App() {
   const [selectedReportUnitCode, setSelectedReportUnitCode] = useState<string>(TOTAL_REPORT_UNIT_CODE);
   const [selectedReportYear, setSelectedReportYear] = useState<string>(() => getPreferredReportingYear());
   const [expandedReportProjectIds, setExpandedReportProjectIds] = useState<string[]>(DEFAULT_PROJECT_ID ? [DEFAULT_PROJECT_ID] : []);
+  const [reportTreeSearchTerm, setReportTreeSearchTerm] = useState('');
   const [reportTreeDataFiles, setReportTreeDataFiles] = useState<DataFileRecordSummary[]>([]);
   const [reportOverwriteRequests, setReportOverwriteRequests] = useState<OverwriteRequestRecord[]>([]);
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
@@ -1897,9 +1898,9 @@ export default function App() {
         }
         return (
           <div className="p-6 md:p-8">
-            <h2 className="page-title">CÃ i Ä‘áº·t há»‡ thá»‘ng</h2>
+            <h2 className="page-title">{'Cài đặt hệ thống'}</h2>
             <p className="page-subtitle mt-2 max-w-3xl text-sm">
-              Táº­p trung toÃ n bá»™ cáº¥u hÃ¬nh quáº£n trá»‹: danh má»¥c Ä‘Æ¡n vá»‹, phÃ¢n cÃ´ng theo dÃµi vÃ  há»“ sÆ¡ tÃ i khoáº£n Ä‘Æ¡n vá»‹.
+              {'Tập trung toàn bộ cấu hình quản trị: danh mục đơn vị, phân công theo dõi và hồ sơ tài khoản đơn vị.'}
             </p>
 
             <div className="mt-8 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_340px] xl:grid-cols-[minmax(0,1.45fr)_320px]">
@@ -1929,7 +1930,7 @@ export default function App() {
                 {isAdmin && (
                   <div className="flex flex-wrap gap-3">
                     <button onClick={handleDeleteAllSystemData} className="secondary-btn">
-                      XÃ³a sáº¡ch dá»¯ liá»‡u há»‡ thá»‘ng
+                      {'Xóa sạch dữ liệu hệ thống'}
                     </button>
                   </div>
                 )}
@@ -1938,7 +1939,7 @@ export default function App() {
               <div className="space-y-4 xl:max-w-[320px] 2xl:max-w-[340px]">
                 {!isAdmin && (
                   <div className="panel-card rounded-[24px] p-5 text-sm text-[var(--ink-soft)]">
-                    Chá»‰ tÃ i khoáº£n Admin má»›i Ä‘Æ°á»£c phÃ©p thay Ä‘á»•i cáº¥u hÃ¬nh há»‡ thá»‘ng vÃ  quáº£n lÃ½ danh má»¥c Ä‘Æ¡n vá»‹.
+                    {'Chỉ tài khoản Admin mới được phép thay đổi cấu hình hệ thống và quản lý danh mục đơn vị.'}
                   </div>
                 )}
               </div>
@@ -1976,6 +1977,8 @@ export default function App() {
           onToggleReportProject={handleToggleReportProject}
           onSelectReportProject={handleSelectReportProject}
           onSelectReportUnit={handleSelectReportUnit}
+          reportTreeSearchTerm={reportTreeSearchTerm}
+          onReportTreeSearchTermChange={setReportTreeSearchTerm}
         />
       )}
       <main className="app-main flex-1 overflow-auto">{renderContent()}</main>
@@ -2054,9 +2057,9 @@ function SystemSettingsUnitsPanel({
       }
       setNewUnitName('');
       setNewUnitWatcher('');
-      setMessage('ÄÃ£ thÃªm Ä‘Æ¡n vá»‹ má»›i vÃ o danh má»¥c há»‡ thá»‘ng.');
+      setMessage('Đã thêm đơn vị mới vào danh mục hệ thống.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ thÃªm Ä‘Æ¡n vá»‹ má»›i.');
+      setMessage(error instanceof Error ? error.message : 'Không thể thêm đơn vị mới.');
     } finally {
       setIsSubmitting(false);
     }
@@ -2067,9 +2070,9 @@ function SystemSettingsUnitsPanel({
     setMessage(null);
     try {
       await onSaveWatcherAssignments(watcherDrafts);
-      setMessage('ÄÃ£ cáº­p nháº­t phÃ¢n cÃ´ng theo dÃµi cho danh sÃ¡ch Ä‘Æ¡n vá»‹.');
+      setMessage('Đã cập nhật phân công theo dõi cho danh sách đơn vị.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ lÆ°u phÃ¢n cÃ´ng theo dÃµi.');
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu phân công theo dõi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -2084,7 +2087,7 @@ function SystemSettingsUnitsPanel({
 
   const deleteUnit = async (unit: ManagedUnit) => {
     const confirmed = window.confirm(
-      `ÄÃ¡nh dáº¥u xÃ³a má»m Ä‘Æ¡n vá»‹ "${unit.name}" (${unit.code})? ÄÆ¡n vá»‹ sáº½ bá»‹ áº©n á»Ÿ cÃ¡c dá»± Ã¡n táº¡o má»›i sau thá»i Ä‘iá»ƒm xÃ³a.`,
+      `Đánh dấu xóa mềm đơn vị "${unit.name}" (${unit.code})? Đơn vị sẽ bị ẩn ở các dự án tạo mới sau thời điểm xóa.`,
     );
     if (!confirmed) {
       return;
@@ -2095,16 +2098,16 @@ function SystemSettingsUnitsPanel({
 
     try {
       await onSoftDeleteUnit(unit.code);
-      setMessage(`ÄÃ£ Ä‘Ã¡nh dáº¥u xÃ³a má»m Ä‘Æ¡n vá»‹ ${unit.name}.`);
+      setMessage(`Đã đánh dấu xóa mềm đơn vị ${unit.name}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a má»m Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể xóa mềm đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const restoreUnit = async (unit: ManagedUnit) => {
-    const confirmed = window.confirm(`KhÃ´i phá»¥c Ä‘Æ¡n vá»‹ "${unit.name}" (${unit.code}) vÃ o danh má»¥c sá»­ dá»¥ng?`);
+    const confirmed = window.confirm(`Khôi phục đơn vị "${unit.name}" (${unit.code}) vào danh mục sử dụng?`);
     if (!confirmed) {
       return;
     }
@@ -2114,9 +2117,9 @@ function SystemSettingsUnitsPanel({
 
     try {
       await onRestoreUnit(unit.code);
-      setMessage(`ÄÃ£ khÃ´i phá»¥c Ä‘Æ¡n vá»‹ ${unit.name}.`);
+      setMessage(`Đã khôi phục đơn vị ${unit.name}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ khÃ´i phá»¥c Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể khôi phục đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
@@ -2139,10 +2142,10 @@ function SystemSettingsUnitsPanel({
 
     try {
       await onRenameUnit(unit.code, editingUnitName);
-      setMessage(`ÄÃ£ cáº­p nháº­t tÃªn Ä‘Æ¡n vá»‹ ${unit.code}.`);
+      setMessage(`Đã cập nhật tên đơn vị ${unit.code}.`);
       cancelEditUnit();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ cáº­p nháº­t tÃªn Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật tên đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
@@ -2152,21 +2155,21 @@ function SystemSettingsUnitsPanel({
     <div className="panel-card rounded-[24px] p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h3 className="section-title">Quáº£n lÃ½ danh sÃ¡ch Ä‘Æ¡n vá»‹</h3>
+          <h3 className="section-title">{'Quản lý danh sách đơn vị'}</h3>
           <p className="page-subtitle mt-2 text-sm">
-            Danh má»¥c ná»n cá»§a toÃ n há»‡ thá»‘ng. Ngay trong tá»«ng Ä‘Æ¡n vá»‹ cÃ³ thá»ƒ chá»n luÃ´n ngÆ°á»i theo dÃµi phá»¥ trÃ¡ch.
+            {'Danh mục nền của toàn hệ thống. Ngay trong từng đơn vị có thể chọn luôn người theo dõi phụ trách.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-            Äang hoáº¡t Ä‘á»™ng {activeUnits.length} Ä‘Æ¡n vá»‹
+            {`Đang hoạt động ${activeUnits.length} đơn vị`}
           </div>
           <button
             onClick={saveWatcherDrafts}
             disabled={isSubmitting}
             className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
           >
-            LÆ°u phÃ¢n cÃ´ng theo dÃµi
+            {'Lưu phân công theo dõi'}
           </button>
         </div>
       </div>
@@ -2176,14 +2179,14 @@ function SystemSettingsUnitsPanel({
           value={newUnitName}
           onChange={(event) => setNewUnitName(event.target.value)}
           className="field-input"
-          placeholder="Nháº­p tÃªn Ä‘Æ¡n vá»‹ má»›i"
+          placeholder="Nhập tên đơn vị mới"
         />
         <select
           value={newUnitWatcher}
           onChange={(event) => setNewUnitWatcher(event.target.value)}
           className="field-select"
         >
-          <option value="">-- ChÆ°a phÃ¢n cÃ´ng --</option>
+          <option value="">-- Chưa phân công --</option>
           {assignmentUsers.map((user) => (
             <option key={user.id} value={user.id}>
               {user.displayName || user.email}
@@ -2195,7 +2198,7 @@ function SystemSettingsUnitsPanel({
           disabled={isSubmitting || !newUnitName.trim()}
           className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
         >
-          ThÃªm Ä‘Æ¡n vá»‹
+          {'Thêm đơn vị'}
         </button>
       </div>
 
@@ -2205,20 +2208,20 @@ function SystemSettingsUnitsPanel({
         <div>
           <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <p className="col-header">ÄÆ¡n vá»‹ Ä‘ang sá»­ dá»¥ng</p>
+              <p className="col-header">{'Đơn vị đang sử dụng'}</p>
               <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                Hiá»ƒn thá»‹ {filteredActiveUnits.length}/{activeUnits.length} Ä‘Æ¡n vá»‹ theo bá»™ lá»c ngÆ°á»i theo dÃµi.
+                {`Hiển thị ${filteredActiveUnits.length}/${activeUnits.length} đơn vị theo bộ lọc người theo dõi.`}
               </p>
             </div>
             <div className="w-full xl:w-[260px]">
-              <label className="col-header mb-2 block">Lá»c theo ngÆ°á»i theo dÃµi</label>
+              <label className="col-header mb-2 block">{'Lọc theo người theo dõi'}</label>
               <select
                 value={watcherFilter}
                 onChange={(event) => setWatcherFilter(event.target.value)}
                 className="field-select h-11 text-sm"
               >
-                <option value="">-- Táº¥t cáº£ --</option>
-                <option value="__UNASSIGNED__">ChÆ°a phÃ¢n cÃ´ng</option>
+                <option value="">-- Tất cả --</option>
+                <option value="__UNASSIGNED__">Chưa phân công</option>
                 {assignmentUsers.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.displayName || user.email}
@@ -2239,7 +2242,7 @@ function SystemSettingsUnitsPanel({
                       value={editingUnitName}
                       onChange={(event) => setEditingUnitName(event.target.value)}
                       className="field-input h-11 py-2 text-sm"
-                      placeholder="Nháº­p tÃªn Ä‘Æ¡n vá»‹"
+                      placeholder="Nhập tên đơn vị"
                     />
                   ) : (
                     <p className="break-words text-sm font-semibold leading-5 text-[var(--ink)]">{unit.name}</p>
@@ -2247,14 +2250,14 @@ function SystemSettingsUnitsPanel({
                   <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
                 </div>
                 <div className="min-w-0">
-                  <p className="col-header mb-2">NgÆ°á»i theo dÃµi</p>
+                  <p className="col-header mb-2">{'Người theo dõi'}</p>
                   <select
                     value={watcherDrafts[unit.code] || ''}
                     onChange={(event) => updateWatcherDraft(unit.code, event.target.value)}
                     className="field-select h-11 text-sm"
                     disabled={isSubmitting}
                   >
-                    <option value="">-- ChÆ°a phÃ¢n cÃ´ng --</option>
+                    <option value="">-- Chưa phân công --</option>
                     {assignmentUsers.map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.displayName || user.email}
@@ -2270,14 +2273,14 @@ function SystemSettingsUnitsPanel({
                         disabled={isSubmitting || !editingUnitName.trim()}
                         className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        LÆ°u tÃªn
+                        {'Lưu tên'}
                       </button>
                       <button
                         onClick={cancelEditUnit}
                         disabled={isSubmitting}
                         className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Há»§y
+                        {'Hủy'}
                       </button>
                     </>
                   ) : (
@@ -2287,14 +2290,14 @@ function SystemSettingsUnitsPanel({
                         disabled={isSubmitting}
                         className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Äá»•i tÃªn
+                        {'Đổi tên'}
                       </button>
                       <button
                         onClick={() => deleteUnit(unit)}
                         disabled={isSubmitting}
                         className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        XÃ³a má»m
+                        {'Xóa mềm'}
                       </button>
                     </>
                   )}
@@ -2305,7 +2308,7 @@ function SystemSettingsUnitsPanel({
         </div>
 
         <div>
-          <p className="col-header mb-3">ÄÆ¡n vá»‹ Ä‘Ã£ xÃ³a má»m</p>
+          <p className="col-header mb-3">{'Đơn vị đã xóa mềm'}</p>
           <div className="max-h-[420px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
             {deletedUnits.length > 0 ? (
               deletedUnits.map((unit) => (
@@ -2322,13 +2325,13 @@ function SystemSettingsUnitsPanel({
                     disabled={isSubmitting}
                     className="secondary-btn w-full self-start px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40 lg:w-[128px]"
                   >
-                    KhÃ´i phá»¥c
+                    {'Khôi phục'}
                   </button>
                 </div>
               ))
             ) : (
               <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--ink-soft)]">
-                ChÆ°a cÃ³ Ä‘Æ¡n vá»‹ nÃ o bá»‹ xÃ³a má»m.
+                {'Chưa có đơn vị nào bị xóa mềm.'}
               </div>
             )}
           </div>
@@ -2374,9 +2377,9 @@ function SystemSettingsUnitAccountsPanel({
       setDraftEmail('');
       setDraftDisplayName('');
       setDraftUnitCode('');
-      setMessage('ÄÃ£ thÃªm hoáº·c cáº­p nháº­t há»“ sÆ¡ tÃ i khoáº£n Ä‘Æ¡n vá»‹.');
+      setMessage('Đã thêm hoặc cập nhật hồ sơ tài khoản đơn vị.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ lÆ°u há»“ sÆ¡ tÃ i khoáº£n Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu hồ sơ tài khoản đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
@@ -2408,16 +2411,16 @@ function SystemSettingsUnitAccountsPanel({
         unitCode: editingUnitCode,
       });
       cancelEdit();
-      setMessage('ÄÃ£ cáº­p nháº­t há»“ sÆ¡ tÃ i khoáº£n Ä‘Æ¡n vá»‹.');
+      setMessage('Đã cập nhật hồ sơ tài khoản đơn vị.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ cáº­p nháº­t há»“ sÆ¡ tÃ i khoáº£n Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật hồ sơ tài khoản đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const deleteAccount = async (email: string) => {
-    const confirmed = window.confirm(`áº¨n há»“ sÆ¡ tÃ i khoáº£n Ä‘Æ¡n vá»‹ "${email}" khá»i há»‡ thá»‘ng?`);
+    const confirmed = window.confirm(`Ẩn hồ sơ tài khoản đơn vị "${email}" khỏi hệ thống?`);
     if (!confirmed) {
       return;
     }
@@ -2428,9 +2431,9 @@ function SystemSettingsUnitAccountsPanel({
       if (editingEmail === email) {
         cancelEdit();
       }
-      setMessage(`ÄÃ£ xÃ³a há»“ sÆ¡ tÃ i khoáº£n ${email}.`);
+      setMessage(`Đã xóa hồ sơ tài khoản ${email}.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a há»“ sÆ¡ tÃ i khoáº£n Ä‘Æ¡n vá»‹.');
+      setMessage(error instanceof Error ? error.message : 'Không thể xóa hồ sơ tài khoản đơn vị.');
     } finally {
       setIsSubmitting(false);
     }
@@ -2440,13 +2443,13 @@ function SystemSettingsUnitAccountsPanel({
     <div className="panel-card rounded-[24px] p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h3 className="section-title">Quáº£n trá»‹ tÃ i khoáº£n Ä‘Æ¡n vá»‹</h3>
+          <h3 className="section-title">{'Quản trị tài khoản đơn vị'}</h3>
           <p className="page-subtitle mt-2 text-sm">
-            Quáº£n lÃ½ há»“ sÆ¡ Ä‘Äƒng nháº­p theo Ä‘Æ¡n vá»‹. Email táº¡i Ä‘Ã¢y pháº£i trÃ¹ng vá»›i tÃ i khoáº£n Ä‘Ã£ cÃ³ trong Supabase Auth.
+            {'Quản lý hồ sơ đăng nhập theo đơn vị. Email tại đây phải trùng với tài khoản đã có trong Supabase Auth.'}
           </p>
         </div>
         <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-          Äang quáº£n lÃ½ {accounts.length} tÃ i khoáº£n Ä‘Æ¡n vá»‹
+          {`Đang quản lý ${accounts.length} tài khoản đơn vị`}
         </div>
       </div>
 
@@ -2455,20 +2458,20 @@ function SystemSettingsUnitAccountsPanel({
           value={draftEmail}
           onChange={(event) => setDraftEmail(event.target.value)}
           className="field-input"
-          placeholder="Email tÃ i khoáº£n Ä‘Æ¡n vá»‹"
+          placeholder="Email tài khoản đơn vị"
         />
         <input
           value={draftDisplayName}
           onChange={(event) => setDraftDisplayName(event.target.value)}
           className="field-input"
-          placeholder="TÃªn hiá»ƒn thá»‹"
+          placeholder="Tên hiển thị"
         />
         <select
           value={draftUnitCode}
           onChange={(event) => setDraftUnitCode(event.target.value)}
           className="field-select"
         >
-          <option value="">-- Chá»n Ä‘Æ¡n vá»‹ --</option>
+          <option value="">-- Chọn đơn vị --</option>
           {activeUnits.map((unit) => (
             <option key={unit.code} value={unit.code}>
               {unit.name} ({unit.code})
@@ -2480,7 +2483,7 @@ function SystemSettingsUnitAccountsPanel({
           disabled={isSubmitting || !draftEmail.trim() || !draftUnitCode}
           className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
         >
-          ThÃªm tÃ i khoáº£n
+          {'Thêm tài khoản'}
         </button>
       </div>
 
@@ -2489,7 +2492,7 @@ function SystemSettingsUnitAccountsPanel({
       <div className="mt-6 max-h-[420px] space-y-3 overflow-y-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
         {accounts.length === 0 ? (
           <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--ink-soft)]">
-            ChÆ°a cÃ³ há»“ sÆ¡ tÃ i khoáº£n Ä‘Æ¡n vá»‹ nÃ o Ä‘Æ°á»£c khai bÃ¡o.
+            {'Chưa có hồ sơ tài khoản đơn vị nào được khai báo.'}
           </div>
         ) : (
           accounts.map((account) => (
@@ -2500,7 +2503,7 @@ function SystemSettingsUnitAccountsPanel({
               <div className="min-w-0">
                 <p className="break-all text-sm font-semibold text-[var(--ink)]">{account.email}</p>
                 <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                  {editingEmail === account.email ? 'Äang chá»‰nh sá»­a há»“ sÆ¡ tÃ i khoáº£n.' : `TÃªn hiá»ƒn thá»‹: ${account.displayName || 'ChÆ°a cÃ³'}`}
+                  {editingEmail === account.email ? 'Đang chỉnh sửa hồ sơ tài khoản.' : `Tên hiển thị: ${account.displayName || 'Chưa có'}`}
                 </p>
               </div>
               <div>
@@ -2509,11 +2512,11 @@ function SystemSettingsUnitAccountsPanel({
                     value={editingDisplayName}
                     onChange={(event) => setEditingDisplayName(event.target.value)}
                     className="field-input h-11 py-2 text-sm"
-                    placeholder="TÃªn hiá»ƒn thá»‹"
+                    placeholder="Tên hiển thị"
                   />
                 ) : (
                   <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-sm text-[var(--ink)]">
-                    {account.displayName || 'ChÆ°a cÃ³'}
+                    {account.displayName || 'Chưa có'}
                   </div>
                 )}
               </div>
@@ -2524,7 +2527,7 @@ function SystemSettingsUnitAccountsPanel({
                     onChange={(event) => setEditingUnitCode(event.target.value)}
                     className="field-select h-11 text-sm"
                   >
-                    <option value="">-- Chá»n Ä‘Æ¡n vá»‹ --</option>
+                    <option value="">-- Chọn đơn vị --</option>
                     {activeUnits.map((unit) => (
                       <option key={unit.code} value={unit.code}>
                         {unit.name} ({unit.code})
@@ -2533,7 +2536,7 @@ function SystemSettingsUnitAccountsPanel({
                   </select>
                 ) : (
                   <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-sm text-[var(--ink)]">
-                    {account.unitName || account.unitCode || 'ChÆ°a gáº¯n Ä‘Æ¡n vá»‹'}
+                    {account.unitName || account.unitCode || 'Chưa gắn đơn vị'}
                   </div>
                 )}
               </div>
@@ -2545,14 +2548,14 @@ function SystemSettingsUnitAccountsPanel({
                       disabled={isSubmitting || !editingUnitCode}
                       className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      LÆ°u
+                      {'Lưu'}
                     </button>
                     <button
                       onClick={cancelEdit}
                       disabled={isSubmitting}
                       className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Há»§y
+                      {'Hủy'}
                     </button>
                   </>
                 ) : (
@@ -2562,14 +2565,14 @@ function SystemSettingsUnitAccountsPanel({
                       disabled={isSubmitting || !account.email}
                       className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Sá»­a
+                      {'Sửa'}
                     </button>
                     <button
                       onClick={() => account.email && deleteAccount(account.email)}
                       disabled={isSubmitting || !account.email}
                       className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      XÃ³a
+                      {'Xóa'}
                     </button>
                   </>
                 )}
