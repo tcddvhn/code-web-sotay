@@ -139,12 +139,12 @@ function getTimestampMs(value: any) {
 
 function formatDateTime(value?: string | number | Date | null) {
   if (!value) {
-    return 'ChÆ°a cÃ³';
+    return 'Chưa có';
   }
 
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return 'ChÆ°a cÃ³';
+    return 'Chưa có';
   }
 
   return date.toLocaleString('vi-VN', {
@@ -3069,16 +3069,16 @@ function DashboardOverview({
   }, [currentAssignmentKey, shouldLockToCurrentUserAssignments]);
 
   const stats = [
-    { label: 'Tá»•ng Ä‘Æ¡n vá»‹', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
+    { label: 'T\u1ed5ng \u0111\u01a1n v\u1ecb', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
     {
-      label: 'ÄÆ¡n vá»‹ Ä‘Ã£ tiáº¿p nháº­n',
+      label: '\u0110\u01a1n v\u1ecb \u0111\u00e3 ti\u1ebfp nh\u1eadn',
       value: `${submittedCount}/${totalUnits}`,
       icon: FileBarChart,
       iconColor: 'text-[var(--success)]',
       tone: 'bg-[rgba(47,110,73,0.12)]',
     },
     {
-      label: 'Tá»· lá»‡ hoÃ n thÃ nh',
+      label: 'T\u1ef7 l\u1ec7 ho\u00e0n th\u00e0nh',
       value: `${completionRate}%`,
       icon: Activity,
       iconColor: 'text-[var(--primary-dark)]',
@@ -3087,8 +3087,8 @@ function DashboardOverview({
   ];
 
   const pieData = [
-    { name: 'ÄÃ£ tiáº¿p nháº­n', value: submittedCount },
-    { name: 'ChÆ°a tiáº¿p nháº­n', value: totalUnits - submittedCount },
+    { name: '\u0110\u00e3 ti\u1ebfp nh\u1eadn', value: submittedCount },
+    { name: 'Ch\u01b0a ti\u1ebfp nh\u1eadn', value: totalUnits - submittedCount },
   ];
 
   const previewLogs = unitLogs.slice(0, 8);
@@ -3115,7 +3115,7 @@ function DashboardOverview({
               type="button"
               onClick={() => void handleToggleNotifications()}
               className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm"
-              title="ThÃ´ng bÃ¡o"
+              title={'Th\u00f4ng b\u00e1o'}
             >
               <BellDot size={18} />
               <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-bold text-white">
@@ -3127,7 +3127,7 @@ function DashboardOverview({
             type="button"
             onClick={isAuthenticated ? () => void onLogout() : onOpenLogin}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm"
-            title={isAuthenticated ? 'ÄÄƒng xuáº¥t' : 'ÄÄƒng nháº­p'}
+            title={isAuthenticated ? '\u0110\u0103ng xu\u1ea5t' : '\u0110\u0103ng nh\u1eadp'}
           >
             {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
           </button>
@@ -3149,7 +3149,7 @@ function DashboardOverview({
                 type="button"
                 onClick={() => void handleToggleNotifications()}
                 className="relative flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] bg-white/10 text-white transition hover:bg-white/15"
-                title="ThÃ´ng bÃ¡o"
+                title={'Th\u00f4ng b\u00e1o'}
               >
                 {activeNotifications.length > 0 ? <BellDot size={20} /> : <Bell size={20} />}
                 {activeNotifications.length > 0 && (
@@ -3161,32 +3161,32 @@ function DashboardOverview({
             </div>
           )}
           <h2 className="max-w-5xl text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
-            Há»† THá»NG QUáº¢N TRá»Š Dá»® LIá»†U TCÄ, ÄV Táº¬P TRUNG
+            {'H\u1ec6 TH\u1ed0NG QU\u1ea2N TR\u1eca D\u1eee LI\u1ec6U TC\u0110, \u0110V T\u1eacP TRUNG'}
           </h2>
           {currentUser && (
             <p className="mt-3 text-sm font-bold text-white/90">
-              TÃ i khoáº£n Ä‘ang Ä‘Äƒng nháº­p: {currentUser.displayName || currentUser.email || 'ChÆ°a xÃ¡c Ä‘á»‹nh'}
+              {'T\u00e0i kho\u1ea3n \u0111ang \u0111\u0103ng nh\u1eadp: '}{currentUser.displayName || currentUser.email || 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh'}
             </p>
           )}
           <p className="mt-3 max-w-3xl text-sm text-white/80">
-            Theo dÃµi nhanh tÃ¬nh hÃ¬nh tiáº¿p nháº­n dá»¯ liá»‡u cá»§a cÃ¡c Ä‘Æ¡n vá»‹, sá»‘ biá»ƒu Ä‘Ã£ nháº­p vÃ  má»©c Ä‘á»™ hoÃ n thÃ nh tá»•ng há»£p trÃªn toÃ n há»‡ thá»‘ng.
+            {'Theo d\u00f5i nhanh t\u00ecnh h\u00ecnh ti\u1ebfp nh\u1eadn d\u1eef li\u1ec7u c\u1ee7a c\u00e1c \u0111\u01a1n v\u1ecb, s\u1ed1 bi\u1ec3u \u0111\u00e3 nh\u1eadp v\u00e0 m\u1ee9c \u0111\u1ed9 ho\u00e0n th\u00e0nh t\u1ed5ng h\u1ee3p tr\u00ean to\u00e0n h\u1ec7 th\u1ed1ng.'}
           </p>
         </div>
         {canUseNotifications && isNotificationOpen && (
           <div className="absolute right-0 top-14 z-20 w-full max-w-[420px] rounded-[24px] border border-[var(--line)] bg-white shadow-[0_24px_60px_rgba(44,62,80,0.18)] md:right-6 md:top-20">
             <div className="border-b border-[var(--line)] px-5 py-4">
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--primary-dark)]">ThÃ´ng bÃ¡o</p>
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--primary-dark)]">{'Th\u00f4ng b\u00e1o'}</p>
               <p className="mt-1 text-sm text-[var(--ink-soft)]">
                 {isAdmin
-                  ? 'CÃ¡c Ä‘Æ¡n vá»‹ vá»«a ná»™p yÃªu cáº§u ghi Ä‘Ã¨ Ä‘ang chá» admin xá»­ lÃ½.'
-                  : 'CÃ¡c yÃªu cáº§u ghi Ä‘Ã¨ cá»§a Ä‘Æ¡n vá»‹ báº¡n Ä‘Ã£ Ä‘Æ°á»£c admin xá»­ lÃ½.'}
+                  ? 'C\u00e1c \u0111\u01a1n v\u1ecb v\u1eeba n\u1ed9p y\u00eau c\u1ea7u ghi \u0111\u00e8 \u0111ang ch\u1edd admin x\u1eed l\u00fd.'
+                  : 'C\u00e1c y\u00eau c\u1ea7u ghi \u0111\u00e8 c\u1ee7a \u0111\u01a1n v\u1ecb b\u1ea1n \u0111\u00e3 \u0111\u01b0\u1ee3c admin x\u1eed l\u00fd.'}
               </p>
             </div>
             <div className="max-h-[360px] overflow-y-auto px-4 py-3">
               {notificationLoading ? (
-                <p className="rounded-2xl bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">Äang táº£i thÃ´ng bÃ¡o...</p>
+                <p className="rounded-2xl bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">{'\u0110ang t\u1ea3i th\u00f4ng b\u00e1o...'}</p>
               ) : activeNotifications.length === 0 ? (
-                <p className="rounded-2xl bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">Hiá»‡n chÆ°a cÃ³ thÃ´ng bÃ¡o má»›i.</p>
+                <p className="rounded-2xl bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">{'Hi\u1ec7n ch\u01b0a c\u00f3 th\u00f4ng b\u00e1o m\u1edbi.'}</p>
               ) : (
                 <div className="space-y-3">
                   {activeNotifications.map((request) => (
@@ -3203,20 +3203,20 @@ function DashboardOverview({
                         <div>
                           <p className="text-sm font-semibold text-[var(--ink)]">
                             {isAdmin
-                              ? `${request.unitName} Ä‘á» nghá»‹ ghi Ä‘Ã¨ dá»¯ liá»‡u`
-                              : `YÃªu cáº§u ghi Ä‘Ã¨ cá»§a ${request.unitName} Ä‘Ã£ ${request.status === 'APPROVED' ? 'Ä‘Æ°á»£c phÃª duyá»‡t' : 'bá»‹ tá»« chá»‘i'}`}
+                              ? `${request.unitName} \u0111\u1ec1 ngh\u1ecb ghi \u0111\u00e8 d\u1eef li\u1ec7u`
+                              : `Y\u00eau c\u1ea7u ghi \u0111\u00e8 c\u1ee7a ${request.unitName} \u0111\u00e3 ${request.status === 'APPROVED' ? '\u0111\u01b0\u1ee3c ph\u00ea duy\u1ec7t' : 'b\u1ecb t\u1eeb ch\u1ed1i'}`}
                           </p>
                           <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                            {request.projectName || request.projectId} - NÄƒm {request.year}
+                            {request.projectName || request.projectId} - {'Năm'} {request.year}
                           </p>
                           <p className="mt-2 text-xs text-[var(--ink-soft)]">
                             {isAdmin
-                              ? `Ná»™p lÃºc ${formatDateTime(typeof request.createdAt === 'string' ? request.createdAt : null)}`
-                              : `Xá»­ lÃ½ lÃºc ${formatDateTime(typeof request.reviewedAt === 'string' ? request.reviewedAt : null)}`}
+                              ? `N\u1ed9p l\u00fac ${formatDateTime(typeof request.createdAt === 'string' ? request.createdAt : null)}`
+                              : `X\u1eed l\u00fd l\u00fac ${formatDateTime(typeof request.reviewedAt === 'string' ? request.reviewedAt : null)}`}
                           </p>
                         </div>
                         <span className={request.status === 'APPROVED' ? 'status-pill status-pill-submitted' : request.status === 'REJECTED' ? 'status-pill status-pill-pending' : 'status-pill status-pill-pending'}>
-                          {request.status === 'PENDING' ? 'Chá» duyá»‡t' : request.status === 'APPROVED' ? 'ÄÃ£ duyá»‡t' : 'Tá»« chá»‘i'}
+                          {request.status === 'PENDING' ? 'Chờ duyệt' : request.status === 'APPROVED' ? 'Đã duyệt' : 'Từ chối'}
                         </span>
                       </div>
                     </button>
@@ -3383,25 +3383,25 @@ function DashboardOverview({
         <div className="mt-6 panel-card rounded-[28px] p-5 md:hidden">
           <div className="flex flex-col gap-3">
             <div>
-              <h3 className="section-title text-base">Nháº­t kÃ½ tiáº¿p nháº­n Ä‘Æ¡n vá»‹</h3>
-              <p className="page-subtitle mt-2 text-sm">Má»Ÿ nhanh danh sÃ¡ch Ä‘Ã£ tiáº¿p nháº­n hoáº·c chÆ°a tiáº¿p nháº­n.</p>
+              <h3 className="section-title text-base">{'Nhật ký tiếp nhận đơn vị'}</h3>
+              <p className="page-subtitle mt-2 text-sm">{'Mở nhanh danh sách đã tiếp nhận hoặc chưa tiếp nhận.'}</p>
             </div>
             <button
               type="button"
               onClick={() => openLogView('SUBMITTED')}
               className="status-pill status-pill-submitted w-full justify-center"
             >
-              ÄÃ£ tiáº¿p nháº­n
+              {'Đã tiếp nhận'}
             </button>
             <button
               type="button"
               onClick={() => openLogView('PENDING')}
               className="status-pill status-pill-pending w-full justify-center"
             >
-              ChÆ°a tiáº¿p nháº­n
+              {'Chưa tiếp nhận'}
             </button>
             <button onClick={() => openLogView()} className="primary-btn w-full">
-              Xem táº¥t cáº£ nháº­t kÃ½
+              {'Xem tất cả nhật ký'}
             </button>
           </div>
         </div>
@@ -3410,10 +3410,10 @@ function DashboardOverview({
       <div className="mt-6 panel-card rounded-[28px] p-6 md:hidden">
         <div className="flex flex-col gap-3">
           <div>
-            <h3 className="section-title">Biá»ƒu Ä‘á»“ tiáº¿p nháº­n dá»¯ liá»‡u</h3>
-            <p className="page-subtitle mt-2 text-sm">Tá»· lá»‡ Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p dá»¯ liá»‡u so vá»›i tá»•ng sá»‘ Ä‘Æ¡n vá»‹ trong nÄƒm {dashboardYear}.</p>
+            <h3 className="section-title">{'Biểu đồ tiếp nhận dữ liệu'}</h3>
+            <p className="page-subtitle mt-2 text-sm">{`Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm ${dashboardYear}.`}</p>
           </div>
-          <div className="status-pill status-pill-submitted self-start">{submittedCount} Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p</div>
+          <div className="status-pill status-pill-submitted self-start">{`${submittedCount} đơn vị đã nộp`}</div>
         </div>
 
         <div className="mt-8 h-[280px] w-full">
@@ -3440,7 +3440,7 @@ function DashboardOverview({
 
         <div className="mt-2 text-center">
           <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Má»©c Ä‘á»™ hoÃ n thÃ nh tiáº¿p nháº­n</p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">{'Mức độ hoàn thành tiếp nhận'}</p>
         </div>
       </div>
 
@@ -3448,10 +3448,10 @@ function DashboardOverview({
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Biá»ƒu Ä‘á»“ tiáº¿p nháº­n dá»¯ liá»‡u</h3>
-              <p className="page-subtitle mt-2 text-sm">Tá»· lá»‡ Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p dá»¯ liá»‡u so vá»›i tá»•ng sá»‘ Ä‘Æ¡n vá»‹ trong nÄƒm {dashboardYear}.</p>
+              <h3 className="section-title">{'Biểu đồ tiếp nhận dữ liệu'}</h3>
+              <p className="page-subtitle mt-2 text-sm">{`Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm ${dashboardYear}.`}</p>
             </div>
-            <div className="status-pill status-pill-submitted">{submittedCount} Ä‘Æ¡n vá»‹ Ä‘Ã£ ná»™p</div>
+            <div className="status-pill status-pill-submitted">{`${submittedCount} đơn vị đã nộp`}</div>
           </div>
 
           <div className="mt-8 h-[300px] w-full">
@@ -3478,7 +3478,7 @@ function DashboardOverview({
 
           <div className="mt-2 text-center">
             <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">Má»©c Ä‘á»™ hoÃ n thÃ nh tiáº¿p nháº­n</p>
+            <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">{'Mức độ hoàn thành tiếp nhận'}</p>
           </div>
         </div>
 
@@ -3486,8 +3486,8 @@ function DashboardOverview({
         <div className="panel-card rounded-[28px] p-6 md:p-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 className="section-title">Tráº¡ng thÃ¡i tiáº¿p nháº­n Ä‘Æ¡n vá»‹</h3>
-              <p className="page-subtitle mt-2 text-sm">Danh sÃ¡ch Ä‘Æ°á»£c láº¥y tá»« dá»¯ liá»‡u tháº­t Ä‘Ã£ lÆ°u.</p>
+              <h3 className="section-title">{'Trạng thái tiếp nhận đơn vị'}</h3>
+              <p className="page-subtitle mt-2 text-sm">{'Danh sách được lấy từ dữ liệu thật đã lưu.'}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -3495,14 +3495,14 @@ function DashboardOverview({
                 onClick={() => setStatusFilter((prev) => (prev === 'SUBMITTED' ? 'ALL' : 'SUBMITTED'))}
                 className={statusFilter === 'SUBMITTED' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}
               >
-                ÄÃ£ tiáº¿p nháº­n
+                {'Đã tiếp nhận'}
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter((prev) => (prev === 'PENDING' ? 'ALL' : 'PENDING'))}
                 className={statusFilter === 'PENDING' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}
               >
-                ChÆ°a tiáº¿p nháº­n
+                {'Chưa tiếp nhận'}
               </button>
             </div>
           </div>
@@ -3517,17 +3517,17 @@ function DashboardOverview({
                   <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
                   <p className="mt-1 text-xs text-[var(--ink-soft)]">
                     {unit.isSubmitted
-                      ? `ÄÃ£ nháº­p ${unit.importedSheets.length}/${projectTemplates.length} biá»ƒu`
-                      : 'ChÆ°a tiáº¿p nháº­n dá»¯ liá»‡u'}
+                      ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} biểu`
+                      : 'Chưa tiếp nhận dữ liệu'}
                   </p>
                   <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
-                    Ná»™p gáº§n nháº¥t: {formatDateTime(unit.submittedAt)} Â· Cáº­p nháº­t láº¡i: {unit.overwriteRequestCount}
+                    {`Nộp gần nhất: ${formatDateTime(unit.submittedAt)} · Cập nhật lại: ${unit.overwriteRequestCount}`}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3 self-start md:self-auto">
                   <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                    {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'ChÆ°a tiáº¿p nháº­n'}
+                    {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                   </span>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
                 </div>
@@ -3537,7 +3537,7 @@ function DashboardOverview({
 
           <div className="mt-6">
             <button onClick={() => openLogView()} className="primary-btn w-full">
-              Xem táº¥t cáº£ nháº­t kÃ½
+              {'Xem tất cả nhật ký'}
             </button>
           </div>
         </div>
@@ -3549,9 +3549,9 @@ function DashboardOverview({
           <div className="panel-card w-full max-w-md rounded-[28px] p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="section-title">Báº N Cáº¦N ÄÄ‚NG NHáº¬P Äá»‚ XEM CHI TIáº¾T</h3>
+                <h3 className="section-title">{'BẠN CẦN ĐĂNG NHẬP ĐỂ XEM CHI TIẾT'}</h3>
                 <p className="page-subtitle mt-2 text-sm">
-                  HÃ£y Ä‘Äƒng nháº­p Ä‘á»ƒ xem nháº­t kÃ½ chi tiáº¿t vÃ  danh sÃ¡ch Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n cÃ´ng cho tÃ i khoáº£n cá»§a báº¡n.
+                  {'Hãy đăng nhập để xem nhật ký chi tiết và danh sách đơn vị được phân công cho tài khoản của bạn.'}
                 </p>
               </div>
               <button
@@ -3569,7 +3569,7 @@ function DashboardOverview({
                 onClick={() => setIsLoginPromptOpen(false)}
                 className="secondary-btn px-5 py-3"
               >
-                ÄÃ³ng
+                {'Đóng'}
               </button>
               <button
                 type="button"
@@ -3579,7 +3579,7 @@ function DashboardOverview({
                 }}
                 className="primary-btn px-5 py-3"
               >
-                ÄÄƒng nháº­p
+                {'Đăng nhập'}
               </button>
             </div>
           </div>
@@ -3591,12 +3591,12 @@ function DashboardOverview({
           <div className="panel-card flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[30px]">
             <div className="relative flex flex-col gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-6 py-5 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="surface-tag hidden md:inline-flex">{totalUnits} Ä‘Æ¡n vá»‹ toÃ n há»‡ thá»‘ng</div>
+                <div className="surface-tag hidden md:inline-flex">{`${totalUnits} đơn vị toàn hệ thống`}</div>
                 <h3 className="mt-3 text-[1.6rem] font-black leading-tight tracking-[-0.02em] text-[var(--primary-dark)] md:text-[2.3rem]">
-                  NHáº¬T KÃ NÄ‚M {dashboardYear}
+                  {`NHẬT KÝ NĂM ${dashboardYear}`}
                 </h3>
                 <p className="page-subtitle mt-2 hidden text-sm md:block">
-                  Hiá»ƒn thá»‹ Ä‘áº§y Ä‘á»§ tráº¡ng thÃ¡i cá»§a tá»«ng Ä‘Æ¡n vá»‹ cÃ¹ng sá»‘ biá»ƒu Ä‘Ã£ Ä‘Æ°á»£c nháº­p vÃ o há»‡ thá»‘ng táº­p trung.
+                  {'Hiển thị đầy đủ trạng thái của từng đơn vị cùng số biểu đã được nhập vào hệ thống tập trung.'}
                 </p>
               </div>
 
@@ -3604,14 +3604,14 @@ function DashboardOverview({
                 {isAdmin && assignees.length > 0 && (
                   <div className="panel-soft rounded-full px-3 py-2">
                     <label className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--ink-soft)]">
-                      Lá»c theo ngÆ°á»i theo dÃµi
+                      {'Lọc theo người theo dõi'}
                     </label>
                     <select
                       value={selectedAssignee}
                       onChange={(event) => setSelectedAssignee(event.target.value)}
                       className="mt-1 w-full bg-transparent text-xs font-semibold text-[var(--ink)] focus:outline-none"
                     >
-                      <option value="ALL">Táº¥t cáº£ ngÆ°á»i theo dÃµi</option>
+                      <option value="ALL">{'Tất cả người theo dõi'}</option>
                       {assignees.map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.displayName || user.email}
@@ -3622,7 +3622,7 @@ function DashboardOverview({
                 )}
                 {shouldLockToCurrentUserAssignments && (
                   <div className="panel-soft rounded-full px-3 py-2 text-xs font-semibold text-[var(--primary-dark)]">
-                    Äang xem Ä‘Æ¡n vá»‹ Ä‘Æ°á»£c phÃ¢n cÃ´ng cho {currentUser?.displayName || currentUser?.email || 'báº¡n'}
+                    {'Đang xem đơn vị được phân công cho '}{currentUser?.displayName || currentUser?.email || 'bạn'}
                   </div>
                 )}
                 <button
@@ -3630,7 +3630,7 @@ function DashboardOverview({
                   className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/85 text-[var(--primary-dark)] md:static md:h-auto md:w-auto md:gap-2 md:self-start md:rounded-[18px] md:px-4 md:py-3"
                 >
                   <X size={16} />
-                  <span className="hidden md:inline">ÄÃ³ng</span>
+                  <span className="hidden md:inline">{'Đóng'}</span>
                 </button>
               </div>
             </div>
@@ -3638,27 +3638,27 @@ function DashboardOverview({
             <div className="border-b border-[var(--line)] bg-[var(--primary-soft)] px-6 py-4">
               <div className="space-y-1 text-sm leading-tight text-[var(--ink)] md:hidden">
                 <p>
-                  - Dá»± Ã¡n: <span className="font-semibold">{selectedProject.name}</span>
+                  {'- Dự án: '}<span className="font-semibold">{selectedProject.name}</span>
                 </p>
                 <p>
-                  - ÄÃ£ tiáº¿p nháº­n: <span className="font-semibold text-[var(--success)]">{submittedCount}</span>
+                  {'- Đã tiếp nhận: '}<span className="font-semibold text-[var(--success)]">{submittedCount}</span>
                 </p>
                 <p>
-                  - ChÆ°a tiáº¿p nháº­n: <span className="font-semibold text-[var(--warning)]">{totalUnits - submittedCount}</span>
+                  {'- Chưa tiếp nhận: '}<span className="font-semibold text-[var(--warning)]">{totalUnits - submittedCount}</span>
                 </p>
               </div>
 
               <div className="hidden grid-cols-3 gap-4 md:grid">
                 <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <p className="col-header mb-1">Tá»•ng Ä‘Æ¡n vá»‹</p>
+                  <p className="col-header mb-1">{'Tổng đơn vị'}</p>
                   <p className="data-value text-2xl font-bold">{totalUnits}</p>
                 </div>
                 <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <p className="col-header mb-1">ÄÃ£ tiáº¿p nháº­n</p>
+                  <p className="col-header mb-1">{'Đã tiếp nhận'}</p>
                   <p className="data-value text-2xl font-bold text-[var(--success)]">{submittedCount}</p>
                 </div>
                 <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <p className="col-header mb-1">ChÆ°a tiáº¿p nháº­n</p>
+                  <p className="col-header mb-1">{'Chưa tiếp nhận'}</p>
                   <p className="data-value text-2xl font-bold text-[var(--warning)]">{totalUnits - submittedCount}</p>
                 </div>
               </div>
@@ -3669,8 +3669,8 @@ function DashboardOverview({
                 {unitLogs.length === 0 && (
                   <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-5 text-sm text-[var(--ink-soft)]">
                     {isAuthenticated && !isAdmin
-                      ? 'TÃ i khoáº£n cá»§a báº¡n hiá»‡n chÆ°a Ä‘Æ°á»£c phÃ¢n cÃ´ng Ä‘Æ¡n vá»‹ nÃ o trong dá»± Ã¡n nÃ y.'
-                      : 'ChÆ°a cÃ³ Ä‘Æ¡n vá»‹ nÃ o phÃ¹ há»£p vá»›i bá»™ lá»c hiá»‡n táº¡i.'}
+                      ? 'Tài khoản của bạn hiện chưa được phân công đơn vị nào trong dự án này.'
+                      : 'Chưa có đơn vị nào phù hợp với bộ lọc hiện tại.'}
                   </div>
                 )}
                 {unitLogs.map((unit, index) => (
@@ -3681,7 +3681,7 @@ function DashboardOverview({
                     <div className="flex items-center justify-between gap-3 md:hidden">
                       <p className="min-w-0 text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
                     <span className={unit.isSubmitted ? 'status-pill status-pill-submitted shrink-0' : 'status-pill status-pill-pending shrink-0'}>
-                        {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'ChÆ°a tiáº¿p nháº­n'}
+                        {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                       </span>
                     </div>
 
@@ -3697,28 +3697,28 @@ function DashboardOverview({
                         </div>
                         <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">
                           {unit.isSubmitted
-                            ? `ÄÃ£ lÆ°u ${unit.rowCount.toLocaleString('vi-VN')} dÃ²ng dá»¯ liá»‡u.`
-                            : 'Hiá»‡n chÆ°a cÃ³ dá»¯ liá»‡u nÃ o Ä‘Æ°á»£c tiáº¿p nháº­n trong nÄƒm nÃ y.'}
+                            ? `Đã lưu ${unit.rowCount.toLocaleString('vi-VN')} dòng dữ liệu.`
+                            : 'Hiện chưa có dữ liệu nào được tiếp nhận trong năm này.'}
                         </p>
                         <div className="mt-2 text-[11px] text-[var(--ink-soft)]">
-                          {isAdmin && <p>NgÆ°á»i theo dÃµi: {unit.assignedTo || 'ChÆ°a phÃ¢n cÃ´ng'}</p>}
-                          <p>NgÃ y giá» ná»™p: {formatDateTime(unit.submittedAt)}</p>
-                          <p>Sá»‘ láº§n cáº­p nháº­t láº¡i: {unit.overwriteRequestCount}</p>
-                          <p>NgÆ°á»i cáº­p nháº­t: {unit.lastUpdatedBy || 'ChÆ°a cÃ³'}</p>
+                          {isAdmin && <p>{'Người theo dõi: '}{unit.assignedTo || 'Chưa phân công'}</p>}
+                          <p>{'Ngày giờ nộp: '}{formatDateTime(unit.submittedAt)}</p>
+                          <p>{'Số lần cập nhật lại: '}{unit.overwriteRequestCount}</p>
+                          <p>{'Người cập nhật: '}{unit.lastUpdatedBy || 'Chưa có'}</p>
                         </div>
                       </div>
 
                       <div className="min-w-0">
-                        <p className="col-header mb-2">Biá»ƒu Ä‘Ã£ nháº­p</p>
+                        <p className="col-header mb-2">{'Biểu đã nhập'}</p>
                         <p className="truncate text-sm text-[var(--ink)]">
-                          {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'ChÆ°a cÃ³ biá»ƒu nÃ o'}
+                          {unit.importedSheets.length > 0 ? unit.importedSheets.join(', ') : 'Chưa có biểu nào'}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-2 self-start md:self-auto">
                         {unit.isSubmitted && <CheckCircle2 size={16} className="text-[var(--success)]" />}
                         <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                          {unit.isSubmitted ? 'ÄÃ£ tiáº¿p nháº­n' : 'ChÆ°a tiáº¿p nháº­n'}
+                          {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
                         </span>
                       </div>
                     </div>
