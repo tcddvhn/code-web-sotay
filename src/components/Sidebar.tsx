@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Building2,
   Search,
+  X,
 } from 'lucide-react';
 import { AuthenticatedUser, ReportTreeProjectNode, UserProfile, ViewMode } from '../types';
 import { clsx } from 'clsx';
@@ -81,10 +82,64 @@ export function Sidebar({
       .toLocaleLowerCase('vi-VN')
       .trim();
   }, []);
+  const buildSearchIndex = React.useCallback((value: string) => {
+    const originalChars = Array.from(value);
+    let normalized = '';
+    const indexMap: number[] = [];
+
+    originalChars.forEach((char, index) => {
+      const folded = char
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'd')
+        .toLocaleLowerCase('vi-VN');
+
+      Array.from(folded).forEach((foldedChar) => {
+        normalized += foldedChar;
+        indexMap.push(index);
+      });
+    });
+
+    return { originalChars, normalized, indexMap };
+  }, []);
+  const normalizedReportTreeSearchTerm = normalizeSearchText(reportTreeSearchTerm);
+  const renderHighlightedText = React.useCallback(
+    (value: string) => {
+      if (!normalizedReportTreeSearchTerm) {
+        return value;
+      }
+
+      const { originalChars, normalized, indexMap } = buildSearchIndex(value);
+      const matchStart = normalized.indexOf(normalizedReportTreeSearchTerm);
+      if (matchStart < 0) {
+        return value;
+      }
+
+      const matchEnd = matchStart + normalizedReportTreeSearchTerm.length - 1;
+      const originalStart = indexMap[matchStart];
+      const originalEnd = indexMap[matchEnd];
+      if (originalStart === undefined || originalEnd === undefined) {
+        return value;
+      }
+
+      const before = originalChars.slice(0, originalStart).join('');
+      const matched = originalChars.slice(originalStart, originalEnd + 1).join('');
+      const after = originalChars.slice(originalEnd + 1).join('');
+
+      return (
+        <>
+          {before}
+          <mark className="rounded bg-[#f6d080]/25 px-[2px] text-white">{matched}</mark>
+          {after}
+        </>
+      );
+    },
+    [buildSearchIndex, normalizedReportTreeSearchTerm],
+  );
   const isUnitUser = userProfile?.role === 'unit_user';
   const isReportsTreeVisible = currentView === 'REPORTS' && !isCollapsed && !isMobile;
   const baseMenu = [{ id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: LayoutDashboard }];
-  const normalizedReportTreeSearchTerm = normalizeSearchText(reportTreeSearchTerm);
   const firstMatchedProjectRef = React.useRef<HTMLDivElement | null>(null);
 
   const visibleReportTreeProjects = React.useMemo(() => {
@@ -213,9 +268,25 @@ export function Sidebar({
                       type="text"
                       value={reportTreeSearchTerm}
                       onChange={(event) => onReportTreeSearchTermChange?.(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape' && reportTreeSearchTerm) {
+                          onReportTreeSearchTermChange?.('');
+                        }
+                      }}
                       placeholder="Tìm đơn vị..."
                       className="w-full bg-transparent text-[13px] text-white/88 placeholder:text-white/38 focus:outline-none"
                     />
+                    {reportTreeSearchTerm ? (
+                      <button
+                        type="button"
+                        onClick={() => onReportTreeSearchTermChange?.('')}
+                        className="shrink-0 text-white/45 transition hover:text-white"
+                        title="Xóa tìm kiếm"
+                        aria-label="Xóa tìm kiếm"
+                      >
+                        <X size={14} />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 <div className="max-h-[calc(100vh-300px)] overflow-y-auto pr-1 sidebar-report-tree">
@@ -311,8 +382,11 @@ export function Sidebar({
                                         ),
                                       )}
                                     >
-                                      <span className="break-words leading-5">{unit.name}</span>
+                                      <span className="break-words leading-5">{renderHighlightedText(unit.name)}</span>
                                       <div className="flex shrink-0 items-center gap-2 text-[10px] uppercase tracking-[0.14em]">
+                                        {normalizedReportTreeSearchTerm && normalizeSearchText(unit.code).includes(normalizedReportTreeSearchTerm) && (
+                                          <span className="text-white/76 normal-case tracking-normal">{renderHighlightedText(unit.code)}</span>
+                                        )}
                                         {unit.hasPendingOverwrite && <span className="text-white/76">Chờ duyệt</span>}
                                         <span className={unit.hasData ? 'text-[#d8f3de]' : 'text-[#f6d080]'}>
                                           {unit.hasData ? 'Đã có dữ liệu' : 'Chưa có dữ liệu'}
