@@ -299,14 +299,14 @@ create table if not exists report_exports (
 
 insert into user_profiles (email, display_name, role, is_active)
 values
-  ('admin@sotay.com', 'LÃƒÂª Ã„ÂÃƒÂ¬nh KiÃƒÂªn', 'admin', true),
-  ('trieuthingoc@sotay.com', 'TriÃ¡Â»â€¡u ThÃ¡Â»â€¹ NgÃ¡Â»Âc', 'contributor', true),
-  ('tranthikieuanh@sotay.com', 'TrÃ¡ÂºÂ§n ThÃ¡Â»â€¹ KiÃ¡Â»Âu Anh', 'contributor', true),
-  ('tranphuongha@sotay.com', 'TrÃ¡ÂºÂ§n PhÃ†Â°Ã†Â¡ng HÃƒÂ ', 'contributor', true),
-  ('phamthithuhanh@sotay.com', 'PhÃ¡ÂºÂ¡m ThÃ¡Â»â€¹ Thu HÃ¡ÂºÂ¡nh', 'contributor', true),
-  ('nguyenthugiang@sotay.com', 'NguyÃ¡Â»â€¦n Thu Giang', 'contributor', true),
-  ('nguyensinghiem@sotay.com', 'NguyÃ¡Â»â€¦n SÃ„Â© NghiÃƒÂªm', 'contributor', true),
-  ('nguyenhuuhung@sotay.com', 'NguyÃ¡Â»â€¦n HÃ¡Â»Â¯u HÃƒÂ¹ng', 'contributor', true)
+  ('admin@sotay.com', 'LÃƒÆ’Ã‚Âª Ãƒâ€žÃ‚ÂÃƒÆ’Ã‚Â¬nh KiÃƒÆ’Ã‚Âªn', 'admin', true),
+  ('trieuthingoc@sotay.com', 'TriÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡u ThÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ NgÃƒÂ¡Ã‚Â»Ã‚Âc', 'contributor', true),
+  ('tranthikieuanh@sotay.com', 'TrÃƒÂ¡Ã‚ÂºÃ‚Â§n ThÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ KiÃƒÂ¡Ã‚Â»Ã‚Âu Anh', 'contributor', true),
+  ('tranphuongha@sotay.com', 'TrÃƒÂ¡Ã‚ÂºÃ‚Â§n PhÃƒâ€ Ã‚Â°Ãƒâ€ Ã‚Â¡ng HÃƒÆ’Ã‚Â ', 'contributor', true),
+  ('phamthithuhanh@sotay.com', 'PhÃƒÂ¡Ã‚ÂºÃ‚Â¡m ThÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ Thu HÃƒÂ¡Ã‚ÂºÃ‚Â¡nh', 'contributor', true),
+  ('nguyenthugiang@sotay.com', 'NguyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¦n Thu Giang', 'contributor', true),
+  ('nguyensinghiem@sotay.com', 'NguyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¦n SÃƒâ€žÃ‚Â© NghiÃƒÆ’Ã‚Âªm', 'contributor', true),
+  ('nguyenhuuhung@sotay.com', 'NguyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¦n HÃƒÂ¡Ã‚Â»Ã‚Â¯u HÃƒÆ’Ã‚Â¹ng', 'contributor', true)
 on conflict (email) do update
 set
   display_name = excluded.display_name,
@@ -462,7 +462,7 @@ create table if not exists extract_report_blueprints (
   project_id text not null references projects(id) on delete cascade,
   name text not null,
   description text,
-  fields jsonb not null default '"'"'[]'"'"'::jsonb,
+  fields jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

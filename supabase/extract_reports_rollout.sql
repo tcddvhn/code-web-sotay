@@ -3,7 +3,7 @@ create table if not exists extract_report_blueprints (
   project_id text not null references projects(id) on delete cascade,
   name text not null,
   description text,
-  fields jsonb not null default '"'"'[]'"'"'::jsonb,
+  fields jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

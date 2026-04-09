@@ -384,13 +384,18 @@ export function ExtractReportView({
     }
 
     const worksheet = XLSX.utils.aoa_to_sheet([
-      ['Mã đơn vị', 'Tên đơn vị', ...previewColumns.map((column) => column.title)],
-      ...previewRows.map((row) => [row.unitCode, row.unitName, ...row.values]),
+      ['Tên đơn vị', ...previewColumns.map((column) => column.title)],
+      ...previewRows.map((row) => [row.unitName, ...row.values]),
     ]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Trich bao cao');
     XLSX.writeFile(workbook, `${sanitizeFileName(draft.name || 'trich_bao_cao')}_${selectedYear}.xlsx`);
   };
+
+  const inputClassName =
+    'mt-2 w-full border-b border-[var(--line)] bg-transparent px-0 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-soft)]';
+  const selectClassName =
+    'mt-2 w-full border-b border-[var(--line)] bg-transparent px-0 py-2 text-sm text-[var(--ink)] outline-none';
 
   return (
     <div className="p-6 md:p-8">
@@ -475,7 +480,7 @@ export function ExtractReportView({
               <div>
                 <h3 className="text-lg font-semibold text-[var(--ink)]">Cấu hình biểu trích</h3>
                 <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                  Mỗi cột mặc định có 2 tiêu chí nguồn. Hệ thống sẽ lấy đúng giao điểm của 1 tiêu chí dọc và 1 tiêu chí ngang.
+                  Mỗi cột mặc định có 2 tiêu chí nguồn. Hệ thống lấy dữ liệu tại giao điểm của 1 tiêu chí dọc và 1 tiêu chí ngang.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -484,7 +489,7 @@ export function ExtractReportView({
                   <select
                     value={selectedYear}
                     onChange={(event) => onSelectedYearChange(event.target.value)}
-                    className="ml-3 rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                    className="ml-3 border-b border-[var(--line)] bg-transparent px-0 py-2 text-sm text-[var(--ink)] outline-none"
                   >
                     {['2022', '2023', '2024', '2025', '2026'].map((year) => (
                       <option key={year} value={year}>
@@ -504,7 +509,7 @@ export function ExtractReportView({
 
             {draft && (
               <>
-                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.8fr)]">
+                <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)]">
                   <label className="block">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
                       Tên biểu trích
@@ -515,7 +520,7 @@ export function ExtractReportView({
                       onChange={(event) =>
                         setDraft((current) => (current ? { ...current, name: event.target.value } : current))
                       }
-                      className="mt-3 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                      className={inputClassName}
                     />
                   </label>
 
@@ -529,14 +534,14 @@ export function ExtractReportView({
                       onChange={(event) =>
                         setDraft((current) => (current ? { ...current, description: event.target.value } : current))
                       }
-                      className="mt-3 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                      className={inputClassName}
                     />
                   </label>
                 </div>
 
                 {saveMessage && <div className="mt-4 text-sm text-[var(--primary)]">{saveMessage}</div>}
 
-                <div className="mt-6 flex items-center justify-between">
+                <div className="mt-8 flex items-center justify-between border-t border-[var(--line)] pt-5">
                   <div>
                     <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
                       Cột trích xuất
@@ -554,7 +559,7 @@ export function ExtractReportView({
                   )}
                 </div>
 
-                <div className="mt-4 space-y-4">
+                <div className="mt-4 space-y-6">
                   {draft.fields.map((field, index) => {
                     const catalog = catalogByTemplate[field.templateId];
                     const firstOptions = field.firstAxis === 'VERTICAL' ? catalog?.vertical || [] : catalog?.horizontal || [];
@@ -562,7 +567,7 @@ export function ExtractReportView({
                     const previewColumn = previewColumns.find((column) => column.field.id === field.id);
 
                     return (
-                      <div key={field.id} className="rounded-[24px] border border-[var(--line)] bg-white p-4">
+                      <div key={field.id} className="border-b border-[var(--line)] pb-6 last:border-b-0 last:pb-0">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="text-sm font-semibold text-[var(--ink)]">Cột {index + 1}</div>
                           {isAdmin && draft.fields.length > 1 && (
@@ -576,7 +581,7 @@ export function ExtractReportView({
                           )}
                         </div>
 
-                        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-5">
+                        <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 xl:grid-cols-5">
                           <label className="block xl:col-span-1">
                             <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
                               Tên cột
@@ -585,7 +590,7 @@ export function ExtractReportView({
                               type="text"
                               value={field.label}
                               onChange={(event) => handleFieldChange(field.id, { label: event.target.value })}
-                              className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                              className={inputClassName}
                             />
                           </label>
 
@@ -596,7 +601,7 @@ export function ExtractReportView({
                             <select
                               value={field.templateId}
                               onChange={(event) => handleFieldChange(field.id, { templateId: event.target.value })}
-                              className="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none"
+                              className={selectClassName}
                             >
                               <option value="">-- Chọn biểu mẫu --</option>
                               {templates.map((template) => (
@@ -607,8 +612,8 @@ export function ExtractReportView({
                             </select>
                           </label>
 
-                          <div className="xl:col-span-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div className="rounded-2xl border border-[var(--line)] bg-[rgba(145,13,18,0.03)] p-4">
+                          <div className="xl:col-span-3 grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <div>
                               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
                                 Tiêu chí nguồn 1
                               </div>
@@ -620,7 +625,7 @@ export function ExtractReportView({
                                     firstCriterionKey: '',
                                   })
                                 }
-                                className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                                className={selectClassName}
                               >
                                 <option value="VERTICAL">Lấy từ tiêu chí dọc</option>
                                 <option value="HORIZONTAL">Lấy từ tiêu chí ngang</option>
@@ -628,7 +633,7 @@ export function ExtractReportView({
                               <select
                                 value={field.firstCriterionKey}
                                 onChange={(event) => handleFieldChange(field.id, { firstCriterionKey: event.target.value })}
-                                className="mt-3 w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                                className={selectClassName}
                               >
                                 <option value="">-- Chọn tiêu chí --</option>
                                 {firstOptions.map((option) => (
@@ -639,7 +644,7 @@ export function ExtractReportView({
                               </select>
                             </div>
 
-                            <div className="rounded-2xl border border-[var(--line)] bg-[rgba(145,13,18,0.03)] p-4">
+                            <div>
                               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
                                 Tiêu chí nguồn 2
                               </div>
@@ -651,7 +656,7 @@ export function ExtractReportView({
                                     secondCriterionKey: '',
                                   })
                                 }
-                                className="mt-2 w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                                className={selectClassName}
                               >
                                 <option value="VERTICAL">Lấy từ tiêu chí dọc</option>
                                 <option value="HORIZONTAL">Lấy từ tiêu chí ngang</option>
@@ -659,7 +664,7 @@ export function ExtractReportView({
                               <select
                                 value={field.secondCriterionKey}
                                 onChange={(event) => handleFieldChange(field.id, { secondCriterionKey: event.target.value })}
-                                className="mt-3 w-full rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm outline-none"
+                                className={selectClassName}
                               >
                                 <option value="">-- Chọn tiêu chí --</option>
                                 {secondOptions.map((option) => (
@@ -672,8 +677,8 @@ export function ExtractReportView({
                           </div>
                         </div>
 
-                        {previewColumn && (
-                          <div className="mt-4 rounded-2xl border border-dashed border-[var(--line)] px-4 py-3 text-sm">
+                        {previewColumn ? (
+                          <div className="mt-4 text-sm">
                             <div className="font-medium text-[var(--ink)]">{previewColumn.title}</div>
                             <div className="mt-1 text-[var(--ink-soft)]">
                               {previewColumn.templateName
@@ -684,7 +689,7 @@ export function ExtractReportView({
                               <div className="mt-2 text-[var(--primary)]">{previewColumn.reason}</div>
                             )}
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     );
                   })}
@@ -726,9 +731,6 @@ export function ExtractReportView({
                   <thead className="bg-[rgba(145,13,18,0.05)]">
                     <tr>
                       <th className="border-b border-[var(--line)] px-4 py-3 text-left font-semibold text-[var(--ink)]">
-                        Mã đơn vị
-                      </th>
-                      <th className="border-b border-[var(--line)] px-4 py-3 text-left font-semibold text-[var(--ink)]">
                         Tên đơn vị
                       </th>
                       {previewColumns.map((column) => (
@@ -744,9 +746,6 @@ export function ExtractReportView({
                   <tbody>
                     {previewRows.map((row) => (
                       <tr key={row.unitCode} className="odd:bg-white even:bg-[rgba(145,13,18,0.02)]">
-                        <td className="border-b border-[var(--line)] px-4 py-3 font-medium text-[var(--ink)]">
-                          {row.unitCode}
-                        </td>
                         <td className="border-b border-[var(--line)] px-4 py-3 text-[var(--ink)]">{row.unitName}</td>
                         {row.values.map((value, index) => (
                           <td key={`${row.unitCode}-${index}`} className="border-b border-[var(--line)] px-4 py-3 text-[var(--ink)]">
