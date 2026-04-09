@@ -93,6 +93,7 @@ export interface ConsolidatedData {
 export type ViewMode =
   | 'IMPORT'
   | 'REPORTS'
+  | 'EXTRACT_REPORTS'
   | 'AI_ANALYSIS'
   | 'SETTINGS'
   | 'DASHBOARD'
@@ -157,6 +158,39 @@ export interface ReportTreeProjectNode {
   importedCount: number;
   pendingCount: number;
   units: ReportTreeUnitNode[];
+}
+
+export type ExtractCriterionAxis = 'VERTICAL' | 'HORIZONTAL';
+
+export interface ExtractCriterionOption {
+  key: string;
+  label: string;
+  axis: ExtractCriterionAxis;
+  templateId: string;
+  templateName: string;
+  sourceRow?: number;
+  valueIndex?: number;
+  blockId?: string | null;
+}
+
+export interface ExtractReportFieldConfig {
+  id: string;
+  label: string;
+  templateId: string;
+  firstAxis: ExtractCriterionAxis;
+  firstCriterionKey: string;
+  secondAxis: ExtractCriterionAxis;
+  secondCriterionKey: string;
+}
+
+export interface ExtractReportBlueprint {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string;
+  fields: ExtractReportFieldConfig[];
+  createdAt: any;
+  updatedAt: any;
 }
 
 export type TemplateMode = 'AI' | 'MANUAL' | 'LEGACY';

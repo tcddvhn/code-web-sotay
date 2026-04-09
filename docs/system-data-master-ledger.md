@@ -503,3 +503,12 @@ Rui ro con mo:
 - The report canvas should maximize width for templates and tables; avoid reintroducing boxed tree controls or extra selector cards in the content panel.
 
 - Report mode UI note (2026-04-08): report project/unit navigation now lives in the red left sidebar, not inside ReportView content. Sidebar width is user-resizable and persisted locally. Dashboard top project/year/status controls were flattened to inline underlined controls to reduce chrome and preserve horizontal space.
+
+## Extract Report Module
+- View id: EXTRACT_REPORTS
+- Left menu item: Trich bao cao (not shown for unit_user)
+- Component: C:\CODE_APPWEB\src\components\ExtractReportView.tsx
+- Purpose: configure extraction blueprints on top of existing project templates and preview/export unit-by-unit extraction tables.
+- Storage: table extract_report_blueprints (JSON field array for MVP).
+- Catalog source: existing template metadata + resolved row labels from workbook source.
+- Rollout SQL: C:\CODE_APPWEB\supabase\extract_reports_rollout.sql

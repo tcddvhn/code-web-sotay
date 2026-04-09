@@ -10,6 +10,7 @@ import {
   User as UserIcon,
   FolderPlus,
   BrainCircuit,
+  FileSpreadsheet,
   ChevronsLeft,
   ChevronsRight,
   ChevronDown,
@@ -192,6 +193,7 @@ export function Sidebar({
                 : []),
               { id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: FileUp },
               { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText },
+              ...(!isUnitUser ? [{ id: 'EXTRACT_REPORTS' as ViewMode, label: 'Trích báo cáo', icon: FileSpreadsheet }] : []),
               ...(isAdmin ? [{ id: 'SETTINGS' as ViewMode, label: 'Cài đặt', icon: Settings }] : []),
             ]
           : []),

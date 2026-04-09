@@ -14,6 +14,7 @@ import {
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ImportFiles } from './components/ImportFiles';
 import { ReportView } from './components/ReportView';
+import { ExtractReportView } from './components/ExtractReportView';
 import { AIAnalysisView } from './components/AIAnalysisView';
 import { Sidebar } from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
@@ -927,7 +928,7 @@ export default function App() {
   }, [projects, selectedProjectId]);
 
   useEffect(() => {
-    if (!isAuthenticated && currentView === 'REPORTS') {
+    if (!isAuthenticated && ['REPORTS', 'EXTRACT_REPORTS'].includes(currentView)) {
       setCurrentView('DASHBOARD');
     }
   }, [currentView, isAuthenticated]);
@@ -937,7 +938,7 @@ export default function App() {
       return;
     }
 
-    if (['PROJECTS', 'LEARN_FORM', 'SETTINGS', 'AI_ANALYSIS'].includes(currentView)) {
+    if (['PROJECTS', 'LEARN_FORM', 'SETTINGS', 'AI_ANALYSIS', 'EXTRACT_REPORTS'].includes(currentView)) {
       setCurrentView('DASHBOARD');
     }
   }, [currentView, effectiveUserProfile]);
@@ -1859,6 +1860,41 @@ export default function App() {
             selectedYear={selectedReportYear}
             onSelectedYearChange={setSelectedReportYear}
             currentUser={effectiveUserProfile}
+          />
+        );
+      case 'EXTRACT_REPORTS':
+        return isAuthenticated ? (
+          <ExtractReportView
+            projects={visibleProjects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+            templates={templates}
+            data={data}
+            units={allUnits}
+            projectUnitScopeByProjectId={projectUnitScopeByProjectId}
+            selectedYear={selectedReportYear}
+            onSelectedYearChange={setSelectedReportYear}
+            currentUser={effectiveUserProfile}
+          />
+        ) : (
+          <DashboardOverview
+            data={data}
+            templates={templates}
+            projects={visibleProjects}
+            units={availableUnitsForProject}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+            isAuthenticated={isAuthenticated}
+            isAdmin={isAdmin}
+            assignmentUsers={assignmentUsers}
+            assignments={assignments}
+            currentUser={effectiveUserProfile}
+            onSaveAssignments={handleSaveAssignments}
+            dataFiles={dataFiles}
+            onOpenLogin={() => setCurrentView('LOGIN')}
+            onLogout={handleLogout}
+            onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
+            onOpenImport={handleOpenImportFromDashboard}
           />
         );
       case 'AI_ANALYSIS':

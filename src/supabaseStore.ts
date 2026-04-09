@@ -1,6 +1,6 @@
 import { getAssignmentKey } from './access';
 import { supabase } from './supabase';
-import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile } from './types';
+import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, ExtractReportBlueprint, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile } from './types';
 
 const SETTINGS_ROW_ID = 'global';
 const SUPABASE_PAGE_SIZE = 1000;
@@ -135,6 +135,16 @@ type SupabaseReportExportRow = {
   } | null;
 };
 
+type SupabaseExtractReportBlueprintRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  fields: ExtractReportBlueprint['fields'] | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -227,6 +237,18 @@ function mapOverwriteRequest(row: SupabaseOverwriteRequestRow): OverwriteRequest
     requesterSeenAt: row.requester_seen_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapExtractReportBlueprint(row: SupabaseExtractReportBlueprintRow): ExtractReportBlueprint {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    name: row.name,
+    description: row.description || '',
+    fields: Array.isArray(row.fields) ? row.fields : [],
+    createdAt: row.created_at || nowIso(),
+    updatedAt: row.updated_at || row.created_at || nowIso(),
   };
 }
 
@@ -358,6 +380,57 @@ export async function deleteTemplateById(templateId: string) {
   const { error } = await supabase.from('templates').delete().eq('id', templateId);
   if (error) {
     throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a biÃ¡Â»Æ’u mÃ¡ÂºÂ«u trÃƒÂªn Supabase.');
+  }
+}
+
+export async function listExtractReportBlueprints(projectId?: string) {
+  let builder = supabase
+    .from('extract_report_blueprints')
+    .select('*')
+    .order('updated_at', { ascending: false });
+
+  if (projectId) {
+    builder = builder.eq('project_id', projectId);
+  }
+
+  const { data, error } = await builder;
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.extract_report_blueprints'")) {
+      return [] as ExtractReportBlueprint[];
+    }
+    throw new Error(error.message || 'Khong the tai danh sach bieu trich bao cao tu Supabase.');
+  }
+
+  return ((data || []) as SupabaseExtractReportBlueprintRow[]).map(mapExtractReportBlueprint);
+}
+
+export async function upsertExtractReportBlueprint(blueprint: ExtractReportBlueprint) {
+  const payload = {
+    id: blueprint.id,
+    project_id: blueprint.projectId,
+    name: blueprint.name,
+    description: blueprint.description || '',
+    fields: blueprint.fields,
+    created_at: typeof blueprint.createdAt === 'string' ? blueprint.createdAt : nowIso(),
+    updated_at: nowIso(),
+  };
+
+  const { error } = await supabase
+    .from('extract_report_blueprints')
+    .upsert(payload, { onConflict: 'id' });
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.extract_report_blueprints'")) {
+      throw new Error('Bang extract_report_blueprints chua duoc khoi tao. Hay chay file supabase/extract_reports_rollout.sql truoc.');
+    }
+    throw new Error(error.message || 'Khong the luu blueprint trich bao cao len Supabase.');
+  }
+}
+
+export async function deleteExtractReportBlueprint(blueprintId: string) {
+  const { error } = await supabase.from('extract_report_blueprints').delete().eq('id', blueprintId);
+  if (error) {
+    throw new Error(error.message || 'Khong the xoa blueprint trich bao cao tren Supabase.');
   }
 }
 
