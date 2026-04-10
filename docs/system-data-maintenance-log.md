@@ -628,3 +628,5 @@ pm.cmd run build thành công.
 2026-04-10: Expanded display-name encoding repair to all login/assignment surfaces. Added early sanitization in C:\CODE_APPWEB\src\supabase.ts and C:\CODE_APPWEB\src\supabaseStore.ts so auth metadata and user_profiles are repaired when mapped, then applied shared getReadableDisplayName() across Dashboard, Sidebar, and assignment-related labels in C:\CODE_APPWEB\src\App.tsx. Validation: npm.cmd run lint, npm.cmd run build.
 
 2026-04-10: Strengthened legacy-name recovery for auth/profile/watcher labels. Reworked C:\CODE_APPWEB\src\utils\textEncoding.ts to score and iteratively repair Windows-1252/Latin-1 mojibake, then reused that flow through auth mapping, user_profiles mapping, Dashboard banner labels, Sidebar user card, and Settings watcher lists. Validation: npm.cmd run lint, npm.cmd run build.
+
+2026-04-10: Tightened mojibake repair again after live trace of login/watcher names still failing in Dashboard banner. Simplified C:\CODE_APPWEB\src\utils\textEncoding.ts to aggressively iterate UTF-8 recovery while mojibake markers remain, then rebuilt. Validation: npm.cmd run lint, npm.cmd run build.

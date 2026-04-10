@@ -28,8 +28,7 @@ const WINDOWS_1252_MAP = new Map<string, number>([
   ['Ÿ', 0x9f],
 ]);
 
-const MOJIBAKE_MARKERS = /[ÃÂÆÄÅÐÑÒÓÔÕÖØÙÚÛÜÝÞß]/g;
-const VIETNAMESE_MARKERS = /[ăâđêôơưĂÂĐÊÔƠƯáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/gi;
+const MOJIBAKE_MARKERS = /[ÃÂÆÄÅÐÑÒÓÔÕÖØÙÚÛÜÝÞß€™œžŸ]/;
 
 const encodeExtendedLatin1 = (value: string) => {
   const bytes: number[] = [];
@@ -60,25 +59,21 @@ const decodeUtf8Candidate = (value: string) => {
   }
 };
 
-const scoreDisplayString = (value: string) => {
-  const mojibakePenalty = (value.match(MOJIBAKE_MARKERS)?.length || 0) * 4;
-  const replacementPenalty = (value.match(/�/g)?.length || 0) * 6;
-  const vietnameseBonus = value.match(VIETNAMESE_MARKERS)?.length || 0;
-  return vietnameseBonus - mojibakePenalty - replacementPenalty;
-};
-
 export const repairLegacyUtf8 = (value: string | null | undefined) => {
   if (!value) {
     return '';
   }
 
   let current = value;
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (!MOJIBAKE_MARKERS.test(current)) {
+      break;
+    }
     const candidate = decodeUtf8Candidate(current);
     if (!candidate || candidate === current) {
       break;
     }
-    if (scoreDisplayString(candidate) < scoreDisplayString(current)) {
+    if (candidate.includes('�') || candidate.includes('?')) {
       break;
     }
     current = candidate;
