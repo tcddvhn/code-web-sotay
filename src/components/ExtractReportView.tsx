@@ -159,16 +159,25 @@ const repairLegacyUtf8 = (value: string | null | undefined) => {
   if (!value) {
     return '';
   }
-  if (!/[ÃÂÆÄÅá»áº]/.test(value)) {
-    return value;
+
+  let current = value;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (!/[ÃÂÆÄÅá»áº]/.test(current)) {
+      break;
+    }
+    try {
+      const bytes = Uint8Array.from(Array.from(current).map((char) => char.charCodeAt(0) & 0xff));
+      const repaired = new TextDecoder('utf-8').decode(bytes);
+      if (!repaired || repaired === current || repaired.includes('�')) {
+        break;
+      }
+      current = repaired;
+    } catch {
+      break;
+    }
   }
-  try {
-    const bytes = Uint8Array.from(Array.from(value).map((char) => char.charCodeAt(0) & 0xff));
-    const repaired = new TextDecoder('utf-8').decode(bytes);
-    return repaired.includes('�') ? value : repaired;
-  } catch {
-    return value;
-  }
+
+  return current;
 };
 
 const compareValues = (

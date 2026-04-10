@@ -33,6 +33,7 @@ import {
 import { AppSettings, AssignmentUser, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, ReportTreeProjectNode, UserProfile, ViewMode } from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAssignmentKey } from './access';
+import { getReadableDisplayName, repairLegacyUtf8 } from './utils/textEncoding';
 import {
   countDataFilesByYear,
   countRowsByYear,
@@ -228,10 +229,10 @@ export default function App() {
     return {
       id: user.id,
       email: user.email,
-      displayName: userProfile?.displayName || user.displayName || null,
+      displayName: repairLegacyUtf8(userProfile?.displayName || user.displayName || null) || null,
       role: userProfile?.role || (user.unitCode ? 'unit_user' : 'contributor'),
       unitCode: userProfile?.unitCode || user.unitCode || null,
-      unitName: userProfile?.unitName || user.unitName || null,
+      unitName: repairLegacyUtf8(userProfile?.unitName || user.unitName || null) || null,
     };
   }, [user, userProfile]);
   const isAdmin = useMemo(() => effectiveUserProfile?.role === 'admin', [effectiveUserProfile]);
@@ -2930,10 +2931,10 @@ function DashboardOverview({
         return;
       }
       const time = row.updatedAt?.toDate ? row.updatedAt.toDate().getTime() : 0;
-      const label = row.updatedBy.displayName || row.updatedBy.email || 'Há»‡ thá»‘ng';
+      const label = getReadableDisplayName(row.updatedBy.displayName, row.updatedBy.email, 'Hệ thống');
       const existing = map.get(row.unitCode);
       if (!existing || time > existing.at) {
-        map.set(row.unitCode, { name: label || 'Há»‡ thá»‘ng', at: time });
+        map.set(row.unitCode, { name: label || 'Hệ thống', at: time });
       }
     });
     return map;
@@ -2943,7 +2944,7 @@ function DashboardOverview({
     const map = new Map<string, string>();
     Object.entries(assignments).forEach(([userId, unitCodes]) => {
       const user = assignmentUsers.find((u) => u.id === userId);
-      const name = user?.displayName || user?.email || 'ChÆ°a rÃµ';
+      const name = getReadableDisplayName(user?.displayName, user?.email);
       unitCodes.forEach((code) => {
         map.set(code, name);
       });

@@ -1,4 +1,5 @@
-﻿import { AssignmentUser, UserProfile } from './types';
+import { AssignmentUser, UserProfile } from './types';
+import { getReadableDisplayName } from './utils/textEncoding';
 
 export function getAssignmentKey(email?: string | null) {
   return email?.trim().toLowerCase() || '';
@@ -10,7 +11,7 @@ export function buildAssignmentUsers(userProfiles: UserProfile[]): AssignmentUse
     .map((profile) => ({
       id: getAssignmentKey(profile.email),
       email: profile.email || '',
-      displayName: profile.displayName || profile.email || 'Chưa rõ',
+      displayName: getReadableDisplayName(profile.displayName, profile.email),
       role: profile.role,
       userId: profile.id,
     }))

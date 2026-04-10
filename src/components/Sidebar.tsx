@@ -22,6 +22,7 @@ import {
 import { AuthenticatedUser, ReportTreeProjectNode, UserProfile, ViewMode } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { getReadableDisplayName } from '../utils/textEncoding';
 
 interface SidebarProps {
   currentView: ViewMode;
@@ -427,7 +428,7 @@ export function Sidebar({
               </div>
             )}
             <div className="overflow-hidden sidebar-user-info">
-              <p className="truncate text-[11px] font-bold text-white">{userProfile?.displayName || user.displayName || 'User'}</p>
+              <p className="truncate text-[11px] font-bold text-white">{getReadableDisplayName(userProfile?.displayName, user.displayName, 'User')}</p>
               <p className="truncate text-[10px] text-white/65">{user.email}</p>
               {isUnitUser && userProfile?.unitName && (
                 <p className="truncate text-[10px] text-white/65">{userProfile.unitName}</p>
