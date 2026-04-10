@@ -1,5 +1,6 @@
 import { createClient, type AuthChangeEvent, type Session, type User as SupabaseUser } from '@supabase/supabase-js';
 import { AuthenticatedUser } from './types';
+import { repairLegacyUtf8 } from './utils/textEncoding';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://taivkgwwinakcoxhquyv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY =
@@ -23,10 +24,10 @@ function mapSupabaseUser(user: SupabaseUser | null | undefined): AuthenticatedUs
   return {
     id: user.id,
     email: user.email || null,
-    displayName: metadata.display_name || metadata.name || null,
+    displayName: repairLegacyUtf8(metadata.display_name || metadata.name || null) || null,
     photoURL: metadata.avatar_url || metadata.picture || null,
     unitCode: metadata.unit_code || null,
-    unitName: metadata.unit_name || null,
+    unitName: repairLegacyUtf8(metadata.unit_name || null) || null,
   };
 }
 

@@ -1,4 +1,5 @@
 import { getAssignmentKey } from './access';
+import { getReadableDisplayName, repairLegacyUtf8 } from './utils/textEncoding';
 import { supabase } from './supabase';
 import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, ExtractReportBlueprint, ExtractReportBlueprintVersion, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile } from './types';
 
@@ -224,10 +225,10 @@ function mapUserProfile(row: SupabaseUserProfileRow): UserProfile {
   return {
     id: row.auth_user_id || getAssignmentKey(row.email),
     email: row.email,
-    displayName: row.display_name || row.email,
+    displayName: getReadableDisplayName(row.display_name, row.email),
     role: row.role || 'contributor',
     unitCode: row.unit_code || null,
-    unitName: row.unit_name || null,
+    unitName: repairLegacyUtf8(row.unit_name || null) || null,
   };
 }
 

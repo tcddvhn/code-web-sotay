@@ -4,8 +4,8 @@ export const repairLegacyUtf8 = (value: string | null | undefined) => {
   }
 
   let current = value;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (!/[ÃÂÆÄÅá»áº]/.test(current)) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (!/[ÃÂÆÄÅÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]/.test(current)) {
       break;
     }
     try {

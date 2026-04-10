@@ -450,10 +450,10 @@ export default function App() {
           await upsertUserProfileToSupabase({
             email: nextUser.email,
             authUserId: nextUser.id,
-            displayName: nextUser.unitName || nextUser.displayName || nextUser.email,
+            displayName: getReadableDisplayName(nextUser.unitName, nextUser.displayName || nextUser.email),
             role: 'unit_user',
             unitCode: nextUser.unitCode,
-            unitName: nextUser.unitName || nextUser.displayName || nextUser.email,
+            unitName: repairLegacyUtf8(nextUser.unitName || nextUser.displayName || nextUser.email) || nextUser.email,
             isActive: true,
           });
           profile = await getUserProfileByEmail(nextUser.email);
@@ -489,7 +489,7 @@ export default function App() {
         setUser(nextUser);
         setUserProfile({
           ...profile,
-          displayName: profile.displayName || nextUser.displayName || nextUser.email,
+          displayName: getReadableDisplayName(profile.displayName, nextUser.displayName || nextUser.email),
         });
         setAuthError(null);
         setCurrentView((current) => (current === 'LOGIN' ? 'DASHBOARD' : current));
@@ -1909,7 +1909,7 @@ export default function App() {
             currentUser={{
               uid: user?.id || null,
               email: user?.email || null,
-              displayName: effectiveUserProfile?.displayName || user?.displayName || user?.email || null,
+              displayName: getReadableDisplayName(effectiveUserProfile?.displayName, user?.displayName || user?.email, user?.email || ''),
             }}
           />
         );
@@ -3210,7 +3210,7 @@ function DashboardOverview({
           </h2>
           {currentUser && (
             <p className="mt-3 text-sm font-bold text-white/90">
-              {'T\u00e0i kho\u1ea3n \u0111ang \u0111\u0103ng nh\u1eadp: '}{currentUser.displayName || currentUser.email || 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh'}
+              {'T\u00e0i kho\u1ea3n \u0111ang \u0111\u0103ng nh\u1eadp: '}{getReadableDisplayName(currentUser.displayName, currentUser.email, 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh')}
             </p>
           )}
           <p className="mt-3 max-w-3xl text-sm text-white/80">
@@ -3667,7 +3667,7 @@ function DashboardOverview({
                 )}
                 {shouldLockToCurrentUserAssignments && (
                   <div className="panel-soft rounded-full px-3 py-2 text-xs font-semibold text-[var(--primary-dark)]">
-                    {'Đang xem đơn vị được phân công cho '}{currentUser?.displayName || currentUser?.email || 'bạn'}
+                    {'Đang xem đơn vị được phân công cho '}{getReadableDisplayName(currentUser?.displayName, currentUser?.email, 'bạn')}
                   </div>
                 )}
                 <button
