@@ -1261,6 +1261,44 @@ export function ReportView({
     }
   };
 
+  const exportCellDetailUnits = () => {
+    if (!activeCellDetail || selectedUnitCode !== TOTAL_REPORT_UNIT_CODE) {
+      return;
+    }
+
+    const rows = sortedDetailItems.map((item, index) => ({
+      STT: index + 1,
+      'Tên đơn vị': item.unitName,
+      'Giá trị': item.value,
+    }));
+
+    rows.push({
+      STT: '',
+      'Tên đơn vị': 'Tổng giá trị',
+      'Giá trị': activeCellDetail.totalValue,
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows, {
+      header: ['STT', 'Tên đơn vị', 'Giá trị'],
+    });
+    worksheet['!cols'] = [{ wch: 8 }, { wch: 42 }, { wch: 14 }];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'ChiTiet');
+
+    const fileName = [
+      'ChiTiet',
+      sanitizeFileNamePart(selectedProject?.name || 'DuAn'),
+      sanitizeFileNamePart(activeCellDetail.columnLabel || 'Cot'),
+      sanitizeFileNamePart(selectedYear),
+    ]
+      .filter(Boolean)
+      .join('_')
+      .concat('.xlsx');
+
+    XLSX.writeFile(workbook, fileName);
+  };
+
   const openCellDetail = async (row: AggregatedReportRow, columnIndex: number) => {
     setIsDetailLoading(true);
     setDetailLoadError(null);
@@ -1645,14 +1683,26 @@ export function ReportView({
                 <div className="panel-soft rounded-full px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--ink-soft)]">
                   Sắp theo mã đơn vị tăng dần
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveCellDetail(null)}
-                  className="secondary-btn flex items-center gap-2"
-                >
-                  <X size={16} />
-                  Đóng
-                </button>
+                <div className="flex flex-wrap justify-end gap-3">
+                  {selectedUnitCode === TOTAL_REPORT_UNIT_CODE && (
+                    <button
+                      type="button"
+                      onClick={exportCellDetailUnits}
+                      className="secondary-btn flex items-center gap-2"
+                    >
+                      <Download size={16} />
+                      Xuất Excel
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveCellDetail(null)}
+                    className="secondary-btn flex items-center gap-2"
+                  >
+                    <X size={16} />
+                    Đóng
+                  </button>
+                </div>
               </div>
             </div>
 
