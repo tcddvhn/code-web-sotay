@@ -630,3 +630,5 @@ pm.cmd run build thành công.
 2026-04-10: Strengthened legacy-name recovery for auth/profile/watcher labels. Reworked C:\CODE_APPWEB\src\utils\textEncoding.ts to score and iteratively repair Windows-1252/Latin-1 mojibake, then reused that flow through auth mapping, user_profiles mapping, Dashboard banner labels, Sidebar user card, and Settings watcher lists. Validation: npm.cmd run lint, npm.cmd run build.
 
 2026-04-10: Tightened mojibake repair again after live trace of login/watcher names still failing in Dashboard banner. Simplified C:\CODE_APPWEB\src\utils\textEncoding.ts to aggressively iterate UTF-8 recovery while mojibake markers remain, then rebuilt. Validation: npm.cmd run lint, npm.cmd run build.
+
+2026-04-10: Added canonical watcher/admin display-name mapping by email in C:\CODE_APPWEB\src\utils\textEncoding.ts after tracing the full current assignee list. This hard-fixes the known internal account names (admin + current watcher accounts) across Dashboard, Sidebar, and Settings even when the source profile/auth records are already stored in unrecoverable mojibake form. Validation: npm.cmd run lint, npm.cmd run build.
