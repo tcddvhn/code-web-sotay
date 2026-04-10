@@ -632,3 +632,5 @@ pm.cmd run build thành công.
 2026-04-10: Tightened mojibake repair again after live trace of login/watcher names still failing in Dashboard banner. Simplified C:\CODE_APPWEB\src\utils\textEncoding.ts to aggressively iterate UTF-8 recovery while mojibake markers remain, then rebuilt. Validation: npm.cmd run lint, npm.cmd run build.
 
 2026-04-10: Added canonical watcher/admin display-name mapping by email in C:\CODE_APPWEB\src\utils\textEncoding.ts after tracing the full current assignee list. This hard-fixes the known internal account names (admin + current watcher accounts) across Dashboard, Sidebar, and Settings even when the source profile/auth records are already stored in unrecoverable mojibake form. Validation: npm.cmd run lint, npm.cmd run build.
+
+2026-04-10: Traced the remaining Trich bao cao font issues in Preview/Phiên b?n to persisted DB fields updated_by_name and created_by_name in extract_report_blueprints / extract_report_blueprint_versions. Fixed both read and write paths in C:\CODE_APPWEB\src\supabaseStore.ts by repairing those fields during mapping and before persistence. Validation: npm.cmd run lint, npm.cmd run build.

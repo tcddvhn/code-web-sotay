@@ -263,7 +263,7 @@ function mapExtractReportBlueprint(row: SupabaseExtractReportBlueprintRow): Extr
     description: row.description || '',
     fields: Array.isArray(row.fields) ? row.fields : [],
     updatedById: row.updated_by_id || null,
-    updatedByName: row.updated_by_name || null,
+    updatedByName: repairLegacyUtf8(row.updated_by_name || null) || null,
     createdAt: row.created_at || nowIso(),
     updatedAt: row.updated_at || row.created_at || nowIso(),
   };
@@ -280,7 +280,7 @@ function mapExtractReportBlueprintVersion(
     description: row.description || '',
     fields: Array.isArray(row.fields) ? row.fields : [],
     createdById: row.created_by_id || null,
-    createdByName: row.created_by_name || null,
+    createdByName: repairLegacyUtf8(row.created_by_name || null) || null,
     createdAt: row.created_at || nowIso(),
   };
 }
@@ -445,7 +445,7 @@ export async function upsertExtractReportBlueprint(blueprint: ExtractReportBluep
     description: blueprint.description || '',
     fields: blueprint.fields,
     updated_by_id: blueprint.updatedById || null,
-    updated_by_name: blueprint.updatedByName || null,
+    updated_by_name: repairLegacyUtf8(blueprint.updatedByName || null) || null,
     created_at: typeof blueprint.createdAt === 'string' ? blueprint.createdAt : nowIso(),
     updated_at: nowIso(),
   };
@@ -488,7 +488,7 @@ export async function appendExtractReportBlueprintVersion(version: ExtractReport
     description: version.description || '',
     fields: version.fields,
     created_by_id: version.createdById || null,
-    created_by_name: version.createdByName || null,
+    created_by_name: repairLegacyUtf8(version.createdByName || null) || null,
     created_at: typeof version.createdAt === 'string' ? version.createdAt : nowIso(),
   };
 
