@@ -1,6 +1,6 @@
 import { getAssignmentKey } from './access';
 import { supabase } from './supabase';
-import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, ExtractReportBlueprint, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile } from './types';
+import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, ExtractReportBlueprint, ExtractReportBlueprintVersion, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile } from './types';
 
 const SETTINGS_ROW_ID = 'global';
 const SUPABASE_PAGE_SIZE = 1000;
@@ -141,8 +141,22 @@ type SupabaseExtractReportBlueprintRow = {
   name: string;
   description: string | null;
   fields: ExtractReportBlueprint['fields'] | null;
+  updated_by_id: string | null;
+  updated_by_name: string | null;
   created_at: string | null;
   updated_at: string | null;
+};
+
+type SupabaseExtractReportBlueprintVersionRow = {
+  id: string;
+  blueprint_id: string;
+  version_number: number;
+  name: string;
+  description: string | null;
+  fields: ExtractReportBlueprint['fields'] | null;
+  created_by_id: string | null;
+  created_by_name: string | null;
+  created_at: string | null;
 };
 
 function nowIso() {
@@ -247,8 +261,26 @@ function mapExtractReportBlueprint(row: SupabaseExtractReportBlueprintRow): Extr
     name: row.name,
     description: row.description || '',
     fields: Array.isArray(row.fields) ? row.fields : [],
+    updatedById: row.updated_by_id || null,
+    updatedByName: row.updated_by_name || null,
     createdAt: row.created_at || nowIso(),
     updatedAt: row.updated_at || row.created_at || nowIso(),
+  };
+}
+
+function mapExtractReportBlueprintVersion(
+  row: SupabaseExtractReportBlueprintVersionRow,
+): ExtractReportBlueprintVersion {
+  return {
+    id: row.id,
+    blueprintId: row.blueprint_id,
+    versionNumber: row.version_number,
+    name: row.name,
+    description: row.description || '',
+    fields: Array.isArray(row.fields) ? row.fields : [],
+    createdById: row.created_by_id || null,
+    createdByName: row.created_by_name || null,
+    createdAt: row.created_at || nowIso(),
   };
 }
 
@@ -411,6 +443,8 @@ export async function upsertExtractReportBlueprint(blueprint: ExtractReportBluep
     name: blueprint.name,
     description: blueprint.description || '',
     fields: blueprint.fields,
+    updated_by_id: blueprint.updatedById || null,
+    updated_by_name: blueprint.updatedByName || null,
     created_at: typeof blueprint.createdAt === 'string' ? blueprint.createdAt : nowIso(),
     updated_at: nowIso(),
   };
@@ -424,6 +458,47 @@ export async function upsertExtractReportBlueprint(blueprint: ExtractReportBluep
       throw new Error('Bang extract_report_blueprints chua duoc khoi tao. Hay chay file supabase/extract_reports_rollout.sql truoc.');
     }
     throw new Error(error.message || 'Khong the luu blueprint trich bao cao len Supabase.');
+  }
+}
+
+export async function listExtractReportBlueprintVersions(blueprintId: string) {
+  const { data, error } = await supabase
+    .from('extract_report_blueprint_versions')
+    .select('*')
+    .eq('blueprint_id', blueprintId)
+    .order('version_number', { ascending: false });
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.extract_report_blueprint_versions'")) {
+      return [] as ExtractReportBlueprintVersion[];
+    }
+    throw new Error(error.message || 'Khong the tai lich su phien ban bieu trich bao cao tu Supabase.');
+  }
+
+  return ((data || []) as SupabaseExtractReportBlueprintVersionRow[]).map(mapExtractReportBlueprintVersion);
+}
+
+export async function appendExtractReportBlueprintVersion(version: ExtractReportBlueprintVersion) {
+  const payload = {
+    id: version.id,
+    blueprint_id: version.blueprintId,
+    version_number: version.versionNumber,
+    name: version.name,
+    description: version.description || '',
+    fields: version.fields,
+    created_by_id: version.createdById || null,
+    created_by_name: version.createdByName || null,
+    created_at: typeof version.createdAt === 'string' ? version.createdAt : nowIso(),
+  };
+
+  const { error } = await supabase.from('extract_report_blueprint_versions').insert(payload);
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.extract_report_blueprint_versions'")) {
+      throw new Error(
+        'Bang extract_report_blueprint_versions chua duoc khoi tao. Hay chay file supabase/extract_reports_rollout.sql truoc.',
+      );
+    }
+    throw new Error(error.message || 'Khong the luu phien ban bieu trich bao cao len Supabase.');
   }
 }
 

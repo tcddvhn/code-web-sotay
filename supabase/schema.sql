@@ -299,14 +299,14 @@ create table if not exists report_exports (
 
 insert into user_profiles (email, display_name, role, is_active)
 values
-  ('admin@sotay.com', 'LÃƒÆ’Ã‚Âª Ãƒâ€žÃ‚ÂÃƒÆ’Ã‚Â¬nh KiÃƒÆ’Ã‚Âªn', 'admin', true),
-  ('trieuthingoc@sotay.com', 'TriÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¡u ThÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ NgÃƒÂ¡Ã‚Â»Ã‚Âc', 'contributor', true),
-  ('tranthikieuanh@sotay.com', 'TrÃƒÂ¡Ã‚ÂºÃ‚Â§n ThÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ KiÃƒÂ¡Ã‚Â»Ã‚Âu Anh', 'contributor', true),
-  ('tranphuongha@sotay.com', 'TrÃƒÂ¡Ã‚ÂºÃ‚Â§n PhÃƒâ€ Ã‚Â°Ãƒâ€ Ã‚Â¡ng HÃƒÆ’Ã‚Â ', 'contributor', true),
-  ('phamthithuhanh@sotay.com', 'PhÃƒÂ¡Ã‚ÂºÃ‚Â¡m ThÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¹ Thu HÃƒÂ¡Ã‚ÂºÃ‚Â¡nh', 'contributor', true),
-  ('nguyenthugiang@sotay.com', 'NguyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¦n Thu Giang', 'contributor', true),
-  ('nguyensinghiem@sotay.com', 'NguyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¦n SÃƒâ€žÃ‚Â© NghiÃƒÆ’Ã‚Âªm', 'contributor', true),
-  ('nguyenhuuhung@sotay.com', 'NguyÃƒÂ¡Ã‚Â»Ã¢â‚¬Â¦n HÃƒÂ¡Ã‚Â»Ã‚Â¯u HÃƒÆ’Ã‚Â¹ng', 'contributor', true)
+  ('admin@sotay.com', 'LÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âª ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬nh KiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªn', 'admin', true),
+  ('trieuthingoc@sotay.com', 'TriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¡u ThÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ NgÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âc', 'contributor', true),
+  ('tranthikieuanh@sotay.com', 'TrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§n ThÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ KiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âu Anh', 'contributor', true),
+  ('tranphuongha@sotay.com', 'TrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§n PhÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ng HÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ', 'contributor', true),
+  ('phamthithuhanh@sotay.com', 'PhÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡m ThÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¹ Thu HÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂºÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡nh', 'contributor', true),
+  ('nguyenthugiang@sotay.com', 'NguyÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦n Thu Giang', 'contributor', true),
+  ('nguyensinghiem@sotay.com', 'NguyÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦n SÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© NghiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âªm', 'contributor', true),
+  ('nguyenhuuhung@sotay.com', 'NguyÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦n HÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯u HÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹ng', 'contributor', true)
 on conflict (email) do update
 set
   display_name = excluded.display_name,
@@ -477,3 +477,25 @@ create policy "auth_read_extract_report_blueprints" on extract_report_blueprints
 create policy "admin_insert_extract_report_blueprints" on extract_report_blueprints for insert to authenticated with check (public.is_admin_user());
 create policy "admin_update_extract_report_blueprints" on extract_report_blueprints for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
 create policy "admin_delete_extract_report_blueprints" on extract_report_blueprints for delete to authenticated using (public.is_admin_user());
+
+create table if not exists extract_report_blueprint_versions (
+  id text primary key,
+  blueprint_id text not null references extract_report_blueprints(id) on delete cascade,
+  version_number integer not null,
+  name text not null,
+  description text,
+  fields jsonb not null default '[]'::jsonb,
+  created_by_id text,
+  created_by_name text,
+  created_at timestamptz not null default now(),
+  unique (blueprint_id, version_number)
+);
+
+alter table extract_report_blueprint_versions enable row level security;
+
+drop policy if exists "auth_read_extract_report_blueprint_versions" on extract_report_blueprint_versions;
+drop policy if exists "admin_insert_extract_report_blueprint_versions" on extract_report_blueprint_versions;
+drop policy if exists "admin_delete_extract_report_blueprint_versions" on extract_report_blueprint_versions;
+create policy "auth_read_extract_report_blueprint_versions" on extract_report_blueprint_versions for select to authenticated using (public.is_active_user());
+create policy "admin_insert_extract_report_blueprint_versions" on extract_report_blueprint_versions for insert to authenticated with check (public.is_admin_user());
+create policy "admin_delete_extract_report_blueprint_versions" on extract_report_blueprint_versions for delete to authenticated using (public.is_admin_user());

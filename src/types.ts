@@ -189,8 +189,22 @@ export interface ExtractReportBlueprint {
   name: string;
   description: string;
   fields: ExtractReportFieldConfig[];
+  updatedById?: string | null;
+  updatedByName?: string | null;
   createdAt: any;
   updatedAt: any;
+}
+
+export interface ExtractReportBlueprintVersion {
+  id: string;
+  blueprintId: string;
+  versionNumber: number;
+  name: string;
+  description: string;
+  fields: ExtractReportFieldConfig[];
+  createdById?: string | null;
+  createdByName?: string | null;
+  createdAt: any;
 }
 
 export type TemplateMode = 'AI' | 'MANUAL' | 'LEGACY';
