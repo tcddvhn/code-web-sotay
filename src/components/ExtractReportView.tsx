@@ -155,6 +155,22 @@ const sanitizeFileName = (value: string) =>
     .replace(/[^a-zA-Z0-9_-]+/g, '_')
     .replace(/^_+|_+$/g, '');
 
+const repairLegacyUtf8 = (value: string | null | undefined) => {
+  if (!value) {
+    return '';
+  }
+  if (!/[ÃÂÆÄÅá»áº]/.test(value)) {
+    return value;
+  }
+  try {
+    const bytes = Uint8Array.from(Array.from(value).map((char) => char.charCodeAt(0) & 0xff));
+    const repaired = new TextDecoder('utf-8').decode(bytes);
+    return repaired.includes('�') ? value : repaired;
+  } catch {
+    return value;
+  }
+};
+
 const compareValues = (
   sortMode: PreviewSortMode,
   left: { unitCode: string; unitName: string },
@@ -1025,7 +1041,7 @@ export function ExtractReportView({
               <div className="mt-3 text-sm text-[var(--ink-soft)]">
                 {previewRows.length} đơn vị hiển thị • {previewColumns.length} cột • {TXT.updatedAt}:{' '}
                 {draft?.updatedAt ? new Date(draft.updatedAt).toLocaleString('vi-VN') : TXT.noDate}
-                {draft?.updatedByName ? ` • ${draft.updatedByName}` : ''}
+                {draft?.updatedByName ? ` • ${repairLegacyUtf8(draft.updatedByName)}` : ''}
               </div>
 
               {isLoadingCatalog ? (
@@ -1090,7 +1106,7 @@ export function ExtractReportView({
                           <div className="font-semibold text-[var(--ink)]">{getVersionLabel(version)}</div>
                           <div className="mt-1 text-sm text-[var(--ink-soft)]">{version.description || 'Không có mô tả.'}</div>
                         </div>
-                        <div className="text-sm text-[var(--ink-soft)]">{version.createdByName || 'Không rõ người cập nhật'}</div>
+                        <div className="text-sm text-[var(--ink-soft)]">{repairLegacyUtf8(version.createdByName) || 'Không rõ người cập nhật'}</div>
                       </div>
                     </button>
                   ))

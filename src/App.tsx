@@ -435,7 +435,7 @@ export default function App() {
         if (!active) {
           return;
         }
-        setAuthError('PhiÃªn Supabase hiá»‡n khÃ´ng cÃ³ email há»£p lá»‡.');
+        setAuthError('Phiên Supabase hiện không có email hợp lệ.');
         setUser(null);
         setUserProfile(null);
         setCurrentView('LOGIN');
@@ -1592,12 +1592,12 @@ export default function App() {
 
     const normalizedEmail = getAssignmentKey(payload.email);
     if (!normalizedEmail) {
-      throw new Error('Email tÃ i khoáº£n khÃ´ng há»£p lá»‡.');
+      throw new Error('Email tài khoản không hợp lệ.');
     }
 
     const unit = allUnits.find((item) => item.code === payload.unitCode);
     if (!unit) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n vá»‹ Ä‘á»ƒ gáº¯n tÃ i khoáº£n.');
+      throw new Error('Không tìm thấy đơn vị để gắn tài khoản.');
     }
 
     await upsertUserProfileToSupabase({
@@ -2640,13 +2640,13 @@ function LoginView({
   const submitEmailLogin = async () => {
     setError(null);
     if (!email || !password) {
-      setError('Vui lÃ²ng nháº­p email vÃ  máº­t kháº©u.');
+      setError('Vui lòng nhập email và mật khẩu.');
       return;
     }
     try {
       await onLoginWithEmail(email.trim(), password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'KhÃ´ng thá»ƒ Ä‘Äƒng nháº­p báº±ng tÃ i khoáº£n nÃ y.');
+      setError(err instanceof Error ? err.message : 'Không thể đăng nhập bằng tài khoản này.');
     }
   };
 
@@ -2656,8 +2656,8 @@ function LoginView({
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--primary-soft)] text-[var(--primary-dark)]">
           <Lock size={30} />
         </div>
-        <h2 className="section-title">ÄÄƒng nháº­p há»‡ thá»‘ng</h2>
-        <p className="page-subtitle mt-3 text-sm">DÃ nh cho cÃ¡c tÃ i khoáº£n Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t trong Supabase.</p>
+        <h2 className="section-title">Đăng nhập hệ thống</h2>
+        <p className="page-subtitle mt-3 text-sm">Dành cho các tài khoản đã được kích hoạt trong Supabase.</p>
 
         <div className="mt-8 space-y-4">
           <div className="panel-soft rounded-[20px] p-4 text-left">
@@ -2669,23 +2669,23 @@ function LoginView({
               className="field-input"
               placeholder="email@domain.com"
             />
-            <label className="col-header block mt-4 mb-2">Máº­t kháº©u</label>
+            <label className="col-header block mt-4 mb-2">Mật khẩu</label>
             <input
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="field-input"
-              placeholder="Nháº­p máº­t kháº©u"
+              placeholder="Nhập mật khẩu"
             />
             <button onClick={submitEmailLogin} className="primary-btn mt-4 w-full">
-              ÄÄƒng nháº­p báº±ng tÃ i khoáº£n
+              Đăng nhập bằng tài khoản
             </button>
             <p className="mt-3 text-[12px] leading-5 text-[var(--ink-soft)]">
-              TÃ i khoáº£n vÃ  máº­t kháº©u Ä‘Æ°á»£c quáº£n trá»‹ viÃªn cáº¥p sáºµn trÃªn Supabase.
+              Tài khoản và mật khẩu được quản trị viên cấp sẵn trên Supabase.
             </p>
           </div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--ink-soft)]">
-            Chá»‰ tÃ i khoáº£n Ä‘Æ°á»£c cáº¥p quyá»n má»›i cÃ³ thá»ƒ tiáº¿p nháº­n dá»¯ liá»‡u
+            Chỉ tài khoản được cấp quyền mới có thể tiếp nhận dữ liệu
           </p>
           {authError && <p className="text-xs text-red-600">{authError}</p>}
           {error && <p className="text-xs text-red-600">{error}</p>}
