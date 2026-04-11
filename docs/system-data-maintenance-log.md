@@ -636,3 +636,5 @@ pm.cmd run build thành công.
 2026-04-10: Traced the remaining Trich bao cao font issues in Preview/Phiên b?n to persisted DB fields updated_by_name and created_by_name in extract_report_blueprints / extract_report_blueprint_versions. Fixed both read and write paths in C:\CODE_APPWEB\src\supabaseStore.ts by repairing those fields during mapping and before persistence. Validation: npm.cmd run lint, npm.cmd run build.
 
 2026-04-10: Added Excel export in ReportView cell-detail modal for total-city scope only. The modal now shows an 'Xu?t Excel' button when selectedUnitCode = __TOTAL_CITY__, exporting only units with value > 0 as columns STT / Tên don v? / Giá tr? plus a final 'T?ng giá tr?' row. Short filename format: ChiTiet_{DuAn}_{Cot}_{Nam}. Validation: npm.cmd run lint, npm.cmd run build.
+
+2026-04-10: Prepared DB cleanup script for legacy mojibake in extract report audit names. Added C:\CODE_APPWEB\supabase\extract_report_name_cleanup.sql to normalize extract_report_blueprints.updated_by_name and extract_report_blueprint_versions.created_by_name from public.user_profiles by auth_user_id/email matching.
