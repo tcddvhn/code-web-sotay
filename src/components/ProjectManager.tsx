@@ -1,16 +1,26 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle, Clock, FolderOpen, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
-import { ManagedUnit, Project } from '../types';
+import { Department, ManagedUnit, Project } from '../types';
 
 type CreateProjectPayload = {
   name: string;
   description: string;
   unitCodes: string[];
+  ownerDepartmentId?: string | null;
+};
+
+type UpdateProjectPayload = {
+  name: string;
+  description: string;
+  ownerDepartmentId?: string | null;
 };
 
 export function ProjectManager({
   projects,
   units,
+  departments,
+  currentDepartmentId,
+  isAdmin,
   onSelectProject,
   onDeleteProject,
   onCreateProject,
@@ -19,24 +29,44 @@ export function ProjectManager({
 }: {
   projects: Project[];
   units: ManagedUnit[];
+  departments: Department[];
+  currentDepartmentId?: string | null;
+  isAdmin: boolean;
   onSelectProject: (project: Project) => void;
   onDeleteProject: (project: Project) => Promise<boolean>;
   onCreateProject: (payload: CreateProjectPayload) => Promise<Project>;
-  onUpdateProject: (project: Project, payload: { name: string; description: string }) => Promise<Project>;
+  onUpdateProject: (project: Project, payload: UpdateProjectPayload) => Promise<Project>;
   onToggleProjectStatus: (project: Project) => Promise<Project>;
 }) {
   const activeUnits = useMemo(() => units.filter((unit) => !unit.isDeleted), [units]);
+  const activeDepartments = useMemo(
+    () => departments.filter((department) => department.isActive).sort((left, right) => left.sortOrder - right.sortOrder),
+    [departments],
+  );
+  const departmentById = useMemo(
+    () =>
+      departments.reduce<Record<string, Department>>((accumulator, department) => {
+        accumulator[department.id] = department;
+        return accumulator;
+      }, {}),
+    [departments],
+  );
   const defaultUnitCodes = useMemo(() => activeUnits.map((unit) => unit.code), [activeUnits]);
+  const defaultDepartmentId = currentDepartmentId || activeDepartments[0]?.id || '';
 
   const [isAdding, setIsAdding] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', description: '' });
+  const [newProject, setNewProject] = useState({ name: '', description: '', ownerDepartmentId: defaultDepartmentId });
   const [newProjectUnitCodes, setNewProjectUnitCodes] = useState<string[]>(defaultUnitCodes);
   const [unitSearch, setUnitSearch] = useState('');
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
   const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [editingProjectDraft, setEditingProjectDraft] = useState({ name: '', description: '' });
+  const [editingProjectDraft, setEditingProjectDraft] = useState({
+    name: '',
+    description: '',
+    ownerDepartmentId: '',
+  });
   const [message, setMessage] = useState<string | null>(null);
 
   const normalizedUnitSearch = unitSearch.trim().toLocaleLowerCase('vi');
@@ -51,26 +81,30 @@ export function ProjectManager({
     });
   }, [activeUnits, normalizedUnitSearch]);
 
+  const resetCreateDraft = () => {
+    setNewProject({
+      name: '',
+      description: '',
+      ownerDepartmentId: currentDepartmentId || activeDepartments[0]?.id || '',
+    });
+    setNewProjectUnitCodes(defaultUnitCodes);
+    setUnitSearch('');
+  };
+
   const openAddProject = () => {
     setIsAdding(true);
     setMessage(null);
-    setNewProject({ name: '', description: '' });
-    setNewProjectUnitCodes(defaultUnitCodes);
-    setUnitSearch('');
+    resetCreateDraft();
   };
 
   const closeAddProject = () => {
     setIsAdding(false);
-    setNewProject({ name: '', description: '' });
-    setNewProjectUnitCodes(defaultUnitCodes);
-    setUnitSearch('');
+    resetCreateDraft();
   };
 
   const toggleProjectUnit = (unitCode: string) => {
     setNewProjectUnitCodes((previous) =>
-      previous.includes(unitCode)
-        ? previous.filter((code) => code !== unitCode)
-        : [...previous, unitCode],
+      previous.includes(unitCode) ? previous.filter((code) => code !== unitCode) : [...previous, unitCode],
     );
   };
 
@@ -80,8 +114,13 @@ export function ProjectManager({
       return;
     }
 
-    if (newProjectUnitCodes.length === 0) {
-      setMessage('Vui lòng chọn ít nhất một đơn vị thực hiện dự án trước khi lưu.');
+    if (!newProjectUnitCodes.length) {
+      setMessage('Vui lòng chọn ít nhất một đơn vị thực hiện dự án.');
+      return;
+    }
+
+    if (!(currentDepartmentId || newProject.ownerDepartmentId)) {
+      setMessage('Vui lòng chọn phòng ban chủ quản cho dự án.');
       return;
     }
 
@@ -92,6 +131,7 @@ export function ProjectManager({
         name: newProject.name.trim(),
         description: newProject.description.trim(),
         unitCodes: newProjectUnitCodes,
+        ownerDepartmentId: currentDepartmentId || newProject.ownerDepartmentId,
       });
       onSelectProject(project);
       closeAddProject();
@@ -122,13 +162,14 @@ export function ProjectManager({
     setEditingProjectDraft({
       name: project.name,
       description: project.description || '',
+      ownerDepartmentId: project.ownerDepartmentId || currentDepartmentId || activeDepartments[0]?.id || '',
     });
     setMessage(null);
   };
 
   const cancelEditingProject = () => {
     setEditingProjectId(null);
-    setEditingProjectDraft({ name: '', description: '' });
+    setEditingProjectDraft({ name: '', description: '', ownerDepartmentId: '' });
   };
 
   const saveProjectChanges = async (project: Project) => {
@@ -143,6 +184,7 @@ export function ProjectManager({
       const updated = await onUpdateProject(project, {
         name: editingProjectDraft.name.trim(),
         description: editingProjectDraft.description.trim(),
+        ownerDepartmentId: isAdmin ? editingProjectDraft.ownerDepartmentId : project.ownerDepartmentId,
       });
       setMessage(`Đã cập nhật dự án "${updated.name}".`);
       cancelEditingProject();
@@ -167,6 +209,9 @@ export function ProjectManager({
         return;
       }
       setMessage(`Đã xóa dự án "${project.name}".`);
+    } catch (error) {
+      console.error('Delete project error:', error);
+      setMessage(error instanceof Error ? error.message : 'Không thể xóa dự án.');
     } finally {
       setDeletingProjectId(null);
     }
@@ -196,16 +241,42 @@ export function ProjectManager({
               type="text"
               placeholder="Tên dự án (ví dụ: Tổng hợp quý 1/2026)"
               value={newProject.name}
-              onChange={(event) => setNewProject({ ...newProject, name: event.target.value })}
+              onChange={(event) => setNewProject((previous) => ({ ...previous, name: event.target.value }))}
               className="field-input"
             />
             <textarea
               placeholder="Mô tả chi tiết dự án..."
               value={newProject.description}
-              onChange={(event) => setNewProject({ ...newProject, description: event.target.value })}
+              onChange={(event) => setNewProject((previous) => ({ ...previous, description: event.target.value }))}
               className="field-input"
               rows={3}
             />
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+              <div>
+                <p className="col-header mb-2">Phòng ban chủ quản</p>
+                {currentDepartmentId && !isAdmin ? (
+                  <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,255,255,0.92)] px-4 py-3 text-sm font-semibold text-[var(--ink)]">
+                    {departmentById[currentDepartmentId]?.name || 'Chưa xác định phòng ban'}
+                  </div>
+                ) : (
+                  <select
+                    value={newProject.ownerDepartmentId}
+                    onChange={(event) =>
+                      setNewProject((previous) => ({ ...previous, ownerDepartmentId: event.target.value }))
+                    }
+                    className="field-select"
+                  >
+                    <option value="">-- Chọn phòng ban --</option>
+                    {activeDepartments.map((department) => (
+                      <option key={department.id} value={department.id}>
+                        {department.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
 
             <div className="rounded-[20px] border border-[var(--line)] bg-[rgba(255,255,255,0.9)] p-4">
               <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -294,91 +365,133 @@ export function ProjectManager({
       )}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {projects.map((project) => (
-          <div key={project.id} className="panel-card flex flex-col rounded-[24px] p-6">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div className={`status-pill ${project.status === 'ACTIVE' ? 'status-pill-submitted' : 'status-pill-pending'}`}>
-                {project.status === 'ACTIVE' ? 'Đang triển khai' : 'Đã hoàn thành'}
+        {projects.map((project) => {
+          const ownerDepartment = project.ownerDepartmentId ? departmentById[project.ownerDepartmentId] : null;
+          return (
+            <div key={project.id} className="panel-card flex flex-col rounded-[24px] p-6">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div
+                  className={`status-pill ${project.status === 'ACTIVE' ? 'status-pill-submitted' : 'status-pill-pending'}`}
+                >
+                  {project.status === 'ACTIVE' ? 'Đang triển khai' : 'Đã hoàn thành'}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startEditingProject(project)}
+                    title="Sửa thông tin dự án"
+                    disabled={updatingProjectId === project.id || deletingProjectId === project.id}
+                    className="disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    onClick={() => toggleStatus(project)}
+                    title="Đổi trạng thái"
+                    disabled={updatingProjectId === project.id}
+                    className="disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {project.status === 'ACTIVE' ? <CheckCircle size={16} /> : <Clock size={16} />}
+                  </button>
+                  {isAdmin ? (
+                    <button
+                      onClick={() => deleteProject(project)}
+                      className="text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={deletingProjectId === project.id}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => startEditingProject(project)}
-                  title="Sửa thông tin dự án"
-                  disabled={updatingProjectId === project.id || deletingProjectId === project.id}
-                  className="disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  onClick={() => toggleStatus(project)}
-                  title="Đổi trạng thái"
-                  disabled={updatingProjectId === project.id}
-                  className="disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {project.status === 'ACTIVE' ? <CheckCircle size={16} /> : <Clock size={16} />}
-                </button>
-                <button
-                  onClick={() => deleteProject(project)}
-                  className="text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-40"
-                  disabled={deletingProjectId === project.id}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
 
-            {editingProjectId === project.id ? (
-              <>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={editingProjectDraft.name}
-                    onChange={(event) => setEditingProjectDraft((prev) => ({ ...prev, name: event.target.value }))}
-                    placeholder="Tên dự án"
-                  />
-                  <textarea
-                    className="field-input"
-                    rows={3}
-                    value={editingProjectDraft.description}
-                    onChange={(event) => setEditingProjectDraft((prev) => ({ ...prev, description: event.target.value }))}
-                    placeholder="Mô tả chi tiết dự án..."
-                  />
-                </div>
-                <div className="mt-6 flex flex-wrap gap-3">
+              {editingProjectId === project.id ? (
+                <>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      className="field-input"
+                      value={editingProjectDraft.name}
+                      onChange={(event) =>
+                        setEditingProjectDraft((previous) => ({ ...previous, name: event.target.value }))
+                      }
+                      placeholder="Tên dự án"
+                    />
+                    <textarea
+                      className="field-input"
+                      rows={3}
+                      value={editingProjectDraft.description}
+                      onChange={(event) =>
+                        setEditingProjectDraft((previous) => ({ ...previous, description: event.target.value }))
+                      }
+                      placeholder="Mô tả chi tiết dự án..."
+                    />
+                    <div>
+                      <p className="col-header mb-2">Phòng ban chủ quản</p>
+                      {isAdmin ? (
+                        <select
+                          value={editingProjectDraft.ownerDepartmentId}
+                          onChange={(event) =>
+                            setEditingProjectDraft((previous) => ({
+                              ...previous,
+                              ownerDepartmentId: event.target.value,
+                            }))
+                          }
+                          className="field-select h-11 text-sm"
+                        >
+                          <option value="">-- Chọn phòng ban --</option>
+                          {activeDepartments.map((department) => (
+                            <option key={department.id} value={department.id}>
+                              {department.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,255,255,0.92)] px-4 py-3 text-sm font-semibold text-[var(--ink)]">
+                          {ownerDepartment?.name || 'Chưa xác định phòng ban'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button
+                      onClick={() => saveProjectChanges(project)}
+                      disabled={updatingProjectId === project.id}
+                      className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Save size={16} />
+                      {updatingProjectId === project.id ? 'Đang lưu...' : 'Lưu chỉnh sửa'}
+                    </button>
+                    <button
+                      onClick={cancelEditingProject}
+                      disabled={updatingProjectId === project.id}
+                      className="secondary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <X size={16} />
+                      Hủy
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="mb-2 text-xl font-semibold text-[var(--ink)]">{project.name}</h3>
+                  <p className="text-xs text-[var(--ink-soft)]">{project.description || 'Không có mô tả.'}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      {ownerDepartment?.name || 'Chưa gán phòng ban'}
+                    </span>
+                  </div>
                   <button
-                    onClick={() => saveProjectChanges(project)}
-                    disabled={updatingProjectId === project.id}
-                    className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => onSelectProject(project)}
+                    className="secondary-btn mt-6 flex items-center justify-center gap-2"
                   >
-                    <Save size={16} />
-                    {updatingProjectId === project.id ? 'Đang lưu...' : 'Lưu chỉnh sửa'}
+                    <FolderOpen size={16} />
+                    Truy cập dự án
                   </button>
-                  <button
-                    onClick={cancelEditingProject}
-                    disabled={updatingProjectId === project.id}
-                    className="secondary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <X size={16} />
-                    Hủy
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 className="mb-2 text-xl font-semibold text-[var(--ink)]">{project.name}</h3>
-                <p className="flex-1 text-xs text-[var(--ink-soft)]">{project.description || 'Không có mô tả.'}</p>
-                <button
-                  onClick={() => onSelectProject(project)}
-                  className="secondary-btn mt-6 flex items-center justify-center gap-2"
-                >
-                  <FolderOpen size={16} />
-                  Truy cập dự án
-                </button>
-              </>
-            )}
-          </div>
-        ))}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

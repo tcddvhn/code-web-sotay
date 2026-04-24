@@ -29,6 +29,8 @@ interface SidebarProps {
   onViewChange: (view: ViewMode) => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  canManageProjects?: boolean;
+  canManageTemplates?: boolean;
   onLogout: () => void;
   onOpenChangePassword: () => void;
   user: AuthenticatedUser | null;
@@ -55,6 +57,8 @@ export function Sidebar({
   onViewChange,
   isAuthenticated,
   isAdmin,
+  canManageProjects = false,
+  canManageTemplates = false,
   onLogout,
   onOpenChangePassword,
   user,
@@ -188,10 +192,10 @@ export function Sidebar({
               ...(isAdmin
                 ? [
                     { id: 'AI_ANALYSIS' as ViewMode, label: 'Phân tích AI', icon: Sparkles },
-                    { id: 'PROJECTS' as ViewMode, label: 'Dự án', icon: FolderPlus },
-                    { id: 'LEARN_FORM' as ViewMode, label: 'Biểu mẫu', icon: BrainCircuit },
                   ]
                 : []),
+              ...(canManageProjects ? [{ id: 'PROJECTS' as ViewMode, label: 'Dự án', icon: FolderPlus }] : []),
+              ...(canManageTemplates ? [{ id: 'LEARN_FORM' as ViewMode, label: 'Biểu mẫu', icon: BrainCircuit }] : []),
               { id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: FileUp },
               { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText },
               ...(!isUnitUser ? [{ id: 'EXTRACT_REPORTS' as ViewMode, label: 'Trích báo cáo', icon: FileSpreadsheet }] : []),
