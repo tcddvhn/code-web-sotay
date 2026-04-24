@@ -1,7 +1,22 @@
-import { getAssignmentKey } from './access';
+﻿import { getAssignmentKey } from './access';
 import { getReadableDisplayName, repairLegacyUtf8 } from './utils/textEncoding';
 import { supabase } from './supabase';
-import { AppSettings, AssignmentUser, DataFileRecordSummary, DataRow, ExtractReportBlueprint, ExtractReportBlueprintVersion, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, UserProfile } from './types';
+import {
+  AppSettings,
+  AssignmentUser,
+  DataFileRecordSummary,
+  DataRow,
+  Department,
+  DepartmentMember,
+  ExtractReportBlueprint,
+  ExtractReportBlueprintVersion,
+  FormTemplate,
+  ManagedUnit,
+  OverwriteRequestRecord,
+  Project,
+  ProjectUnitScope,
+  UserProfile,
+} from './types';
 
 const SETTINGS_ROW_ID = 'global';
 const SUPABASE_PAGE_SIZE = 1000;
@@ -11,6 +26,31 @@ type SupabaseProjectRow = {
   name: string;
   description: string | null;
   status: 'ACTIVE' | 'COMPLETED';
+  owner_department_id: string | null;
+  created_by_email: string | null;
+  created_by_auth_user_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type SupabaseDepartmentRow = {
+  id: string;
+  code: string;
+  name: string;
+  is_active: boolean | null;
+  sort_order: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type SupabaseDepartmentMemberRow = {
+  id: string;
+  department_id: string;
+  user_email: string;
+  auth_user_id: string | null;
+  display_name: string;
+  membership_role: 'manager' | 'member';
+  is_active: boolean | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -170,6 +210,35 @@ function mapProject(row: SupabaseProjectRow): Project {
     name: row.name,
     description: row.description || '',
     status: row.status,
+    ownerDepartmentId: row.owner_department_id || null,
+    createdByEmail: row.created_by_email || null,
+    createdByAuthUserId: row.created_by_auth_user_id || null,
+    createdAt: row.created_at || nowIso(),
+    updatedAt: row.updated_at || row.created_at || nowIso(),
+  };
+}
+
+function mapDepartment(row: SupabaseDepartmentRow): Department {
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    isActive: row.is_active ?? true,
+    sortOrder: row.sort_order ?? 0,
+    createdAt: row.created_at || nowIso(),
+    updatedAt: row.updated_at || row.created_at || nowIso(),
+  };
+}
+
+function mapDepartmentMember(row: SupabaseDepartmentMemberRow): DepartmentMember {
+  return {
+    id: row.id,
+    departmentId: row.department_id,
+    userEmail: row.user_email,
+    authUserId: row.auth_user_id || null,
+    displayName: getReadableDisplayName(row.display_name, row.user_email),
+    membershipRole: row.membership_role,
+    isActive: row.is_active ?? true,
     createdAt: row.created_at || nowIso(),
     updatedAt: row.updated_at || row.created_at || nowIso(),
   };
@@ -292,7 +361,7 @@ export async function listProjects() {
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i danh sÃƒÂ¡ch dÃ¡Â»Â± ÃƒÂ¡n tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseProjectRow[]).map(mapProject);
@@ -304,16 +373,110 @@ export async function upsertProject(project: Project) {
     name: project.name,
     description: project.description || '',
     status: project.status,
+    owner_department_id: project.ownerDepartmentId || null,
+    created_by_email: project.createdByEmail || null,
+    created_by_auth_user_id: project.createdByAuthUserId || null,
     created_at: typeof project.createdAt === 'string' ? project.createdAt : nowIso(),
     updated_at: nowIso(),
   };
 
   const { error } = await supabase.from('projects').upsert(payload, { onConflict: 'id' });
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
+
+export async function listDepartments() {
+  const { data, error } = await supabase
+    .from('departments')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.departments'")) {
+      return [] satisfies Department[];
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+
+  return ((data || []) as SupabaseDepartmentRow[]).map(mapDepartment);
+}
+
+export async function upsertDepartment(department: Department) {
+  const payload = {
+    id: department.id,
+    code: department.code,
+    name: department.name,
+    is_active: department.isActive,
+    sort_order: department.sortOrder,
+    created_at: typeof department.createdAt === 'string' ? department.createdAt : nowIso(),
+    updated_at: nowIso(),
+  };
+
+  const { error } = await supabase.from('departments').upsert(payload, { onConflict: 'id' });
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.departments'")) {
+      throw new Error('Bang departments chua duoc khoi tao. Hay chay file supabase/departments_rollout.sql truoc.');
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function listDepartmentMembers() {
+  const { data, error } = await supabase
+    .from('department_members')
+    .select('*')
+    .order('department_id', { ascending: true })
+    .order('membership_role', { ascending: true })
+    .order('display_name', { ascending: true });
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.department_members'")) {
+      return [] satisfies DepartmentMember[];
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+
+  return ((data || []) as SupabaseDepartmentMemberRow[]).map(mapDepartmentMember);
+}
+
+export async function upsertDepartmentMember(member: DepartmentMember) {
+  const payload = {
+    id: member.id,
+    department_id: member.departmentId,
+    user_email: member.userEmail,
+    auth_user_id: member.authUserId || null,
+    display_name: member.displayName,
+    membership_role: member.membershipRole,
+    is_active: member.isActive,
+    created_at: typeof member.createdAt === 'string' ? member.createdAt : nowIso(),
+    updated_at: nowIso(),
+  };
+
+  const { error } = await supabase.from('department_members').upsert(payload, { onConflict: 'id' });
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.department_members'")) {
+      throw new Error('Bang department_members chua duoc khoi tao. Hay chay file supabase/departments_rollout.sql truoc.');
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function deactivateDepartmentMember(memberId: string) {
+  const { error } = await supabase
+    .from('department_members')
+    .update({ is_active: false, updated_at: nowIso() })
+    .eq('id', memberId);
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.department_members'")) {
+      throw new Error('Bang department_members chua duoc khoi tao. Hay chay file supabase/departments_rollout.sql truoc.');
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
 export async function listProjectUnitScope() {
   const { data, error } = await supabase
     .from('project_units')
@@ -325,7 +488,7 @@ export async function listProjectUnitScope() {
     if (error.message?.includes("Could not find the table 'public.project_units'")) {
       return {} satisfies ProjectUnitScope;
     }
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   const scope: ProjectUnitScope = {};
@@ -345,7 +508,7 @@ export async function replaceProjectUnits(projectId: string, unitCodes: string[]
     if (deleteError.message?.includes("Could not find the table 'public.project_units'")) {
       throw new Error('Bang project_units chua duoc khoi tao. Hay chay file supabase/project_units_rollout.sql truoc.');
     }
-    throw new Error(deleteError.message || 'Khong the lam moi danh sach don vi cua du an tren Supabase.');
+    throw new Error(deleteError.message || 'Supabase request failed.');
   }
 
   if (unitCodes.length === 0) {
@@ -359,14 +522,14 @@ export async function replaceProjectUnits(projectId: string, unitCodes: string[]
 
   const { error } = await supabase.from('project_units').insert(payload);
   if (error) {
-    throw new Error(error.message || 'Khong the luu danh sach don vi cua du an tren Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
 export async function deleteProjectById(projectId: string) {
   const { error } = await supabase.from('projects').delete().eq('id', projectId);
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -378,7 +541,7 @@ export async function listTemplates(projectId?: string) {
 
   const { data, error } = await builder;
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseTemplateRow[]).map(mapTemplate);
@@ -405,14 +568,14 @@ export async function upsertTemplate(template: FormTemplate) {
 
   const { error } = await supabase.from('templates').upsert(payload, { onConflict: 'id' });
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
 export async function deleteTemplateById(templateId: string) {
   const { error } = await supabase.from('templates').delete().eq('id', templateId);
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -431,7 +594,7 @@ export async function listExtractReportBlueprints(projectId?: string) {
     if (error.message?.includes("Could not find the table 'public.extract_report_blueprints'")) {
       return [] as ExtractReportBlueprint[];
     }
-    throw new Error(error.message || 'Khong the tai danh sach bieu trich bao cao tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseExtractReportBlueprintRow[]).map(mapExtractReportBlueprint);
@@ -458,7 +621,7 @@ export async function upsertExtractReportBlueprint(blueprint: ExtractReportBluep
     if (error.message?.includes("Could not find the table 'public.extract_report_blueprints'")) {
       throw new Error('Bang extract_report_blueprints chua duoc khoi tao. Hay chay file supabase/extract_reports_rollout.sql truoc.');
     }
-    throw new Error(error.message || 'Khong the luu blueprint trich bao cao len Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -473,7 +636,7 @@ export async function listExtractReportBlueprintVersions(blueprintId: string) {
     if (error.message?.includes("Could not find the table 'public.extract_report_blueprint_versions'")) {
       return [] as ExtractReportBlueprintVersion[];
     }
-    throw new Error(error.message || 'Khong the tai lich su phien ban bieu trich bao cao tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseExtractReportBlueprintVersionRow[]).map(mapExtractReportBlueprintVersion);
@@ -499,21 +662,21 @@ export async function appendExtractReportBlueprintVersion(version: ExtractReport
         'Bang extract_report_blueprint_versions chua duoc khoi tao. Hay chay file supabase/extract_reports_rollout.sql truoc.',
       );
     }
-    throw new Error(error.message || 'Khong the luu phien ban bieu trich bao cao len Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
 export async function deleteExtractReportBlueprint(blueprintId: string) {
   const { error } = await supabase.from('extract_report_blueprints').delete().eq('id', blueprintId);
   if (error) {
-    throw new Error(error.message || 'Khong the xoa blueprint trich bao cao tren Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
 export async function listUnits() {
   const { data, error } = await supabase.from('units').select('*').order('code');
   if (error) {
-    throw new Error(error.message || 'Loi Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseUnitRow[]).map(mapUnit);
@@ -532,7 +695,7 @@ export async function seedUnits(units: ManagedUnit[]) {
 
   const { error } = await supabase.from('units').upsert(payload, { onConflict: 'code' });
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ khÃ¡Â»Å¸i tÃ¡ÂºÂ¡o danh sÃƒÂ¡ch Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -549,14 +712,14 @@ export async function upsertUnit(unit: ManagedUnit) {
 
   const { error } = await supabase.from('units').upsert(payload, { onConflict: 'code' });
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
 export async function getSettings() {
   const { data, error } = await supabase.from('app_settings').select('*').eq('id', SETTINGS_ROW_ID).maybeSingle();
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   if (!data) {
@@ -583,7 +746,7 @@ export async function upsertSettings(settings: AppSettings) {
   );
 
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -596,7 +759,7 @@ export async function listUserProfiles() {
     .order('display_name', { ascending: true });
 
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseUserProfileRow[]).map(mapUserProfile);
@@ -616,7 +779,7 @@ export async function getUserProfileByEmail(email?: string | null) {
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   if (!data) {
@@ -642,7 +805,7 @@ export async function touchUserProfileSession(email: string, authUserId: string)
     .eq('email', normalizedEmail);
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t phiÃƒÂªn Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p ngÃ†Â°Ã¡Â»Âi dÃƒÂ¹ng trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -670,7 +833,7 @@ export async function upsertUserProfile(profile: {
   );
 
   if (error) {
-    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -683,7 +846,7 @@ export async function updateUserProfile(email: string, patch: {
 }) {
   const normalizedEmail = getAssignmentKey(email);
   if (!normalizedEmail) {
-    throw new Error('Email tài khoản không hợp lệ.');
+    throw new Error('Email tai khoan khong hop le.');
   }
 
   const payload: Record<string, any> = {
@@ -702,7 +865,7 @@ export async function updateUserProfile(email: string, patch: {
     .eq('email', normalizedEmail);
 
   if (error) {
-    throw new Error(error.message || 'Không thể cập nhật hồ sơ tài khoản trên Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -716,7 +879,7 @@ export async function listAssignments(projectId: string) {
     .eq('project_id', projectId);
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i phÃƒÂ¢n cÃƒÂ´ng tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return (data || []) as SupabaseAssignmentRow[];
@@ -725,7 +888,7 @@ export async function listAssignments(projectId: string) {
 export async function replaceAssignments(projectId: string, entries: SupabaseAssignmentRow[]) {
   const { error: deleteError } = await supabase.from('assignments').delete().eq('project_id', projectId);
   if (deleteError) {
-    throw new Error(deleteError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃƒÂ m mÃ¡Â»â€ºi phÃƒÂ¢n cÃƒÂ´ng trÃƒÂªn Supabase.');
+    throw new Error(deleteError.message || 'Supabase request failed.');
   }
 
   if (entries.length === 0) {
@@ -734,7 +897,7 @@ export async function replaceAssignments(projectId: string, entries: SupabaseAss
 
   const { error } = await supabase.from('assignments').insert(entries);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u phÃƒÂ¢n cÃƒÂ´ng trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -744,7 +907,7 @@ export async function listGlobalAssignments() {
     .select('*');
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i phÃƒÂ¢n cÃƒÂ´ng toÃƒÂ n hÃ¡Â»â€¡ thÃ¡Â»â€˜ng tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return (data || []) as SupabaseGlobalAssignmentRow[];
@@ -753,7 +916,7 @@ export async function listGlobalAssignments() {
 export async function replaceGlobalAssignments(entries: SupabaseGlobalAssignmentRow[]) {
   const { error: deleteError } = await supabase.from('global_assignments').delete().neq('id', '');
   if (deleteError) {
-    throw new Error(deleteError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃƒÂ m mÃ¡Â»â€ºi phÃƒÂ¢n cÃƒÂ´ng toÃƒÂ n hÃ¡Â»â€¡ thÃ¡Â»â€˜ng trÃƒÂªn Supabase.');
+    throw new Error(deleteError.message || 'Supabase request failed.');
   }
 
   if (entries.length === 0) {
@@ -762,7 +925,7 @@ export async function replaceGlobalAssignments(entries: SupabaseGlobalAssignment
 
   const { error } = await supabase.from('global_assignments').insert(entries);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u phÃƒÂ¢n cÃƒÂ´ng toÃƒÂ n hÃ¡Â»â€¡ thÃ¡Â»â€˜ng trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -773,7 +936,7 @@ export async function listRowsByProject(projectId: string) {
     .eq('project_id', projectId);
 
   if (countError) {
-    throw new Error(countError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ Ã„â€˜Ã¡ÂºÂ¿m dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»â€¢ng hÃ¡Â»Â£p tÃ¡Â»Â« Supabase.');
+    throw new Error(countError.message || 'Supabase request failed.');
   }
 
   const expectedCount = count || 0;
@@ -792,7 +955,7 @@ export async function listRowsByProject(projectId: string) {
       .range(from, from + SUPABASE_PAGE_SIZE - 1);
 
     if (error) {
-      throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»â€¢ng hÃ¡Â»Â£p tÃ¡Â»Â« Supabase.');
+      throw new Error(error.message || 'Supabase request failed.');
     }
 
     const pageRows = (data || []) as any[];
@@ -846,7 +1009,7 @@ export async function listRowsByScope(params: {
   const { count, error: countError } = await countBuilder;
 
   if (countError) {
-    throw new Error(countError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ Ã„â€˜Ã¡ÂºÂ¿m dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»â€¢ng hÃ¡Â»Â£p theo phÃ¡ÂºÂ¡m vi trÃƒÂªn Supabase.');
+    throw new Error(countError.message || 'Supabase request failed.');
   }
 
   const expectedCount = count || 0;
@@ -877,7 +1040,7 @@ export async function listRowsByScope(params: {
     const { data, error } = await pageBuilder;
 
     if (error) {
-      throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»â€¢ng hÃ¡Â»Â£p theo phÃ¡ÂºÂ¡m vi tÃ¡Â»Â« Supabase.');
+      throw new Error(error.message || 'Supabase request failed.');
     }
 
     const pageRows = (data || []) as any[];
@@ -919,7 +1082,7 @@ export async function upsertRows(rows: DataRow[]) {
 
   const { error } = await supabase.from('consolidated_rows').upsert(payload, { onConflict: 'id' });
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»â€¢ng hÃ¡Â»Â£p lÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -931,7 +1094,7 @@ export async function countRowsByYear(projectId: string, year: string) {
     .eq('year', year);
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ Ã„â€˜Ã¡ÂºÂ¿m dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo nÃ„Æ’m trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return count || 0;
@@ -940,14 +1103,14 @@ export async function countRowsByYear(projectId: string, year: string) {
 export async function deleteRowsByProject(projectId: string) {
   const { error } = await supabase.from('consolidated_rows').delete().eq('project_id', projectId);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u dÃ¡Â»Â± ÃƒÂ¡n trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
 export async function deleteRowsByTemplate(templateId: string) {
   const { error } = await supabase.from('consolidated_rows').delete().eq('template_id', templateId);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u biÃ¡Â»Æ’u mÃ¡ÂºÂ«u trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -958,7 +1121,7 @@ export async function deleteRowsByYear(projectId: string, year: string) {
     .eq('project_id', projectId)
     .eq('year', year);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo nÃ„Æ’m trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -970,7 +1133,7 @@ export async function deleteRowsByUnit(projectId: string, year: string, unitCode
     .eq('year', year)
     .eq('unit_code', unitCode);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â¯ liÃ¡Â»â€¡u Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -1001,7 +1164,7 @@ export async function upsertDataFileRecord(record: {
 
   const { error } = await supabase.from('data_files').upsert(payload, { onConflict: 'id' });
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u metadata file dÃ¡Â»Â¯ liÃ¡Â»â€¡u lÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -1017,7 +1180,7 @@ export async function listOverwriteRequests(projectId?: string): Promise<Overwri
 
   const { data, error } = await builder;
   if (error) {
-    throw new Error(error.message || 'Không thể tải danh sách yêu cầu ghi đè dữ liệu từ Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseOverwriteRequestRow[]).map(mapOverwriteRequest);
@@ -1046,7 +1209,7 @@ export async function createOverwriteRequest(record: Omit<OverwriteRequestRecord
 
   const { error } = await supabase.from('data_overwrite_requests').insert(payload);
   if (error) {
-    throw new Error(error.message || 'Không thể tạo yêu cầu ghi đè dữ liệu trên Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -1069,7 +1232,7 @@ export async function updateOverwriteRequestDecision(params: {
     .eq('id', params.requestId);
 
   if (error) {
-    throw new Error(error.message || 'Không thể cập nhật quyết định phê duyệt ghi đè trên Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 export async function markOverwriteRequestsSeen(requestIds: string[]) {
@@ -1086,7 +1249,7 @@ export async function markOverwriteRequestsSeen(requestIds: string[]) {
     .in('id', requestIds);
 
   if (error) {
-    throw new Error(error.message || 'Kh?ng th? c?p nh?t tr?ng th?i ?? xem cho th?ng b?o ghi ??.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -1098,7 +1261,7 @@ export async function getDataFileRecord(projectId: string, unitCode: string, yea
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i metadata file dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return (data as SupabaseDataFileRow | null) || null;
@@ -1112,7 +1275,7 @@ export async function listDataFilesByProject(projectId: string): Promise<DataFil
     .order('updated_at', { ascending: false });
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i danh sÃƒÂ¡ch file dÃ¡Â»Â¯ liÃ¡Â»â€¡u tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseDataFileRow[]).map((row) => ({
@@ -1151,7 +1314,7 @@ export async function listDataFilesByScope(params: {
   const { data, error } = await builder;
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i danh sÃƒÂ¡ch file dÃ¡Â»Â¯ liÃ¡Â»â€¡u theo phÃ¡ÂºÂ¡m vi tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return ((data || []) as SupabaseDataFileRow[]).map((row) => ({
@@ -1177,7 +1340,7 @@ export async function countDataFilesByYear(projectId: string, year: string) {
     .eq('year', year);
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ Ã„â€˜Ã¡ÂºÂ¿m metadata file theo nÃ„Æ’m trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   return count || 0;
@@ -1189,12 +1352,12 @@ export async function deleteDataFilesByProject(projectId: string) {
     .select('storage_path')
     .eq('project_id', projectId);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i metadata file cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   const { error: deleteError } = await supabase.from('data_files').delete().eq('project_id', projectId);
   if (deleteError) {
-    throw new Error(deleteError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a metadata file cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n trÃƒÂªn Supabase.');
+    throw new Error(deleteError.message || 'Supabase request failed.');
   }
 
   return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
@@ -1207,7 +1370,7 @@ export async function deleteDataFilesByYear(projectId: string, year: string) {
     .eq('project_id', projectId)
     .eq('year', year);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i metadata file theo nÃ„Æ’m trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   const { error: deleteError } = await supabase
@@ -1216,7 +1379,7 @@ export async function deleteDataFilesByYear(projectId: string, year: string) {
     .eq('project_id', projectId)
     .eq('year', year);
   if (deleteError) {
-    throw new Error(deleteError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a metadata file theo nÃ„Æ’m trÃƒÂªn Supabase.');
+    throw new Error(deleteError.message || 'Supabase request failed.');
   }
 
   return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
@@ -1230,7 +1393,7 @@ export async function deleteDataFileByUnit(projectId: string, year: string, unit
     .eq('year', year)
     .eq('unit_code', unitCode);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i metadata file cÃ¡Â»Â§a Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   const { error: deleteError } = await supabase
@@ -1240,7 +1403,7 @@ export async function deleteDataFileByUnit(projectId: string, year: string, unit
     .eq('year', year)
     .eq('unit_code', unitCode);
   if (deleteError) {
-    throw new Error(deleteError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a metadata file cÃ¡Â»Â§a Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ trÃƒÂªn Supabase.');
+    throw new Error(deleteError.message || 'Supabase request failed.');
   }
 
   return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
@@ -1267,7 +1430,7 @@ export async function createReportExport(record: SupabaseReportExportRow) {
 
   const { error } = await supabase.from('report_exports').insert(payload);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u lÃ¡Â»â€¹ch sÃ¡Â»Â­ xuÃ¡ÂºÂ¥t bÃƒÂ¡o cÃƒÂ¡o lÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 }
 
@@ -1277,12 +1440,12 @@ export async function deleteReportExportsByProject(projectId: string) {
     .select('storage_path')
     .eq('project_id', projectId);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i lÃ¡Â»â€¹ch sÃ¡Â»Â­ xuÃ¡ÂºÂ¥t bÃƒÂ¡o cÃƒÂ¡o cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   const { error: deleteError } = await supabase.from('report_exports').delete().eq('project_id', projectId);
   if (deleteError) {
-    throw new Error(deleteError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a lÃ¡Â»â€¹ch sÃ¡Â»Â­ xuÃ¡ÂºÂ¥t bÃƒÂ¡o cÃƒÂ¡o cÃ¡Â»Â§a dÃ¡Â»Â± ÃƒÂ¡n.');
+    throw new Error(deleteError.message || 'Supabase request failed.');
   }
 
   return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
@@ -1294,12 +1457,12 @@ export async function deleteReportExportsByTemplate(templateId: string) {
     .select('storage_path')
     .eq('template_id', templateId);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i lÃ¡Â»â€¹ch sÃ¡Â»Â­ xuÃ¡ÂºÂ¥t bÃƒÂ¡o cÃƒÂ¡o cÃ¡Â»Â§a biÃ¡Â»Æ’u mÃ¡ÂºÂ«u.');
+    throw new Error(error.message || 'Supabase request failed.');
   }
 
   const { error: deleteError } = await supabase.from('report_exports').delete().eq('template_id', templateId);
   if (deleteError) {
-    throw new Error(deleteError.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a lÃ¡Â»â€¹ch sÃ¡Â»Â­ xuÃ¡ÂºÂ¥t bÃƒÂ¡o cÃƒÂ¡o cÃ¡Â»Â§a biÃ¡Â»Æ’u mÃ¡ÂºÂ«u.');
+    throw new Error(deleteError.message || 'Supabase request failed.');
   }
 
   return ((data || []) as { storage_path: string }[]).map((row) => row.storage_path).filter(Boolean);
@@ -1339,3 +1502,6 @@ export function buildGlobalAssignmentRows(users: AssignmentUser[], current: Reco
       } satisfies SupabaseGlobalAssignmentRow;
     });
 }
+
+
+

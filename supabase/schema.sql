@@ -498,4 +498,157 @@ drop policy if exists "admin_insert_extract_report_blueprint_versions" on extrac
 drop policy if exists "admin_delete_extract_report_blueprint_versions" on extract_report_blueprint_versions;
 create policy "auth_read_extract_report_blueprint_versions" on extract_report_blueprint_versions for select to authenticated using (public.is_active_user());
 create policy "admin_insert_extract_report_blueprint_versions" on extract_report_blueprint_versions for insert to authenticated with check (public.is_admin_user());
+
+create table if not exists departments (
+  id text primary key,
+  code text not null unique,
+  name text not null,
+  is_active boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists department_members (
+  id text primary key,
+  department_id text not null references departments(id) on delete cascade,
+  user_email text not null,
+  auth_user_id uuid,
+  display_name text not null,
+  membership_role text not null check (membership_role in ('manager', 'member')),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists idx_department_members_user_email on department_members(lower(user_email));
+create index if not exists idx_department_members_department_id on department_members(department_id);
+
+alter table projects add column if not exists owner_department_id text references departments(id) on delete set null;
+alter table projects add column if not exists created_by_email text;
+alter table projects add column if not exists created_by_auth_user_id uuid;
+
+create or replace function public.current_department_id()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select dm.department_id
+  from public.department_members dm
+  where dm.user_email = auth.email()
+    and dm.is_active = true
+  order by case when dm.membership_role = 'manager' then 0 else 1 end, dm.created_at
+  limit 1;
+$$;
+
+create or replace function public.is_department_manager()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.department_members dm
+    where dm.user_email = auth.email()
+      and dm.membership_role = 'manager'
+      and dm.is_active = true
+  );
+$$;
+
+create or replace function public.can_manage_project(p_project_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.is_admin_user()
+    or exists (
+      select 1
+      from public.projects p
+      join public.department_members dm on dm.department_id = p.owner_department_id
+      where p.id = p_project_id
+        and dm.user_email = auth.email()
+        and dm.membership_role = 'manager'
+        and dm.is_active = true
+    );
+$$;
+
+alter table departments enable row level security;
+alter table department_members enable row level security;
+
+drop policy if exists "auth_read_departments" on departments;
+drop policy if exists "admin_insert_departments" on departments;
+drop policy if exists "admin_update_departments" on departments;
+drop policy if exists "admin_delete_departments" on departments;
+create policy "auth_read_departments" on departments for select to authenticated using (public.is_active_user());
+create policy "admin_insert_departments" on departments for insert to authenticated with check (public.is_admin_user());
+create policy "admin_update_departments" on departments for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
+create policy "admin_delete_departments" on departments for delete to authenticated using (public.is_admin_user());
+
+drop policy if exists "auth_read_department_members" on department_members;
+drop policy if exists "admin_insert_department_members" on department_members;
+drop policy if exists "admin_update_department_members" on department_members;
+drop policy if exists "admin_delete_department_members" on department_members;
+create policy "auth_read_department_members" on department_members for select to authenticated using (public.is_active_user());
+create policy "admin_insert_department_members" on department_members for insert to authenticated with check (public.is_admin_user());
+create policy "admin_update_department_members" on department_members for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
+create policy "admin_delete_department_members" on department_members for delete to authenticated using (public.is_admin_user());
+
+drop policy if exists "manager_insert_projects" on projects;
+drop policy if exists "manager_update_projects" on projects;
+drop policy if exists "manager_delete_projects" on projects;
+create policy "manager_insert_projects" on projects for insert to authenticated with check (
+  public.is_department_manager() and owner_department_id = public.current_department_id()
+);
+create policy "manager_update_projects" on projects for update to authenticated using (public.can_manage_project(id)) with check (
+  public.is_admin_user()
+  or (public.is_department_manager() and owner_department_id = public.current_department_id())
+);
+create policy "manager_delete_projects" on projects for delete to authenticated using (public.can_manage_project(id));
+
+drop policy if exists "manager_insert_project_units" on project_units;
+drop policy if exists "manager_update_project_units" on project_units;
+drop policy if exists "manager_delete_project_units" on project_units;
+create policy "manager_insert_project_units" on project_units for insert to authenticated with check (public.can_manage_project(project_id));
+create policy "manager_update_project_units" on project_units for update to authenticated using (public.can_manage_project(project_id)) with check (public.can_manage_project(project_id));
+create policy "manager_delete_project_units" on project_units for delete to authenticated using (public.can_manage_project(project_id));
+
+drop policy if exists "manager_insert_templates" on templates;
+drop policy if exists "manager_update_templates" on templates;
+drop policy if exists "manager_delete_templates" on templates;
+create policy "manager_insert_templates" on templates for insert to authenticated with check (public.can_manage_project(project_id));
+create policy "manager_update_templates" on templates for update to authenticated using (public.can_manage_project(project_id)) with check (public.can_manage_project(project_id));
+create policy "manager_delete_templates" on templates for delete to authenticated using (public.can_manage_project(project_id));
+
+drop policy if exists "manager_insert_extract_report_blueprints" on extract_report_blueprints;
+drop policy if exists "manager_update_extract_report_blueprints" on extract_report_blueprints;
+drop policy if exists "manager_delete_extract_report_blueprints" on extract_report_blueprints;
+create policy "manager_insert_extract_report_blueprints" on extract_report_blueprints for insert to authenticated with check (public.can_manage_project(project_id));
+create policy "manager_update_extract_report_blueprints" on extract_report_blueprints for update to authenticated using (public.can_manage_project(project_id)) with check (public.can_manage_project(project_id));
+create policy "manager_delete_extract_report_blueprints" on extract_report_blueprints for delete to authenticated using (public.can_manage_project(project_id));
+
+drop policy if exists "manager_insert_extract_report_blueprint_versions" on extract_report_blueprint_versions;
+drop policy if exists "manager_delete_extract_report_blueprint_versions" on extract_report_blueprint_versions;
+create policy "manager_insert_extract_report_blueprint_versions" on extract_report_blueprint_versions for insert to authenticated with check (
+  exists (
+    select 1
+    from extract_report_blueprints bp
+    where bp.id = blueprint_id
+      and public.can_manage_project(bp.project_id)
+  )
+);
+create policy "manager_delete_extract_report_blueprint_versions" on extract_report_blueprint_versions for delete to authenticated using (
+  exists (
+    select 1
+    from extract_report_blueprints bp
+    where bp.id = blueprint_id
+      and public.can_manage_project(bp.project_id)
+  )
+);
 create policy "admin_delete_extract_report_blueprint_versions" on extract_report_blueprint_versions for delete to authenticated using (public.is_admin_user());

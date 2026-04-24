@@ -30,7 +30,24 @@ import {
   onSupabaseAuthStateChange,
   updateSupabasePassword,
 } from './supabase';
-import { AppSettings, AssignmentUser, AuthenticatedUser, ConsolidatedData, DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, ProjectUnitScope, ReportTreeProjectNode, UserProfile, ViewMode } from './types';
+import {
+  AppSettings,
+  AssignmentUser,
+  AuthenticatedUser,
+  ConsolidatedData,
+  DataFileRecordSummary,
+  DataRow,
+  Department,
+  DepartmentMember,
+  FormTemplate,
+  ManagedUnit,
+  OverwriteRequestRecord,
+  Project,
+  ProjectUnitScope,
+  ReportTreeProjectNode,
+  UserProfile,
+  ViewMode,
+} from './types';
 import { getPreferredReportingYear } from './utils/reportingYear';
 import { buildAssignmentUsers, getAssignmentKey } from './access';
 import { getReadableDisplayName, repairLegacyUtf8 } from './utils/textEncoding';
@@ -54,6 +71,9 @@ import {
   deleteRowsByYear as deleteRowsByYearFromSupabase,
   deleteTemplateById as deleteTemplateFromSupabase,
   deactivateUserProfile as deactivateUserProfileInSupabase,
+  deactivateDepartmentMember as deactivateDepartmentMemberInSupabase,
+  listDepartments as listDepartmentsFromSupabase,
+  listDepartmentMembers as listDepartmentMembersFromSupabase,
   listAssignments as listAssignmentsFromSupabase,
   listGlobalAssignments as listGlobalAssignmentsFromSupabase,
   listOverwriteRequests as listOverwriteRequestsFromSupabase,
@@ -70,6 +90,8 @@ import {
   touchUserProfileSession,
   updateUserProfile as updateUserProfileInSupabase,
   upsertRows as upsertRowsToSupabase,
+  upsertDepartment as upsertDepartmentToSupabase,
+  upsertDepartmentMember as upsertDepartmentMemberToSupabase,
   upsertProject as upsertProjectToSupabase,
   upsertSettings as upsertSettingsToSupabase,
   upsertUnit as upsertUnitToSupabase,
@@ -183,6 +205,8 @@ export default function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('DASHBOARD');
   const [data, setData] = useState<ConsolidatedData>({});
   const [projects, setProjects] = useState<Project[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentMembers, setDepartmentMembers] = useState<DepartmentMember[]>([]);
   const [projectUnitScopeByProjectId, setProjectUnitScopeByProjectId] = useState<ProjectUnitScope>({});
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(DEFAULT_PROJECT_ID);
@@ -237,6 +261,21 @@ export default function App() {
   }, [user, userProfile]);
   const isAdmin = useMemo(() => effectiveUserProfile?.role === 'admin', [effectiveUserProfile]);
   const isUnitUser = useMemo(() => effectiveUserProfile?.role === 'unit_user', [effectiveUserProfile]);
+  const currentDepartmentMembership = useMemo(() => {
+    const normalizedEmail = getAssignmentKey(effectiveUserProfile?.email);
+    return (
+      departmentMembers.find(
+        (member) =>
+          member.isActive &&
+          ((member.authUserId && member.authUserId === effectiveUserProfile?.id) ||
+            (!!normalizedEmail && getAssignmentKey(member.userEmail) === normalizedEmail)),
+      ) || null
+    );
+  }, [departmentMembers, effectiveUserProfile]);
+  const currentDepartmentId = currentDepartmentMembership?.departmentId || null;
+  const isDepartmentManager = currentDepartmentMembership?.membershipRole === 'manager';
+  const canManageProjects = isAdmin || isDepartmentManager;
+  const canManageTemplates = isAdmin || isDepartmentManager;
   const getProjectScopedUnitCodes = (projectId?: string | null) => {
     if (!projectId) {
       return null;
@@ -260,19 +299,27 @@ export default function App() {
 
     window.localStorage.setItem('sidebarWidth', String(sidebarWidth));
   }, [sidebarWidth]);
-  const visibleProjects = useMemo(
-    () =>
-      isUnitUser && effectiveUserProfile?.unitCode
-        ? projects.filter((project) => {
-            if (project.status !== 'ACTIVE') {
-              return false;
-            }
-            const scopedUnitCodes = getProjectScopedUnitCodes(project.id);
-            return !scopedUnitCodes || scopedUnitCodes.includes(effectiveUserProfile.unitCode || '');
-          })
-        : projects,
-    [effectiveUserProfile, isUnitUser, projectUnitScopeByProjectId, projects],
-  );
+  const visibleProjects = useMemo(() => {
+    if (isUnitUser && effectiveUserProfile?.unitCode) {
+      return projects.filter((project) => {
+        if (project.status !== 'ACTIVE') {
+          return false;
+        }
+        const scopedUnitCodes = getProjectScopedUnitCodes(project.id);
+        return !scopedUnitCodes || scopedUnitCodes.includes(effectiveUserProfile.unitCode || '');
+      });
+    }
+
+    if (isAdmin) {
+      return projects;
+    }
+
+    if (currentDepartmentId) {
+      return projects.filter((project) => project.ownerDepartmentId === currentDepartmentId);
+    }
+
+    return projects;
+  }, [currentDepartmentId, effectiveUserProfile, isAdmin, isUnitUser, projectUnitScopeByProjectId, projects]);
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
     [projects, selectedProjectId],
@@ -304,6 +351,23 @@ export default function App() {
           (left.displayName || left.email || '').localeCompare(right.displayName || right.email || '', 'vi'),
         ),
     [users],
+  );
+  const internalUserProfiles = useMemo(
+    () =>
+      users
+        .filter((profile) => profile.role !== 'unit_user' && !!profile.email)
+        .sort((left, right) =>
+          (left.displayName || left.email || '').localeCompare(right.displayName || right.email || '', 'vi'),
+        ),
+    [users],
+  );
+  const departmentById = useMemo(
+    () =>
+      departments.reduce<Record<string, Department>>((accumulator, department) => {
+        accumulator[department.id] = department;
+        return accumulator;
+      }, {}),
+    [departments],
   );
   const availableUnitsForProject = useMemo(
     () => {
@@ -558,6 +622,8 @@ export default function App() {
     }
 
     setUsers([]);
+    setDepartments([]);
+    setDepartmentMembers([]);
     setSettings(DEFAULT_SETTINGS);
   }, [isAuthenticated]);
 
@@ -896,26 +962,34 @@ export default function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated || !isAdmin) {
+    if (!isAuthenticated) {
       setUsers([]);
+      setDepartments([]);
+      setDepartmentMembers([]);
       return;
     }
 
     let cancelled = false;
-    listUserProfilesFromSupabase()
-      .then((list) => {
+    Promise.all([
+      listUserProfilesFromSupabase(),
+      listDepartmentsFromSupabase(),
+      listDepartmentMembersFromSupabase(),
+    ])
+      .then(([nextUsers, nextDepartments, nextDepartmentMembers]) => {
         if (!cancelled) {
-          setUsers(list);
+          setUsers(nextUsers);
+          setDepartments(nextDepartments);
+          setDepartmentMembers(nextDepartmentMembers);
         }
       })
       .catch((error) => {
-        console.error('Supabase user profiles load error:', error);
+        console.error('Supabase user and department load error:', error);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, isAuthenticated]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (projects.length > 0 && !projects.find((p) => p.id === selectedProjectId)) {
@@ -945,18 +1019,21 @@ export default function App() {
   }, [currentView, effectiveUserProfile]);
 
   useEffect(() => {
-    if (!isUnitUser) {
+    if (isAdmin) {
       return;
     }
 
     if (visibleProjects.length === 0) {
+      if (selectedProjectId) {
+        setSelectedProjectId('');
+      }
       return;
     }
 
     if (!visibleProjects.some((project) => project.id === selectedProjectId)) {
       setSelectedProjectId(visibleProjects[0].id);
     }
-  }, [isUnitUser, selectedProjectId, visibleProjects]);
+  }, [isAdmin, selectedProjectId, visibleProjects]);
 
   useEffect(() => {
     if (!selectedProjectId) {
@@ -1098,7 +1175,16 @@ export default function App() {
     }
   };
 
-  const handleCreateProject = async (payload: { name: string; description: string; unitCodes: string[] }) => {
+  const handleCreateProject = async (payload: {
+    name: string;
+    description: string;
+    unitCodes: string[];
+    ownerDepartmentId?: string | null;
+  }) => {
+    if (!canManageProjects) {
+      throw new Error('Bạn không có quyền tạo dự án.');
+    }
+
     const normalizedName = normalizeProjectName(payload.name);
     const duplicateProject = projects.find((project) => normalizeProjectName(project.name) === normalizedName);
 
@@ -1106,11 +1192,19 @@ export default function App() {
       throw new Error(`TÃªn dá»± Ã¡n "${payload.name.trim()}" Ä‘Ã£ tá»“n táº¡i. Vui lÃ²ng chá»n tÃªn khÃ¡c.`);
     }
 
+    const ownerDepartmentId = isAdmin ? payload.ownerDepartmentId || null : currentDepartmentId;
+    if (!ownerDepartmentId) {
+      throw new Error('Chưa xác định được phòng ban chủ quản cho dự án.');
+    }
+
     const project: Project = {
       id: `proj_${Date.now()}`,
       name: payload.name.trim(),
       description: payload.description.trim(),
       status: 'ACTIVE',
+      ownerDepartmentId,
+      createdByEmail: effectiveUserProfile?.email || null,
+      createdByAuthUserId: effectiveUserProfile?.id || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1126,7 +1220,14 @@ export default function App() {
     return project;
   };
 
-  const handleUpdateProject = async (project: Project, payload: { name: string; description: string }) => {
+  const handleUpdateProject = async (
+    project: Project,
+    payload: { name: string; description: string; ownerDepartmentId?: string | null },
+  ) => {
+    if (!isAdmin && !(isDepartmentManager && project.ownerDepartmentId === currentDepartmentId)) {
+      throw new Error('Bạn không có quyền cập nhật dự án này.');
+    }
+
     const normalizedName = normalizeProjectName(payload.name);
     const duplicateProject = projects.find(
       (item) => item.id !== project.id && normalizeProjectName(item.name) === normalizedName,
@@ -1140,6 +1241,7 @@ export default function App() {
       ...project,
       name: payload.name.trim(),
       description: payload.description.trim(),
+      ownerDepartmentId: isAdmin ? payload.ownerDepartmentId || null : project.ownerDepartmentId,
       updatedAt: new Date().toISOString(),
     };
 
@@ -1150,6 +1252,10 @@ export default function App() {
   };
 
   const handleToggleProjectStatus = async (project: Project) => {
+    if (!isAdmin && !(isDepartmentManager && project.ownerDepartmentId === currentDepartmentId)) {
+      throw new Error('Bạn không có quyền thay đổi trạng thái dự án này.');
+    }
+
     const nextProject: Project = {
       ...project,
       status: project.status === 'ACTIVE' ? 'COMPLETED' : 'ACTIVE',
@@ -1163,12 +1269,18 @@ export default function App() {
   };
 
   const handleDeleteProject = async (project: Project) => {
+    if (!isAdmin) {
+      throw new Error('Chỉ tài khoản Admin mới được phép xóa dự án.');
+    }
     const deletedCount = await handleDeleteProjectData(project.id);
     return deletedCount > 0;
   };
 
   const handleDeleteTemplate = async (template: FormTemplate) => {
-    if (!isAdmin) {
+    const templateProject = projects.find((project) => project.id === template.projectId) || null;
+    const canDeleteTemplate =
+      isAdmin || (!!templateProject && isDepartmentManager && templateProject.ownerDepartmentId === currentDepartmentId);
+    if (!canDeleteTemplate) {
       return false;
     }
 
@@ -1582,6 +1694,98 @@ export default function App() {
     setUnits(await listUnitsFromSupabase());
   };
 
+  const refreshDepartmentsAndUsers = async () => {
+    const [nextUsers, nextDepartments, nextDepartmentMembers] = await Promise.all([
+      listUserProfilesFromSupabase(),
+      listDepartmentsFromSupabase(),
+      listDepartmentMembersFromSupabase(),
+    ]);
+    setUsers(nextUsers);
+    setDepartments(nextDepartments);
+    setDepartmentMembers(nextDepartmentMembers);
+  };
+
+  const handleUpsertDepartment = async (payload: {
+    id?: string;
+    code: string;
+    name: string;
+    sortOrder?: number;
+    isActive?: boolean;
+  }) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const trimmedCode = payload.code.trim().toUpperCase();
+    const trimmedName = payload.name.trim();
+    if (!trimmedCode || !trimmedName) {
+      throw new Error('Mã và tên phòng ban không được để trống.');
+    }
+
+    const existing = departments.find((department) => department.id === payload.id);
+    const duplicateCode = departments.find(
+      (department) => department.id !== payload.id && department.code.trim().toUpperCase() === trimmedCode,
+    );
+    if (duplicateCode) {
+      throw new Error(`Mã phòng ban "${trimmedCode}" đã tồn tại.`);
+    }
+
+    await upsertDepartmentToSupabase({
+      id: payload.id || `dept_${Date.now()}`,
+      code: trimmedCode,
+      name: trimmedName,
+      isActive: payload.isActive ?? existing?.isActive ?? true,
+      sortOrder: payload.sortOrder ?? existing?.sortOrder ?? departments.length + 1,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    await refreshDepartmentsAndUsers();
+  };
+
+  const handleUpsertDepartmentMember = async (payload: {
+    departmentId: string;
+    userEmail: string;
+    membershipRole: 'manager' | 'member';
+  }) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const normalizedEmail = getAssignmentKey(payload.userEmail);
+    const matchedProfile = internalUserProfiles.find((profile) => getAssignmentKey(profile.email) === normalizedEmail);
+    if (!matchedProfile || !matchedProfile.email) {
+      throw new Error('Không tìm thấy tài khoản nội bộ để gán vào phòng ban.');
+    }
+
+    const existingMembership = departmentMembers.find(
+      (member) => getAssignmentKey(member.userEmail) === normalizedEmail,
+    );
+
+    await upsertDepartmentMemberToSupabase({
+      id: existingMembership?.id || `dept_member_${Date.now()}`,
+      departmentId: payload.departmentId,
+      userEmail: matchedProfile.email,
+      authUserId: existingMembership?.authUserId || null,
+      displayName: matchedProfile.displayName || matchedProfile.email,
+      membershipRole: payload.membershipRole,
+      isActive: true,
+      createdAt: existingMembership?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    await refreshDepartmentsAndUsers();
+  };
+
+  const handleDeactivateDepartmentMember = async (memberId: string) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    await deactivateDepartmentMemberInSupabase(memberId);
+    await refreshDepartmentsAndUsers();
+  };
+
   const handleUpsertUnitAccount = async (payload: {
     email: string;
     displayName: string;
@@ -1743,10 +1947,13 @@ export default function App() {
           />
         );
       case 'PROJECTS':
-        return isAdmin ? (
+        return canManageProjects ? (
           <ProjectManager
             projects={visibleProjects}
             units={activeUnits}
+            departments={departments}
+            currentDepartmentId={currentDepartmentId}
+            isAdmin={isAdmin}
             onSelectProject={(project) => {
               setSelectedProjectId(project.id);
               setCurrentView('LEARN_FORM');
@@ -1778,7 +1985,7 @@ export default function App() {
           />
         );
       case 'LEARN_FORM':
-        return isAdmin ? (
+        return canManageTemplates ? (
           <FormLearner
             projects={visibleProjects}
             selectedProjectId={selectedProjectId}
@@ -1941,7 +2148,7 @@ export default function App() {
           <div className="p-6 md:p-8">
             <h2 className="page-title">{'Cài đặt hệ thống'}</h2>
             <p className="page-subtitle mt-2 max-w-3xl text-sm">
-              {'Tập trung toàn bộ cấu hình quản trị: danh mục đơn vị, phân công theo dõi và hồ sơ tài khoản đơn vị.'}
+              {'Tập trung toàn bộ cấu hình quản trị: danh mục đơn vị, phòng ban nội bộ, phân công theo dõi và hồ sơ tài khoản đơn vị.'}
             </p>
 
             <div className="mt-8 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_340px] xl:grid-cols-[minmax(0,1.45fr)_320px]">
@@ -1965,6 +2172,17 @@ export default function App() {
                     accounts={unitUserProfiles}
                     onUpsertAccount={handleUpsertUnitAccount}
                     onDeleteAccount={handleDeleteUnitAccount}
+                  />
+                )}
+
+                {isAdmin && (
+                  <SystemSettingsDepartmentsPanel
+                    departments={departments}
+                    members={departmentMembers}
+                    internalUsers={internalUserProfiles}
+                    onUpsertDepartment={handleUpsertDepartment}
+                    onUpsertDepartmentMember={handleUpsertDepartmentMember}
+                    onDeactivateDepartmentMember={handleDeactivateDepartmentMember}
                   />
                 )}
 
@@ -2000,6 +2218,8 @@ export default function App() {
           onViewChange={setCurrentView}
           isAuthenticated={isAuthenticated}
           isAdmin={isAdmin}
+          canManageProjects={canManageProjects}
+          canManageTemplates={canManageTemplates}
           onLogout={handleLogout}
           onOpenChangePassword={() => {
             setIsChangePasswordOpen(true);
@@ -2622,6 +2842,329 @@ function SystemSettingsUnitAccountsPanel({
             </div>
           ))
         )}
+      </div>
+    </div>
+  );
+}
+
+function SystemSettingsDepartmentsPanel({
+  departments,
+  members,
+  internalUsers,
+  onUpsertDepartment,
+  onUpsertDepartmentMember,
+  onDeactivateDepartmentMember,
+}: {
+  departments: Department[];
+  members: DepartmentMember[];
+  internalUsers: UserProfile[];
+  onUpsertDepartment: (payload: {
+    id?: string;
+    code: string;
+    name: string;
+    sortOrder?: number;
+    isActive?: boolean;
+  }) => Promise<void>;
+  onUpsertDepartmentMember: (payload: {
+    departmentId: string;
+    userEmail: string;
+    membershipRole: 'manager' | 'member';
+  }) => Promise<void>;
+  onDeactivateDepartmentMember: (memberId: string) => Promise<void>;
+}) {
+  const sortedDepartments = useMemo(
+    () => [...departments].sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name, 'vi')),
+    [departments],
+  );
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>(sortedDepartments[0]?.id || '');
+  const [draftCode, setDraftCode] = useState('');
+  const [draftName, setDraftName] = useState('');
+  const [draftSortOrder, setDraftSortOrder] = useState('');
+  const [selectedUserEmail, setSelectedUserEmail] = useState('');
+  const [selectedMembershipRole, setSelectedMembershipRole] = useState<'manager' | 'member'>('member');
+  const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!sortedDepartments.length) {
+      setSelectedDepartmentId('');
+      return;
+    }
+    if (!sortedDepartments.some((department) => department.id === selectedDepartmentId)) {
+      setSelectedDepartmentId(sortedDepartments[0].id);
+    }
+  }, [selectedDepartmentId, sortedDepartments]);
+
+  const selectedDepartment = sortedDepartments.find((department) => department.id === selectedDepartmentId) || null;
+  const departmentMembers = useMemo(
+    () =>
+      members
+        .filter((member) => member.isActive && member.departmentId === selectedDepartmentId)
+        .sort((left, right) => {
+          if (left.membershipRole !== right.membershipRole) {
+            return left.membershipRole === 'manager' ? -1 : 1;
+          }
+          return left.displayName.localeCompare(right.displayName, 'vi');
+        }),
+    [members, selectedDepartmentId],
+  );
+
+  const availableInternalUsers = useMemo(() => {
+    const activeEmails = new Set(
+      members.filter((member) => member.isActive).map((member) => getAssignmentKey(member.userEmail)),
+    );
+    return internalUsers.filter((profile) => {
+      const normalizedEmail = getAssignmentKey(profile.email);
+      return !!normalizedEmail && (!activeEmails.has(normalizedEmail) || normalizedEmail === getAssignmentKey(selectedUserEmail));
+    });
+  }, [internalUsers, members, selectedUserEmail]);
+
+  const submitDepartment = async () => {
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onUpsertDepartment({
+        code: draftCode,
+        name: draftName,
+        sortOrder: draftSortOrder ? Number(draftSortOrder) : undefined,
+      });
+      setDraftCode('');
+      setDraftName('');
+      setDraftSortOrder('');
+      setMessage('Đã cập nhật danh mục phòng ban nội bộ.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu phòng ban nội bộ.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const toggleDepartmentStatus = async (department: Department) => {
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onUpsertDepartment({
+        id: department.id,
+        code: department.code,
+        name: department.name,
+        sortOrder: department.sortOrder,
+        isActive: !department.isActive,
+      });
+      setMessage(
+        department.isActive
+          ? `Đã tạm ngừng phòng ban "${department.name}".`
+          : `Đã kích hoạt lại phòng ban "${department.name}".`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái phòng ban.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const submitDepartmentMember = async () => {
+    if (!selectedDepartmentId || !selectedUserEmail) {
+      setMessage('Vui lòng chọn phòng ban và tài khoản nội bộ.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onUpsertDepartmentMember({
+        departmentId: selectedDepartmentId,
+        userEmail: selectedUserEmail,
+        membershipRole: selectedMembershipRole,
+      });
+      setSelectedUserEmail('');
+      setSelectedMembershipRole('member');
+      setMessage('Đã cập nhật thành viên phòng ban.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu thành viên phòng ban.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deactivateMember = async (member: DepartmentMember) => {
+    const confirmed = window.confirm(`Gỡ ${member.displayName} khỏi phòng ban hiện tại?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onDeactivateDepartmentMember(member.id);
+      setMessage(`Đã gỡ ${member.displayName} khỏi phòng ban.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật thành viên phòng ban.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="panel-card rounded-[24px] p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="section-title">Quản lý phòng ban nội bộ</h3>
+          <p className="page-subtitle mt-2 text-sm">
+            Thiết lập 5 phòng ban nội bộ và gán người dùng nội bộ vào đúng phòng ban để tạo, quản lý dự án theo sở hữu.
+          </p>
+        </div>
+        <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+          {`Đang quản lý ${sortedDepartments.length} phòng ban`}
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[160px_minmax(0,1fr)_120px_auto]">
+        <input
+          value={draftCode}
+          onChange={(event) => setDraftCode(event.target.value)}
+          className="field-input"
+          placeholder="Mã phòng ban"
+        />
+        <input
+          value={draftName}
+          onChange={(event) => setDraftName(event.target.value)}
+          className="field-input"
+          placeholder="Tên phòng ban"
+        />
+        <input
+          value={draftSortOrder}
+          onChange={(event) => setDraftSortOrder(event.target.value)}
+          className="field-input"
+          placeholder="Thứ tự"
+        />
+        <button
+          onClick={submitDepartment}
+          disabled={isSubmitting || !draftCode.trim() || !draftName.trim()}
+          className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Thêm phòng ban
+        </button>
+      </div>
+
+      {message && <p className="mt-4 text-sm font-medium text-[var(--ink-soft)]">{message}</p>}
+
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="space-y-3 rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+          {sortedDepartments.map((department) => (
+            <div
+              key={department.id}
+              onClick={() => setSelectedDepartmentId(department.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setSelectedDepartmentId(department.id);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              className={`w-full cursor-pointer rounded-2xl border px-4 py-4 text-left transition ${
+                selectedDepartmentId === department.id
+                  ? 'border-[var(--primary)] bg-white shadow-[0_12px_24px_rgba(111,17,17,0.08)]'
+                  : 'border-[var(--line)] bg-white'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--ink)]">{department.name}</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                    {department.code}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void toggleDepartmentStatus(department);
+                  }}
+                  className="secondary-btn !px-3 !py-2 text-[10px]"
+                >
+                  {department.isActive ? 'Tạm ngừng' : 'Kích hoạt'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="section-title !text-xl">{selectedDepartment?.name || 'Chưa chọn phòng ban'}</p>
+              <p className="page-subtitle mt-2 text-sm">
+                Thành viên `manager` được tạo và chỉnh sửa dự án của phòng ban này. `member` chỉ dùng cho phân công nội bộ.
+              </p>
+            </div>
+            {selectedDepartment ? (
+              <div className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                {selectedDepartment.code}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_180px_auto]">
+            <select
+              value={selectedUserEmail}
+              onChange={(event) => setSelectedUserEmail(event.target.value)}
+              className="field-select"
+            >
+              <option value="">-- Chọn tài khoản nội bộ --</option>
+              {availableInternalUsers.map((profile) => (
+                <option key={profile.email || profile.id} value={profile.email || ''}>
+                  {profile.displayName || profile.email}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedMembershipRole}
+              onChange={(event) => setSelectedMembershipRole(event.target.value as 'manager' | 'member')}
+              className="field-select"
+            >
+              <option value="manager">Manager</option>
+              <option value="member">Member</option>
+            </select>
+            <button
+              onClick={submitDepartmentMember}
+              disabled={isSubmitting || !selectedDepartmentId || !selectedUserEmail}
+              className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Gán thành viên
+            </button>
+          </div>
+
+          <div className="mt-5 max-h-[360px] space-y-3 overflow-y-auto">
+            {departmentMembers.length === 0 ? (
+              <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--ink-soft)]">
+                Chưa có thành viên nội bộ nào được gán cho phòng ban này.
+              </div>
+            ) : (
+              departmentMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 lg:grid-cols-[minmax(0,1fr)_140px_120px]"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--ink)]">{member.displayName}</p>
+                    <p className="mt-1 text-xs text-[var(--ink-soft)]">{member.userEmail}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ink-soft)]">
+                    {member.membershipRole === 'manager' ? 'Manager' : 'Member'}
+                  </div>
+                  <button
+                    onClick={() => deactivateMember(member)}
+                    disabled={isSubmitting}
+                    className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Gỡ khỏi phòng
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

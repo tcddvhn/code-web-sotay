@@ -138,6 +138,33 @@ export interface Project {
   name: string;
   description: string;
   status: 'ACTIVE' | 'COMPLETED';
+  ownerDepartmentId?: string | null;
+  createdByEmail?: string | null;
+  createdByAuthUserId?: string | null;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface Department {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: any;
+  updatedAt: any;
+}
+
+export type DepartmentMembershipRole = 'manager' | 'member';
+
+export interface DepartmentMember {
+  id: string;
+  departmentId: string;
+  userEmail: string;
+  authUserId?: string | null;
+  displayName: string;
+  membershipRole: DepartmentMembershipRole;
+  isActive: boolean;
   createdAt: any;
   updatedAt: any;
 }
