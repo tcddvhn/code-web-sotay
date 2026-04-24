@@ -310,7 +310,7 @@ export async function upsertProject(project: Project) {
 
   const { error } = await supabase.from('projects').upsert(payload, { onConflict: 'id' });
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u dÃ¡Â»Â± ÃƒÂ¡n lÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 }
 
@@ -366,7 +366,7 @@ export async function replaceProjectUnits(projectId: string, unitCodes: string[]
 export async function deleteProjectById(projectId: string) {
   const { error } = await supabase.from('projects').delete().eq('id', projectId);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a dÃ¡Â»Â± ÃƒÂ¡n trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 }
 
@@ -378,7 +378,7 @@ export async function listTemplates(projectId?: string) {
 
   const { data, error } = await builder;
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i danh sÃƒÂ¡ch biÃ¡Â»Æ’u mÃ¡ÂºÂ«u tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 
   return ((data || []) as SupabaseTemplateRow[]).map(mapTemplate);
@@ -405,14 +405,14 @@ export async function upsertTemplate(template: FormTemplate) {
 
   const { error } = await supabase.from('templates').upsert(payload, { onConflict: 'id' });
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u biÃ¡Â»Æ’u mÃ¡ÂºÂ«u lÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 }
 
 export async function deleteTemplateById(templateId: string) {
   const { error } = await supabase.from('templates').delete().eq('id', templateId);
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a biÃ¡Â»Æ’u mÃ¡ÂºÂ«u trÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 }
 
@@ -513,7 +513,7 @@ export async function deleteExtractReportBlueprint(blueprintId: string) {
 export async function listUnits() {
   const { data, error } = await supabase.from('units').select('*').order('code');
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i danh sÃƒÂ¡ch Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Loi Supabase.');
   }
 
   return ((data || []) as SupabaseUnitRow[]).map(mapUnit);
@@ -549,14 +549,14 @@ export async function upsertUnit(unit: ManagedUnit) {
 
   const { error } = await supabase.from('units').upsert(payload, { onConflict: 'code' });
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u Ã„â€˜Ã†Â¡n vÃ¡Â»â€¹ lÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 }
 
 export async function getSettings() {
   const { data, error } = await supabase.from('app_settings').select('*').eq('id', SETTINGS_ROW_ID).maybeSingle();
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i cÃƒÂ i Ã„â€˜Ã¡ÂºÂ·t tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 
   if (!data) {
@@ -583,7 +583,7 @@ export async function upsertSettings(settings: AppSettings) {
   );
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ lÃ†Â°u cÃƒÂ i Ã„â€˜Ã¡ÂºÂ·t lÃƒÂªn Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 }
 
@@ -596,7 +596,7 @@ export async function listUserProfiles() {
     .order('display_name', { ascending: true });
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i danh sÃƒÂ¡ch tÃƒÂ i khoÃ¡ÂºÂ£n tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 
   return ((data || []) as SupabaseUserProfileRow[]).map(mapUserProfile);
@@ -616,7 +616,7 @@ export async function getUserProfileByEmail(email?: string | null) {
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message || 'KhÃƒÂ´ng thÃ¡Â»Æ’ tÃ¡ÂºÂ£i hÃ¡Â»â€œ sÃ†Â¡ tÃƒÂ i khoÃ¡ÂºÂ£n tÃ¡Â»Â« Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 
   if (!data) {
@@ -670,7 +670,7 @@ export async function upsertUserProfile(profile: {
   );
 
   if (error) {
-    throw new Error(error.message || 'KhÃ´ng thá»ƒ lÆ°u há»“ sÆ¡ tÃ i khoáº£n lÃªn Supabase.');
+    throw new Error(error.message || 'Khong the tai pham vi don vi theo du an tu Supabase.');
   }
 }
 
