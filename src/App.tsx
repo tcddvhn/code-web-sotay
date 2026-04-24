@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   Bell,
@@ -111,6 +111,13 @@ const DEFAULT_SETTINGS: AppSettings = {
   receivedPath: 'C:\\TongHop\\01_DaTiepNhan',
 };
 const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
+const DEFAULT_INTERNAL_DEPARTMENTS: Array<Pick<Department, 'id' | 'code' | 'name' | 'isActive' | 'sortOrder'>> = [
+  { id: 'PB01', code: 'PB01', name: 'Phòng Tổ chức đảng, đảng viên', isActive: true, sortOrder: 1 },
+  { id: 'PB02', code: 'PB02', name: 'Phòng Bảo vệ chính trị Nội bộ', isActive: true, sortOrder: 2 },
+  { id: 'PB03', code: 'PB03', name: 'Phòng Tổ chức cán bộ', isActive: true, sortOrder: 3 },
+  { id: 'PB04', code: 'PB04', name: 'Phòng địa bàn xã, phường', isActive: true, sortOrder: 4 },
+  { id: 'PB05', code: 'PB05', name: 'Văn phòng ban', isActive: true, sortOrder: 5 },
+];
 
 type UnitLog = {
   code: string;
@@ -202,6 +209,7 @@ function isUnitVisibleForProject(unit: ManagedUnit, project: Project | null) {
 }
 
 export default function App() {
+  const didBootstrapDefaultDepartmentsRef = useRef(false);
   const [currentView, setCurrentView] = useState<ViewMode>('DASHBOARD');
   const [data, setData] = useState<ConsolidatedData>({});
   const [projects, setProjects] = useState<Project[]>([]);
@@ -273,9 +281,15 @@ export default function App() {
     );
   }, [departmentMembers, effectiveUserProfile]);
   const currentDepartmentId = currentDepartmentMembership?.departmentId || null;
+  const hasDepartmentMembership = Boolean(currentDepartmentMembership);
   const isDepartmentManager = currentDepartmentMembership?.membershipRole === 'manager';
   const canManageProjects = isAdmin || isDepartmentManager;
   const canManageTemplates = isAdmin || isDepartmentManager;
+  const canUseDepartmentWorkspace = isAdmin || hasDepartmentMembership;
+  const canAccessImport = isAuthenticated && (isUnitUser || canUseDepartmentWorkspace);
+  const canAccessReports = isAuthenticated && (isUnitUser || canUseDepartmentWorkspace);
+  const canAccessExtractReports = isAuthenticated && !isUnitUser && canUseDepartmentWorkspace;
+  const canAccessAIAnalysis = isAdmin;
   const getProjectScopedUnitCodes = (projectId?: string | null) => {
     if (!projectId) {
       return null;
@@ -318,8 +332,12 @@ export default function App() {
       return projects.filter((project) => project.ownerDepartmentId === currentDepartmentId);
     }
 
+    if (isAuthenticated) {
+      return [];
+    }
+
     return projects;
-  }, [currentDepartmentId, effectiveUserProfile, isAdmin, isUnitUser, projectUnitScopeByProjectId, projects]);
+  }, [currentDepartmentId, effectiveUserProfile, isAdmin, isAuthenticated, isUnitUser, projectUnitScopeByProjectId, projects]);
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
     [projects, selectedProjectId],
@@ -966,6 +984,7 @@ export default function App() {
       setUsers([]);
       setDepartments([]);
       setDepartmentMembers([]);
+      didBootstrapDefaultDepartmentsRef.current = false;
       return;
     }
 
@@ -992,6 +1011,59 @@ export default function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated || !isAdmin || didBootstrapDefaultDepartmentsRef.current) {
+      return;
+    }
+
+    const needsBootstrap = DEFAULT_INTERNAL_DEPARTMENTS.some((defaultDepartment) => {
+      const existingDepartment = departments.find((department) => department.id === defaultDepartment.id);
+      return (
+        !existingDepartment ||
+        existingDepartment.code !== defaultDepartment.code ||
+        existingDepartment.name !== defaultDepartment.name ||
+        existingDepartment.isActive !== defaultDepartment.isActive ||
+        existingDepartment.sortOrder !== defaultDepartment.sortOrder
+      );
+    });
+
+    if (!needsBootstrap) {
+      didBootstrapDefaultDepartmentsRef.current = true;
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await Promise.all(
+          DEFAULT_INTERNAL_DEPARTMENTS.map((defaultDepartment) =>
+            upsertDepartmentToSupabase({
+              ...defaultDepartment,
+              createdAt:
+                departments.find((department) => department.id === defaultDepartment.id)?.createdAt ||
+                new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }),
+          ),
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setDepartments(await listDepartmentsFromSupabase());
+        didBootstrapDefaultDepartmentsRef.current = true;
+      } catch (error) {
+        console.error('Không thể bootstrap 5 phòng ban mặc định:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [departments, isAdmin, isAuthenticated]);
+
+  useEffect(() => {
     if (projects.length > 0 && !projects.find((p) => p.id === selectedProjectId)) {
       setSelectedProjectId(projects[0].id);
       return;
@@ -1003,7 +1075,7 @@ export default function App() {
   }, [projects, selectedProjectId]);
 
   useEffect(() => {
-    if (!isAuthenticated && ['REPORTS', 'EXTRACT_REPORTS'].includes(currentView)) {
+    if (!isAuthenticated && ['IMPORT', 'REPORTS', 'EXTRACT_REPORTS', 'AI_ANALYSIS', 'PROJECTS', 'LEARN_FORM', 'SETTINGS'].includes(currentView)) {
       setCurrentView('DASHBOARD');
     }
   }, [currentView, isAuthenticated]);
@@ -1017,6 +1089,31 @@ export default function App() {
       setCurrentView('DASHBOARD');
     }
   }, [currentView, effectiveUserProfile]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    if (currentView === 'IMPORT' && !canAccessImport) {
+      setCurrentView('DASHBOARD');
+      return;
+    }
+
+    if (currentView === 'REPORTS' && !canAccessReports) {
+      setCurrentView('DASHBOARD');
+      return;
+    }
+
+    if (currentView === 'EXTRACT_REPORTS' && !canAccessExtractReports) {
+      setCurrentView('DASHBOARD');
+      return;
+    }
+
+    if (currentView === 'AI_ANALYSIS' && !canAccessAIAnalysis) {
+      setCurrentView('DASHBOARD');
+    }
+  }, [canAccessAIAnalysis, canAccessExtractReports, canAccessImport, canAccessReports, currentView, isAuthenticated]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -1880,6 +1977,10 @@ export default function App() {
   };
 
   const handleOpenImportFromDashboard = (projectId?: string) => {
+    if (!canAccessImport) {
+      return;
+    }
+
     if (projectId) {
       setSelectedProjectId(projectId);
     }
@@ -2015,7 +2116,7 @@ export default function App() {
           />
         );
       case 'IMPORT':
-        return isAuthenticated ? (
+        return canAccessImport ? (
           <ImportFiles
             onDataImported={handleDataImported}
             onDeleteUnitData={handleDeleteUnitData}
@@ -2056,7 +2157,7 @@ export default function App() {
           />
         );
       case 'REPORTS':
-        return (
+        return canAccessReports ? (
           <ReportView
             data={data}
             dataFiles={dataFiles}
@@ -2069,9 +2170,29 @@ export default function App() {
             onSelectedYearChange={setSelectedReportYear}
             currentUser={effectiveUserProfile}
           />
+        ) : (
+          <DashboardOverview
+            data={data}
+            templates={templates}
+            projects={visibleProjects}
+            units={availableUnitsForProject}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+            isAuthenticated={isAuthenticated}
+            isAdmin={isAdmin}
+            assignmentUsers={assignmentUsers}
+            assignments={assignments}
+            currentUser={effectiveUserProfile}
+            onSaveAssignments={handleSaveAssignments}
+            dataFiles={dataFiles}
+            onOpenLogin={() => setCurrentView('LOGIN')}
+            onLogout={handleLogout}
+            onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
+            onOpenImport={handleOpenImportFromDashboard}
+          />
         );
       case 'EXTRACT_REPORTS':
-        return isAuthenticated ? (
+        return canAccessExtractReports ? (
           <ExtractReportView
             projects={visibleProjects}
             selectedProjectId={selectedProjectId}
@@ -2106,9 +2227,9 @@ export default function App() {
           />
         );
       case 'AI_ANALYSIS':
-        return (
+        return canAccessAIAnalysis ? (
           <AIAnalysisView
-            projects={projects}
+            projects={visibleProjects}
             templates={templates}
             units={allUnits}
             data={data}
@@ -2118,6 +2239,26 @@ export default function App() {
               email: user?.email || null,
               displayName: getReadableDisplayName(effectiveUserProfile?.displayName, user?.displayName || user?.email, user?.email || ''),
             }}
+          />
+        ) : (
+          <DashboardOverview
+            data={data}
+            templates={templates}
+            projects={visibleProjects}
+            units={availableUnitsForProject}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+            isAuthenticated={isAuthenticated}
+            isAdmin={isAdmin}
+            assignmentUsers={assignmentUsers}
+            assignments={assignments}
+            currentUser={effectiveUserProfile}
+            onSaveAssignments={handleSaveAssignments}
+            dataFiles={dataFiles}
+            onOpenLogin={() => setCurrentView('LOGIN')}
+            onLogout={handleLogout}
+            onOpenAIAnalysis={() => setCurrentView('AI_ANALYSIS')}
+            onOpenImport={handleOpenImportFromDashboard}
           />
         );
       case 'SETTINGS':
@@ -2220,6 +2361,10 @@ export default function App() {
           isAdmin={isAdmin}
           canManageProjects={canManageProjects}
           canManageTemplates={canManageTemplates}
+          canAccessImport={canAccessImport}
+          canAccessReports={canAccessReports}
+          canAccessExtractReports={canAccessExtractReports}
+          canAccessAIAnalysis={canAccessAIAnalysis}
           onLogout={handleLogout}
           onOpenChangePassword={() => {
             setIsChangePasswordOpen(true);

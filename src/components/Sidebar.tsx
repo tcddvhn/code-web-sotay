@@ -31,6 +31,10 @@ interface SidebarProps {
   isAdmin: boolean;
   canManageProjects?: boolean;
   canManageTemplates?: boolean;
+  canAccessImport?: boolean;
+  canAccessReports?: boolean;
+  canAccessExtractReports?: boolean;
+  canAccessAIAnalysis?: boolean;
   onLogout: () => void;
   onOpenChangePassword: () => void;
   user: AuthenticatedUser | null;
@@ -59,6 +63,10 @@ export function Sidebar({
   isAdmin,
   canManageProjects = false,
   canManageTemplates = false,
+  canAccessImport = false,
+  canAccessReports = false,
+  canAccessExtractReports = false,
+  canAccessAIAnalysis = false,
   onLogout,
   onOpenChangePassword,
   user,
@@ -190,15 +198,16 @@ export function Sidebar({
         ...(isAuthenticated
           ? [
               ...(isAdmin
+                && canAccessAIAnalysis
                 ? [
                     { id: 'AI_ANALYSIS' as ViewMode, label: 'Phân tích AI', icon: Sparkles },
                   ]
                 : []),
               ...(canManageProjects ? [{ id: 'PROJECTS' as ViewMode, label: 'Dự án', icon: FolderPlus }] : []),
               ...(canManageTemplates ? [{ id: 'LEARN_FORM' as ViewMode, label: 'Biểu mẫu', icon: BrainCircuit }] : []),
-              { id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: FileUp },
-              { id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText },
-              ...(!isUnitUser ? [{ id: 'EXTRACT_REPORTS' as ViewMode, label: 'Trích báo cáo', icon: FileSpreadsheet }] : []),
+              ...(canAccessImport ? [{ id: 'IMPORT' as ViewMode, label: 'Tiếp nhận dữ liệu', icon: FileUp }] : []),
+              ...(canAccessReports ? [{ id: 'REPORTS' as ViewMode, label: 'Báo cáo', icon: FileText }] : []),
+              ...(canAccessExtractReports && !isUnitUser ? [{ id: 'EXTRACT_REPORTS' as ViewMode, label: 'Trích báo cáo', icon: FileSpreadsheet }] : []),
               ...(isAdmin ? [{ id: 'SETTINGS' as ViewMode, label: 'Cài đặt', icon: Settings }] : []),
             ]
           : []),

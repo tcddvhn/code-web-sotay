@@ -30,10 +30,10 @@ alter table public.projects add column if not exists created_by_auth_user_id uui
 insert into public.departments (id, code, name, is_active, sort_order)
 values
   ('PB01', 'PB01', 'Phòng Tổ chức đảng, đảng viên', true, 1),
-  ('PB02', 'PB02', 'Phòng Bảo vệ chính trị nội bộ', true, 2),
+  ('PB02', 'PB02', 'Phòng Bảo vệ chính trị Nội bộ', true, 2),
   ('PB03', 'PB03', 'Phòng Tổ chức cán bộ', true, 3),
-  ('PB04', 'PB04', 'Phòng Đại bàn xã, phường', true, 4),
-  ('PB05', 'PB05', 'Văn phòng Ban', true, 5)
+  ('PB04', 'PB04', 'Phòng địa bàn xã, phường', true, 4),
+  ('PB05', 'PB05', 'Văn phòng ban', true, 5)
 on conflict (id) do update
 set
   code = excluded.code,
