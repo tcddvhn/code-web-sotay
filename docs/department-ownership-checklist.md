@@ -60,7 +60,11 @@ File liên quan:
   - `currentDepartmentId`
   - `isDepartmentManager`
 - `ProjectManager` đã hỗ trợ `ownerDepartmentId`.
-- `Settings` đã có panel quản lý phòng ban và thành viên phòng ban.
+- `Settings` đã có panel:
+  - quản lý danh sách đơn vị
+  - quản trị tài khoản đơn vị
+  - quản trị tài khoản nội bộ
+  - quản lý phòng ban và thành viên phòng ban
 
 File liên quan:
 - `src/App.tsx`
@@ -85,6 +89,7 @@ File liên quan:
 - Contributor nội bộ không có `department membership` không còn thấy toàn bộ dự án nữa.
 - `AIAnalysisView` không còn nhận toàn bộ `projects`; hiện đã nhận `visibleProjects`.
 - Admin đăng nhập sẽ tự bootstrap 5 phòng ban mặc định nếu production đang thiếu hoặc đang sai tên hiển thị.
+- `Settings` đã có thêm panel `Quản trị tài khoản nội bộ` để cấp nguồn người theo dõi và nguồn thành viên phòng ban ngay trong giao diện quản trị.
 
 File đã sửa:
 - `src/App.tsx`

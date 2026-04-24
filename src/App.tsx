@@ -133,7 +133,7 @@ type UnitLog = {
 };
 
 type UnitStatusFilter = 'ALL' | 'SUBMITTED' | 'PENDING';
-const GLOBAL_ASSIGNMENT_PROJECT_NAME = 'THá»NG KÃŠ Sá» LIá»†U SÆ  Káº¾T NQ21';
+const GLOBAL_ASSIGNMENT_PROJECT_NAME = 'THỐNG KÊ SỐ LIỆU SƠ KẾT NQ21';
 
 function normalizeProjectName(value: string) {
   return value
@@ -415,11 +415,11 @@ export default function App() {
     }
 
     if (selectedReportUnitCode === TOTAL_REPORT_UNIT_CODE) {
-      return { code: TOTAL_REPORT_UNIT_CODE, name: 'Äáº£ng bá»™ ThÃ nh phá»‘' };
+      return { code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' };
     }
 
     const matchedUnit = availableUnitsForProject.find((unit) => unit.code === selectedReportUnitCode);
-    return matchedUnit ? { code: matchedUnit.code, name: matchedUnit.name } : { code: TOTAL_REPORT_UNIT_CODE, name: 'Äáº£ng bá»™ ThÃ nh phá»‘' };
+    return matchedUnit ? { code: matchedUnit.code, name: matchedUnit.name } : { code: TOTAL_REPORT_UNIT_CODE, name: 'Đảng bộ Thành phố' };
   }, [availableUnitsForProject, effectiveUserProfile, isUnitUser, selectedReportUnitCode]);
   const sortedReportProjects = useMemo(
     () =>
@@ -494,7 +494,7 @@ export default function App() {
         return;
       }
       console.warn('Supabase auth bootstrap timed out, releasing app shell in public mode.');
-      setAuthError((current) => current || 'Khá»Ÿi táº¡o phiÃªn Ä‘Äƒng nháº­p Ä‘ang cháº­m. Há»‡ thá»‘ng Ä‘Ã£ má»Ÿ á»Ÿ cháº¿ Ä‘á»™ cÃ´ng khai.');
+      setAuthError((current) => current || 'Khởi tạo phiên đăng nhập đang chậm. Hệ thống đã mở ở chế độ công khai.');
       setIsAuthReady(true);
     }, 4000);
 
@@ -542,7 +542,7 @@ export default function App() {
         }
 
         if (!profile) {
-          setAuthError('TÃ i khoáº£n nÃ y chÆ°a Ä‘Æ°á»£c cáº¥p quyá»n truy cáº­p trong báº£ng user_profiles cá»§a Supabase.');
+          setAuthError('Tài khoản này chưa được cấp quyền truy cập trong bảng user_profiles của Supabase.');
           try {
             await logoutSupabase();
           } catch (error) {
@@ -587,7 +587,7 @@ export default function App() {
         if (!active) {
           return;
         }
-        setAuthError(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ táº£i há»“ sÆ¡ tÃ i khoáº£n tá»« Supabase.');
+        setAuthError(error instanceof Error ? error.message : 'Không thể tải hồ sơ tài khoản từ Supabase.');
         setUser(null);
         setUserProfile(null);
         setCurrentView('LOGIN');
@@ -604,7 +604,7 @@ export default function App() {
         if (!active) {
           return;
         }
-        setAuthError('KhÃ´ng thá»ƒ khá»Ÿi táº¡o phiÃªn Ä‘Äƒng nháº­p tá»« Supabase.');
+        setAuthError('Không thể khởi tạo phiên đăng nhập từ Supabase.');
         setUser(null);
         releaseAuthGate();
       });
@@ -909,7 +909,7 @@ export default function App() {
               try {
                 await replaceGlobalAssignmentsInSupabase(sourceRows);
               } catch (bootstrapError) {
-                console.warn('KhÃ´ng thá»ƒ tá»± bootstrap global_assignments tá»« dá»¯ liá»‡u cÅ©:', bootstrapError);
+                console.warn('Không thể tự bootstrap global_assignments từ dữ liệu cũ:', bootstrapError);
               }
             }
           }
@@ -1201,7 +1201,7 @@ export default function App() {
       try {
         await deleteAnalysisCellsByProject(projectId);
       } catch (analysisError) {
-        console.warn('KhÃ´ng thá»ƒ xÃ³a lá»›p dá»¯ liá»‡u phÃ¢n tÃ­ch AI theo dá»± Ã¡n:', analysisError);
+        console.warn('Không thể xóa lớp dữ liệu phân tích AI theo dự án:', analysisError);
       }
       await replaceAssignmentsInSupabase(projectId, []);
       const deletedDataFilePaths = await deleteDataFilesByProject(projectId);
@@ -1222,7 +1222,7 @@ export default function App() {
         try {
           await deleteFolderByPath(prefix);
         } catch (error) {
-          console.warn(`KhÃ´ng thá»ƒ dá»n thÆ° má»¥c lÆ°u trá»¯ ${prefix}:`, error);
+          console.warn(`Không thể dọn thư mục lưu trữ ${prefix}:`, error);
         }
       }
       const projectTemplates = await listTemplatesFromSupabase(projectId);
@@ -1286,7 +1286,7 @@ export default function App() {
     const duplicateProject = projects.find((project) => normalizeProjectName(project.name) === normalizedName);
 
     if (duplicateProject) {
-      throw new Error(`TÃªn dá»± Ã¡n "${payload.name.trim()}" Ä‘Ã£ tá»“n táº¡i. Vui lÃ²ng chá»n tÃªn khÃ¡c.`);
+      throw new Error(`Tên dự án "${payload.name.trim()}" đã tồn tại. Vui lòng chọn tên khác.`);
     }
 
     const ownerDepartmentId = isAdmin ? payload.ownerDepartmentId || null : currentDepartmentId;
@@ -1331,7 +1331,7 @@ export default function App() {
     );
 
     if (duplicateProject) {
-      throw new Error(`TÃªn dá»± Ã¡n "${payload.name.trim()}" Ä‘Ã£ tá»“n táº¡i. Vui lÃ²ng chá»n tÃªn khÃ¡c.`);
+      throw new Error(`Tên dự án "${payload.name.trim()}" đã tồn tại. Vui lòng chọn tên khác.`);
     }
 
     const nextProject: Project = {
@@ -1388,7 +1388,7 @@ export default function App() {
       try {
         await deleteAnalysisCellsByTemplate(template.id);
       } catch (analysisError) {
-        console.warn('KhÃ´ng thá»ƒ xÃ³a lá»›p dá»¯ liá»‡u phÃ¢n tÃ­ch AI theo biá»ƒu máº«u:', analysisError);
+        console.warn('Không thể xóa lớp dữ liệu phân tích AI theo biểu mẫu:', analysisError);
       }
       await deleteTemplateFromSupabase(template.id);
 
@@ -1462,7 +1462,7 @@ export default function App() {
           dataFiles: refreshedDataFiles,
         });
       } catch (analysisError) {
-        console.warn('KhÃ´ng thá»ƒ Ä‘á»“ng bá»™ lá»›p dá»¯ liá»‡u phÃ¢n tÃ­ch AI sau khi nháº­p dá»¯ liá»‡u:', analysisError);
+        console.warn('Không thể đồng bộ lớp dữ liệu phân tích AI sau khi nhập dữ liệu:', analysisError);
       }
     } catch (error) {
       console.error('Import data error:', error);
@@ -1484,7 +1484,7 @@ export default function App() {
       try {
         await deleteAnalysisCellsByUnit(currentProject.id, year, unitCode);
       } catch (analysisError) {
-        console.warn('KhÃ´ng thá»ƒ xÃ³a lá»›p dá»¯ liá»‡u phÃ¢n tÃ­ch AI theo Ä‘Æ¡n vá»‹:', analysisError);
+        console.warn('Không thể xóa lớp dữ liệu phân tích AI theo đơn vị:', analysisError);
       }
       const deletedDataFilePaths = await deleteDataFileByUnit(currentProject.id, year, unitCode);
       for (const storagePath of deletedDataFilePaths) {
@@ -1529,7 +1529,7 @@ export default function App() {
       try {
         await deleteAnalysisCellsByYear(currentProject.id, year);
       } catch (analysisError) {
-        console.warn('KhÃ´ng thá»ƒ xÃ³a lá»›p dá»¯ liá»‡u phÃ¢n tÃ­ch AI theo nÄƒm:', analysisError);
+        console.warn('Không thể xóa lớp dữ liệu phân tích AI theo năm:', analysisError);
       }
       const deletedDataFilePaths = await deleteDataFilesByYear(currentProject.id, year);
       for (const storagePath of deletedDataFilePaths) {
@@ -1557,14 +1557,14 @@ export default function App() {
 
       if (remainingRowsForYear > 0 || remainingDataFilesForYear > 0) {
         throw new Error(
-          `Há»‡ thá»‘ng chÆ°a xÃ³a háº¿t dá»¯ liá»‡u nÄƒm ${year}. CÃ²n ${remainingRowsForYear} dÃ²ng dá»¯ liá»‡u vÃ  ${remainingDataFilesForYear} file metadata.`,
+          `Hệ thống chưa xóa hết dữ liệu năm ${year}. Còn ${remainingRowsForYear} dòng dữ liệu và ${remainingDataFilesForYear} file metadata.`,
         );
       }
 
       return rowsBeforeDelete;
     } catch (error) {
       console.error('Delete year rows error:', error);
-      throw error instanceof Error ? error : new Error('KhÃ´ng thá»ƒ xÃ³a dá»¯ liá»‡u theo nÄƒm.');
+      throw error instanceof Error ? error : new Error('Không thể xóa dữ liệu theo năm.');
     }
   };
 
@@ -1613,7 +1613,7 @@ export default function App() {
     const normalizedAssigneeKey = getAssignmentKey(assigneeKey);
     const assignmentUser = assignmentUsers.find((item) => item.id === normalizedAssigneeKey);
     if (!assignmentUser) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i theo dÃµi Ä‘á»ƒ lÆ°u phÃ¢n cÃ´ng.');
+      throw new Error('Không tìm thấy người theo dõi để lưu phân công.');
     }
 
     const orderedUnitCodes = UNITS.filter((unit) => unitCodes.includes(unit.code)).map((unit) => unit.code);
@@ -1691,12 +1691,12 @@ export default function App() {
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('TÃªn Ä‘Æ¡n vá»‹ khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+      throw new Error('Tên đơn vị không được để trống.');
     }
 
     const duplicate = allUnits.find((unit) => unit.name.trim().toLowerCase() === trimmedName.toLowerCase());
     if (duplicate) {
-      throw new Error('TÃªn Ä‘Æ¡n vá»‹ Ä‘Ã£ tá»“n táº¡i trong danh má»¥c.');
+      throw new Error('Tên đơn vị đã tồn tại trong danh mục.');
     }
 
     const maxUnitNumber = allUnits.reduce((maxValue, unit) => {
@@ -1724,7 +1724,7 @@ export default function App() {
 
     const targetUnit = allUnits.find((unit) => unit.code === unitCode);
     if (!targetUnit) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n vá»‹ cáº§n xÃ³a.');
+      throw new Error('Không tìm thấy đơn vị cần xóa.');
     }
 
     await upsertUnitToSupabase({
@@ -1748,7 +1748,7 @@ export default function App() {
 
     const targetUnit = allUnits.find((unit) => unit.code === unitCode);
     if (!targetUnit) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n vá»‹ cáº§n khÃ´i phá»¥c.');
+      throw new Error('Không tìm thấy đơn vị cần khôi phục.');
     }
 
     await upsertUnitToSupabase({
@@ -1768,19 +1768,19 @@ export default function App() {
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('TÃªn Ä‘Æ¡n vá»‹ khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+      throw new Error('Tên đơn vị không được để trống.');
     }
 
     const targetUnit = allUnits.find((unit) => unit.code === unitCode);
     if (!targetUnit) {
-      throw new Error('KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n vá»‹ cáº§n cáº­p nháº­t.');
+      throw new Error('Không tìm thấy đơn vị cần cập nhật.');
     }
 
     const duplicate = allUnits.find(
       (unit) => unit.code !== unitCode && unit.name.trim().toLowerCase() === trimmedName.toLowerCase(),
     );
     if (duplicate) {
-      throw new Error('TÃªn Ä‘Æ¡n vá»‹ Ä‘Ã£ tá»“n táº¡i trong danh má»¥c.');
+      throw new Error('Tên đơn vị đã tồn tại trong danh mục.');
     }
 
     await upsertUnitToSupabase({
@@ -1923,13 +1923,53 @@ export default function App() {
     setUsers(await listUserProfilesFromSupabase());
   };
 
+  const handleUpsertInternalAccount = async (payload: {
+    email: string;
+    displayName: string;
+    role: 'admin' | 'contributor';
+  }) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const normalizedEmail = getAssignmentKey(payload.email);
+    if (!normalizedEmail) {
+      throw new Error('Email tài khoản nội bộ không hợp lệ.');
+    }
+
+    await upsertUserProfileToSupabase({
+      email: normalizedEmail,
+      displayName: payload.displayName || normalizedEmail,
+      role: payload.role,
+      unitCode: null,
+      unitName: null,
+      isActive: true,
+    });
+
+    setUsers(await listUserProfilesFromSupabase());
+  };
+
+  const handleDeleteInternalAccount = async (email: string) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const normalizedEmail = getAssignmentKey(email);
+    if (normalizedEmail && normalizedEmail === getAssignmentKey(effectiveUserProfile?.email)) {
+      throw new Error('Không thể tự vô hiệu hóa tài khoản quản trị đang đăng nhập.');
+    }
+
+    await deactivateUserProfileInSupabase(email);
+    setUsers(await listUserProfilesFromSupabase());
+  };
+
   const handleDeleteAllSystemData = async () => {
     if (!isAdmin) {
       return;
     }
 
     const confirmed = window.confirm(
-      'XÃ³a toÃ n bá»™ dá»± Ã¡n, biá»ƒu máº«u, dá»¯ liá»‡u tiáº¿p nháº­n, phÃ¢n cÃ´ng vÃ  lá»‹ch sá»­ xuáº¥t bÃ¡o cÃ¡o trÃªn há»‡ thá»‘ng? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.',
+      'Xóa toàn bộ dự án, biểu mẫu, dữ liệu tiếp nhận, phân công và lịch sử xuất báo cáo trên hệ thống? Hành động này không thể hoàn tác.',
     );
     if (!confirmed) {
       return;
@@ -1944,7 +1984,7 @@ export default function App() {
 
       setSelectedProjectId('');
       setCurrentView('DASHBOARD');
-      alert('ÄÃ£ xÃ³a sáº¡ch toÃ n bá»™ dá»¯ liá»‡u há»‡ thá»‘ng.');
+      alert('Đã xóa sạch toàn bộ dữ liệu hệ thống.');
     } catch (error) {
       console.error('Reset system error:', error);
     }
@@ -1973,7 +2013,7 @@ export default function App() {
   const handleChangePassword = async (nextPassword: string) => {
     await updateSupabasePassword(nextPassword);
     setIsChangePasswordOpen(false);
-    alert('ÄÃ£ cáº­p nháº­t máº­t kháº©u má»›i.');
+    alert('Đã cập nhật mật khẩu mới.');
   };
 
   const handleOpenImportFromDashboard = (projectId?: string) => {
@@ -2288,61 +2328,64 @@ export default function App() {
         return (
           <div className="p-6 md:p-8">
             <h2 className="page-title">{'Cài đặt hệ thống'}</h2>
-            <p className="page-subtitle mt-2 max-w-3xl text-sm">
-              {'Tập trung toàn bộ cấu hình quản trị: danh mục đơn vị, phòng ban nội bộ, phân công theo dõi và hồ sơ tài khoản đơn vị.'}
+            <p className="page-subtitle mt-2 max-w-5xl text-sm">
+              {'Tập trung toàn bộ cấu hình quản trị: danh mục đơn vị, tài khoản nội bộ, phòng ban nội bộ, phân công theo dõi và hồ sơ tài khoản đơn vị.'}
             </p>
 
-            <div className="mt-8 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_340px] xl:grid-cols-[minmax(0,1.45fr)_320px]">
-              <div className="space-y-6">
-                {isAdmin && (
-                  <SystemSettingsUnitsPanel
-                    units={allUnits}
-                    assignmentUsers={assignmentUsers}
-                    assignmentsByUnit={unitWatcherByCode}
-                    onAddUnit={handleAddUnit}
-                    onSoftDeleteUnit={handleSoftDeleteUnit}
-                    onRestoreUnit={handleRestoreUnit}
-                    onRenameUnit={handleRenameUnit}
-                    onSaveWatcherAssignments={handleSaveUnitWatcherAssignments}
-                  />
-                )}
+            <div className="mt-8 space-y-6">
+              {isAdmin && (
+                <SystemSettingsUnitsPanel
+                  units={allUnits}
+                  assignmentUsers={assignmentUsers}
+                  assignmentsByUnit={unitWatcherByCode}
+                  onAddUnit={handleAddUnit}
+                  onSoftDeleteUnit={handleSoftDeleteUnit}
+                  onRestoreUnit={handleRestoreUnit}
+                  onRenameUnit={handleRenameUnit}
+                  onSaveWatcherAssignments={handleSaveUnitWatcherAssignments}
+                />
+              )}
 
-                {isAdmin && (
-                  <SystemSettingsUnitAccountsPanel
-                    units={allUnits}
-                    accounts={unitUserProfiles}
-                    onUpsertAccount={handleUpsertUnitAccount}
-                    onDeleteAccount={handleDeleteUnitAccount}
-                  />
-                )}
+              {isAdmin && (
+                <SystemSettingsUnitAccountsPanel
+                  units={allUnits}
+                  accounts={unitUserProfiles}
+                  onUpsertAccount={handleUpsertUnitAccount}
+                  onDeleteAccount={handleDeleteUnitAccount}
+                />
+              )}
 
-                {isAdmin && (
-                  <SystemSettingsDepartmentsPanel
-                    departments={departments}
-                    members={departmentMembers}
-                    internalUsers={internalUserProfiles}
-                    onUpsertDepartment={handleUpsertDepartment}
-                    onUpsertDepartmentMember={handleUpsertDepartmentMember}
-                    onDeactivateDepartmentMember={handleDeactivateDepartmentMember}
-                  />
-                )}
+              {isAdmin && (
+                <SystemSettingsInternalAccountsPanel
+                  accounts={internalUserProfiles}
+                  currentAdminEmail={effectiveUserProfile?.email || null}
+                  onUpsertAccount={handleUpsertInternalAccount}
+                  onDeleteAccount={handleDeleteInternalAccount}
+                />
+              )}
 
-                {isAdmin && (
-                  <div className="flex flex-wrap gap-3">
-                    <button onClick={handleDeleteAllSystemData} className="secondary-btn">
-                      {'Xóa sạch dữ liệu hệ thống'}
-                    </button>
-                  </div>
-                )}
-              </div>
+              {isAdmin && (
+                <SystemSettingsDepartmentsPanel
+                  departments={departments}
+                  members={departmentMembers}
+                  internalUsers={internalUserProfiles}
+                  onUpsertDepartment={handleUpsertDepartment}
+                  onUpsertDepartmentMember={handleUpsertDepartmentMember}
+                  onDeactivateDepartmentMember={handleDeactivateDepartmentMember}
+                />
+              )}
 
-              <div className="space-y-4 xl:max-w-[320px] 2xl:max-w-[340px]">
-                {!isAdmin && (
-                  <div className="panel-card rounded-[24px] p-5 text-sm text-[var(--ink-soft)]">
-                    {'Chỉ tài khoản Admin mới được phép thay đổi cấu hình hệ thống và quản lý danh mục đơn vị.'}
-                  </div>
-                )}
-              </div>
+              {isAdmin ? (
+                <div className="flex flex-wrap gap-3">
+                  <button onClick={handleDeleteAllSystemData} className="secondary-btn">
+                    {'Xóa sạch dữ liệu hệ thống'}
+                  </button>
+                </div>
+              ) : (
+                <div className="panel-card rounded-[24px] p-5 text-sm text-[var(--ink-soft)]">
+                  {'Chỉ tài khoản Admin mới được phép thay đổi cấu hình hệ thống và quản lý danh mục đơn vị.'}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -2581,7 +2624,7 @@ function SystemSettingsUnitsPanel({
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_280px_auto]">
+      <div className="mt-5 grid grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)_200px] xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,1fr)_180px]">
         <input
           value={newUnitName}
           onChange={(event) => setNewUnitName(event.target.value)}
@@ -2611,7 +2654,7 @@ function SystemSettingsUnitsPanel({
 
       {message && <p className="mt-4 text-sm font-medium text-[var(--ink-soft)]">{message}</p>}
 
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div className="mt-6 space-y-6">
         <div>
           <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
             <div>
@@ -2620,7 +2663,7 @@ function SystemSettingsUnitsPanel({
                 {`Hiển thị ${filteredActiveUnits.length}/${activeUnits.length} đơn vị theo bộ lọc người theo dõi.`}
               </p>
             </div>
-            <div className="w-full xl:w-[260px]">
+            <div className="w-full xl:w-[320px]">
               <label className="col-header mb-2 block">{'Lọc theo người theo dõi'}</label>
               <select
                 value={watcherFilter}
@@ -2637,77 +2680,77 @@ function SystemSettingsUnitsPanel({
               </select>
             </div>
           </div>
-          <div className="max-h-[420px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+          <div className="max-h-[520px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
             {filteredActiveUnits.map((unit) => (
-              <div
-                key={unit.code}
-                className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 xl:grid-cols-[minmax(0,1fr)_240px_128px]"
-              >
-                <div className="min-w-0 space-y-2">
-                  {editingUnitCode === unit.code ? (
-                    <input
-                      value={editingUnitName}
-                      onChange={(event) => setEditingUnitName(event.target.value)}
-                      className="field-input h-11 py-2 text-sm"
-                      placeholder="Nhập tên đơn vị"
-                    />
-                  ) : (
-                    <p className="break-words text-sm font-semibold leading-5 text-[var(--ink)]">{unit.name}</p>
-                  )}
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="col-header mb-2">{'Người theo dõi'}</p>
-                  <select
-                    value={watcherDrafts[unit.code] || ''}
-                    onChange={(event) => updateWatcherDraft(unit.code, event.target.value)}
-                    className="field-select h-11 text-sm"
-                    disabled={isSubmitting}
-                  >
-                    <option value="">-- Chưa phân công --</option>
-                    {assignmentUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.displayName || user.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex shrink-0 flex-col gap-2 self-start lg:w-[128px]">
-                  {editingUnitCode === unit.code ? (
-                    <>
-                      <button
-                        onClick={() => saveEditedUnit(unit)}
-                        disabled={isSubmitting || !editingUnitName.trim()}
-                        className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {'Lưu tên'}
-                      </button>
-                      <button
-                        onClick={cancelEditUnit}
-                        disabled={isSubmitting}
-                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {'Hủy'}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => beginEditUnit(unit)}
-                        disabled={isSubmitting}
-                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {'Đổi tên'}
-                      </button>
-                      <button
-                        onClick={() => deleteUnit(unit)}
-                        disabled={isSubmitting}
-                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {'Xóa mềm'}
-                      </button>
-                    </>
-                  )}
+              <div key={unit.code} className="rounded-2xl border border-[var(--line)] bg-white px-4 py-4">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(280px,1fr)_minmax(340px,1.15fr)_132px]">
+                  <div className="min-w-0">
+                    <p className="col-header mb-2">{'Tên đơn vị'}</p>
+                    {editingUnitCode === unit.code ? (
+                      <input
+                        value={editingUnitName}
+                        onChange={(event) => setEditingUnitName(event.target.value)}
+                        className="field-input h-11 py-2 text-sm"
+                        placeholder="Nhập tên đơn vị"
+                      />
+                    ) : (
+                      <p className="break-words text-base font-semibold leading-6 text-[var(--ink)]">{unit.name}</p>
+                    )}
+                    <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="col-header mb-2">{'Người theo dõi'}</p>
+                    <select
+                      value={watcherDrafts[unit.code] || ''}
+                      onChange={(event) => updateWatcherDraft(unit.code, event.target.value)}
+                      className="field-select h-11 w-full text-sm"
+                      disabled={isSubmitting}
+                    >
+                      <option value="">-- Chưa phân công --</option>
+                      {assignmentUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.displayName || user.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-2 self-start">
+                    {editingUnitCode === unit.code ? (
+                      <>
+                        <button
+                          onClick={() => saveEditedUnit(unit)}
+                          disabled={isSubmitting || !editingUnitName.trim()}
+                          className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {'Lưu tên'}
+                        </button>
+                        <button
+                          onClick={cancelEditUnit}
+                          disabled={isSubmitting}
+                          className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {'Hủy'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => beginEditUnit(unit)}
+                          disabled={isSubmitting}
+                          className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {'Đổi tên'}
+                        </button>
+                        <button
+                          onClick={() => deleteUnit(unit)}
+                          disabled={isSubmitting}
+                          className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {'Xóa mềm'}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -2716,21 +2759,21 @@ function SystemSettingsUnitsPanel({
 
         <div>
           <p className="col-header mb-3">{'Đơn vị đã xóa mềm'}</p>
-          <div className="max-h-[420px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+          <div className="max-h-[360px] space-y-3 overflow-y-auto overflow-x-hidden rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
             {deletedUnits.length > 0 ? (
               deletedUnits.map((unit) => (
                 <div
                   key={unit.code}
-                  className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 lg:grid-cols-[minmax(0,1fr)_128px]"
+                  className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 lg:grid-cols-[minmax(0,1fr)_140px]"
                 >
                   <div className="min-w-0">
-                    <p className="break-words text-sm font-semibold leading-5 text-[var(--ink)]">{unit.name}</p>
+                    <p className="break-words text-base font-semibold leading-6 text-[var(--ink)]">{unit.name}</p>
                     <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</p>
                   </div>
                   <button
                     onClick={() => restoreUnit(unit)}
                     disabled={isSubmitting}
-                    className="secondary-btn w-full self-start px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40 lg:w-[128px]"
+                    className="secondary-btn w-full self-start px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40 lg:w-[140px]"
                   >
                     {'Khôi phục'}
                   </button>
@@ -2860,7 +2903,7 @@ function SystemSettingsUnitAccountsPanel({
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_240px_220px_auto]">
+      <div className="mt-5 grid grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.9fr)_minmax(320px,1.1fr)_180px] xl:grid-cols-[minmax(0,1.1fr)_240px_280px_160px]">
         <input
           value={draftEmail}
           onChange={(event) => setDraftEmail(event.target.value)}
@@ -2896,7 +2939,7 @@ function SystemSettingsUnitAccountsPanel({
 
       {message && <p className="mt-4 text-sm font-medium text-[var(--ink-soft)]">{message}</p>}
 
-      <div className="mt-6 max-h-[420px] space-y-3 overflow-y-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+      <div className="mt-6 max-h-[520px] space-y-3 overflow-y-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
         {accounts.length === 0 ? (
           <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--ink-soft)]">
             {'Chưa có hồ sơ tài khoản đơn vị nào được khai báo.'}
@@ -2905,15 +2948,17 @@ function SystemSettingsUnitAccountsPanel({
           accounts.map((account) => (
             <div
               key={account.email || account.id}
-              className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 xl:grid-cols-[minmax(0,1.1fr)_220px_220px_128px]"
+              className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 2xl:grid-cols-[minmax(0,1.3fr)_minmax(220px,0.9fr)_minmax(320px,1fr)_128px] xl:grid-cols-[minmax(0,1.1fr)_220px_280px_128px]"
             >
               <div className="min-w-0">
+                <p className="col-header mb-2">{'Email đăng nhập'}</p>
                 <p className="break-all text-sm font-semibold text-[var(--ink)]">{account.email}</p>
                 <p className="mt-1 text-xs text-[var(--ink-soft)]">
                   {editingEmail === account.email ? 'Đang chỉnh sửa hồ sơ tài khoản.' : `Tên hiển thị: ${account.displayName || 'Chưa có'}`}
                 </p>
               </div>
               <div>
+                <p className="col-header mb-2">{'Tên hiển thị'}</p>
                 {editingEmail === account.email ? (
                   <input
                     value={editingDisplayName}
@@ -2928,6 +2973,7 @@ function SystemSettingsUnitAccountsPanel({
                 )}
               </div>
               <div>
+                <p className="col-header mb-2">{'Đơn vị gắn với tài khoản'}</p>
                 {editingEmail === account.email ? (
                   <select
                     value={editingUnitCode}
@@ -2986,6 +3032,255 @@ function SystemSettingsUnitAccountsPanel({
               </div>
             </div>
           ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SystemSettingsInternalAccountsPanel({
+  accounts,
+  currentAdminEmail,
+  onUpsertAccount,
+  onDeleteAccount,
+}: {
+  accounts: UserProfile[];
+  currentAdminEmail?: string | null;
+  onUpsertAccount: (payload: {
+    email: string;
+    displayName: string;
+    role: 'admin' | 'contributor';
+  }) => Promise<void>;
+  onDeleteAccount: (email: string) => Promise<void>;
+}) {
+  const [draftEmail, setDraftEmail] = useState('');
+  const [draftDisplayName, setDraftDisplayName] = useState('');
+  const [draftRole, setDraftRole] = useState<'admin' | 'contributor'>('contributor');
+  const [editingEmail, setEditingEmail] = useState<string | null>(null);
+  const [editingDisplayName, setEditingDisplayName] = useState('');
+  const [editingRole, setEditingRole] = useState<'admin' | 'contributor'>('contributor');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const roleLabel = (role: 'admin' | 'contributor') => (role === 'admin' ? 'Quản trị hệ thống' : 'Người dùng nội bộ');
+
+  const submitAccount = async () => {
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onUpsertAccount({
+        email: draftEmail,
+        displayName: draftDisplayName || draftEmail,
+        role: draftRole,
+      });
+      setDraftEmail('');
+      setDraftDisplayName('');
+      setDraftRole('contributor');
+      setMessage('Đã thêm hoặc cập nhật tài khoản nội bộ. Tài khoản này sẽ xuất hiện trong phần phân công theo dõi và gán phòng ban.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu tài khoản nội bộ.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const beginEdit = (account: UserProfile) => {
+    setEditingEmail(account.email || null);
+    setEditingDisplayName(account.displayName || account.email || '');
+    setEditingRole(account.role === 'admin' ? 'admin' : 'contributor');
+    setMessage(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingEmail(null);
+    setEditingDisplayName('');
+    setEditingRole('contributor');
+  };
+
+  const saveEdit = async () => {
+    if (!editingEmail) {
+      return;
+    }
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onUpsertAccount({
+        email: editingEmail,
+        displayName: editingDisplayName || editingEmail,
+        role: editingRole,
+      });
+      cancelEdit();
+      setMessage('Đã cập nhật hồ sơ tài khoản nội bộ.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật tài khoản nội bộ.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deleteAccount = async (email: string) => {
+    const confirmed = window.confirm(`Ẩn tài khoản nội bộ "${email}" khỏi hệ thống?`);
+    if (!confirmed) {
+      return;
+    }
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onDeleteAccount(email);
+      if (editingEmail === email) {
+        cancelEdit();
+      }
+      setMessage(`Đã vô hiệu hóa hồ sơ tài khoản ${email}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể vô hiệu hóa tài khoản nội bộ.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="panel-card rounded-[24px] p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="section-title">{'Quản trị tài khoản nội bộ'}</h3>
+          <p className="page-subtitle mt-2 text-sm">
+            {'Nguồn tài khoản này dùng cho phân công người theo dõi và gán thành viên phòng ban. Email tại đây phải trùng với tài khoản đã có trong Supabase Auth.'}
+          </p>
+        </div>
+        <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+          {`Đang quản lý ${accounts.length} tài khoản nội bộ`}
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.95fr)_220px_180px] xl:grid-cols-[minmax(0,1.15fr)_minmax(240px,0.9fr)_200px_160px]">
+        <input
+          value={draftEmail}
+          onChange={(event) => setDraftEmail(event.target.value)}
+          className="field-input"
+          placeholder="Email tài khoản nội bộ"
+        />
+        <input
+          value={draftDisplayName}
+          onChange={(event) => setDraftDisplayName(event.target.value)}
+          className="field-input"
+          placeholder="Tên hiển thị"
+        />
+        <select
+          value={draftRole}
+          onChange={(event) => setDraftRole(event.target.value as 'admin' | 'contributor')}
+          className="field-select"
+        >
+          <option value="contributor">Người dùng nội bộ</option>
+          <option value="admin">Quản trị hệ thống</option>
+        </select>
+        <button
+          onClick={submitAccount}
+          disabled={isSubmitting || !draftEmail.trim()}
+          className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {'Thêm tài khoản'}
+        </button>
+      </div>
+
+      {message && <p className="mt-4 text-sm font-medium text-[var(--ink-soft)]">{message}</p>}
+
+      <div className="mt-6 max-h-[520px] space-y-3 overflow-y-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+        {accounts.length === 0 ? (
+          <div className="rounded-2xl border border-[var(--line)] bg-white px-4 py-6 text-sm text-[var(--ink-soft)]">
+            {'Chưa có hồ sơ tài khoản nội bộ nào được khai báo.'}
+          </div>
+        ) : (
+          accounts.map((account) => {
+            const isCurrentAdmin = getAssignmentKey(account.email) === getAssignmentKey(currentAdminEmail);
+
+            return (
+              <div
+                key={account.email || account.id}
+                className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 2xl:grid-cols-[minmax(0,1.3fr)_minmax(240px,1fr)_220px_128px] xl:grid-cols-[minmax(0,1.15fr)_minmax(220px,0.95fr)_200px_128px]"
+              >
+                <div className="min-w-0">
+                  <p className="col-header mb-2">{'Email đăng nhập'}</p>
+                  <p className="break-all text-sm font-semibold text-[var(--ink)]">{account.email}</p>
+                  <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                    {editingEmail === account.email
+                      ? 'Đang chỉnh sửa tài khoản nội bộ.'
+                      : isCurrentAdmin
+                        ? 'Tài khoản quản trị đang đăng nhập.'
+                        : 'Có thể dùng cho phân công theo dõi và gán phòng ban.'}
+                  </p>
+                </div>
+                <div>
+                  <p className="col-header mb-2">{'Tên hiển thị'}</p>
+                  {editingEmail === account.email ? (
+                    <input
+                      value={editingDisplayName}
+                      onChange={(event) => setEditingDisplayName(event.target.value)}
+                      className="field-input h-11 py-2 text-sm"
+                      placeholder="Tên hiển thị"
+                    />
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-sm text-[var(--ink)]">
+                      {account.displayName || 'Chưa có'}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="col-header mb-2">{'Vai trò hệ thống'}</p>
+                  {editingEmail === account.email ? (
+                    <select
+                      value={editingRole}
+                      onChange={(event) => setEditingRole(event.target.value as 'admin' | 'contributor')}
+                      className="field-select h-11 text-sm"
+                    >
+                      <option value="contributor">Người dùng nội bộ</option>
+                      <option value="admin">Quản trị hệ thống</option>
+                    </select>
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-sm text-[var(--ink)]">
+                      {roleLabel(account.role === 'admin' ? 'admin' : 'contributor')}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {editingEmail === account.email ? (
+                    <>
+                      <button
+                        onClick={saveEdit}
+                        disabled={isSubmitting}
+                        className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {'Lưu'}
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        disabled={isSubmitting}
+                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {'Hủy'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => beginEdit(account)}
+                        disabled={isSubmitting || !account.email}
+                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {'Sửa'}
+                      </button>
+                      <button
+                        onClick={() => account.email && deleteAccount(account.email)}
+                        disabled={isSubmitting || !account.email || isCurrentAdmin}
+                        className="secondary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {'Vô hiệu hóa'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </div>
@@ -3240,7 +3535,7 @@ function SystemSettingsDepartmentsPanel({
             <div>
               <p className="section-title !text-xl">{selectedDepartment?.name || 'Chưa chọn phòng ban'}</p>
               <p className="page-subtitle mt-2 text-sm">
-                Thành viên `manager` được tạo và chỉnh sửa dự án của phòng ban này. `member` chỉ dùng cho phân công nội bộ.
+                Thành viên <code>manager</code> được tạo và chỉnh sửa dự án của phòng ban này. Thành viên <code>member</code> được tham gia nghiệp vụ nội bộ như tiếp nhận dữ liệu, báo cáo và trích báo cáo trong phạm vi phòng ban.
               </p>
             </div>
             {selectedDepartment ? (
@@ -3400,12 +3695,12 @@ function ChangePasswordModal({
     setError(null);
 
     if (password.trim().length < 6) {
-      setError('Máº­t kháº©u má»›i pháº£i cÃ³ Ã­t nháº¥t 6 kÃ½ tá»±.');
+      setError('Mật khẩu mới phải có ít nhất 6 ký tự.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Máº­t kháº©u xÃ¡c nháº­n khÃ´ng khá»›p.');
+      setError('Mật khẩu xác nhận không khớp.');
       return;
     }
 
@@ -3413,7 +3708,7 @@ function ChangePasswordModal({
     try {
       await onSubmit(password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'KhÃ´ng thá»ƒ Ä‘á»•i máº­t kháº©u.');
+      setError(err instanceof Error ? err.message : 'Không thể đổi mật khẩu.');
     } finally {
       setIsSubmitting(false);
     }
@@ -3424,9 +3719,9 @@ function ChangePasswordModal({
       <div className="panel-card w-full max-w-md rounded-[28px] p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="section-title">Äá»•i máº­t kháº©u</h3>
+            <h3 className="section-title">Đổi mật khẩu</h3>
             <p className="page-subtitle mt-2 text-sm">
-              Chá»©c nÄƒng nÃ y chá»‰ Ä‘á»•i máº­t kháº©u cho tÃ i khoáº£n Ä‘ang Ä‘Äƒng nháº­p. Reset máº­t kháº©u váº«n thá»±c hiá»‡n trá»±c tiáº¿p trong Supabase Dashboard.
+              Chức năng này chỉ đổi mật khẩu cho tài khoản đang đăng nhập. Reset mật khẩu vẫn thực hiện trực tiếp trong Supabase Dashboard.
             </p>
           </div>
           <button
@@ -3444,24 +3739,24 @@ function ChangePasswordModal({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="field-input"
-            placeholder="Máº­t kháº©u má»›i"
+            placeholder="Mật khẩu mới"
           />
           <input
             type="password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             className="field-input"
-            placeholder="Nháº­p láº¡i máº­t kháº©u má»›i"
+            placeholder="Nhập lại mật khẩu mới"
           />
           {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
           <button type="button" onClick={onClose} className="secondary-btn px-5 py-3" disabled={isSubmitting}>
-            Há»§y
+            Hủy
           </button>
           <button type="button" onClick={() => void submit()} className="primary-btn px-5 py-3" disabled={isSubmitting}>
-            {isSubmitting ? 'Äang lÆ°u...' : 'LÆ°u máº­t kháº©u'}
+            {isSubmitting ? 'Đang lưu...' : 'Lưu mật khẩu'}
           </button>
         </div>
       </div>
@@ -3575,7 +3870,7 @@ function DashboardOverview({
         ),
       );
     } catch (error) {
-      console.error('KhÃ´ng thá»ƒ Ä‘Ã¡nh dáº¥u thÃ´ng bÃ¡o ghi Ä‘Ã¨ lÃ  Ä‘Ã£ xem:', error);
+      console.error('Không thể đánh dấu thông báo ghi đè là đã xem:', error);
     }
   };
 
@@ -3596,7 +3891,7 @@ function DashboardOverview({
         }
       })
       .catch((error) => {
-        console.error('KhÃ´ng thá»ƒ táº£i thÃ´ng bÃ¡o ghi Ä‘Ã¨ dá»¯ liá»‡u:', error);
+        console.error('Không thể tải thông báo ghi đè dữ liệu:', error);
         if (active) {
           setOverwriteRequests([]);
         }

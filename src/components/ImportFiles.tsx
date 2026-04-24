@@ -1222,7 +1222,7 @@ export function ImportFiles({
               unitName,
               fileName: fileItem.file.name,
               missingSheets: [],
-              reason: 'ÄÆ¡n vá»‹ Ä‘Ã£ cÃ³ dá»¯ liá»‡u. HÃ£y báº¥m "Cho phÃ©p ghi Ä‘Ã¨" trÆ°á»›c khi tá»•ng há»£p.',
+              reason: 'Đơn vị đã có dữ liệu. Hãy bấm "Cho phép ghi đè" trước khi tổng hợp.',
               relativePath: fileItem.relativePath,
             });
             continue;
@@ -1238,7 +1238,7 @@ export function ImportFiles({
               reason:
                 overwriteError instanceof Error
                   ? overwriteError.message
-                  : 'KhÃ´ng thá»ƒ ghi Ä‘Ã¨ dá»¯ liá»‡u hiá»‡n cÃ³ cá»§a Ä‘Æ¡n vá»‹ nÃ y.',
+                  : 'Không thể ghi đè dữ liệu hiện có của đơn vị này.',
               relativePath: fileItem.relativePath,
             });
             continue;
