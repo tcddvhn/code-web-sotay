@@ -25,9 +25,11 @@ import {
   AIAnalysisType,
   AIReportLength,
   AIWritingTone,
+  buildFallbackAIAnalysisOutput,
   buildAIAnalysisInput,
   extractReportBlueprintFromSample,
   generateAIAnalysisOutput,
+  isRetryableAIModelError,
 } from '../aiAnalysisEngine';
 import { uploadFile } from '../supabase';
 import { buildDocxBlob } from '../utils/docxExport';
@@ -240,6 +242,7 @@ export function AIAnalysisView({
   const [analysisResult, setAnalysisResult] = useState<AIAnalysisOutput | null>(null);
   const [aiInputSnapshot, setAIInputSnapshot] = useState<Record<string, unknown> | null>(null);
   const [generationError, setGenerationError] = useState('');
+  const [generationNotice, setGenerationNotice] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -727,6 +730,7 @@ export function AIAnalysisView({
 
     setIsGenerating(true);
     setGenerationError('');
+    setGenerationNotice('');
     setIsProgressOpen(true);
     setProgressPercent(8);
     setProgressLabel('Đang kiểm tra phạm vi phân tích');
@@ -807,16 +811,30 @@ export function AIAnalysisView({
 
       setProgressPercent(78);
       setProgressLabel('Đang gọi Gemini để soạn báo cáo');
-      const aiOutput = await generateAIAnalysisOutput({
-        apiKey: resolvedGeminiApiKey,
-        input: aiInput,
-        onProgress: ({ label, percent }) => {
-          setProgressLabel(label);
-          if (typeof percent === 'number') {
-            setProgressPercent(percent);
-          }
-        },
-      });
+      let aiOutput: AIAnalysisOutput;
+      try {
+        aiOutput = await generateAIAnalysisOutput({
+          apiKey: resolvedGeminiApiKey,
+          input: aiInput,
+          onProgress: ({ label, percent }) => {
+            setProgressLabel(label);
+            if (typeof percent === 'number') {
+              setProgressPercent(percent);
+            }
+          },
+        });
+      } catch (error) {
+        if (!isRetryableAIModelError(error)) {
+          throw error;
+        }
+
+        setProgressPercent(90);
+        setProgressLabel('Gemini đang quá tải, hệ thống đang dựng báo cáo dự phòng từ dữ liệu thật');
+        aiOutput = buildFallbackAIAnalysisOutput(aiInput);
+        setGenerationNotice(
+          'Gemini đang quá tải tạm thời. Hệ thống đã tạo một bản báo cáo dự phòng từ dữ liệu thật để bạn vẫn có thể xem, chỉnh sửa và xuất DOCX.',
+        );
+      }
 
       setProgressPercent(92);
       setProgressLabel('Đang lưu lịch sử và mở trình soạn thảo');
@@ -1526,6 +1544,9 @@ export function AIAnalysisView({
             {generationError && (
               <p className="text-sm font-semibold text-[var(--primary-dark)]">{generationError}</p>
             )}
+            {!generationError && generationNotice && (
+              <p className="text-sm font-semibold text-[#b45309]">{generationNotice}</p>
+            )}
           </div>
         </section>
 
@@ -1605,6 +1626,7 @@ export function AIAnalysisView({
                     setAnalysisResult(null);
                     setAIInputSnapshot(null);
                     setGenerationError('');
+                    setGenerationNotice('');
                     setDocxNotice('');
                     setIsEditorOpen(false);
                   }}
@@ -1646,6 +1668,9 @@ export function AIAnalysisView({
               )}
               {docxNotice && (
                 <p className="mt-2 font-semibold text-[var(--primary-dark)]">{docxNotice}</p>
+              )}
+              {!generationError && generationNotice && (
+                <p className="mt-2 font-semibold text-[#b45309]">{generationNotice}</p>
               )}
             </div>
 
@@ -2108,6 +2133,9 @@ export function AIAnalysisView({
             <p className={`mt-3 text-sm ${generationError ? 'font-semibold text-[var(--primary-dark)]' : 'text-[var(--ink-soft)]'}`}>
               {progressLabel}
             </p>
+            {!generationError && generationNotice && (
+              <p className="mt-2 text-sm font-semibold text-[#b45309]">{generationNotice}</p>
+            )}
             <div className="mt-5 h-4 overflow-hidden rounded-full bg-[var(--surface-soft)]">
               <div
                 className="h-full rounded-full bg-[linear-gradient(90deg,#b30f14_0%,#d97706_100%)] transition-all duration-500"

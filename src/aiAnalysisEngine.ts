@@ -114,6 +114,158 @@ function isTransientGeminiError(error: unknown) {
   );
 }
 
+export function isRetryableAIModelError(error: unknown) {
+  return isTransientGeminiError(error);
+}
+
+function toPlainStringList(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean);
+}
+
+function buildScopeTitle(scope: Record<string, unknown>) {
+  const projectNames = toPlainStringList(scope.projectNames);
+  const year = typeof scope.year === 'string' ? scope.year : '';
+  const level = scope.analysisLevel === 'UNITS' ? 'chi tiết 132 đơn vị' : 'cấp Đảng bộ Thành phố';
+
+  if (projectNames.length === 1) {
+    return `Báo cáo phân tích ${level} - ${projectNames[0]}${year ? ` năm ${year}` : ''}`;
+  }
+
+  if (projectNames.length > 1) {
+    return `Báo cáo phân tích ${level} - ${projectNames.length} dự án${year ? ` năm ${year}` : ''}`;
+  }
+
+  return `Báo cáo phân tích ${level}${year ? ` năm ${year}` : ''}`;
+}
+
+function formatIndicatorLine(indicator: AIIndicatorSummary) {
+  const label =
+    indicator.indicatorLabel ||
+    [indicator.rowLabel, indicator.columnLabel].filter(Boolean).join(' - ') ||
+    indicator.indicatorKey;
+
+  const totalValue = Number(indicator.totalValue || 0).toLocaleString('vi-VN');
+  const unitCount = Number(indicator.nonZeroUnitCount || 0).toLocaleString('vi-VN');
+  return `${label}: tổng giá trị ${totalValue}, có số liệu tại ${unitCount} đơn vị.`;
+}
+
+function buildBlueprintSectionContent(kind: string, context: {
+  summary: Record<string, unknown>;
+  projectSummaries: Record<string, unknown>[];
+  indicatorSummaries: AIIndicatorSummary[];
+  anomalies: { title: string; detail: string }[];
+  recommendations: string[];
+}) {
+  const totalCells = Number(context.summary.cell_count || 0).toLocaleString('vi-VN');
+  const totalUnits = Number(context.summary.unit_count || 0).toLocaleString('vi-VN');
+  const totalTemplates = Number(context.summary.template_count || 0).toLocaleString('vi-VN');
+  const topIndicators = context.indicatorSummaries.slice(0, 3).map(formatIndicatorLine);
+  const topProjects = context.projectSummaries
+    .slice(0, 3)
+    .map((item) => {
+      const projectName = String(item.project_name || 'Dự án');
+      const cellCount = Number(item.cell_count || 0).toLocaleString('vi-VN');
+      const totalValue = Number(item.total_value || 0).toLocaleString('vi-VN');
+      return `${projectName}: ${cellCount} ô dữ liệu, tổng giá trị ${totalValue}.`;
+    });
+
+  switch (kind) {
+    case 'opening':
+      return `Phạm vi phân tích hiện có ${totalUnits} đơn vị phát sinh dữ liệu, ${totalTemplates} biểu mẫu liên quan và ${totalCells} ô dữ liệu đã được tổng hợp. Đây là bản báo cáo dự phòng được dựng tự động từ dữ liệu thật của hệ thống trong lúc dịch vụ AI đang quá tải.`;
+    case 'metrics_commentary':
+      return topIndicators.length > 0
+        ? topIndicators.join(' ')
+        : 'Hiện chưa trích được nhóm tiêu chí nổi bật để diễn giải sâu hơn.';
+    case 'risks':
+      return context.anomalies.length > 0
+        ? context.anomalies.slice(0, 3).map((item) => `${item.title}: ${item.detail}`).join(' ')
+        : 'Chưa phát hiện bất thường nổi bật từ lớp dữ liệu đã tổng hợp cho phạm vi đang chọn.';
+    case 'recommendations':
+      return context.recommendations.join(' ');
+    default:
+      if (topProjects.length > 0) {
+        return topProjects.join(' ');
+      }
+      return 'Nội dung mục này đang dùng bản dựng dự phòng từ dữ liệu tổng hợp của hệ thống.';
+  }
+}
+
+export function buildFallbackAIAnalysisOutput(input: Record<string, unknown>): AIAnalysisOutput {
+  const scope = ((input.scope as Record<string, unknown>) || {});
+  const summary = ((input.summary as Record<string, unknown>) || {});
+  const projectSummaries = Array.isArray(input.projectSummaries)
+    ? (input.projectSummaries as Record<string, unknown>[])
+    : [];
+  const indicatorSummaries = Array.isArray(input.indicatorSummaries)
+    ? (input.indicatorSummaries as AIIndicatorSummary[])
+    : [];
+  const anomalies = Array.isArray(input.anomalies)
+    ? (input.anomalies as { title: string; detail: string }[])
+    : [];
+  const blueprint = (input.reportBlueprint as AIReportBlueprintContent | null) || buildDefaultBlueprint('MEDIUM');
+  const appendixTables = Array.isArray(input.appendixTables)
+    ? (input.appendixTables as AIAnalysisOutput['appendixTables'])
+    : [];
+
+  const totalProjects = Number(summary.project_count || 0).toLocaleString('vi-VN');
+  const totalTemplates = Number(summary.template_count || 0).toLocaleString('vi-VN');
+  const totalUnits = Number(summary.unit_count || 0).toLocaleString('vi-VN');
+  const totalCells = Number(summary.cell_count || 0).toLocaleString('vi-VN');
+  const totalValue = Number(summary.total_value || 0).toLocaleString('vi-VN');
+
+  const keyFindings = [
+    `Phạm vi đang chọn có ${totalProjects} dự án, ${totalTemplates} biểu mẫu và ${totalUnits} đơn vị phát sinh dữ liệu.`,
+    `Tổng số ô dữ liệu đã dùng để phân tích là ${totalCells}, với tổng giá trị cộng dồn ${totalValue}.`,
+    ...indicatorSummaries.slice(0, 3).map(formatIndicatorLine),
+  ].filter(Boolean);
+
+  const projectHighlights = projectSummaries.slice(0, 5).map((item) => ({
+    projectName: String(item.project_name || 'Dự án'),
+    summary: `${String(item.project_name || 'Dự án')} hiện có ${Number(item.unit_count || 0).toLocaleString('vi-VN')} đơn vị, ${Number(item.template_count || 0).toLocaleString('vi-VN')} biểu mẫu, ${Number(item.cell_count || 0).toLocaleString('vi-VN')} ô dữ liệu và tổng giá trị ${Number(item.total_value || 0).toLocaleString('vi-VN')}.`,
+  }));
+
+  const recommendations = [
+    'Tiếp tục rà soát các tiêu chí đang có biến động lớn hoặc chênh lệch đáng kể giữa các dự án.',
+    'Ưu tiên kiểm tra lại những biểu mẫu hoặc đơn vị có tỷ lệ ô bằng 0 cao trước khi dùng cho báo cáo chính thức.',
+    'Sau khi dịch vụ AI ổn định, có thể tạo lại báo cáo để nhận được phần diễn giải sâu hơn bằng ngôn ngữ tự nhiên.',
+  ];
+
+  return {
+    title: buildScopeTitle(scope),
+    executiveSummary: `Hệ thống đã dựng bản báo cáo dự phòng từ dữ liệu thật do dịch vụ Gemini đang quá tải tạm thời. Phạm vi hiện có ${totalProjects} dự án, ${totalUnits} đơn vị, ${totalTemplates} biểu mẫu và ${totalCells} ô dữ liệu; tổng giá trị ghi nhận là ${totalValue}.`,
+    keyFindings,
+    projectHighlights,
+    riskItems:
+      anomalies.length > 0
+        ? anomalies.slice(0, 5)
+        : [
+            {
+              title: 'Dịch vụ AI tạm thời quá tải',
+              detail:
+                'Nội dung hiện tại được dựng theo chế độ dự phòng từ số liệu tổng hợp thật. Bạn vẫn có thể rà soát, chỉnh sửa và xuất DOCX ngay.',
+            },
+          ],
+    recommendations,
+    blueprintSections: (blueprint.sections || []).map((section) => ({
+      title: section.title,
+      content: buildBlueprintSectionContent(section.kind, {
+        summary,
+        projectSummaries,
+        indicatorSummaries,
+        anomalies,
+        recommendations,
+      }),
+    })),
+    appendixTables,
+  };
+}
+
 function deriveAnomalies(cells: AnalysisCellRecord[]) {
   const unitStats = new Map<
     string,
