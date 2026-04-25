@@ -28,6 +28,8 @@ import {
   loginWithSupabaseEmail,
   logoutSupabase,
   onSupabaseAuthStateChange,
+  provisionInternalAuthUser,
+  resetInternalAuthPassword,
   updateSupabasePassword,
 } from './supabase';
 import {
@@ -111,6 +113,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   receivedPath: 'C:\\TongHop\\01_DaTiepNhan',
 };
 const TOTAL_REPORT_UNIT_CODE = '__TOTAL_CITY__';
+const DEFAULT_INTERNAL_ACCOUNT_PASSWORD = 'btctuhn@456';
 const DEFAULT_INTERNAL_DEPARTMENTS: Array<Pick<Department, 'id' | 'code' | 'name' | 'isActive' | 'sortOrder'>> = [
   { id: 'PB01', code: 'PB01', name: 'Phòng Tổ chức đảng, đảng viên', isActive: true, sortOrder: 1 },
   { id: 'PB02', code: 'PB02', name: 'Phòng Bảo vệ chính trị Nội bộ', isActive: true, sortOrder: 2 },
@@ -263,10 +266,13 @@ export default function App() {
       email: user.email,
       displayName: repairLegacyUtf8(userProfile?.displayName || user.displayName || null) || null,
       role: userProfile?.role || (user.unitCode ? 'unit_user' : 'contributor'),
+      authUserId: userProfile?.authUserId || user.id,
+      mustChangePassword: userProfile?.mustChangePassword ?? false,
       unitCode: userProfile?.unitCode || user.unitCode || null,
       unitName: repairLegacyUtf8(userProfile?.unitName || user.unitName || null) || null,
     };
   }, [user, userProfile]);
+  const isForcedPasswordChange = Boolean(effectiveUserProfile?.mustChangePassword);
   const isAdmin = useMemo(() => effectiveUserProfile?.role === 'admin', [effectiveUserProfile]);
   const isUnitUser = useMemo(() => effectiveUserProfile?.role === 'unit_user', [effectiveUserProfile]);
   const currentDepartmentMembership = useMemo(() => {
@@ -512,6 +518,7 @@ export default function App() {
         }
         setUser(null);
         setUserProfile(null);
+        setIsChangePasswordOpen(false);
         releaseAuthGate();
         return;
       }
@@ -528,6 +535,7 @@ export default function App() {
         setAuthError('Phiên Supabase hiện không có email hợp lệ.');
         setUser(null);
         setUserProfile(null);
+        setIsChangePasswordOpen(false);
         setCurrentView('LOGIN');
         releaseAuthGate();
         return;
@@ -560,6 +568,7 @@ export default function App() {
           }
           setUser(null);
           setUserProfile(null);
+          setIsChangePasswordOpen(false);
           setCurrentView('LOGIN');
           releaseAuthGate();
           return;
@@ -578,8 +587,10 @@ export default function App() {
         setUser(nextUser);
         setUserProfile({
           ...profile,
+          authUserId: profile.authUserId || nextUser.id,
           displayName: getReadableDisplayName(profile.displayName, nextUser.displayName || nextUser.email),
         });
+        setIsChangePasswordOpen(Boolean(profile.mustChangePassword));
         setAuthError(null);
         setCurrentView((current) => (current === 'LOGIN' ? 'DASHBOARD' : current));
         releaseAuthGate();
@@ -597,6 +608,7 @@ export default function App() {
         setAuthError(error instanceof Error ? error.message : 'Không thể tải hồ sơ tài khoản từ Supabase.');
         setUser(null);
         setUserProfile(null);
+        setIsChangePasswordOpen(false);
         setCurrentView('LOGIN');
         releaseAuthGate();
         return;
@@ -1919,6 +1931,7 @@ export default function App() {
     email: string;
     displayName: string;
     role: 'admin' | 'contributor';
+    createLogin?: boolean;
   }) => {
     if (!isAdmin) {
       return;
@@ -1927,6 +1940,18 @@ export default function App() {
     const normalizedEmail = getAssignmentKey(payload.email);
     if (!normalizedEmail) {
       throw new Error('Email tài khoản nội bộ không hợp lệ.');
+    }
+
+    if (payload.createLogin) {
+      await provisionInternalAuthUser({
+        email: normalizedEmail,
+        displayName: payload.displayName || normalizedEmail,
+        role: payload.role,
+        createAuthUser: true,
+      });
+
+      await refreshDepartmentsAndUsers();
+      return;
     }
 
     await upsertUserProfileToSupabase({
@@ -1939,6 +1964,51 @@ export default function App() {
     });
 
     setUsers(await listUserProfilesFromSupabase());
+  };
+
+  const handleProvisionInternalAccountLogin = async (account: {
+    email: string;
+    displayName: string;
+    role: 'admin' | 'contributor';
+  }) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const normalizedEmail = getAssignmentKey(account.email);
+    if (!normalizedEmail) {
+      throw new Error('Email tài khoản nội bộ không hợp lệ.');
+    }
+
+    await provisionInternalAuthUser({
+      email: normalizedEmail,
+      displayName: account.displayName || normalizedEmail,
+      role: account.role,
+      createAuthUser: true,
+    });
+
+    await refreshDepartmentsAndUsers();
+  };
+
+  const handleResetInternalAccountPassword = async (account: {
+    email: string;
+    displayName: string;
+  }) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const normalizedEmail = getAssignmentKey(account.email);
+    if (!normalizedEmail) {
+      throw new Error('Email tài khoản nội bộ không hợp lệ.');
+    }
+
+    if (normalizedEmail === getAssignmentKey(effectiveUserProfile?.email)) {
+      throw new Error('Không dùng chức năng đặt lại mật khẩu cho chính tài khoản đang đăng nhập. Hãy dùng mục "Đổi mật khẩu".');
+    }
+
+    await resetInternalAuthPassword(normalizedEmail);
+    await refreshDepartmentsAndUsers();
   };
 
   const handleDeleteInternalAccount = async (email: string) => {
@@ -2004,6 +2074,10 @@ export default function App() {
 
   const handleChangePassword = async (nextPassword: string) => {
     await updateSupabasePassword(nextPassword);
+    if (effectiveUserProfile?.email && effectiveUserProfile.mustChangePassword) {
+      await updateUserProfileInSupabase(effectiveUserProfile.email, { mustChangePassword: false });
+      setUserProfile((current) => (current ? { ...current, mustChangePassword: false } : current));
+    }
     setIsChangePasswordOpen(false);
     alert('Đã cập nhật mật khẩu mới.');
   };
@@ -2352,6 +2426,8 @@ export default function App() {
                   accounts={internalUserProfiles}
                   currentAdminEmail={effectiveUserProfile?.email || null}
                   onUpsertAccount={handleUpsertInternalAccount}
+                  onProvisionAuthLogin={handleProvisionInternalAccountLogin}
+                  onResetPassword={handleResetInternalAccountPassword}
                   onDeleteAccount={handleDeleteInternalAccount}
                 />
               )}
@@ -2424,9 +2500,15 @@ export default function App() {
         />
       )}
       <main className="app-main flex-1 overflow-auto">{renderContent()}</main>
-      {isChangePasswordOpen && (
+      {(isChangePasswordOpen || isForcedPasswordChange) && (
         <ChangePasswordModal
-          onClose={() => setIsChangePasswordOpen(false)}
+          isForced={isForcedPasswordChange}
+          onClose={() => {
+            if (isForcedPasswordChange) {
+              return;
+            }
+            setIsChangePasswordOpen(false);
+          }}
           onSubmit={handleChangePassword}
         />
       )}
@@ -3034,6 +3116,8 @@ function SystemSettingsInternalAccountsPanel({
   accounts,
   currentAdminEmail,
   onUpsertAccount,
+  onProvisionAuthLogin,
+  onResetPassword,
   onDeleteAccount,
 }: {
   accounts: UserProfile[];
@@ -3042,12 +3126,23 @@ function SystemSettingsInternalAccountsPanel({
     email: string;
     displayName: string;
     role: 'admin' | 'contributor';
+    createLogin?: boolean;
+  }) => Promise<void>;
+  onProvisionAuthLogin: (payload: {
+    email: string;
+    displayName: string;
+    role: 'admin' | 'contributor';
+  }) => Promise<void>;
+  onResetPassword: (payload: {
+    email: string;
+    displayName: string;
   }) => Promise<void>;
   onDeleteAccount: (email: string) => Promise<void>;
 }) {
   const [draftEmail, setDraftEmail] = useState('');
   const [draftDisplayName, setDraftDisplayName] = useState('');
   const [draftRole, setDraftRole] = useState<'admin' | 'contributor'>('contributor');
+  const [draftCreateLogin, setDraftCreateLogin] = useState(true);
   const [editingEmail, setEditingEmail] = useState<string | null>(null);
   const [editingDisplayName, setEditingDisplayName] = useState('');
   const [editingRole, setEditingRole] = useState<'admin' | 'contributor'>('contributor');
@@ -3064,11 +3159,17 @@ function SystemSettingsInternalAccountsPanel({
         email: draftEmail,
         displayName: draftDisplayName || draftEmail,
         role: draftRole,
+        createLogin: draftCreateLogin,
       });
       setDraftEmail('');
       setDraftDisplayName('');
       setDraftRole('contributor');
-      setMessage('Đã thêm hoặc cập nhật tài khoản nội bộ. Tài khoản này sẽ xuất hiện trong phần phân công theo dõi và gán phòng ban.');
+      setDraftCreateLogin(true);
+      setMessage(
+        draftCreateLogin
+          ? `Đã thêm tài khoản nội bộ và cấp luôn đăng nhập Supabase Auth. Mật khẩu mặc định là ${DEFAULT_INTERNAL_ACCOUNT_PASSWORD} và người dùng sẽ bị buộc đổi mật khẩu ở lần đăng nhập đầu.`
+          : 'Đã thêm hoặc cập nhật tài khoản nội bộ. Tài khoản này sẽ xuất hiện trong phần phân công theo dõi và gán phòng ban.',
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Không thể lưu tài khoản nội bộ.');
     } finally {
@@ -3130,13 +3231,73 @@ function SystemSettingsInternalAccountsPanel({
     }
   };
 
+  const provisionLogin = async (account: UserProfile) => {
+    if (!account.email) {
+      return;
+    }
+    const confirmed = window.confirm(
+      `Tạo tài khoản đăng nhập Supabase Auth cho ${account.email} với mật khẩu mặc định ${DEFAULT_INTERNAL_ACCOUNT_PASSWORD}? Người dùng sẽ bị buộc đổi mật khẩu ở lần đăng nhập đầu.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onProvisionAuthLogin({
+        email: account.email,
+        displayName: account.displayName || account.email,
+        role: account.role === 'admin' ? 'admin' : 'contributor',
+      });
+      setMessage(
+        `Đã cấp đăng nhập cho ${account.email}. Mật khẩu mặc định là ${DEFAULT_INTERNAL_ACCOUNT_PASSWORD} và hệ thống sẽ buộc đổi mật khẩu ngay khi đăng nhập.`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể cấp đăng nhập cho tài khoản nội bộ.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetPassword = async (account: UserProfile) => {
+    if (!account.email) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Đặt lại mật khẩu cho ${account.email} về ${DEFAULT_INTERNAL_ACCOUNT_PASSWORD}? Người dùng sẽ bị buộc đổi mật khẩu ở lần đăng nhập tiếp theo.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage(null);
+    try {
+      await onResetPassword({
+        email: account.email,
+        displayName: account.displayName || account.email,
+      });
+      setMessage(
+        `Đã đặt lại mật khẩu cho ${account.email} về ${DEFAULT_INTERNAL_ACCOUNT_PASSWORD}. Tài khoản này sẽ bị buộc đổi mật khẩu khi đăng nhập tiếp theo.`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Không thể đặt lại mật khẩu cho tài khoản nội bộ.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="panel-card rounded-[24px] p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h3 className="section-title">{'Quản trị tài khoản nội bộ'}</h3>
           <p className="page-subtitle mt-2 text-sm">
-            {'Nguồn tài khoản này dùng cho phân công người theo dõi và gán thành viên phòng ban. Email tại đây phải trùng với tài khoản đã có trong Supabase Auth.'}
+            {
+              'Nguồn tài khoản này dùng cho phân công người theo dõi và gán thành viên phòng ban. Admin có thể lưu hồ sơ nội bộ, hoặc cấp luôn đăng nhập Supabase Auth với mật khẩu mặc định và cơ chế bắt buộc đổi mật khẩu ở lần đầu.'
+            }
           </p>
         </div>
         <div className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
@@ -3144,7 +3305,7 @@ function SystemSettingsInternalAccountsPanel({
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.95fr)_220px_180px] xl:grid-cols-[minmax(0,1.15fr)_minmax(240px,0.9fr)_200px_160px]">
+      <div className="mt-5 grid grid-cols-1 gap-3 2xl:grid-cols-[minmax(0,1.15fr)_minmax(240px,0.95fr)_220px_200px] xl:grid-cols-[minmax(0,1.05fr)_minmax(220px,0.9fr)_200px_180px]">
         <input
           value={draftEmail}
           onChange={(event) => setDraftEmail(event.target.value)}
@@ -3174,6 +3335,21 @@ function SystemSettingsInternalAccountsPanel({
         </button>
       </div>
 
+      <label className="mt-4 flex items-start gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--ink)]">
+        <input
+          type="checkbox"
+          checked={draftCreateLogin}
+          onChange={(event) => setDraftCreateLogin(event.target.checked)}
+          className="mt-1 h-4 w-4 accent-[var(--primary-dark)]"
+        />
+        <span>
+          <span className="font-semibold text-[var(--primary-dark)]">{'Tạo luôn tài khoản đăng nhập trên Supabase Auth'}</span>
+          <span className="mt-1 block text-[var(--ink-soft)]">
+            {`Nếu bật, hệ thống sẽ tạo user Auth với mật khẩu mặc định ${DEFAULT_INTERNAL_ACCOUNT_PASSWORD}, xác nhận email sẵn và buộc đổi mật khẩu ở lần đăng nhập đầu.`}
+          </span>
+        </span>
+      </label>
+
       {message && <p className="mt-4 text-sm font-medium text-[var(--ink-soft)]">{message}</p>}
 
       <div className="mt-6 max-h-[520px] space-y-3 overflow-y-auto rounded-[20px] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
@@ -3188,7 +3364,7 @@ function SystemSettingsInternalAccountsPanel({
             return (
               <div
                 key={account.email || account.id}
-                className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 2xl:grid-cols-[minmax(0,1.3fr)_minmax(240px,1fr)_220px_128px] xl:grid-cols-[minmax(0,1.15fr)_minmax(220px,0.95fr)_200px_128px]"
+                className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-4 2xl:grid-cols-[minmax(0,1.3fr)_minmax(240px,1fr)_220px_168px] xl:grid-cols-[minmax(0,1.15fr)_minmax(220px,0.95fr)_200px_160px]"
               >
                 <div className="min-w-0">
                   <p className="col-header mb-2">{'Email đăng nhập'}</p>
@@ -3198,7 +3374,11 @@ function SystemSettingsInternalAccountsPanel({
                       ? 'Đang chỉnh sửa tài khoản nội bộ.'
                       : isCurrentAdmin
                         ? 'Tài khoản quản trị đang đăng nhập.'
-                        : 'Có thể dùng cho phân công theo dõi và gán phòng ban.'}
+                        : account.authUserId
+                          ? account.mustChangePassword
+                            ? 'Đã có đăng nhập Supabase Auth. Người dùng sẽ bị buộc đổi mật khẩu khi đăng nhập lần đầu.'
+                            : 'Đã có đăng nhập Supabase Auth và có thể dùng cho phân công theo dõi, gán phòng ban.'
+                          : 'Hiện mới có hồ sơ nội bộ, chưa được cấp đăng nhập Supabase Auth.'}
                   </p>
                 </div>
                 <div>
@@ -3253,6 +3433,24 @@ function SystemSettingsInternalAccountsPanel({
                     </>
                   ) : (
                     <>
+                      {!account.authUserId && account.email && (
+                        <button
+                          onClick={() => provisionLogin(account)}
+                          disabled={isSubmitting}
+                          className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {'Cấp đăng nhập'}
+                        </button>
+                      )}
+                      {!!account.authUserId && account.email && (
+                        <button
+                          onClick={() => resetPassword(account)}
+                          disabled={isSubmitting || isCurrentAdmin}
+                          className="primary-btn w-full px-4 py-2 text-[10px] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {'Đặt lại mật khẩu'}
+                        </button>
+                      )}
                       <button
                         onClick={() => beginEdit(account)}
                         disabled={isSubmitting || !account.email}
@@ -3672,9 +3870,11 @@ function LoginView({
 }
 
 function ChangePasswordModal({
+  isForced = false,
   onClose,
   onSubmit,
 }: {
+  isForced?: boolean;
   onClose: () => void;
   onSubmit: (password: string) => Promise<void>;
 }) {
@@ -3713,16 +3913,20 @@ function ChangePasswordModal({
           <div>
             <h3 className="section-title">Đổi mật khẩu</h3>
             <p className="page-subtitle mt-2 text-sm">
-              Chức năng này chỉ đổi mật khẩu cho tài khoản đang đăng nhập. Reset mật khẩu vẫn thực hiện trực tiếp trong Supabase Dashboard.
+              {isForced
+                ? 'Tài khoản này vừa được cấp đăng nhập. Bạn cần đổi mật khẩu mặc định trước khi tiếp tục sử dụng hệ thống.'
+                : 'Chức năng này chỉ đổi mật khẩu cho tài khoản đang đăng nhập. Reset mật khẩu vẫn thực hiện trực tiếp trong Supabase Dashboard.'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/85 text-[var(--primary-dark)]"
-          >
-            <X size={16} />
-          </button>
+          {!isForced && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-white/85 text-[var(--primary-dark)]"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         <div className="mt-6 space-y-4">
@@ -3744,9 +3948,11 @@ function ChangePasswordModal({
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="secondary-btn px-5 py-3" disabled={isSubmitting}>
-            Hủy
-          </button>
+          {!isForced && (
+            <button type="button" onClick={onClose} className="secondary-btn px-5 py-3" disabled={isSubmitting}>
+              Hủy
+            </button>
+          )}
           <button type="button" onClick={() => void submit()} className="primary-btn px-5 py-3" disabled={isSubmitting}>
             {isSubmitting ? 'Đang lưu...' : 'Lưu mật khẩu'}
           </button>

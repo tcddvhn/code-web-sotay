@@ -113,6 +113,80 @@ export async function updateSupabasePassword(newPassword: string) {
   }
 }
 
+export async function provisionInternalAuthUser(payload: {
+  email: string;
+  displayName: string;
+  role: 'admin' | 'contributor';
+  createAuthUser?: boolean;
+}) {
+  const { data, error } = await supabase.functions.invoke('admin-provision-internal-user', {
+    body: {
+      email: payload.email.trim().toLowerCase(),
+      displayName: payload.displayName.trim(),
+      role: payload.role,
+      createAuthUser: payload.createAuthUser ?? true,
+    },
+  });
+
+  if (error) {
+    const response = (error as { context?: Response }).context;
+    if (response && typeof response.json === 'function') {
+      let body: any = null;
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
+
+      if (body && typeof body.error === 'string' && body.error.trim()) {
+        throw new Error(body.error);
+      }
+    }
+    throw new Error(error.message || 'Không thể cấp tài khoản đăng nhập trên Supabase Auth.');
+  }
+
+  return data as {
+    success: boolean;
+    email: string;
+    authUserId: string | null;
+    createdAuthUser: boolean;
+    mustChangePassword: boolean;
+  };
+}
+
+export async function resetInternalAuthPassword(email: string) {
+  const { data, error } = await supabase.functions.invoke('admin-reset-internal-password', {
+    body: {
+      email: email.trim().toLowerCase(),
+    },
+  });
+
+  if (error) {
+    const response = (error as { context?: Response }).context;
+    if (response && typeof response.json === 'function') {
+      let body: any = null;
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
+
+      if (body && typeof body.error === 'string' && body.error.trim()) {
+        throw new Error(body.error);
+      }
+    }
+    throw new Error(error.message || 'Không thể đặt lại mật khẩu tài khoản nội bộ.');
+  }
+
+  return data as {
+    success: boolean;
+    email: string;
+    authUserId: string;
+    mustChangePassword: boolean;
+    defaultPassword: string;
+  };
+}
+
 export async function ensureSupabaseSession() {
   const {
     data: { session },

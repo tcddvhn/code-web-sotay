@@ -112,6 +112,8 @@ export interface UserProfile {
   email: string | null;
   displayName: string | null;
   role: 'admin' | 'contributor' | 'unit_user';
+  authUserId?: string | null;
+  mustChangePassword?: boolean;
   unitCode?: string | null;
   unitName?: string | null;
 }

@@ -117,6 +117,7 @@ type SupabaseUserProfileRow = {
   unit_code: string | null;
   unit_name: string | null;
   is_active: boolean | null;
+  must_change_password: boolean | null;
   created_at: string | null;
   updated_at: string | null;
   last_login_at: string | null;
@@ -296,6 +297,8 @@ function mapUserProfile(row: SupabaseUserProfileRow): UserProfile {
     email: row.email,
     displayName: getReadableDisplayName(row.display_name, row.email),
     role: row.role || 'contributor',
+    authUserId: row.auth_user_id || null,
+    mustChangePassword: row.must_change_password ?? false,
     unitCode: row.unit_code || null,
     unitName: repairLegacyUtf8(row.unit_name || null) || null,
   };
@@ -817,20 +820,27 @@ export async function upsertUserProfile(profile: {
   unitCode?: string | null;
   unitName?: string | null;
   isActive?: boolean;
+  mustChangePassword?: boolean;
 }) {
-  const { error } = await supabase.from('user_profiles').upsert(
-    {
-      email: getAssignmentKey(profile.email),
-      auth_user_id: profile.authUserId || null,
-      display_name: profile.displayName,
-      role: profile.role,
-      unit_code: profile.unitCode || null,
-      unit_name: profile.unitName || null,
-      is_active: profile.isActive ?? true,
-      updated_at: nowIso(),
-    },
-    { onConflict: 'email' },
-  );
+  const payload: Record<string, unknown> = {
+    email: getAssignmentKey(profile.email),
+    display_name: profile.displayName,
+    role: profile.role,
+    unit_code: profile.unitCode || null,
+    unit_name: profile.unitName || null,
+    is_active: profile.isActive ?? true,
+    updated_at: nowIso(),
+  };
+
+  if (profile.authUserId !== undefined) {
+    payload.auth_user_id = profile.authUserId || null;
+  }
+
+  if (profile.mustChangePassword !== undefined) {
+    payload.must_change_password = profile.mustChangePassword;
+  }
+
+  const { error } = await supabase.from('user_profiles').upsert(payload, { onConflict: 'email' });
 
   if (error) {
     throw new Error(error.message || 'Supabase request failed.');
@@ -843,6 +853,8 @@ export async function updateUserProfile(email: string, patch: {
   unitCode?: string | null;
   unitName?: string | null;
   isActive?: boolean;
+  authUserId?: string | null;
+  mustChangePassword?: boolean;
 }) {
   const normalizedEmail = getAssignmentKey(email);
   if (!normalizedEmail) {
@@ -858,6 +870,8 @@ export async function updateUserProfile(email: string, patch: {
   if (patch.unitCode !== undefined) payload.unit_code = patch.unitCode || null;
   if (patch.unitName !== undefined) payload.unit_name = patch.unitName || null;
   if (patch.isActive !== undefined) payload.is_active = patch.isActive;
+  if (patch.authUserId !== undefined) payload.auth_user_id = patch.authUserId || null;
+  if (patch.mustChangePassword !== undefined) payload.must_change_password = patch.mustChangePassword;
 
   const { error } = await supabase
     .from('user_profiles')
@@ -1502,4 +1516,3 @@ export function buildGlobalAssignmentRows(users: AssignmentUser[], current: Reco
       } satisfies SupabaseGlobalAssignmentRow;
     });
 }
-
