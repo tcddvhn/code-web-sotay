@@ -338,6 +338,13 @@ export default function App() {
 
     return projects;
   }, [currentDepartmentId, effectiveUserProfile, isAdmin, isAuthenticated, isUnitUser, projectUnitScopeByProjectId, projects]);
+  const selectableProjects = useMemo(() => {
+    if (!isAuthenticated || isAdmin) {
+      return projects;
+    }
+
+    return visibleProjects;
+  }, [isAdmin, isAuthenticated, projects, visibleProjects]);
   const currentProject = useMemo(
     () => projects.find((p) => p.id === selectedProjectId) || null,
     [projects, selectedProjectId],
@@ -1064,15 +1071,17 @@ export default function App() {
   }, [departments, isAdmin, isAuthenticated]);
 
   useEffect(() => {
-    if (projects.length > 0 && !projects.find((p) => p.id === selectedProjectId)) {
-      setSelectedProjectId(projects[0].id);
+    if (selectableProjects.length > 0) {
+      if (!selectableProjects.some((project) => project.id === selectedProjectId)) {
+        setSelectedProjectId(selectableProjects[0].id);
+      }
       return;
     }
 
-    if (projects.length === 0 && selectedProjectId) {
+    if (selectedProjectId) {
       setSelectedProjectId('');
     }
-  }, [projects, selectedProjectId]);
+  }, [selectableProjects, selectedProjectId]);
 
   useEffect(() => {
     if (!isAuthenticated && ['IMPORT', 'REPORTS', 'EXTRACT_REPORTS', 'AI_ANALYSIS', 'PROJECTS', 'LEARN_FORM', 'SETTINGS'].includes(currentView)) {
@@ -1114,23 +1123,6 @@ export default function App() {
       setCurrentView('DASHBOARD');
     }
   }, [canAccessAIAnalysis, canAccessExtractReports, canAccessImport, canAccessReports, currentView, isAuthenticated]);
-
-  useEffect(() => {
-    if (isAdmin) {
-      return;
-    }
-
-    if (visibleProjects.length === 0) {
-      if (selectedProjectId) {
-        setSelectedProjectId('');
-      }
-      return;
-    }
-
-    if (!visibleProjects.some((project) => project.id === selectedProjectId)) {
-      setSelectedProjectId(visibleProjects[0].id);
-    }
-  }, [isAdmin, selectedProjectId, visibleProjects]);
 
   useEffect(() => {
     if (!selectedProjectId) {
