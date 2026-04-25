@@ -3563,8 +3563,8 @@ function SystemSettingsDepartmentsPanel({
               onChange={(event) => setSelectedMembershipRole(event.target.value as 'manager' | 'member')}
               className="field-select"
             >
-              <option value="manager">Manager</option>
-              <option value="member">Member</option>
+              <option value="manager">Quản lý phòng ban</option>
+              <option value="member">Thành viên phòng ban</option>
             </select>
             <button
               onClick={submitDepartmentMember}
@@ -3591,7 +3591,7 @@ function SystemSettingsDepartmentsPanel({
                     <p className="mt-1 text-xs text-[var(--ink-soft)]">{member.userEmail}</p>
                   </div>
                   <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ink-soft)]">
-                    {member.membershipRole === 'manager' ? 'Manager' : 'Member'}
+                    {member.membershipRole === 'manager' ? 'Quản lý' : 'Thành viên'}
                   </div>
                   <button
                     onClick={() => deactivateMember(member)}

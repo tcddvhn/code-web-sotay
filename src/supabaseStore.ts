@@ -418,7 +418,7 @@ export async function upsertDepartment(department: Department) {
   const { error } = await supabase.from('departments').upsert(payload, { onConflict: 'id' });
   if (error) {
     if (error.message?.includes("Could not find the table 'public.departments'")) {
-      throw new Error('Bang departments chua duoc khoi tao. Hay chay file supabase/departments_rollout.sql truoc.');
+      throw new Error('Bảng departments chưa được khởi tạo. Hãy chạy file supabase/departments_rollout.sql trước.');
     }
     throw new Error(error.message || 'Supabase request failed.');
   }
@@ -458,7 +458,7 @@ export async function upsertDepartmentMember(member: DepartmentMember) {
   const { error } = await supabase.from('department_members').upsert(payload, { onConflict: 'id' });
   if (error) {
     if (error.message?.includes("Could not find the table 'public.department_members'")) {
-      throw new Error('Bang department_members chua duoc khoi tao. Hay chay file supabase/departments_rollout.sql truoc.');
+      throw new Error('Bảng department_members chưa được khởi tạo. Hãy chạy file supabase/departments_rollout.sql trước.');
     }
     throw new Error(error.message || 'Supabase request failed.');
   }
@@ -472,7 +472,7 @@ export async function deactivateDepartmentMember(memberId: string) {
 
   if (error) {
     if (error.message?.includes("Could not find the table 'public.department_members'")) {
-      throw new Error('Bang department_members chua duoc khoi tao. Hay chay file supabase/departments_rollout.sql truoc.');
+      throw new Error('Bảng department_members chưa được khởi tạo. Hãy chạy file supabase/departments_rollout.sql trước.');
     }
     throw new Error(error.message || 'Supabase request failed.');
   }
@@ -506,7 +506,7 @@ export async function replaceProjectUnits(projectId: string, unitCodes: string[]
   const { error: deleteError } = await supabase.from('project_units').delete().eq('project_id', projectId);
   if (deleteError) {
     if (deleteError.message?.includes("Could not find the table 'public.project_units'")) {
-      throw new Error('Bang project_units chua duoc khoi tao. Hay chay file supabase/project_units_rollout.sql truoc.');
+      throw new Error('Bảng project_units chưa được khởi tạo. Hãy chạy file supabase/project_units_rollout.sql trước.');
     }
     throw new Error(deleteError.message || 'Supabase request failed.');
   }
@@ -619,7 +619,7 @@ export async function upsertExtractReportBlueprint(blueprint: ExtractReportBluep
 
   if (error) {
     if (error.message?.includes("Could not find the table 'public.extract_report_blueprints'")) {
-      throw new Error('Bang extract_report_blueprints chua duoc khoi tao. Hay chay file supabase/extract_reports_rollout.sql truoc.');
+      throw new Error('Bảng extract_report_blueprints chưa được khởi tạo. Hãy chạy file supabase/extract_reports_rollout.sql trước.');
     }
     throw new Error(error.message || 'Supabase request failed.');
   }
@@ -659,7 +659,7 @@ export async function appendExtractReportBlueprintVersion(version: ExtractReport
   if (error) {
     if (error.message?.includes("Could not find the table 'public.extract_report_blueprint_versions'")) {
       throw new Error(
-        'Bang extract_report_blueprint_versions chua duoc khoi tao. Hay chay file supabase/extract_reports_rollout.sql truoc.',
+        'Bảng extract_report_blueprint_versions chưa được khởi tạo. Hãy chạy file supabase/extract_reports_rollout.sql trước.',
       );
     }
     throw new Error(error.message || 'Supabase request failed.');
@@ -846,7 +846,7 @@ export async function updateUserProfile(email: string, patch: {
 }) {
   const normalizedEmail = getAssignmentKey(email);
   if (!normalizedEmail) {
-    throw new Error('Email tai khoan khong hop le.');
+    throw new Error('Email tài khoản không hợp lệ.');
   }
 
   const payload: Record<string, any> = {
@@ -969,7 +969,7 @@ export async function listRowsByProject(projectId: string) {
   }
 
   if (rows.length < expectedCount) {
-    throw new Error(`Chi tai duoc ${rows.length}/${expectedCount} dong du lieu tong hop tu Supabase.`);
+    throw new Error(`Chỉ tải được ${rows.length}/${expectedCount} dòng dữ liệu tổng hợp từ Supabase.`);
   }
 
   return rows.map((row) => ({
@@ -1054,7 +1054,7 @@ export async function listRowsByScope(params: {
   }
 
   if (rows.length < expectedCount) {
-    throw new Error(`Chi tai duoc ${rows.length}/${expectedCount} dong du lieu tong hop theo pham vi tu Supabase.`);
+    throw new Error(`Chỉ tải được ${rows.length}/${expectedCount} dòng dữ liệu tổng hợp theo phạm vi từ Supabase.`);
   }
 
   return rows.map((row) => ({
@@ -1502,6 +1502,4 @@ export function buildGlobalAssignmentRows(users: AssignmentUser[], current: Reco
       } satisfies SupabaseGlobalAssignmentRow;
     });
 }
-
-
 

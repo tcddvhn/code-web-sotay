@@ -97,6 +97,101 @@ as $$
     );
 $$;
 
+create or replace function public.current_unit_code()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select up.unit_code
+  from public.user_profiles up
+  where lower(up.email) = lower(auth.email())
+    and up.role = 'unit_user'
+    and up.is_active = true
+    and coalesce(up.unit_code, '') <> ''
+  limit 1;
+$$;
+
+create or replace function public.can_access_project(p_project_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.is_admin_user()
+    or exists (
+      select 1
+      from public.projects p
+      join public.department_members dm on dm.department_id = p.owner_department_id
+      where p.id = p_project_id
+        and dm.user_email = auth.email()
+        and dm.is_active = true
+    )
+    or exists (
+      select 1
+      from public.projects p
+      where p.id = p_project_id
+        and public.current_unit_code() is not null
+        and (
+          not exists (
+            select 1
+            from public.project_units pu_any
+            where pu_any.project_id = p.id
+          )
+          or exists (
+            select 1
+            from public.project_units pu
+            where pu.project_id = p.id
+              and pu.unit_code = public.current_unit_code()
+          )
+        )
+    );
+$$;
+
+create or replace function public.can_access_project_unit(p_project_id text, p_unit_code text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    public.is_admin_user()
+    or exists (
+      select 1
+      from public.projects p
+      join public.department_members dm on dm.department_id = p.owner_department_id
+      where p.id = p_project_id
+        and dm.user_email = auth.email()
+        and dm.is_active = true
+    )
+    or (
+      public.current_unit_code() is not null
+      and p_unit_code = public.current_unit_code()
+      and exists (
+        select 1
+        from public.projects p
+        where p.id = p_project_id
+          and (
+            not exists (
+              select 1
+              from public.project_units pu_any
+              where pu_any.project_id = p.id
+            )
+            or exists (
+              select 1
+              from public.project_units pu
+              where pu.project_id = p.id
+                and pu.unit_code = public.current_unit_code()
+            )
+          )
+      )
+    );
+$$;
+
 alter table public.departments enable row level security;
 alter table public.department_members enable row level security;
 
@@ -110,13 +205,30 @@ create policy "admin_update_departments" on public.departments for update to aut
 create policy "admin_delete_departments" on public.departments for delete to authenticated using (public.is_admin_user());
 
 drop policy if exists "auth_read_department_members" on public.department_members;
+drop policy if exists "scoped_read_department_members" on public.department_members;
 drop policy if exists "admin_insert_department_members" on public.department_members;
 drop policy if exists "admin_update_department_members" on public.department_members;
 drop policy if exists "admin_delete_department_members" on public.department_members;
-create policy "auth_read_department_members" on public.department_members for select to authenticated using (public.is_active_user());
+create policy "scoped_read_department_members" on public.department_members
+for select to authenticated
+using (
+  public.is_admin_user()
+  or lower(user_email) = lower(auth.email())
+  or (
+    public.current_department_id() is not null
+    and department_id = public.current_department_id()
+  )
+);
 create policy "admin_insert_department_members" on public.department_members for insert to authenticated with check (public.is_admin_user());
 create policy "admin_update_department_members" on public.department_members for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
 create policy "admin_delete_department_members" on public.department_members for delete to authenticated using (public.is_admin_user());
+
+drop policy if exists "public_read_projects" on public.projects;
+drop policy if exists "auth_read_projects" on public.projects;
+drop policy if exists "scoped_read_projects" on public.projects;
+create policy "scoped_read_projects" on public.projects
+for select to authenticated
+using (public.can_access_project(id));
 
 drop policy if exists "manager_insert_projects" on public.projects;
 drop policy if exists "manager_update_projects" on public.projects;
@@ -137,9 +249,13 @@ with check (
     and owner_department_id = public.current_department_id()
   )
 );
-create policy "manager_delete_projects" on public.projects
-for delete to authenticated
-using (public.can_manage_project(id));
+
+drop policy if exists "public_read_project_units" on public.project_units;
+drop policy if exists "auth_read_project_units" on public.project_units;
+drop policy if exists "scoped_read_project_units" on public.project_units;
+create policy "scoped_read_project_units" on public.project_units
+for select to authenticated
+using (public.can_access_project_unit(project_id, unit_code));
 
 drop policy if exists "manager_insert_project_units" on public.project_units;
 drop policy if exists "manager_update_project_units" on public.project_units;
@@ -155,6 +271,13 @@ create policy "manager_delete_project_units" on public.project_units
 for delete to authenticated
 using (public.can_manage_project(project_id));
 
+drop policy if exists "public_read_templates" on public.templates;
+drop policy if exists "auth_read_templates" on public.templates;
+drop policy if exists "scoped_read_templates" on public.templates;
+create policy "scoped_read_templates" on public.templates
+for select to authenticated
+using (public.can_access_project(project_id));
+
 drop policy if exists "manager_insert_templates" on public.templates;
 drop policy if exists "manager_update_templates" on public.templates;
 drop policy if exists "manager_delete_templates" on public.templates;
@@ -169,6 +292,12 @@ create policy "manager_delete_templates" on public.templates
 for delete to authenticated
 using (public.can_manage_project(project_id));
 
+drop policy if exists "auth_read_extract_report_blueprints" on public.extract_report_blueprints;
+drop policy if exists "scoped_read_extract_report_blueprints" on public.extract_report_blueprints;
+create policy "scoped_read_extract_report_blueprints" on public.extract_report_blueprints
+for select to authenticated
+using (public.can_access_project(project_id));
+
 drop policy if exists "manager_insert_extract_report_blueprints" on public.extract_report_blueprints;
 drop policy if exists "manager_update_extract_report_blueprints" on public.extract_report_blueprints;
 drop policy if exists "manager_delete_extract_report_blueprints" on public.extract_report_blueprints;
@@ -182,6 +311,19 @@ with check (public.can_manage_project(project_id));
 create policy "manager_delete_extract_report_blueprints" on public.extract_report_blueprints
 for delete to authenticated
 using (public.can_manage_project(project_id));
+
+drop policy if exists "auth_read_extract_report_blueprint_versions" on public.extract_report_blueprint_versions;
+drop policy if exists "scoped_read_extract_report_blueprint_versions" on public.extract_report_blueprint_versions;
+create policy "scoped_read_extract_report_blueprint_versions" on public.extract_report_blueprint_versions
+for select to authenticated
+using (
+  exists (
+    select 1
+    from public.extract_report_blueprints bp
+    where bp.id = blueprint_id
+      and public.can_access_project(bp.project_id)
+  )
+);
 
 drop policy if exists "manager_insert_extract_report_blueprint_versions" on public.extract_report_blueprint_versions;
 drop policy if exists "manager_delete_extract_report_blueprint_versions" on public.extract_report_blueprint_versions;

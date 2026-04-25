@@ -217,10 +217,40 @@ using (
   )
 );
 
+drop policy if exists "manager_delete_projects" on public.projects;
+drop policy if exists "admin_delete_projects" on public.projects;
+create policy "admin_delete_projects" on public.projects
+for delete to authenticated
+using (public.is_admin_user());
+
+drop policy if exists "public_read_projects" on public.projects;
+drop policy if exists "auth_read_projects" on public.projects;
+drop policy if exists "scoped_read_projects" on public.projects;
+create policy "scoped_read_projects" on public.projects
+for select to authenticated
+using (public.can_access_project(id));
+
+drop policy if exists "public_read_project_units" on public.project_units;
+drop policy if exists "auth_read_project_units" on public.project_units;
+drop policy if exists "scoped_read_project_units" on public.project_units;
+create policy "scoped_read_project_units" on public.project_units
+for select to authenticated
+using (public.can_access_project_unit(project_id, unit_code));
+
+drop policy if exists "public_read_templates" on public.templates;
+drop policy if exists "auth_read_templates" on public.templates;
+drop policy if exists "scoped_read_templates" on public.templates;
+create policy "scoped_read_templates" on public.templates
+for select to authenticated
+using (public.can_access_project(project_id));
+
 drop policy if exists "public_read_consolidated_rows" on public.consolidated_rows;
 drop policy if exists "auth_read_consolidated_rows" on public.consolidated_rows;
 drop policy if exists "auth_insert_consolidated_rows" on public.consolidated_rows;
 drop policy if exists "auth_update_consolidated_rows" on public.consolidated_rows;
+drop policy if exists "scoped_read_consolidated_rows" on public.consolidated_rows;
+drop policy if exists "scoped_insert_consolidated_rows" on public.consolidated_rows;
+drop policy if exists "scoped_update_consolidated_rows" on public.consolidated_rows;
 
 create policy "scoped_read_consolidated_rows" on public.consolidated_rows
 for select to authenticated
@@ -239,6 +269,9 @@ drop policy if exists "public_read_data_files" on public.data_files;
 drop policy if exists "auth_read_data_files" on public.data_files;
 drop policy if exists "auth_insert_data_files" on public.data_files;
 drop policy if exists "auth_update_data_files" on public.data_files;
+drop policy if exists "scoped_read_data_files" on public.data_files;
+drop policy if exists "scoped_insert_data_files" on public.data_files;
+drop policy if exists "scoped_update_data_files" on public.data_files;
 
 create policy "scoped_read_data_files" on public.data_files
 for select to authenticated
@@ -255,6 +288,8 @@ with check (public.can_access_project_unit(project_id, unit_code));
 
 drop policy if exists "auth_read_report_exports" on public.report_exports;
 drop policy if exists "auth_insert_report_exports" on public.report_exports;
+drop policy if exists "scoped_read_report_exports" on public.report_exports;
+drop policy if exists "scoped_insert_report_exports" on public.report_exports;
 
 create policy "scoped_read_report_exports" on public.report_exports
 for select to authenticated
@@ -264,36 +299,75 @@ create policy "scoped_insert_report_exports" on public.report_exports
 for insert to authenticated
 with check (public.can_access_project_unit(project_id, unit_code));
 
-drop policy if exists "auth_read_analysis_cells" on public.analysis_cells;
-drop policy if exists "auth_insert_analysis_cells" on public.analysis_cells;
-drop policy if exists "auth_update_analysis_cells" on public.analysis_cells;
+do $$
+begin
+  if to_regclass('public.extract_report_blueprints') is not null then
+    execute 'drop policy if exists "auth_read_extract_report_blueprints" on public.extract_report_blueprints';
+    execute 'drop policy if exists "scoped_read_extract_report_blueprints" on public.extract_report_blueprints';
+    execute 'create policy "scoped_read_extract_report_blueprints" on public.extract_report_blueprints
+      for select to authenticated
+      using (public.can_access_project(project_id))';
+  end if;
+end $$;
 
-create policy "scoped_read_analysis_cells" on public.analysis_cells
-for select to authenticated
-using (public.can_access_project_unit(project_id, unit_code));
+do $$
+begin
+  if to_regclass('public.extract_report_blueprint_versions') is not null then
+    execute 'drop policy if exists "auth_read_extract_report_blueprint_versions" on public.extract_report_blueprint_versions';
+    execute 'drop policy if exists "scoped_read_extract_report_blueprint_versions" on public.extract_report_blueprint_versions';
+    execute 'create policy "scoped_read_extract_report_blueprint_versions" on public.extract_report_blueprint_versions
+      for select to authenticated
+      using (
+        exists (
+          select 1
+          from public.extract_report_blueprints bp
+          where bp.id = blueprint_id
+            and public.can_access_project(bp.project_id)
+        )
+      )';
+  end if;
+end $$;
 
-create policy "scoped_insert_analysis_cells" on public.analysis_cells
-for insert to authenticated
-with check (public.can_access_project_unit(project_id, unit_code));
+do $$
+begin
+  if to_regclass('public.analysis_cells') is not null then
+    execute 'drop policy if exists "auth_read_analysis_cells" on public.analysis_cells';
+    execute 'drop policy if exists "auth_insert_analysis_cells" on public.analysis_cells';
+    execute 'drop policy if exists "auth_update_analysis_cells" on public.analysis_cells';
+    execute 'drop policy if exists "scoped_read_analysis_cells" on public.analysis_cells';
+    execute 'drop policy if exists "scoped_insert_analysis_cells" on public.analysis_cells';
+    execute 'drop policy if exists "scoped_update_analysis_cells" on public.analysis_cells';
+    execute 'create policy "scoped_read_analysis_cells" on public.analysis_cells
+      for select to authenticated
+      using (public.can_access_project_unit(project_id, unit_code))';
+    execute 'create policy "scoped_insert_analysis_cells" on public.analysis_cells
+      for insert to authenticated
+      with check (public.can_access_project_unit(project_id, unit_code))';
+    execute 'create policy "scoped_update_analysis_cells" on public.analysis_cells
+      for update to authenticated
+      using (public.can_access_project_unit(project_id, unit_code))
+      with check (public.can_access_project_unit(project_id, unit_code))';
+  end if;
+end $$;
 
-create policy "scoped_update_analysis_cells" on public.analysis_cells
-for update to authenticated
-using (public.can_access_project_unit(project_id, unit_code))
-with check (public.can_access_project_unit(project_id, unit_code));
-
-drop policy if exists "auth_read_ai_analysis_reports" on public.ai_analysis_reports;
-drop policy if exists "auth_insert_ai_analysis_reports" on public.ai_analysis_reports;
-drop policy if exists "auth_update_ai_analysis_reports" on public.ai_analysis_reports;
-
-create policy "admin_read_ai_analysis_reports" on public.ai_analysis_reports
-for select to authenticated
-using (public.is_admin_user());
-
-create policy "admin_insert_ai_analysis_reports" on public.ai_analysis_reports
-for insert to authenticated
-with check (public.is_admin_user());
-
-create policy "admin_update_ai_analysis_reports" on public.ai_analysis_reports
-for update to authenticated
-using (public.is_admin_user())
-with check (public.is_admin_user());
+do $$
+begin
+  if to_regclass('public.ai_analysis_reports') is not null then
+    execute 'drop policy if exists "auth_read_ai_analysis_reports" on public.ai_analysis_reports';
+    execute 'drop policy if exists "auth_insert_ai_analysis_reports" on public.ai_analysis_reports';
+    execute 'drop policy if exists "auth_update_ai_analysis_reports" on public.ai_analysis_reports';
+    execute 'drop policy if exists "admin_read_ai_analysis_reports" on public.ai_analysis_reports';
+    execute 'drop policy if exists "admin_insert_ai_analysis_reports" on public.ai_analysis_reports';
+    execute 'drop policy if exists "admin_update_ai_analysis_reports" on public.ai_analysis_reports';
+    execute 'create policy "admin_read_ai_analysis_reports" on public.ai_analysis_reports
+      for select to authenticated
+      using (public.is_admin_user())';
+    execute 'create policy "admin_insert_ai_analysis_reports" on public.ai_analysis_reports
+      for insert to authenticated
+      with check (public.is_admin_user())';
+    execute 'create policy "admin_update_ai_analysis_reports" on public.ai_analysis_reports
+      for update to authenticated
+      using (public.is_admin_user())
+      with check (public.is_admin_user())';
+  end if;
+end $$;

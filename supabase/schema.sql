@@ -592,10 +592,18 @@ create policy "admin_update_departments" on departments for update to authentica
 create policy "admin_delete_departments" on departments for delete to authenticated using (public.is_admin_user());
 
 drop policy if exists "auth_read_department_members" on department_members;
+drop policy if exists "scoped_read_department_members" on department_members;
 drop policy if exists "admin_insert_department_members" on department_members;
 drop policy if exists "admin_update_department_members" on department_members;
 drop policy if exists "admin_delete_department_members" on department_members;
-create policy "auth_read_department_members" on department_members for select to authenticated using (public.is_active_user());
+create policy "scoped_read_department_members" on department_members for select to authenticated using (
+  public.is_admin_user()
+  or lower(user_email) = lower(auth.email())
+  or (
+    public.current_department_id() is not null
+    and department_id = public.current_department_id()
+  )
+);
 create policy "admin_insert_department_members" on department_members for insert to authenticated with check (public.is_admin_user());
 create policy "admin_update_department_members" on department_members for update to authenticated using (public.is_admin_user()) with check (public.is_admin_user());
 create policy "admin_delete_department_members" on department_members for delete to authenticated using (public.is_admin_user());
@@ -610,7 +618,6 @@ create policy "manager_update_projects" on projects for update to authenticated 
   public.is_admin_user()
   or (public.is_department_manager() and owner_department_id = public.current_department_id())
 );
-create policy "manager_delete_projects" on projects for delete to authenticated using (public.can_manage_project(id));
 
 drop policy if exists "manager_insert_project_units" on project_units;
 drop policy if exists "manager_update_project_units" on project_units;

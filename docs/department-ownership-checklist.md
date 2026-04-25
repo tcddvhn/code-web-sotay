@@ -103,6 +103,11 @@ File đã sửa:
 - `data_overwrite_requests`
 - `analysis_cells`
 - `ai_analysis_reports`
+- `projects`
+- `project_units`
+- `templates`
+- `extract_report_blueprints`
+- `extract_report_blueprint_versions`
 
 File rollout đã chuẩn bị:
 - `supabase/department_access_hardening.sql`
@@ -112,13 +117,19 @@ Lưu ý:
   - `supabase/departments_rollout.sql`
   - `supabase/unit_user_rollout.sql`
   - `supabase/ai_analysis_setup.sql`
+- File hardening hiện đã được chỉnh theo hướng:
+  - idempotent hơn khi chạy lặp lại
+  - `manager` không còn quyền xóa dự án ở tầng backend
+  - đọc `department_members` chỉ còn theo `admin`, chính mình, hoặc phòng ban hiện tại
+  - chặn đọc rộng của `projects`, `project_units`, `templates`, `extract_report_blueprints`, `extract_report_blueprint_versions`
 
 2. Rà lại policy đọc bảng nội bộ
-- `department_members` hiện đang đọc khá rộng cho mọi `authenticated`
-- nếu cần bảo mật hơn, phải thu hẹp theo `admin` hoặc theo phòng mình
+- `department_members` đã được thu hẹp theo `admin`, chính mình, hoặc phòng ban hiện tại
+- còn cần kiểm tra production để chắc chắn policy cũ không còn sót
 
 3. Kiểm tra production
 - `departments_rollout.sql` đã chạy thật chưa
+- `department_access_hardening.sql` đã chạy thật chưa
 - 5 phòng ban đã có đủ chưa
 - `department_members` đã gán đủ chưa
 - dự án cũ đã gán đúng `owner_department_id` thực tế chưa
