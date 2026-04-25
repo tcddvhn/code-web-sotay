@@ -213,6 +213,7 @@ function isUnitVisibleForProject(unit: ManagedUnit, project: Project | null) {
 
 export default function App() {
   const didBootstrapDefaultDepartmentsRef = useRef(false);
+  const passwordChangeBypassEmailRef = useRef<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewMode>('DASHBOARD');
   const [data, setData] = useState<ConsolidatedData>({});
   const [projects, setProjects] = useState<Project[]>([]);
@@ -516,6 +517,7 @@ export default function App() {
         if (!active) {
           return;
         }
+        passwordChangeBypassEmailRef.current = null;
         setUser(null);
         setUserProfile(null);
         setIsChangePasswordOpen(false);
@@ -532,6 +534,7 @@ export default function App() {
         if (!active) {
           return;
         }
+        passwordChangeBypassEmailRef.current = null;
         setAuthError('Phiên Supabase hiện không có email hợp lệ.');
         setUser(null);
         setUserProfile(null);
@@ -584,13 +587,24 @@ export default function App() {
           return;
         }
 
+        const normalizedNextEmail = getAssignmentKey(nextUser.email);
+        const shouldBypassForcedPassword =
+          normalizedNextEmail && passwordChangeBypassEmailRef.current === normalizedNextEmail;
+        const resolvedProfile = shouldBypassForcedPassword && profile.mustChangePassword
+          ? { ...profile, mustChangePassword: false }
+          : profile;
+
+        if (normalizedNextEmail && !resolvedProfile.mustChangePassword) {
+          passwordChangeBypassEmailRef.current = null;
+        }
+
         setUser(nextUser);
         setUserProfile({
-          ...profile,
-          authUserId: profile.authUserId || nextUser.id,
-          displayName: getReadableDisplayName(profile.displayName, nextUser.displayName || nextUser.email),
+          ...resolvedProfile,
+          authUserId: resolvedProfile.authUserId || nextUser.id,
+          displayName: getReadableDisplayName(resolvedProfile.displayName, nextUser.displayName || nextUser.email),
         });
-        setIsChangePasswordOpen(Boolean(profile.mustChangePassword));
+        setIsChangePasswordOpen(Boolean(resolvedProfile.mustChangePassword));
         setAuthError(null);
         setCurrentView((current) => (current === 'LOGIN' ? 'DASHBOARD' : current));
         releaseAuthGate();
@@ -605,6 +619,7 @@ export default function App() {
         if (!active) {
           return;
         }
+        passwordChangeBypassEmailRef.current = null;
         setAuthError(error instanceof Error ? error.message : 'Không thể tải hồ sơ tài khoản từ Supabase.');
         setUser(null);
         setUserProfile(null);
@@ -2073,13 +2088,33 @@ export default function App() {
   };
 
   const handleChangePassword = async (nextPassword: string) => {
-    await updateSupabasePassword(nextPassword);
-    if (effectiveUserProfile?.email && effectiveUserProfile.mustChangePassword) {
-      await updateUserProfileInSupabase(effectiveUserProfile.email, { mustChangePassword: false });
-      setUserProfile((current) => (current ? { ...current, mustChangePassword: false } : current));
+    const normalizedEmail = getAssignmentKey(effectiveUserProfile?.email);
+
+    try {
+      if (normalizedEmail) {
+        passwordChangeBypassEmailRef.current = normalizedEmail;
+      }
+
+      await updateSupabasePassword(nextPassword);
+      if (effectiveUserProfile?.email && effectiveUserProfile.mustChangePassword) {
+        await updateUserProfileInSupabase(effectiveUserProfile.email, { mustChangePassword: false });
+        setUserProfile((current) => (current ? { ...current, mustChangePassword: false } : current));
+        setUsers((current) =>
+          current.map((profile) =>
+            getAssignmentKey(profile.email) === normalizedEmail
+              ? { ...profile, mustChangePassword: false }
+              : profile,
+          ),
+        );
+      }
+      setIsChangePasswordOpen(false);
+      alert('Đã cập nhật mật khẩu mới.');
+    } catch (error) {
+      if (normalizedEmail) {
+        passwordChangeBypassEmailRef.current = null;
+      }
+      throw error;
     }
-    setIsChangePasswordOpen(false);
-    alert('Đã cập nhật mật khẩu mới.');
   };
 
   const handleOpenImportFromDashboard = (projectId?: string) => {
