@@ -4658,18 +4658,28 @@ function DashboardOverview({
             </div>
           </div>
 
-          <div className="space-y-1.5 border-b border-[var(--line)] pb-3 text-sm leading-tight text-[var(--ink)]">
-            {isDashboardScopeLoading ? (
-              <p className="text-[var(--ink-soft)]" role="status" aria-live="polite" aria-busy="true">
-                {`Đang cập nhật số liệu năm ${dashboardYear}...`}
-              </p>
-            ) : (
-              <>
-                <p>{`Tổng số đơn vị: ${totalUnits}`}</p>
-                <p>{`Đơn vị đã tiếp nhận: ${submittedCount}/${totalUnits}`}</p>
-                <p>{`Tỷ lệ hoàn thành: ${completionRate}%`}</p>
-              </>
-            )}
+          <div
+            className="grid grid-cols-2 gap-4"
+            role={isDashboardScopeLoading ? 'status' : undefined}
+            aria-live={isDashboardScopeLoading ? 'polite' : undefined}
+            aria-busy={isDashboardScopeLoading ? 'true' : undefined}
+          >
+            {stats.map((stat, index) => (
+              <div
+                key={stat.label}
+                className={`panel-card rounded-[24px] p-5 ${index === stats.length - 1 ? 'col-span-2' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="col-header mb-2">{stat.label}</p>
+                    <p className="data-value text-3xl font-bold text-[var(--ink)]">{stat.value}</p>
+                  </div>
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${stat.tone}`}>
+                    <stat.icon size={24} className={stat.iconColor} />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
