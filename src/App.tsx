@@ -4427,7 +4427,7 @@ function DashboardOverview({
             </div>
           )}
           <div className="relative z-10">
-            <h2 className="max-w-5xl text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
+            <h2 className="max-w-5xl text-[1.9rem] font-black leading-[1.05] tracking-[-0.03em] text-white md:text-[2.3rem] xl:text-[2.55rem]">
               {'H\u1ec6 TH\u1ed0NG QU\u1ea2N TR\u1eca D\u1eee LI\u1ec6U TC\u0110, \u0110V T\u1eacP TRUNG'}
             </h2>
             {currentUser && (
