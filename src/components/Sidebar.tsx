@@ -87,6 +87,11 @@ export function Sidebar({
   reportTreeSearchTerm = '',
   onReportTreeSearchTermChange,
 }: SidebarProps) {
+  const HOVER_OPEN_DELAY_MS = 150;
+  const HOVER_CLOSE_DELAY_MS = 260;
+  const [isHoverExpanded, setIsHoverExpanded] = React.useState(false);
+  const openTimerRef = React.useRef<number | null>(null);
+  const closeTimerRef = React.useRef<number | null>(null);
   const normalizeSearchText = React.useCallback((value: string) => {
     return value
       .normalize('NFD')
@@ -151,8 +156,30 @@ export function Sidebar({
     },
     [buildSearchIndex, normalizedReportTreeSearchTerm],
   );
+  const clearHoverTimers = React.useCallback(() => {
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  React.useEffect(() => () => clearHoverTimers(), [clearHoverTimers]);
+
+  React.useEffect(() => {
+    if (!isCollapsed) {
+      setIsHoverExpanded(false);
+      clearHoverTimers();
+    }
+  }, [clearHoverTimers, isCollapsed]);
+
   const isUnitUser = userProfile?.role === 'unit_user';
-  const isReportsTreeVisible = currentView === 'REPORTS' && !isCollapsed && !isMobile;
+  const isVisuallyCollapsed = isCollapsed && !isHoverExpanded;
+  const isReportsTreeVisible = currentView === 'REPORTS' && !isVisuallyCollapsed && !isMobile;
   const baseMenu = [{ id: 'DASHBOARD' as ViewMode, label: 'Dashboard', icon: LayoutDashboard }];
   const firstMatchedProjectRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -214,7 +241,7 @@ export function Sidebar({
       ];
 
   const beginResize = (startX: number) => {
-    if (!onSidebarWidthChange || isCollapsed || isMobile) {
+    if (!onSidebarWidthChange || isVisuallyCollapsed || isMobile) {
       return;
     }
 
@@ -234,17 +261,59 @@ export function Sidebar({
     window.addEventListener('pointerup', handlePointerUp);
   };
 
+  const handleMouseEnter = () => {
+    if (isMobile || !isCollapsed) {
+      return;
+    }
+
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
+    if (isHoverExpanded || openTimerRef.current !== null) {
+      return;
+    }
+
+    openTimerRef.current = window.setTimeout(() => {
+      setIsHoverExpanded(true);
+      openTimerRef.current = null;
+    }, HOVER_OPEN_DELAY_MS);
+  };
+
+  const handleMouseLeave = () => {
+    if (isMobile || !isCollapsed) {
+      return;
+    }
+
+    if (openTimerRef.current !== null) {
+      window.clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+
+    if (!isHoverExpanded || closeTimerRef.current !== null) {
+      return;
+    }
+
+    closeTimerRef.current = window.setTimeout(() => {
+      setIsHoverExpanded(false);
+      closeTimerRef.current = null;
+    }, HOVER_CLOSE_DELAY_MS);
+  };
+
   return (
     <div
-      className={`sidebar-shell relative flex h-screen flex-col ${isCollapsed ? 'sidebar-collapsed' : ''}`}
-      style={!isCollapsed ? { width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` } : undefined}
+      className={`sidebar-shell relative flex h-screen flex-col ${isVisuallyCollapsed ? 'sidebar-collapsed' : ''}`}
+      style={!isVisuallyCollapsed ? { width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px` } : undefined}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="border-b border-[var(--sidebar-border)] p-8 relative">
         {onToggleCollapse && !isMobile && (
           <button
             onClick={onToggleCollapse}
             className="sidebar-toggle-btn absolute right-4 top-6 flex items-center justify-center rounded-full border border-[rgba(255,255,255,0.25)] bg-white/10 p-2 text-white/80"
-            title={isCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+            title={isCollapsed ? (isHoverExpanded ? 'Ghim mở menu' : 'Mở rộng menu') : 'Thu gọn menu'}
           >
             {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
           </button>
