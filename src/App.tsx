@@ -2568,8 +2568,13 @@ export default function App() {
           onReportTreeSearchTermChange={setReportTreeSearchTerm}
         />
       )}
-      <main id="main-content" className="app-main flex-1 overflow-auto" tabIndex={-1}>
-        <React.Suspense fallback={<RouteLoadingFallback />}>{renderContent()}</React.Suspense>
+      <main id="main-content" className="app-main flex flex-1 flex-col overflow-auto" tabIndex={-1}>
+        <div className="flex-1">
+          <React.Suspense fallback={<RouteLoadingFallback />}>{renderContent()}</React.Suspense>
+        </div>
+        <footer className="border-t border-[var(--line)] bg-[rgba(255,250,243,0.96)] px-6 py-4 text-center text-[13px] italic font-medium text-[var(--primary-dark)] md:px-8">
+          {'© 2026 Bản quyền thuộc về Phòng Tổ chức đảng, đảng viên - Ban Tổ chức Thành ủy Hà Nội'}
+        </footer>
       </main>
       {(isChangePasswordOpen || isForcedPasswordChange) && (
         <ChangePasswordModal
@@ -4583,12 +4588,6 @@ function DashboardOverview({
                 {'T\u00e0i kho\u1ea3n \u0111ang \u0111\u0103ng nh\u1eadp: '}{getReadableDisplayName(currentUser.displayName, currentUser.email, 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh')}
               </p>
             )}
-            <p className="pointer-events-none absolute bottom-0 right-0 hidden max-w-[46%] text-right text-[11px] italic font-medium leading-5 text-[rgba(255,245,214,0.92)] md:block">
-              {'© 2026 Bản quyền thuộc về Phòng Tổ chức đảng, đảng viên - Ban Tổ chức Thành ủy Hà Nội'}
-            </p>
-            <p className="pointer-events-none absolute bottom-0 right-0 max-w-[62%] text-right text-[10px] italic font-medium leading-4 text-[rgba(255,245,214,0.92)] md:hidden">
-              {'Đơn vị phát triển: Phòng Tổ chức đảng, đảng viên - Ban Tổ chức Thành ủy Hà Nội'}
-            </p>
           </div>
         </div>
         {canUseNotifications && isNotificationOpen && (
