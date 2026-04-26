@@ -249,9 +249,7 @@ export function Sidebar({
             {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
           </button>
         )}
-        <h1 className="sidebar-title">
-          HỆ THỐNG QUẢN TRỊ <br /> DỮ LIỆU TCĐ, ĐV TẬP TRUNG
-        </h1>
+        <h1 className="sidebar-title">HỆ THỐNG QUẢN TRỊ DỮ LIỆU TCĐ, ĐV TẬP TRUNG</h1>
         <p className="sidebar-meta mt-3 text-[10px] uppercase tracking-[0.24em]">v2.0.0 / Enterprise</p>
       </div>
 

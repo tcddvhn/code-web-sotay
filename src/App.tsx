@@ -4396,12 +4396,12 @@ function DashboardOverview({
         <div
           className="overflow-hidden rounded-[24px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
           style={{
-            backgroundColor: '#8f1115',
-            backgroundImage: `linear-gradient(135deg, rgba(68,5,5,0.14), rgba(68,5,5,0.06) 35%, rgba(255,255,255,0.03) 100%), linear-gradient(90deg, rgba(92,8,10,0.92) 0%, rgba(146,18,22,0.82) 45%, rgba(124,12,16,0.90) 100%), url(${dashboardDongSon})`,
-            backgroundSize: 'auto, auto, min(72vw, 820px)',
-            backgroundPosition: 'center, center, right -60px center',
+            backgroundColor: '#a31717',
+            backgroundImage: `radial-gradient(circle at center, rgba(205, 128, 44, 0.12) 0%, rgba(205, 128, 44, 0.05) 24%, rgba(255,255,255,0) 58%), linear-gradient(135deg, rgba(84, 11, 12, 0.16), rgba(153, 26, 24, 0.06) 38%, rgba(246, 189, 96, 0.06) 100%), url(${dashboardDongSon})`,
+            backgroundSize: 'cover, cover, min(96vw, 1100px)',
+            backgroundPosition: 'center, center, center',
             backgroundRepeat: 'no-repeat',
-            backgroundBlendMode: 'overlay, normal, screen',
+            backgroundBlendMode: 'soft-light, overlay, soft-light',
           }}
         >
           {canUseNotifications && (
