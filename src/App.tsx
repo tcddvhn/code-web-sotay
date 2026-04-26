@@ -19,7 +19,8 @@ import { AIAnalysisView } from './components/AIAnalysisView';
 import { Sidebar } from './components/Sidebar';
 import { ProjectManager } from './components/ProjectManager';
 import { FormLearner } from './components/FormLearner';
-import dashboardDongSon from './assets/dashboard-dong-son.jpg';
+import dashboardBannerDesktop from './assets/dashboard-banner-desktop.png';
+import dashboardBannerMobile from './assets/dashboard-banner-mobile.png';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS, YEARS } from './constants';
 import {
   deleteFileByPath,
@@ -4394,16 +4395,22 @@ function DashboardOverview({
           </button>
         </div>
         <div
-          className="overflow-hidden rounded-[24px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
-          style={{
-            backgroundColor: '#a31717',
-            backgroundImage: `radial-gradient(circle at center, rgba(205, 128, 44, 0.12) 0%, rgba(205, 128, 44, 0.05) 24%, rgba(255,255,255,0) 58%), linear-gradient(135deg, rgba(84, 11, 12, 0.16), rgba(153, 26, 24, 0.06) 38%, rgba(246, 189, 96, 0.06) 100%), url(${dashboardDongSon})`,
-            backgroundSize: 'cover, cover, min(96vw, 1100px)',
-            backgroundPosition: 'center, center, center',
-            backgroundRepeat: 'no-repeat',
-            backgroundBlendMode: 'soft-light, overlay, soft-light',
-          }}
+          className="relative overflow-hidden rounded-[24px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
+          style={{ backgroundColor: '#a31717' }}
         >
+          <img
+            src={dashboardBannerDesktop}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 hidden h-full w-full select-none object-cover md:block"
+          />
+          <img
+            src={dashboardBannerMobile}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover md:hidden"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(88,10,12,0.22),rgba(88,10,12,0.12)_42%,rgba(88,10,12,0.18)_100%)]" />
           {canUseNotifications && (
             <div className="absolute right-6 top-6 hidden md:block">
               <button
@@ -4421,17 +4428,19 @@ function DashboardOverview({
               </button>
             </div>
           )}
-          <h2 className="max-w-5xl text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
-            {'H\u1ec6 TH\u1ed0NG QU\u1ea2N TR\u1eca D\u1eee LI\u1ec6U TC\u0110, \u0110V T\u1eacP TRUNG'}
-          </h2>
-          {currentUser && (
-            <p className="mt-3 text-sm font-bold text-white/90">
-              {'T\u00e0i kho\u1ea3n \u0111ang \u0111\u0103ng nh\u1eadp: '}{getReadableDisplayName(currentUser.displayName, currentUser.email, 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh')}
+          <div className="relative z-10">
+            <h2 className="max-w-5xl text-[1.9rem] font-black leading-tight tracking-[-0.03em] text-white md:text-[2.8rem]">
+              {'H\u1ec6 TH\u1ed0NG QU\u1ea2N TR\u1eca D\u1eee LI\u1ec6U TC\u0110, \u0110V T\u1eacP TRUNG'}
+            </h2>
+            {currentUser && (
+              <p className="mt-3 text-sm font-bold text-white/90">
+                {'T\u00e0i kho\u1ea3n \u0111ang \u0111\u0103ng nh\u1eadp: '}{getReadableDisplayName(currentUser.displayName, currentUser.email, 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh')}
+              </p>
+            )}
+            <p className="mt-3 max-w-3xl text-sm text-white/80">
+              {'Theo d\u00f5i nhanh t\u00ecnh h\u00ecnh ti\u1ebfp nh\u1eadn d\u1eef li\u1ec7u c\u1ee7a c\u00e1c \u0111\u01a1n v\u1ecb, s\u1ed1 bi\u1ec3u \u0111\u00e3 nh\u1eadp v\u00e0 m\u1ee9c \u0111\u1ed9 ho\u00e0n th\u00e0nh t\u1ed5ng h\u1ee3p tr\u00ean to\u00e0n h\u1ec7 th\u1ed1ng.'}
             </p>
-          )}
-          <p className="mt-3 max-w-3xl text-sm text-white/80">
-            {'Theo d\u00f5i nhanh t\u00ecnh h\u00ecnh ti\u1ebfp nh\u1eadn d\u1eef li\u1ec7u c\u1ee7a c\u00e1c \u0111\u01a1n v\u1ecb, s\u1ed1 bi\u1ec3u \u0111\u00e3 nh\u1eadp v\u00e0 m\u1ee9c \u0111\u1ed9 ho\u00e0n th\u00e0nh t\u1ed5ng h\u1ee3p tr\u00ean to\u00e0n h\u1ec7 th\u1ed1ng.'}
-          </p>
+          </div>
         </div>
         {canUseNotifications && isNotificationOpen && (
           <div className="absolute right-0 top-14 z-20 w-full max-w-[420px] rounded-[24px] border border-[var(--line)] bg-white shadow-[0_24px_60px_rgba(44,62,80,0.18)] md:right-6 md:top-20">
