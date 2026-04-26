@@ -4583,6 +4583,12 @@ function DashboardOverview({
                 {'T\u00e0i kho\u1ea3n \u0111ang \u0111\u0103ng nh\u1eadp: '}{getReadableDisplayName(currentUser.displayName, currentUser.email, 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh')}
               </p>
             )}
+            <p className="pointer-events-none absolute bottom-0 right-0 hidden max-w-[46%] text-right text-[11px] italic font-medium leading-5 text-[rgba(255,245,214,0.92)] md:block">
+              {'© 2026 Bản quyền thuộc về Phòng Tổ chức đảng, đảng viên - Ban Tổ chức Thành ủy Hà Nội'}
+            </p>
+            <p className="pointer-events-none absolute bottom-0 right-0 max-w-[62%] text-right text-[10px] italic font-medium leading-4 text-[rgba(255,245,214,0.92)] md:hidden">
+              {'Đơn vị phát triển: Phòng Tổ chức đảng, đảng viên - Ban Tổ chức Thành ủy Hà Nội'}
+            </p>
           </div>
         </div>
         {canUseNotifications && isNotificationOpen && (
