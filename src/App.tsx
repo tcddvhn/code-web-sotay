@@ -4398,18 +4398,16 @@ function DashboardOverview({
           className="relative overflow-hidden rounded-[24px] border border-[rgba(201,167,92,0.28)] px-6 py-6 shadow-[0_24px_80px_rgba(122,44,46,0.10)] md:px-8 md:py-7"
           style={{ backgroundColor: '#a31717' }}
         >
-          <img
-            src={dashboardBannerDesktop}
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 hidden h-full w-full select-none object-cover md:block"
-          />
-          <img
-            src={dashboardBannerMobile}
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover md:hidden"
-          />
+          <picture className="pointer-events-none absolute inset-0 block h-full w-full select-none">
+            <source media="(min-width: 768px)" srcSet={dashboardBannerDesktop} />
+            <img
+              src={dashboardBannerMobile}
+              alt=""
+              aria-hidden="true"
+              fetchPriority="high"
+              className="h-full w-full object-cover"
+            />
+          </picture>
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(88,10,12,0.22),rgba(88,10,12,0.12)_42%,rgba(88,10,12,0.18)_100%)]" />
           {canUseNotifications && (
             <div className="absolute right-6 top-6 hidden md:block">
