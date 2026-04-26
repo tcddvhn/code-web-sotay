@@ -27,6 +27,17 @@ type ManualFormBlock = {
   endRow: number;
 };
 
+type ManualSetupView = 'QUICK' | 'ADVANCED';
+
+type ManualWorksheetPreview = {
+  startCol: number;
+  headers: string[];
+  rows: Array<{
+    rowNumber: number;
+    cells: string[];
+  }>;
+};
+
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
 const STORAGE_OPERATION_TIMEOUT_MS = 25000;
 const MAX_AI_SHEETS_PER_RUN = 3;
@@ -187,6 +198,121 @@ function normalizeTemplateBlocks(blocks: ManualFormBlock[]) {
     .filter((block) => block.dataColumns.length > 0);
 }
 
+function buildColumnRangeLabel(start: string, end: string) {
+  const normalizedStart = normalizeColumnValue(start || 'A');
+  const normalizedEnd = normalizeColumnValue(end || normalizedStart);
+  return normalizedStart === normalizedEnd ? normalizedStart : `${normalizedStart}-${normalizedEnd}`;
+}
+
+function buildReadableDataColumnsLabel(dataColumns: string) {
+  const normalizedColumns = expandColumnSelection(dataColumns);
+  if (normalizedColumns.length === 0) {
+    return 'chưa chọn cột dữ liệu';
+  }
+  return normalizedColumns.join(', ');
+}
+
+function buildManualSummaryLines(form: typeof DEFAULT_MANUAL_FORM) {
+  const lines: string[] = [];
+
+  if (!form.sheetName) {
+    lines.push('Bước đầu tiên là tải file mẫu và chọn đúng tên sheet cần đọc.');
+    return lines;
+  }
+
+  lines.push(
+    `Hệ thống sẽ đọc sheet ${form.sheetName}, lấy tên tiêu chí từ cột ${buildColumnRangeLabel(form.labelColumnStart, form.labelColumnEnd)}, dùng cột ${normalizeColumnValue(form.primaryLabelColumn || form.labelColumnStart || 'A')} làm tên tiêu chí chính.`,
+  );
+  lines.push(
+    `Tiêu đề ngang được đọc từ dòng ${form.horizontalHeaderStartRow} đến dòng ${form.horizontalHeaderEndRow}; vùng số liệu đọc ở cột ${buildReadableDataColumnsLabel(form.dataColumns)} từ dòng ${form.startRow} đến dòng ${form.endRow}.`,
+  );
+
+  if (form.specialRows.trim()) {
+    lines.push(`Các dòng đặc biệt đang bỏ qua khi tổng hợp: ${form.specialRows.trim()}.`);
+  }
+
+  if (form.enableAdvancedStructure && form.blocks.length > 0) {
+    lines.push(`Sheet này đang bật cấu hình nâng cao với ${form.blocks.length} khối tiêu đề - dữ liệu độc lập.`);
+  }
+
+  return lines;
+}
+
+function buildWorksheetPreview(worksheet: XLSX.WorkSheet, form: typeof DEFAULT_MANUAL_FORM): ManualWorksheetPreview | null {
+  const rangeRef = worksheet['!ref'];
+  if (!rangeRef) {
+    return null;
+  }
+
+  const usedRange = XLSX.utils.decode_range(rangeRef);
+  const columnIndexes = new Set<number>([
+    Math.max(0, columnLetterToIndex(normalizeColumnValue(form.labelColumnStart || 'A')) - 1),
+    Math.max(0, columnLetterToIndex(normalizeColumnValue(form.labelColumnEnd || form.labelColumnStart || 'A')) - 1),
+    Math.max(0, columnLetterToIndex(normalizeColumnValue(form.primaryLabelColumn || form.labelColumnStart || 'A')) - 1),
+  ]);
+
+  expandColumnSelection(form.dataColumns).forEach((column) => {
+    columnIndexes.add(Math.max(0, columnLetterToIndex(column) - 1));
+  });
+
+  let maxRow = Math.max(
+    form.verticalHeaderEndRow,
+    form.horizontalHeaderEndRow,
+    form.endRow,
+    form.signatureEndRow,
+    1,
+  );
+
+  if (form.enableAdvancedStructure && form.blocks.length > 0) {
+    form.blocks.forEach((block) => {
+      columnIndexes.add(Math.max(0, columnLetterToIndex(normalizeColumnValue(block.labelColumnStart || 'A')) - 1));
+      columnIndexes.add(Math.max(0, columnLetterToIndex(normalizeColumnValue(block.labelColumnEnd || block.labelColumnStart || 'A')) - 1));
+      columnIndexes.add(Math.max(0, columnLetterToIndex(normalizeColumnValue(block.primaryLabelColumn || block.labelColumnStart || 'A')) - 1));
+      columnIndexes.add(Math.max(0, columnLetterToIndex(normalizeColumnValue(block.headerStartCol || 'A')) - 1));
+      columnIndexes.add(Math.max(0, columnLetterToIndex(normalizeColumnValue(block.headerEndCol || block.headerStartCol || 'A')) - 1));
+      expandColumnSelection(block.dataColumns).forEach((column) => {
+        columnIndexes.add(Math.max(0, columnLetterToIndex(column) - 1));
+      });
+      maxRow = Math.max(maxRow, block.headerEndRow, block.endRow);
+    });
+  }
+
+  const derivedStartCol = Math.max(0, Math.min(...Array.from(columnIndexes.values())));
+  const derivedEndCol = Math.max(
+    derivedStartCol,
+    Math.min(
+      usedRange.e.c,
+      Math.max(...Array.from(columnIndexes.values()), derivedStartCol + 7) + 1,
+    ),
+  );
+  const startCol = Math.max(0, Math.min(derivedStartCol, usedRange.s.c));
+  const endCol = Math.min(Math.max(startCol + 7, derivedEndCol), usedRange.e.c, startCol + 11);
+  const startRow = Math.max(1, Math.min(form.horizontalHeaderStartRow, form.verticalHeaderStartRow, form.startRow, form.signatureStartRow, maxRow));
+  const endRow = Math.min(Math.max(startRow + 9, maxRow + 1), usedRange.e.r + 1, startRow + 17);
+
+  const headers: string[] = [];
+  for (let c = startCol; c <= endCol; c += 1) {
+    headers.push(XLSX.utils.encode_col(c));
+  }
+
+  const rows: ManualWorksheetPreview['rows'] = [];
+  for (let r = startRow; r <= endRow; r += 1) {
+    const cells: string[] = [];
+    for (let c = startCol; c <= endCol; c += 1) {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: r - 1, c })];
+      const value = cell?.w ?? cell?.v;
+      cells.push(value === undefined || value === null ? '' : String(value));
+    }
+    rows.push({ rowNumber: r, cells });
+  }
+
+  return {
+    startCol,
+    headers,
+    rows,
+  };
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = window.setTimeout(() => {
@@ -253,6 +379,8 @@ export function FormLearner({
   const [mode, setMode] = useState<Mode>('AI');
   const [file, setFile] = useState<File | null>(null);
   const [manualFile, setManualFile] = useState<File | null>(null);
+  const [manualSetupView, setManualSetupView] = useState<ManualSetupView>('QUICK');
+  const [manualWorkbook, setManualWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [aiSheetNames, setAiSheetNames] = useState<string[]>([]);
   const [selectedAiSheetNames, setSelectedAiSheetNames] = useState<string[]>([]);
   const [isLearning, setIsLearning] = useState(false);
@@ -274,6 +402,14 @@ export function FormLearner({
   const [previewRows, setPreviewRows] = useState<string[][]>([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [manualWorksheetPreview, setManualWorksheetPreview] = useState<ManualWorksheetPreview | null>(null);
+  const [isManualPreviewLoading, setIsManualPreviewLoading] = useState(false);
+  const [isDesktopManualPreviewEnabled, setIsDesktopManualPreviewEnabled] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return true;
+    }
+    return window.matchMedia('(min-width: 1024px)').matches;
+  });
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -297,6 +433,7 @@ export function FormLearner({
   };
 
   const addManualBlock = () => {
+    setManualSetupView('ADVANCED');
     setManualForm((prev) => ({
       ...prev,
       enableAdvancedStructure: true,
@@ -399,6 +536,7 @@ export function FormLearner({
 
   const applyManualPreset = (preset: 'B1' | 'B2') => {
     if (preset === 'B1') {
+      setManualSetupView('QUICK');
       setManualForm((prev) => ({
         ...prev,
         name: prev.name || 'Biểu B1',
@@ -422,6 +560,7 @@ export function FormLearner({
       return;
     }
 
+    setManualSetupView('ADVANCED');
     setManualForm((prev) => ({
       ...prev,
       name: prev.name || 'Biểu B2',
@@ -520,8 +659,27 @@ export function FormLearner({
   }, [geminiApiKey]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const syncPreviewMode = () => setIsDesktopManualPreviewEnabled(mediaQuery.matches);
+    syncPreviewMode();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncPreviewMode);
+      return () => mediaQuery.removeEventListener('change', syncPreviewMode);
+    }
+
+    mediaQuery.addListener(syncPreviewMode);
+    return () => mediaQuery.removeListener(syncPreviewMode);
+  }, []);
+
+  useEffect(() => {
     setFile(null);
     setManualFile(null);
+    setManualSetupView('QUICK');
     setAiSheetNames([]);
     setSelectedAiSheetNames([]);
     setLearnedTemplates([]);
@@ -531,6 +689,7 @@ export function FormLearner({
     setError(null);
     setNotice(null);
     setManualForm(DEFAULT_MANUAL_FORM);
+    setManualWorksheetPreview(null);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -549,6 +708,7 @@ export function FormLearner({
 
     if (!manualFile) {
       setManualSheetNames([]);
+      setManualWorkbook(null);
       setManualForm((prev) => ({ ...prev, sheetName: '' }));
       return undefined;
     }
@@ -562,6 +722,7 @@ export function FormLearner({
 
         const workbook = XLSX.read(buffer, { type: 'array' });
         const nextSheetNames = workbook.SheetNames.filter(Boolean);
+        setManualWorkbook(workbook);
         setManualSheetNames(nextSheetNames);
         setManualForm((prev) => ({
           ...prev,
@@ -570,6 +731,7 @@ export function FormLearner({
       })
       .catch(() => {
         if (!isCancelled) {
+          setManualWorkbook(null);
           setManualSheetNames([]);
           setError('Không thể đọc danh sách sheet từ file mẫu thủ công.');
         }
@@ -580,10 +742,121 @@ export function FormLearner({
     };
   }, [manualFile]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!isDesktopManualPreviewEnabled || !manualWorkbook || !manualForm.sheetName) {
+      setManualWorksheetPreview(null);
+      setIsManualPreviewLoading(false);
+      return undefined;
+    }
+
+    setIsManualPreviewLoading(true);
+
+    window.requestAnimationFrame(() => {
+      if (isCancelled) {
+        return;
+      }
+
+      const worksheet = manualWorkbook.Sheets[manualForm.sheetName];
+      if (!worksheet) {
+        setManualWorksheetPreview(null);
+        setIsManualPreviewLoading(false);
+        return;
+      }
+
+      setManualWorksheetPreview(buildWorksheetPreview(worksheet, manualForm));
+      setIsManualPreviewLoading(false);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isDesktopManualPreviewEnabled, manualWorkbook, manualForm]);
+
   const existingNames = useMemo(
     () => new Set(manualTemplates.map((tpl) => tpl.name.trim().toLowerCase()).filter(Boolean)),
     [manualTemplates],
   );
+
+  const manualSummaryLines = useMemo(() => buildManualSummaryLines(manualForm), [manualForm]);
+
+  const previewLegend = useMemo(
+    () => [
+      { label: 'Tiêu chí dọc', className: 'bg-sky-50 text-sky-700 border-sky-200' },
+      { label: 'Tiêu đề ngang', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+      { label: 'Vùng dữ liệu', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+      { label: 'Khối nâng cao', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+    ],
+    [],
+  );
+
+  const manualPreviewConfig = useMemo(() => {
+    const labelColumns = new Set(
+      Array.from(
+        { length: Math.max(1, columnLetterToIndex(normalizeColumnValue(manualForm.labelColumnEnd || manualForm.labelColumnStart || 'A')) - columnLetterToIndex(normalizeColumnValue(manualForm.labelColumnStart || 'A')) + 1) },
+        (_, index) => XLSX.utils.encode_col(columnLetterToIndex(normalizeColumnValue(manualForm.labelColumnStart || 'A')) - 1 + index),
+      ),
+    );
+    const dataColumns = new Set(expandColumnSelection(manualForm.dataColumns));
+    const blockRanges = manualForm.enableAdvancedStructure
+      ? manualForm.blocks.map((block) => ({
+          startRow: block.startRow,
+          endRow: block.endRow,
+          headerStartRow: block.headerStartRow,
+          headerEndRow: block.headerEndRow,
+          labelColumns: new Set(
+            Array.from(
+              { length: Math.max(1, columnLetterToIndex(normalizeColumnValue(block.labelColumnEnd || block.labelColumnStart || 'A')) - columnLetterToIndex(normalizeColumnValue(block.labelColumnStart || 'A')) + 1) },
+              (_, index) => XLSX.utils.encode_col(columnLetterToIndex(normalizeColumnValue(block.labelColumnStart || 'A')) - 1 + index),
+            ),
+          ),
+          dataColumns: new Set(expandColumnSelection(block.dataColumns)),
+        }))
+      : [];
+
+    return {
+      labelColumns,
+      dataColumns,
+      horizontalHeaderStartRow: manualForm.horizontalHeaderStartRow,
+      horizontalHeaderEndRow: manualForm.horizontalHeaderEndRow,
+      startRow: manualForm.startRow,
+      endRow: manualForm.endRow,
+      blockRanges,
+    };
+  }, [manualForm]);
+
+  const getManualPreviewCellTone = (rowNumber: number, columnLetter: string) => {
+    for (const block of manualPreviewConfig.blockRanges) {
+      const inBlockHeader = rowNumber >= block.headerStartRow && rowNumber <= block.headerEndRow;
+      const inBlockData = rowNumber >= block.startRow && rowNumber <= block.endRow;
+      if ((inBlockHeader || inBlockData) && (block.labelColumns.has(columnLetter) || block.dataColumns.has(columnLetter))) {
+        return 'bg-rose-50 ring-1 ring-inset ring-rose-200';
+      }
+    }
+
+    if (
+      rowNumber >= manualPreviewConfig.startRow &&
+      rowNumber <= manualPreviewConfig.endRow &&
+      manualPreviewConfig.dataColumns.has(columnLetter)
+    ) {
+      return 'bg-emerald-50 ring-1 ring-inset ring-emerald-200';
+    }
+
+    if (
+      rowNumber >= manualPreviewConfig.horizontalHeaderStartRow &&
+      rowNumber <= manualPreviewConfig.horizontalHeaderEndRow &&
+      (manualPreviewConfig.dataColumns.has(columnLetter) || manualPreviewConfig.labelColumns.has(columnLetter))
+    ) {
+      return 'bg-amber-50 ring-1 ring-inset ring-amber-200';
+    }
+
+    if (manualPreviewConfig.labelColumns.has(columnLetter)) {
+      return 'bg-sky-50 ring-1 ring-inset ring-sky-200';
+    }
+
+    return 'bg-white';
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -2052,7 +2325,12 @@ export function FormLearner({
         <div className="max-w-6xl space-y-6">
           <div className="panel-card rounded-[24px] p-6">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <h3 className="section-title">Tạo biểu mẫu thủ công</h3>
+              <div>
+                <h3 className="section-title">Tạo biểu mẫu thủ công</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+                  Chúng ta sẽ đi theo đúng 3 bước cơ bản: chọn sheet, xác định vùng tiêu chí, rồi xác định vùng số liệu.
+                </p>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => applyManualPreset('B1')} className="secondary-btn">
                   Điền nhanh B1
@@ -2062,433 +2340,591 @@ export function FormLearner({
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
-              <input
-                className="field-input"
-                placeholder="Tên biểu mẫu"
-                value={manualForm.name}
-                onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })}
-              />
-              <div className="panel-soft rounded-[18px] p-4">
-                <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                  File mẫu để đọc sheet
-                </p>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleManualFileChange}
-                  className="field-input"
-                  disabled={!project}
-                />
-                {manualFile && (
-                  <p className="mt-2 text-xs text-[var(--ink-soft)]">Đang dùng: {manualFile.name}</p>
-                )}
-              </div>
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setManualSetupView('QUICK')}
+                className={manualSetupView === 'QUICK' ? 'primary-btn' : 'secondary-btn'}
+              >
+                Thiết lập nhanh
+              </button>
+              <button
+                type="button"
+                onClick={() => setManualSetupView('ADVANCED')}
+                className={manualSetupView === 'ADVANCED' ? 'primary-btn' : 'secondary-btn'}
+              >
+                Thiết lập nâng cao
+              </button>
+              <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-soft)]">
+                {manualSetupView === 'QUICK'
+                  ? 'Dành cho người mới làm quen với việc cấu hình biểu'
+                  : 'Hiện thêm khối dữ liệu, chỉ số khóa và các cấu hình sâu'}
+              </span>
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-4">
-              <div className="panel-soft rounded-[18px] p-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
                   <div>
-                    <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                      Tên sheet
+                    <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Tên biểu mẫu
+                      <input
+                        className="field-input mt-2"
+                        placeholder="Ví dụ: Biểu B1 - Công tác phát triển đảng viên"
+                        value={manualForm.name}
+                        onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })}
+                      />
+                    </label>
+                    <p className="mt-2 text-[12px] leading-5 text-[var(--ink-soft)]">
+                      Hãy đặt tên theo cách người nhập liệu dễ nhận ra ngay biểu nào đang dùng.
                     </p>
-                    <select
-                      value={manualForm.sheetName}
-                      onChange={(e) => setManualForm({ ...manualForm, sheetName: e.target.value })}
-                      className="field-select"
-                      disabled={manualSheetNames.length === 0}
-                    >
-                      <option value="">{manualSheetNames.length > 0 ? '-- Chọn sheet --' : 'Hãy tải file mẫu trước'}</option>
-                      {manualSheetNames.map((sheetName) => (
-                        <option key={sheetName} value={sheetName}>
-                          {sheetName}
-                        </option>
-                      ))}
-                    </select>
                   </div>
-                  <div>
+                  <div className="panel-soft rounded-[18px] p-4">
                     <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                      Tên cột hiển thị trên báo cáo (tùy chọn)
+                      File mẫu để đọc sheet
                     </p>
                     <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleManualFileChange}
                       className="field-input"
-                      placeholder="Ví dụ: Tổng số, Thành lập mới, Giải thể"
-                      value={manualForm.columnHeaders}
-                      onChange={(e) => setManualForm({ ...manualForm, columnHeaders: e.target.value })}
+                      disabled={!project}
+                    />
+                    {manualFile && (
+                      <p className="mt-2 text-xs text-[var(--ink-soft)]">Đang dùng: {manualFile.name}</p>
+                    )}
+                    <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
+                      Tải đúng file Excel gốc để chúng ta chọn sheet và soi vùng tiêu đề cho chính xác.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-[18px] border border-[var(--line)] bg-[rgba(179,15,20,0.04)] px-4 py-4">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                    Hệ thống đang hiểu cấu hình này như sau
+                  </p>
+                  <div className="mt-3 space-y-2 text-sm leading-6 text-[var(--ink)]">
+                    {manualSummaryLines.map((line, index) => (
+                      <p key={`manual-summary-${index}`}>- {line}</p>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-1 gap-4">
+                  <div className="panel-soft rounded-[18px] p-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+                      <div>
+                        <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Tên sheet
+                        </p>
+                        <select
+                          value={manualForm.sheetName}
+                          onChange={(e) => setManualForm({ ...manualForm, sheetName: e.target.value })}
+                          className="field-select"
+                          disabled={manualSheetNames.length === 0}
+                        >
+                          <option value="">{manualSheetNames.length > 0 ? '-- Chọn sheet --' : 'Hãy tải file mẫu trước'}</option>
+                          {manualSheetNames.map((sheetName) => (
+                            <option key={sheetName} value={sheetName}>
+                              {sheetName}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
+                          Chỉ chọn đúng sheet chứa biểu cần thiết lập. Nếu file có nhiều sheet, mỗi sheet sẽ tạo thành một biểu riêng.
+                        </p>
+                      </div>
+                      <div>
+                        <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Tên cột hiển thị trên báo cáo (tùy chọn)
+                        </p>
+                        <input
+                          className="field-input"
+                          placeholder="Ví dụ: Tổng số, Thành lập mới, Giải thể"
+                          value={manualForm.columnHeaders}
+                          onChange={(e) => setManualForm({ ...manualForm, columnHeaders: e.target.value })}
+                        />
+                        <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
+                          Nếu bạn muốn đổi tên cột khi hiển thị báo cáo, nhập theo thứ tự cột dữ liệu, cách nhau bằng dấu phẩy.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="panel-soft rounded-[18px] p-4">
+                      <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                        1. Tiêu chí dọc
+                      </p>
+                      <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Cột tiêu chí mặc định:</span>
+                          <input
+                            className="field-input h-11 min-w-[110px] flex-1 text-[15px] font-semibold"
+                            placeholder="VD: A"
+                            value={manualForm.labelColumn}
+                            onChange={(e) => setManualForm({ ...manualForm, labelColumn: e.target.value.toUpperCase() })}
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Cột tiêu chí dọc từ:</span>
+                          <input
+                            className="field-input h-11 w-[92px] text-[15px] font-semibold"
+                            placeholder="A"
+                            value={manualForm.labelColumnStart}
+                            onChange={(e) => setManualForm({ ...manualForm, labelColumnStart: e.target.value.toUpperCase() })}
+                          />
+                          <span className="text-[15px] font-bold text-[var(--ink-soft)]">-</span>
+                          <input
+                            className="field-input h-11 w-[92px] text-[15px] font-semibold"
+                            placeholder="B"
+                            value={manualForm.labelColumnEnd}
+                            onChange={(e) => setManualForm({ ...manualForm, labelColumnEnd: e.target.value.toUpperCase() })}
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Cột tiêu chí chính:</span>
+                          <input
+                            className="field-input h-11 min-w-[110px] flex-1 text-[15px] font-semibold"
+                            placeholder="VD: B"
+                            value={manualForm.primaryLabelColumn}
+                            onChange={(e) => setManualForm({ ...manualForm, primaryLabelColumn: e.target.value.toUpperCase() })}
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
+                          <input
+                            className="field-input h-11 w-[110px] text-[15px] font-semibold"
+                            type="number"
+                            value={manualForm.verticalHeaderStartRow}
+                            onChange={(e) =>
+                              setManualForm({ ...manualForm, verticalHeaderStartRow: Number(e.target.value) })
+                            }
+                          />
+                          <span className="min-w-[140px] pl-1">- Kết thúc ở dòng:</span>
+                          <input
+                            className="field-input h-11 w-[110px] text-[15px] font-semibold"
+                            type="number"
+                            value={manualForm.verticalHeaderEndRow}
+                            onChange={(e) =>
+                              setManualForm({ ...manualForm, verticalHeaderEndRow: Number(e.target.value) })
+                            }
+                          />
+                        </div>
+                        <p className="pt-1 text-[12px] font-medium leading-5 text-[var(--ink-soft)]">
+                          Dùng cho biểu như <strong>B1</strong> khi tiêu chí dọc trải trên nhiều cột, ví dụ
+                          <code className="mx-1">A:B</code> nhưng tên tiêu chí chính nằm ở <code>B</code>.
+                        </p>
+                        <p className="text-[11px] leading-5 text-[var(--ink-soft)]">
+                          Nếu chưa chắc, hãy nhìn preview bên phải: vùng xanh lam là nơi hệ thống đang hiểu là tiêu chí dọc.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="panel-soft rounded-[18px] p-4">
+                      <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                        2. Tiêu chí ngang
+                      </p>
+                      <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
+                          <input
+                            className="field-input h-11 w-[120px] text-[15px] font-semibold"
+                            type="number"
+                            value={manualForm.horizontalHeaderStartRow}
+                            onChange={(e) =>
+                              setManualForm({ ...manualForm, horizontalHeaderStartRow: Number(e.target.value) })
+                            }
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Kết thúc ở dòng:</span>
+                          <input
+                            className="field-input h-11 w-[120px] text-[15px] font-semibold"
+                            type="number"
+                            value={manualForm.horizontalHeaderEndRow}
+                            onChange={(e) =>
+                              setManualForm({ ...manualForm, horizontalHeaderEndRow: Number(e.target.value) })
+                            }
+                          />
+                        </div>
+                        <p className="pt-1 text-[12px] font-medium leading-5 text-[var(--ink-soft)]">
+                          Nhập đúng vùng tiêu đề ngang để hệ thống vẽ lại khung biểu giống file Excel gốc.
+                        </p>
+                        <p className="text-[11px] leading-5 text-[var(--ink-soft)]">
+                          Ví dụ biểu có 2 dòng tiêu đề thì nhập từ dòng đầu tiêu đề đến dòng cuối tiêu đề, không nhập sang phần số liệu.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="panel-soft rounded-[18px] p-4">
+                      <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                        3. Vùng lấy dữ liệu
+                      </p>
+                      <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Cột dữ liệu:</span>
+                          <input
+                            className="field-input h-11 min-w-[180px] flex-1 text-[15px] font-semibold"
+                            placeholder="VD: A-C, F hoặc B,D,G"
+                            value={manualForm.dataColumns}
+                            onChange={(e) => setManualForm({ ...manualForm, dataColumns: e.target.value.toUpperCase() })}
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Dòng đặc biệt:</span>
+                          <input
+                            className="field-input h-11 min-w-[180px] flex-1 text-[15px] font-semibold"
+                            placeholder="VD: 34 hoặc 34,56-58"
+                            value={manualForm.specialRows}
+                            onChange={(e) => setManualForm({ ...manualForm, specialRows: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
+                          <input
+                            className="field-input h-11 w-[110px] text-[15px] font-semibold"
+                            type="number"
+                            value={manualForm.startRow}
+                            onChange={(e) => setManualForm({ ...manualForm, startRow: Number(e.target.value) })}
+                          />
+                          <span className="min-w-[140px] pl-1">- Kết thúc ở dòng:</span>
+                          <input
+                            className="field-input h-11 w-[110px] text-[15px] font-semibold"
+                            type="number"
+                            value={manualForm.endRow}
+                            onChange={(e) => setManualForm({ ...manualForm, endRow: Number(e.target.value) })}
+                          />
+                        </div>
+                        <p className="text-[11px] leading-5 text-[var(--ink-soft)]">
+                          Vùng dữ liệu là nơi chứa số cần tổng hợp. Hệ thống sẽ đọc đúng các cột đã khai báo trong khoảng dòng này.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {manualSetupView === 'ADVANCED' ? (
+                  <>
+                    <div className="mt-4 panel-soft rounded-[18px] p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                        4. Cấu hình nâng cao theo khối tiêu đề - dữ liệu
+                      </p>
+                      <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
+                        Dùng cho biểu như <strong>B2</strong> khi trong cùng một sheet có nhiều vùng tiêu đề ngang và nhiều vùng số liệu độc lập.
+                      </p>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-[var(--ink)]">
+                      <input
+                        type="checkbox"
+                        checked={manualForm.enableAdvancedStructure}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setManualSetupView('ADVANCED');
+                          }
+                          setManualForm((prev) => ({
+                            ...prev,
+                            enableAdvancedStructure: e.target.checked,
+                            blocks: e.target.checked && prev.blocks.length === 0 ? [createDefaultManualBlock()] : prev.blocks,
+                          }));
+                        }}
+                      />
+                      Bật cấu hình nhiều khối tiêu đề - dữ liệu
+                    </label>
+                  </div>
+
+                  {manualForm.enableAdvancedStructure && (
+                    <div className="mt-4 space-y-4">
+                      {manualForm.blocks.map((block, index) => (
+                        <div key={block.id} className="rounded-[18px] border border-[var(--line)] bg-white p-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-[var(--ink)]">Khối {index + 1}</p>
+                              <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
+                                Mỗi khối có vùng tiêu đề riêng và vùng số liệu riêng, phù hợp với sheet có nhiều phần tách biệt trong cùng một trang.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeManualBlock(block.id)}
+                              className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)]"
+                            >
+                              <Trash2 size={14} />
+                              Xóa khối tiêu đề - dữ liệu
+                            </button>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Tên khối
+                              <input
+                                className="field-input mt-2"
+                                value={block.name}
+                                onChange={(e) => updateManualBlock(block.id, { name: e.target.value })}
+                                placeholder="Ví dụ: Khối 1"
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Cột dữ liệu
+                              <input
+                                className="field-input mt-2"
+                                value={block.dataColumns}
+                                onChange={(e) => updateManualBlock(block.id, { dataColumns: e.target.value.toUpperCase() })}
+                                placeholder="VD: B-I hoặc C,D,E"
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Tiêu đề trên bắt đầu từ dòng
+                              <input
+                                type="number"
+                                className="field-input mt-2"
+                                value={block.headerStartRow}
+                                onChange={(e) => updateManualBlock(block.id, { headerStartRow: Number(e.target.value) })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Tiêu đề dưới kết thúc ở dòng
+                              <input
+                                type="number"
+                                className="field-input mt-2"
+                                value={block.headerEndRow}
+                                onChange={(e) => updateManualBlock(block.id, { headerEndRow: Number(e.target.value) })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Tiêu đề ngang bắt đầu từ cột
+                              <input
+                                className="field-input mt-2"
+                                value={block.headerStartCol}
+                                onChange={(e) => updateManualBlock(block.id, { headerStartCol: e.target.value.toUpperCase() })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Tiêu đề ngang kết thúc ở cột
+                              <input
+                                className="field-input mt-2"
+                                value={block.headerEndCol}
+                                onChange={(e) => updateManualBlock(block.id, { headerEndCol: e.target.value.toUpperCase() })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Cột tiêu chí dọc bắt đầu
+                              <input
+                                className="field-input mt-2"
+                                value={block.labelColumnStart}
+                                onChange={(e) => updateManualBlock(block.id, { labelColumnStart: e.target.value.toUpperCase() })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Cột tiêu chí dọc kết thúc
+                              <input
+                                className="field-input mt-2"
+                                value={block.labelColumnEnd}
+                                onChange={(e) => updateManualBlock(block.id, { labelColumnEnd: e.target.value.toUpperCase() })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Cột chứa tên tiêu chí chính
+                              <input
+                                className="field-input mt-2"
+                                value={block.primaryLabelColumn}
+                                onChange={(e) => updateManualBlock(block.id, { primaryLabelColumn: e.target.value.toUpperCase() })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Dòng chứa số liệu bắt đầu
+                              <input
+                                type="number"
+                                className="field-input mt-2"
+                                value={block.startRow}
+                                onChange={(e) => updateManualBlock(block.id, { startRow: Number(e.target.value) })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Dòng chứa số liệu kết thúc
+                              <input
+                                type="number"
+                                className="field-input mt-2"
+                                value={block.endRow}
+                                onChange={(e) => updateManualBlock(block.id, { endRow: Number(e.target.value) })}
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                              Dòng đặc biệt bỏ qua khi tổng hợp
+                              <input
+                                className="field-input mt-2"
+                                value={block.specialRows}
+                                onChange={(e) => updateManualBlock(block.id, { specialRows: e.target.value })}
+                                placeholder="VD: 34 hoặc 34,56-58"
+                              />
+                            </label>
+                            <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
+                              Tên cột hiển thị của khối (tùy chọn)
+                              <input
+                                className="field-input mt-2"
+                                value={block.columnHeaders}
+                                onChange={(e) => updateManualBlock(block.id, { columnHeaders: e.target.value })}
+                                placeholder="VD: Tổng số, Nam, Nữ"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button type="button" onClick={addManualBlock} className="secondary-btn inline-flex items-center gap-2">
+                        <Plus size={14} />
+                        Thêm khối tiêu đề - dữ liệu
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 panel-soft rounded-[18px] p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                        Chỉ số khóa nhận diện sheet
+                      </p>
+                      <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
+                        Hệ thống dùng hàng đầu, hàng cuối và số dòng ở giữa để kiểm tra file tiếp nhận có đúng mẫu hay không.
+                      </p>
+                    </div>
+                    <div className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                      Số dòng giữa: {Math.max(0, Number(manualForm.signatureEndRow) - Number(manualForm.signatureStartRow) - 1)}
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <input
+                      type="number"
+                      className="field-input"
+                      placeholder="Dòng đầu"
+                      value={manualForm.signatureStartRow}
+                      onChange={(e) => setManualForm({ ...manualForm, signatureStartRow: Number(e.target.value) })}
+                    />
+                    <input
+                      type="number"
+                      className="field-input"
+                      placeholder="Dòng cuối"
+                      value={manualForm.signatureEndRow}
+                      onChange={(e) => setManualForm({ ...manualForm, signatureEndRow: Number(e.target.value) })}
+                    />
+                    <input
+                      className="field-input"
+                      placeholder="Cột đầu"
+                      value={manualForm.signatureStartCol}
+                      onChange={(e) => setManualForm({ ...manualForm, signatureStartCol: e.target.value.toUpperCase() })}
+                    />
+                    <input
+                      className="field-input"
+                      placeholder="Cột cuối"
+                      value={manualForm.signatureEndCol}
+                      onChange={(e) => setManualForm({ ...manualForm, signatureEndCol: e.target.value.toUpperCase() })}
                     />
                   </div>
                 </div>
+                  </>
+                ) : (
+                  <div className="mt-4 rounded-[18px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">
+                    Nếu sheet có nhiều vùng tiêu đề hoặc nhiều vùng số liệu tách biệt như <strong>B2</strong>, hãy chuyển sang <strong>Thiết lập nâng cao</strong> để khai báo khối tiêu đề - dữ liệu và chỉ số khóa nhận diện.
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="panel-soft rounded-[18px] p-4">
-                  <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    1. Tiêu chí dọc
-                  </p>
-                  <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Cột tiêu chí mặc định:</span>
-                      <input
-                        className="field-input h-11 min-w-[110px] flex-1 text-[15px] font-semibold"
-                        placeholder="VD: A"
-                        value={manualForm.labelColumn}
-                        onChange={(e) => setManualForm({ ...manualForm, labelColumn: e.target.value.toUpperCase() })}
-                      />
+              <div className="hidden lg:block">
+                <div className="sticky top-6 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                        Xem trước vùng đang chọn
+                      </p>
+                      <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
+                        Preview này chỉ dành cho desktop để giúp người mới nhìn ra hệ thống đang đọc vùng nào trong sheet.
+                      </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Cột tiêu chí dọc từ:</span>
-                      <input
-                        className="field-input h-11 w-[92px] text-[15px] font-semibold"
-                        placeholder="A"
-                        value={manualForm.labelColumnStart}
-                        onChange={(e) => setManualForm({ ...manualForm, labelColumnStart: e.target.value.toUpperCase() })}
-                      />
-                      <span className="text-[15px] font-bold text-[var(--ink-soft)]">-</span>
-                      <input
-                        className="field-input h-11 w-[92px] text-[15px] font-semibold"
-                        placeholder="B"
-                        value={manualForm.labelColumnEnd}
-                        onChange={(e) => setManualForm({ ...manualForm, labelColumnEnd: e.target.value.toUpperCase() })}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Cột tiêu chí chính:</span>
-                      <input
-                        className="field-input h-11 min-w-[110px] flex-1 text-[15px] font-semibold"
-                        placeholder="VD: B"
-                        value={manualForm.primaryLabelColumn}
-                        onChange={(e) => setManualForm({ ...manualForm, primaryLabelColumn: e.target.value.toUpperCase() })}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
-                      <input
-                        className="field-input h-11 w-[110px] text-[15px] font-semibold"
-                        type="number"
-                        value={manualForm.verticalHeaderStartRow}
-                        onChange={(e) =>
-                          setManualForm({ ...manualForm, verticalHeaderStartRow: Number(e.target.value) })
-                        }
-                      />
-                      <span className="min-w-[140px] pl-1">- Kết thúc ở dòng:</span>
-                      <input
-                        className="field-input h-11 w-[110px] text-[15px] font-semibold"
-                        type="number"
-                        value={manualForm.verticalHeaderEndRow}
-                        onChange={(e) =>
-                          setManualForm({ ...manualForm, verticalHeaderEndRow: Number(e.target.value) })
-                        }
-                      />
-                    </div>
-                    <p className="pt-1 text-[12px] font-medium leading-5 text-[var(--ink-soft)]">
-                      Dùng cho biểu như <strong>B1</strong> khi tiêu chí dọc trải trên nhiều cột, ví dụ
-                      <code className="mx-1">A:B</code> nhưng tên tiêu chí chính nằm ở <code>B</code>.
-                    </p>
+                    {manualForm.sheetName && (
+                      <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                        {manualForm.sheetName}
+                      </span>
+                    )}
                   </div>
-                </div>
 
-                <div className="panel-soft rounded-[18px] p-4">
-                  <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    2. Tiêu chí ngang
-                  </p>
-                  <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
-                      <input
-                        className="field-input h-11 w-[120px] text-[15px] font-semibold"
-                        type="number"
-                        value={manualForm.horizontalHeaderStartRow}
-                        onChange={(e) =>
-                          setManualForm({ ...manualForm, horizontalHeaderStartRow: Number(e.target.value) })
-                        }
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Kết thúc ở dòng:</span>
-                      <input
-                        className="field-input h-11 w-[120px] text-[15px] font-semibold"
-                        type="number"
-                        value={manualForm.horizontalHeaderEndRow}
-                        onChange={(e) =>
-                          setManualForm({ ...manualForm, horizontalHeaderEndRow: Number(e.target.value) })
-                        }
-                      />
-                    </div>
-                    <p className="pt-1 text-[12px] font-medium leading-5 text-[var(--ink-soft)]">
-                      Nhập đúng vùng tiêu đề ngang để hệ thống vẽ lại khung biểu giống file Excel gốc.
-                    </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {previewLegend.map((item) => (
+                      <span
+                        key={item.label}
+                        className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${item.className}`}
+                      >
+                        {item.label}
+                      </span>
+                    ))}
                   </div>
-                </div>
 
-                <div className="panel-soft rounded-[18px] p-4">
-                  <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    3. Vùng lấy dữ liệu
-                  </p>
-                  <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Cột dữ liệu:</span>
-                      <input
-                        className="field-input h-11 min-w-[180px] flex-1 text-[15px] font-semibold"
-                        placeholder="VD: A-C, F hoặc B,D,G"
-                        value={manualForm.dataColumns}
-                        onChange={(e) => setManualForm({ ...manualForm, dataColumns: e.target.value.toUpperCase() })}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Dòng đặc biệt:</span>
-                      <input
-                        className="field-input h-11 min-w-[180px] flex-1 text-[15px] font-semibold"
-                        placeholder="VD: 34 hoặc 34,56-58"
-                        value={manualForm.specialRows}
-                        onChange={(e) => setManualForm({ ...manualForm, specialRows: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-[148px]">- Bắt đầu từ dòng:</span>
-                      <input
-                        className="field-input h-11 w-[110px] text-[15px] font-semibold"
-                        type="number"
-                        value={manualForm.startRow}
-                        onChange={(e) => setManualForm({ ...manualForm, startRow: Number(e.target.value) })}
-                      />
-                      <span className="min-w-[140px] pl-1">- Kết thúc ở dòng:</span>
-                      <input
-                        className="field-input h-11 w-[110px] text-[15px] font-semibold"
-                        type="number"
-                        value={manualForm.endRow}
-                        onChange={(e) => setManualForm({ ...manualForm, endRow: Number(e.target.value) })}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 panel-soft rounded-[18px] p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    4. Cấu hình nâng cao theo khối tiêu đề - dữ liệu
-                  </p>
-                  <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
-                    Dùng cho biểu như <strong>B2</strong> khi trong cùng một sheet có nhiều vùng tiêu đề ngang và nhiều vùng số liệu độc lập.
-                  </p>
-                </div>
-                <label className="flex items-center gap-2 text-sm font-medium text-[var(--ink)]">
-                  <input
-                    type="checkbox"
-                    checked={manualForm.enableAdvancedStructure}
-                    onChange={(e) =>
-                      setManualForm((prev) => ({
-                        ...prev,
-                        enableAdvancedStructure: e.target.checked,
-                        blocks: e.target.checked && prev.blocks.length === 0 ? [createDefaultManualBlock()] : prev.blocks,
-                      }))
-                    }
-                  />
-                  Bật cấu hình nhiều khối tiêu đề - dữ liệu
-                </label>
-              </div>
-
-              {manualForm.enableAdvancedStructure && (
-                <div className="mt-4 space-y-4">
-                  {manualForm.blocks.map((block, index) => (
-                    <div key={block.id} className="rounded-[18px] border border-[var(--line)] bg-white p-4">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--ink)]">Khối {index + 1}</p>
-                          <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
-                            Mỗi khối có vùng tiêu đề riêng và vùng số liệu riêng, phù hợp với sheet có nhiều phần tách biệt trong cùng một trang.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeManualBlock(block.id)}
-                          className="secondary-btn inline-flex items-center gap-2 text-[var(--primary)]"
-                        >
-                          <Trash2 size={14} />
-                          Xóa khối tiêu đề - dữ liệu
-                        </button>
+                  <div className="mt-4 overflow-hidden rounded-[18px] border border-[var(--line)] bg-white">
+                    {isManualPreviewLoading ? (
+                      <div className="flex h-[340px] items-center justify-center text-sm text-[var(--ink-soft)]">
+                        <Loader2 size={16} className="mr-2 animate-spin" />
+                        Đang dựng preview từ file mẫu...
                       </div>
-
-                      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Tên khối
-                          <input
-                            className="field-input mt-2"
-                            value={block.name}
-                            onChange={(e) => updateManualBlock(block.id, { name: e.target.value })}
-                            placeholder="Ví dụ: Khối 1"
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột dữ liệu
-                          <input
-                            className="field-input mt-2"
-                            value={block.dataColumns}
-                            onChange={(e) => updateManualBlock(block.id, { dataColumns: e.target.value.toUpperCase() })}
-                            placeholder="VD: B-I hoặc C,D,E"
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Tiêu đề trên bắt đầu từ dòng
-                          <input
-                            type="number"
-                            className="field-input mt-2"
-                            value={block.headerStartRow}
-                            onChange={(e) => updateManualBlock(block.id, { headerStartRow: Number(e.target.value) })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Tiêu đề dưới kết thúc ở dòng
-                          <input
-                            type="number"
-                            className="field-input mt-2"
-                            value={block.headerEndRow}
-                            onChange={(e) => updateManualBlock(block.id, { headerEndRow: Number(e.target.value) })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Tiêu đề ngang bắt đầu từ cột
-                          <input
-                            className="field-input mt-2"
-                            value={block.headerStartCol}
-                            onChange={(e) => updateManualBlock(block.id, { headerStartCol: e.target.value.toUpperCase() })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Tiêu đề ngang kết thúc ở cột
-                          <input
-                            className="field-input mt-2"
-                            value={block.headerEndCol}
-                            onChange={(e) => updateManualBlock(block.id, { headerEndCol: e.target.value.toUpperCase() })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột tiêu chí dọc bắt đầu
-                          <input
-                            className="field-input mt-2"
-                            value={block.labelColumnStart}
-                            onChange={(e) => updateManualBlock(block.id, { labelColumnStart: e.target.value.toUpperCase() })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột tiêu chí dọc kết thúc
-                          <input
-                            className="field-input mt-2"
-                            value={block.labelColumnEnd}
-                            onChange={(e) => updateManualBlock(block.id, { labelColumnEnd: e.target.value.toUpperCase() })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Cột chứa tên tiêu chí chính
-                          <input
-                            className="field-input mt-2"
-                            value={block.primaryLabelColumn}
-                            onChange={(e) => updateManualBlock(block.id, { primaryLabelColumn: e.target.value.toUpperCase() })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Dòng chứa số liệu bắt đầu
-                          <input
-                            type="number"
-                            className="field-input mt-2"
-                            value={block.startRow}
-                            onChange={(e) => updateManualBlock(block.id, { startRow: Number(e.target.value) })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Dòng chứa số liệu kết thúc
-                          <input
-                            type="number"
-                            className="field-input mt-2"
-                            value={block.endRow}
-                            onChange={(e) => updateManualBlock(block.id, { endRow: Number(e.target.value) })}
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                          Dòng đặc biệt bỏ qua khi tổng hợp
-                          <input
-                            className="field-input mt-2"
-                            value={block.specialRows}
-                            onChange={(e) => updateManualBlock(block.id, { specialRows: e.target.value })}
-                            placeholder="VD: 34 hoặc 34,56-58"
-                          />
-                        </label>
-                        <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)] md:col-span-2">
-                          Tên cột hiển thị của khối (tùy chọn)
-                          <input
-                            className="field-input mt-2"
-                            value={block.columnHeaders}
-                            onChange={(e) => updateManualBlock(block.id, { columnHeaders: e.target.value })}
-                            placeholder="VD: Tổng số, Nam, Nữ"
-                          />
-                        </label>
+                    ) : manualWorksheetPreview ? (
+                      <div className="max-h-[340px] overflow-auto">
+                        <table className="min-w-full border-collapse text-[11px]">
+                          <thead className="sticky top-0 z-10 bg-[var(--surface-soft)]">
+                            <tr>
+                              <th className="border-b border-r border-[var(--line)] px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                                Dòng
+                              </th>
+                              {manualWorksheetPreview.headers.map((header) => (
+                                <th
+                                  key={`manual-preview-header-${header}`}
+                                  className="border-b border-r border-[var(--line)] px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]"
+                                >
+                                  {header}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {manualWorksheetPreview.rows.map((row) => (
+                              <tr key={`manual-preview-row-${row.rowNumber}`}>
+                                <td className="border-b border-r border-[var(--line)] bg-[var(--surface-soft)] px-2 py-2 text-center text-[10px] font-bold text-[var(--ink-soft)]">
+                                  {row.rowNumber}
+                                </td>
+                                {row.cells.map((cell, cellIndex) => {
+                                  const columnLetter = XLSX.utils.encode_col(manualWorksheetPreview.startCol + cellIndex);
+                                  return (
+                                    <td
+                                      key={`manual-preview-cell-${row.rowNumber}-${columnLetter}`}
+                                      className={`border-b border-r border-[var(--line)] px-2 py-2 align-top text-[11px] text-[var(--ink)] ${getManualPreviewCellTone(row.rowNumber, columnLetter)}`}
+                                    >
+                                      {cell || '\u00A0'}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
-                  ))}
-
-                  <button type="button" onClick={addManualBlock} className="secondary-btn inline-flex items-center gap-2">
-                    <Plus size={14} />
-                    Thêm khối tiêu đề - dữ liệu
-                  </button>
+                    ) : (
+                      <div className="flex h-[340px] items-center justify-center px-4 text-center text-sm text-[var(--ink-soft)]">
+                        Hãy tải file mẫu và chọn đúng sheet để xem trước vùng tiêu chí, vùng tiêu đề và vùng số liệu.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-
-            <div className="mt-4 panel-soft rounded-[18px] p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                    Chỉ số khóa nhận diện sheet
-                  </p>
-                  <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
-                    Hệ thống dùng hàng đầu, hàng cuối và số dòng ở giữa để kiểm tra file tiếp nhận có đúng mẫu hay không.
-                  </p>
-                </div>
-                <div className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                  Số dòng giữa: {Math.max(0, Number(manualForm.signatureEndRow) - Number(manualForm.signatureStartRow) - 1)}
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                <input
-                  type="number"
-                  className="field-input"
-                  placeholder="Dòng đầu"
-                  value={manualForm.signatureStartRow}
-                  onChange={(e) => setManualForm({ ...manualForm, signatureStartRow: Number(e.target.value) })}
-                />
-                <input
-                  type="number"
-                  className="field-input"
-                  placeholder="Dòng cuối"
-                  value={manualForm.signatureEndRow}
-                  onChange={(e) => setManualForm({ ...manualForm, signatureEndRow: Number(e.target.value) })}
-                />
-                <input
-                  className="field-input"
-                  placeholder="Cột đầu"
-                  value={manualForm.signatureStartCol}
-                  onChange={(e) => setManualForm({ ...manualForm, signatureStartCol: e.target.value.toUpperCase() })}
-                />
-                <input
-                  className="field-input"
-                  placeholder="Cột cuối"
-                  value={manualForm.signatureEndCol}
-                  onChange={(e) => setManualForm({ ...manualForm, signatureEndCol: e.target.value.toUpperCase() })}
-                />
               </div>
             </div>
 
-            <button
-              onClick={handleManualCreate}
-              disabled={!project || isCreatingManual || isSavingTemplates}
-              className="primary-btn mt-6 flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Plus size={16} />
-              {isCreatingManual || isSavingTemplates ? saveProgressLabel || 'Đang tạo biểu mẫu...' : 'Tạo biểu mẫu'}
-            </button>
+              <button
+                onClick={handleManualCreate}
+                disabled={!project || isCreatingManual || isSavingTemplates}
+                className="primary-btn mt-6 flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Plus size={16} />
+                {isCreatingManual || isSavingTemplates ? saveProgressLabel || 'Đang tạo biểu mẫu...' : 'Tạo biểu mẫu'}
+              </button>
 
             {error && (
               <div className="mt-4 panel-card rounded-[18px] p-3 border border-red-200 bg-red-50 text-red-700 flex items-center gap-2">
