@@ -55,6 +55,17 @@ textarea {
   font: inherit;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid rgba(217, 159, 43, 0.92);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px rgba(135, 17, 22, 0.16);
+}
+
 ::selection {
   background: var(--primary);
   color: #fff;
@@ -63,6 +74,29 @@ textarea {
 .app-shell {
   background: var(--bg);
   color: var(--ink);
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 1rem;
+  z-index: 100;
+  transform: translateY(-180%);
+  border-radius: 999px;
+  border: 1px solid rgba(217, 159, 43, 0.5);
+  background: #fff;
+  color: var(--primary-dark);
+  padding: 0.7rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(44, 62, 80, 0.16);
+  transition: transform 0.2s ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 .app-main {
@@ -258,6 +292,21 @@ textarea {
 .sidebar-collapsed .sidebar-footer {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .skip-link {
+    transition: none;
+  }
 }
 
 .sidebar-collapsed .sidebar-account {

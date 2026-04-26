@@ -12,15 +12,9 @@ import {
   X,
 } from 'lucide-react';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { ImportFiles } from './components/ImportFiles';
-import { ReportView } from './components/ReportView';
-import { ExtractReportView } from './components/ExtractReportView';
-import { AIAnalysisView } from './components/AIAnalysisView';
 import { Sidebar } from './components/Sidebar';
-import { ProjectManager } from './components/ProjectManager';
-import { FormLearner } from './components/FormLearner';
-import dashboardBannerDesktop from './assets/dashboard-banner-desktop.png';
-import dashboardBannerMobile from './assets/dashboard-banner-mobile.png';
+import dashboardBannerDesktop from './assets/dashboard-banner-desktop.jpg';
+import dashboardBannerMobile from './assets/dashboard-banner-mobile.jpg';
 import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME, SHEET_CONFIGS, UNITS, YEARS } from './constants';
 import {
   deleteFileByPath,
@@ -109,6 +103,25 @@ import {
   syncAnalysisCellsFromRows,
 } from './aiAnalysisStore';
 
+const ImportFiles = React.lazy(() =>
+  import('./components/ImportFiles').then((module) => ({ default: module.ImportFiles })),
+);
+const ReportView = React.lazy(() =>
+  import('./components/ReportView').then((module) => ({ default: module.ReportView })),
+);
+const ExtractReportView = React.lazy(() =>
+  import('./components/ExtractReportView').then((module) => ({ default: module.ExtractReportView })),
+);
+const AIAnalysisView = React.lazy(() =>
+  import('./components/AIAnalysisView').then((module) => ({ default: module.AIAnalysisView })),
+);
+const ProjectManager = React.lazy(() =>
+  import('./components/ProjectManager').then((module) => ({ default: module.ProjectManager })),
+);
+const FormLearner = React.lazy(() =>
+  import('./components/FormLearner').then((module) => ({ default: module.FormLearner })),
+);
+
 const DEFAULT_SETTINGS: AppSettings = {
   oneDriveLink: 'https://onedrive.live.com/...',
   storagePath: 'C:\\TongHop\\02_LuuFileGoc',
@@ -193,6 +206,20 @@ function formatDateTime(value?: string | number | Date | null) {
   });
 }
 
+function RouteLoadingFallback({ label = 'Đang tải nội dung...' }: { label?: string }) {
+  return (
+    <div className="p-6 md:p-8">
+      <div
+        className="panel-card rounded-[24px] p-6 text-sm text-[var(--ink-soft)]"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
 
 function isUnitVisibleForProject(unit: ManagedUnit, project: Project | null) {
   if (!unit.isDeleted) {
@@ -2503,6 +2530,9 @@ export default function App() {
 
   return (
     <div className="app-shell flex h-screen overflow-hidden">
+      <a href="#main-content" className="skip-link">
+        {'Bỏ qua menu, tới nội dung chính'}
+      </a>
       {!isMobile && (
         <Sidebar
           currentView={currentView}
@@ -2538,7 +2568,9 @@ export default function App() {
           onReportTreeSearchTermChange={setReportTreeSearchTerm}
         />
       )}
-      <main className="app-main flex-1 overflow-auto">{renderContent()}</main>
+      <main id="main-content" className="app-main flex-1 overflow-auto" tabIndex={-1}>
+        <React.Suspense fallback={<RouteLoadingFallback />}>{renderContent()}</React.Suspense>
+      </main>
       {(isChangePasswordOpen || isForcedPasswordChange) && (
         <ChangePasswordModal
           isForced={isForcedPasswordChange}
@@ -4452,6 +4484,7 @@ function DashboardOverview({
               onClick={() => void handleToggleNotifications()}
               className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm"
               title={'Th\u00f4ng b\u00e1o'}
+              aria-label={'Mở thông báo'}
             >
               <BellDot size={18} />
               <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-bold text-white">
@@ -4464,6 +4497,7 @@ function DashboardOverview({
             onClick={isAuthenticated ? () => void onLogout() : onOpenLogin}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/90 text-[var(--primary-dark)] shadow-sm"
             title={isAuthenticated ? '\u0110\u0103ng xu\u1ea5t' : '\u0110\u0103ng nh\u1eadp'}
+            aria-label={isAuthenticated ? 'Đăng xuất' : 'Đăng nhập'}
           >
             {isAuthenticated ? <LogOut size={18} /> : <LogIn size={18} />}
           </button>
@@ -4479,6 +4513,7 @@ function DashboardOverview({
               alt=""
               aria-hidden="true"
               fetchPriority="high"
+              decoding="async"
               className="h-full w-full object-cover"
             />
           </picture>
@@ -4490,6 +4525,7 @@ function DashboardOverview({
                 onClick={() => void handleToggleNotifications()}
                 className="relative flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] bg-white/10 text-white transition hover:bg-white/15"
                 title={'Th\u00f4ng b\u00e1o'}
+                aria-label={'Mở thông báo'}
               >
                 {activeNotifications.length > 0 ? <BellDot size={20} /> : <Bell size={20} />}
                 {activeNotifications.length > 0 && (
@@ -4624,7 +4660,9 @@ function DashboardOverview({
 
           <div className="space-y-1.5 border-b border-[var(--line)] pb-3 text-sm leading-tight text-[var(--ink)]">
             {isDashboardScopeLoading ? (
-              <p className="text-[var(--ink-soft)]">{`Đang cập nhật số liệu năm ${dashboardYear}...`}</p>
+              <p className="text-[var(--ink-soft)]" role="status" aria-live="polite" aria-busy="true">
+                {`Đang cập nhật số liệu năm ${dashboardYear}...`}
+              </p>
             ) : (
               <>
                 <p>{`Tổng số đơn vị: ${totalUnits}`}</p>
@@ -4764,7 +4802,12 @@ function DashboardOverview({
         </div>
 
         {isDashboardScopeLoading ? (
-          <div className="mt-8 flex h-[280px] w-full items-center justify-center rounded-[24px] bg-[var(--surface-soft)] text-sm text-[var(--ink-soft)]">
+          <div
+            className="mt-8 flex h-[280px] w-full items-center justify-center rounded-[24px] bg-[var(--surface-soft)] text-sm text-[var(--ink-soft)]"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
             {`Đang cập nhật số liệu năm ${dashboardYear}...`}
           </div>
         ) : (
@@ -4810,7 +4853,12 @@ function DashboardOverview({
           </div>
 
           {isDashboardScopeLoading ? (
-            <div className="mt-8 flex h-[300px] w-full items-center justify-center rounded-[24px] bg-[var(--surface-soft)] text-sm text-[var(--ink-soft)]">
+            <div
+              className="mt-8 flex h-[300px] w-full items-center justify-center rounded-[24px] bg-[var(--surface-soft)] text-sm text-[var(--ink-soft)]"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
               {`Đang cập nhật số liệu năm ${dashboardYear}...`}
             </div>
           ) : (

@@ -314,6 +314,7 @@ export function Sidebar({
             onClick={onToggleCollapse}
             className="sidebar-toggle-btn absolute right-4 top-6 flex items-center justify-center rounded-full border border-[rgba(255,255,255,0.25)] bg-white/10 p-2 text-white/80"
             title={isCollapsed ? (isHoverExpanded ? 'Ghim mở menu' : 'Mở rộng menu') : 'Thu gọn menu'}
+            aria-label={isCollapsed ? (isHoverExpanded ? 'Ghim mở menu' : 'Mở rộng menu') : 'Thu gọn menu'}
           >
             {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
           </button>
@@ -395,6 +396,7 @@ export function Sidebar({
                               onClick={() => onToggleReportProject?.(project.id)}
                               className="mt-[1px] flex h-5 w-5 shrink-0 items-center justify-center text-white/70 transition hover:text-white"
                               title={isExpanded ? 'Thu gọn dự án' : 'Mở rộng dự án'}
+                              aria-label={isExpanded ? 'Thu gọn dự án' : 'Mở rộng dự án'}
                             >
                               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             </button>
