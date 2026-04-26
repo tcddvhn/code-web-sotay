@@ -4102,46 +4102,81 @@ function DashboardOverview({
   const rowsForYear = useMemo(() => {
     return scopedDashboardRows ?? fallbackRowsForYear;
   }, [fallbackRowsForYear, scopedDashboardRows]);
-  const isDashboardScopeLoading = Boolean(selectedProjectId) && (scopedDashboardRows === null || scopedDashboardDataFiles === null);
+  const submittedUnitCodesFromRows = useMemo(() => new Set(rowsForYear.map((row) => row.unitCode)), [rowsForYear]);
+  const isDashboardFilesLoading = Boolean(selectedProjectId) && scopedDashboardDataFiles === null;
+  const isDashboardRowsLoading = Boolean(selectedProjectId) && scopedDashboardRows === null;
+  const isDashboardSummaryLoading = isDashboardFilesLoading;
+  const isDashboardDetailLoading = isDashboardFilesLoading || isDashboardRowsLoading;
+  const dashboardSubmittedUnitCodes = useMemo(() => {
+    const codes = new Set(submittedUnitCodes);
+    if (!isDashboardRowsLoading) {
+      submittedUnitCodesFromRows.forEach((code) => codes.add(code));
+    }
+    return codes;
+  }, [isDashboardRowsLoading, submittedUnitCodes, submittedUnitCodesFromRows]);
 
   useEffect(() => {
     if (!selectedProjectId) {
-      setScopedDashboardRows([]);
       setScopedDashboardDataFiles([]);
       return;
     }
 
     let cancelled = false;
-    setScopedDashboardRows(null);
     setScopedDashboardDataFiles(null);
 
-    Promise.all([
-      listRowsByScopeFromSupabase({
+    listDataFilesByScopeFromSupabase({
         projectId: selectedProjectId,
         years: [dashboardYear],
-        skipExactCount: true,
-      }),
-      listDataFilesByScopeFromSupabase({
-        projectId: selectedProjectId,
-        years: [dashboardYear],
-      }),
-    ])
-      .then(([rows, files]) => {
+      })
+      .then((files) => {
+        if (cancelled) {
+          return;
+        }
+
+        setScopedDashboardDataFiles(files);
+      })
+      .catch((error) => {
+        console.error('Supabase dashboard scoped data files load error:', error);
+        if (cancelled) {
+          return;
+        }
+
+        setScopedDashboardDataFiles([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardYear, selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setScopedDashboardRows([]);
+      return;
+    }
+
+    let cancelled = false;
+    setScopedDashboardRows(null);
+
+    listRowsByScopeFromSupabase({
+      projectId: selectedProjectId,
+      years: [dashboardYear],
+      skipExactCount: true,
+    })
+      .then((rows) => {
         if (cancelled) {
           return;
         }
 
         setScopedDashboardRows(rows);
-        setScopedDashboardDataFiles(files);
       })
       .catch((error) => {
-        console.error('Supabase dashboard scoped data load error:', error);
+        console.error('Supabase dashboard scoped rows load error:', error);
         if (cancelled) {
           return;
         }
 
         setScopedDashboardRows([]);
-        setScopedDashboardDataFiles([]);
       });
 
     return () => {
@@ -4312,6 +4347,17 @@ function DashboardOverview({
   }, [currentAssignedUnitCodes, currentUser, isAdmin, isAuthenticated]);
 
   const shouldLockToCurrentUserAssignments = isAuthenticated && !isAdmin && scopedUnitCodesForCurrentUser.length > 0;
+  const dashboardScopeUnits = useMemo(() => {
+    if (isAuthenticated && !isAdmin) {
+      if (scopedUnitCodesForCurrentUser.length === 0) {
+        return [] as ManagedUnit[];
+      }
+
+      return units.filter((unit) => scopedUnitCodesForCurrentUser.includes(unit.code));
+    }
+
+    return units;
+  }, [isAdmin, isAuthenticated, scopedUnitCodesForCurrentUser, units]);
 
   const allUnitLogs = useMemo<UnitLog[]>(() => {
     const sheetOrder = new Map(SHEET_CONFIGS.map((sheet, index) => [sheet.name, index]));
@@ -4408,20 +4454,12 @@ function DashboardOverview({
     return assigneeFilteredLogs;
   }, [allUnitLogs, assignments, isAdmin, isAuthenticated, scopedUnitCodesForCurrentUser, selectedAssignee, statusFilter]);
 
-  const dashboardScopeLogs = useMemo<UnitLog[]>(() => {
-    if (isAuthenticated && !isAdmin) {
-      return allUnitLogs.filter((unit) => scopedUnitCodesForCurrentUser.includes(unit.code));
-    }
-
-    return allUnitLogs;
-  }, [allUnitLogs, isAdmin, isAuthenticated, scopedUnitCodesForCurrentUser]);
-
-  const submittedCount = dashboardScopeLogs.filter((unit) => unit.isSubmitted).length;
-  const totalUnits = dashboardScopeLogs.length;
+  const submittedCount = dashboardScopeUnits.filter((unit) => dashboardSubmittedUnitCodes.has(unit.code)).length;
+  const totalUnits = dashboardScopeUnits.length;
   const completionRate = totalUnits === 0 ? '0.0' : ((submittedCount / totalUnits) * 100).toFixed(1);
-  const formattedSubmittedCount = isDashboardScopeLoading ? '...' : `${submittedCount}/${totalUnits}`;
-  const formattedCompletionRate = isDashboardScopeLoading ? '...' : `${completionRate}%`;
-  const formattedTotalUnits = isDashboardScopeLoading ? '...' : totalUnits;
+  const formattedSubmittedCount = isDashboardSummaryLoading ? '...' : `${submittedCount}/${totalUnits}`;
+  const formattedCompletionRate = isDashboardSummaryLoading ? '...' : `${completionRate}%`;
+  const formattedTotalUnits = isDashboardSummaryLoading ? '...' : totalUnits;
 
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
   const completedProjects = projects.filter((p) => p.status === 'COMPLETED').length;
@@ -4660,9 +4698,9 @@ function DashboardOverview({
 
           <div
             className="grid grid-cols-2 gap-4"
-            role={isDashboardScopeLoading ? 'status' : undefined}
-            aria-live={isDashboardScopeLoading ? 'polite' : undefined}
-            aria-busy={isDashboardScopeLoading ? 'true' : undefined}
+            role={isDashboardSummaryLoading ? 'status' : undefined}
+            aria-live={isDashboardSummaryLoading ? 'polite' : undefined}
+            aria-busy={isDashboardSummaryLoading ? 'true' : undefined}
           >
             {stats.map((stat, index) => (
               <div
@@ -4807,11 +4845,11 @@ function DashboardOverview({
             <p className="page-subtitle mt-2 text-sm">{`Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm ${dashboardYear}.`}</p>
           </div>
           <div className="status-pill status-pill-submitted self-start">
-            {isDashboardScopeLoading ? 'Đang tải số liệu' : `${submittedCount} đơn vị đã nộp`}
+            {isDashboardSummaryLoading ? 'Đang tải số liệu' : `${submittedCount} đơn vị đã nộp`}
           </div>
         </div>
 
-        {isDashboardScopeLoading ? (
+        {isDashboardSummaryLoading ? (
           <div
             className="mt-8 flex h-[280px] w-full items-center justify-center rounded-[24px] bg-[var(--surface-soft)] text-sm text-[var(--ink-soft)]"
             role="status"
@@ -4858,11 +4896,11 @@ function DashboardOverview({
               <p className="page-subtitle mt-2 text-sm">{`Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm ${dashboardYear}.`}</p>
             </div>
             <div className="status-pill status-pill-submitted">
-              {isDashboardScopeLoading ? 'Đang tải số liệu' : `${submittedCount} đơn vị đã nộp`}
+              {isDashboardSummaryLoading ? 'Đang tải số liệu' : `${submittedCount} đơn vị đã nộp`}
             </div>
           </div>
 
-          {isDashboardScopeLoading ? (
+          {isDashboardSummaryLoading ? (
             <div
               className="mt-8 flex h-[300px] w-full items-center justify-center rounded-[24px] bg-[var(--surface-soft)] text-sm text-[var(--ink-soft)]"
               role="status"
@@ -4927,7 +4965,7 @@ function DashboardOverview({
           </div>
 
           <div className="mt-6 space-y-3">
-            {isDashboardScopeLoading ? (
+            {isDashboardDetailLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={`dashboard-loading-${index}`}
@@ -5098,14 +5136,25 @@ function DashboardOverview({
 
             <div className="flex-1 overflow-auto p-4 md:p-6">
               <div className="grid grid-cols-1 gap-3">
-                {unitLogs.length === 0 && (
+                {isDashboardDetailLoading &&
+                  Array.from({ length: 4 }).map((_, index) => (
+                    <div
+                      key={`dashboard-log-loading-${index}`}
+                      className="animate-pulse rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4"
+                    >
+                      <div className="h-4 w-48 rounded-full bg-[rgba(135,17,22,0.08)]" />
+                      <div className="mt-3 h-3 w-32 rounded-full bg-[rgba(44,62,80,0.08)]" />
+                      <div className="mt-2 h-3 w-56 rounded-full bg-[rgba(44,62,80,0.08)]" />
+                    </div>
+                  ))}
+                {!isDashboardDetailLoading && unitLogs.length === 0 && (
                   <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-5 text-sm text-[var(--ink-soft)]">
                     {isAuthenticated && !isAdmin
                       ? 'Tài khoản của bạn hiện chưa được phân công đơn vị nào trong dự án này.'
                       : 'Chưa có đơn vị nào phù hợp với bộ lọc hiện tại.'}
                   </div>
                 )}
-                {unitLogs.map((unit, index) => (
+                {!isDashboardDetailLoading && unitLogs.map((unit, index) => (
                   <div
                     key={unit.code}
                     className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] px-4 py-4"
