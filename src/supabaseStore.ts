@@ -1004,29 +1004,35 @@ export async function listRowsByScope(params: {
   years?: string[];
   templateIds?: string[];
   unitCodes?: string[];
+  skipExactCount?: boolean;
 }) {
-  let countBuilder = supabase
-    .from('consolidated_rows')
-    .select('id', { count: 'exact', head: true })
-    .eq('project_id', params.projectId);
+  let expectedCount: number | null = null;
 
-  if (params.years && params.years.length > 0) {
-    countBuilder = countBuilder.in('year', params.years);
-  }
-  if (params.templateIds && params.templateIds.length > 0) {
-    countBuilder = countBuilder.in('template_id', params.templateIds);
-  }
-  if (params.unitCodes && params.unitCodes.length > 0) {
-    countBuilder = countBuilder.in('unit_code', params.unitCodes);
+  if (!params.skipExactCount) {
+    let countBuilder = supabase
+      .from('consolidated_rows')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', params.projectId);
+
+    if (params.years && params.years.length > 0) {
+      countBuilder = countBuilder.in('year', params.years);
+    }
+    if (params.templateIds && params.templateIds.length > 0) {
+      countBuilder = countBuilder.in('template_id', params.templateIds);
+    }
+    if (params.unitCodes && params.unitCodes.length > 0) {
+      countBuilder = countBuilder.in('unit_code', params.unitCodes);
+    }
+
+    const { count, error: countError } = await countBuilder;
+
+    if (countError) {
+      throw new Error(countError.message || 'Supabase request failed.');
+    }
+
+    expectedCount = count || 0;
   }
 
-  const { count, error: countError } = await countBuilder;
-
-  if (countError) {
-    throw new Error(countError.message || 'Supabase request failed.');
-  }
-
-  const expectedCount = count || 0;
   const rows: any[] = [];
   let from = 0;
 
@@ -1067,7 +1073,7 @@ export async function listRowsByScope(params: {
     from += SUPABASE_PAGE_SIZE;
   }
 
-  if (rows.length < expectedCount) {
+  if (expectedCount !== null && rows.length < expectedCount) {
     throw new Error(`Chỉ tải được ${rows.length}/${expectedCount} dòng dữ liệu tổng hợp theo phạm vi từ Supabase.`);
   }
 

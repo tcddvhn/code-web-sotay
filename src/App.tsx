@@ -83,6 +83,7 @@ import {
   listProjectUnitScope as listProjectUnitScopeFromSupabase,
   listProjects as listProjectsFromSupabase,
   listRowsByProject as listRowsByProjectFromSupabase,
+  listRowsByScope as listRowsByScopeFromSupabase,
   listTemplates as listTemplatesFromSupabase,
   listUnits as listUnitsFromSupabase,
   markOverwriteRequestsSeen as markOverwriteRequestsSeenInSupabase,
@@ -819,12 +820,14 @@ export default function App() {
     setTemplates(list);
   };
 
+  const shouldHydrateFullProjectData = ['IMPORT', 'REPORTS', 'EXTRACT_REPORTS', 'AI_ANALYSIS'].includes(currentView);
+
   useEffect(() => {
     if (!isAuthReady) {
       return;
     }
 
-    if (!selectedProjectId) {
+    if (!selectedProjectId || !shouldHydrateFullProjectData) {
       setData({});
       return;
     }
@@ -851,14 +854,14 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthReady, selectedProjectId]);
+  }, [isAuthReady, selectedProjectId, shouldHydrateFullProjectData]);
 
   useEffect(() => {
     if (!isAuthReady) {
       return;
     }
 
-    if (!selectedProjectId) {
+    if (!selectedProjectId || !shouldHydrateFullProjectData) {
       setDataFiles([]);
       return;
     }
@@ -877,7 +880,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthReady, selectedProjectId]);
+  }, [isAuthReady, selectedProjectId, shouldHydrateFullProjectData]);
 
   useEffect(() => {
     if (!isAuthReady) {
@@ -4043,21 +4046,76 @@ function DashboardOverview({
   const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<UnitStatusFilter>('ALL');
   const [dashboardYear, setDashboardYear] = useState(() => getPreferredReportingYear());
+  const [scopedDashboardRows, setScopedDashboardRows] = useState<DataRow[] | null>(null);
+  const [scopedDashboardDataFiles, setScopedDashboardDataFiles] = useState<DataFileRecordSummary[] | null>(null);
   const currentAssignmentKey = useMemo(() => getAssignmentKey(currentUser?.email), [currentUser?.email]);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
   const projectTemplates = templates.filter((tpl) => tpl.projectId === selectedProjectId);
   const templateMap = new Map(projectTemplates.map((tpl) => [tpl.id, tpl]));
-  const dataFilesForYear = useMemo(
+  const fallbackDataFilesForYear = useMemo(
     () => dataFiles.filter((file) => file.projectId === selectedProjectId && file.year === dashboardYear),
     [dashboardYear, dataFiles, selectedProjectId],
   );
+  const dataFilesForYear = useMemo(
+    () => scopedDashboardDataFiles ?? fallbackDataFilesForYear,
+    [fallbackDataFilesForYear, scopedDashboardDataFiles],
+  );
   const submittedUnitCodes = useMemo(() => new Set(dataFilesForYear.map((file) => file.unitCode)), [dataFilesForYear]);
 
-  const rowsForYear = useMemo(() => {
+  const fallbackRowsForYear = useMemo(() => {
     const rows = Object.values(data).flat();
     return rows.filter((row) => row.projectId === selectedProjectId && row.year === dashboardYear);
   }, [data, dashboardYear, selectedProjectId]);
+  const rowsForYear = useMemo(() => {
+    return scopedDashboardRows ?? fallbackRowsForYear;
+  }, [fallbackRowsForYear, scopedDashboardRows]);
+  const isDashboardScopeLoading = Boolean(selectedProjectId) && (scopedDashboardRows === null || scopedDashboardDataFiles === null);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setScopedDashboardRows([]);
+      setScopedDashboardDataFiles([]);
+      return;
+    }
+
+    let cancelled = false;
+    setScopedDashboardRows(null);
+    setScopedDashboardDataFiles(null);
+
+    Promise.all([
+      listRowsByScopeFromSupabase({
+        projectId: selectedProjectId,
+        years: [dashboardYear],
+        skipExactCount: true,
+      }),
+      listDataFilesByScopeFromSupabase({
+        projectId: selectedProjectId,
+        years: [dashboardYear],
+      }),
+    ])
+      .then(([rows, files]) => {
+        if (cancelled) {
+          return;
+        }
+
+        setScopedDashboardRows(rows);
+        setScopedDashboardDataFiles(files);
+      })
+      .catch((error) => {
+        console.error('Supabase dashboard scoped data load error:', error);
+        if (cancelled) {
+          return;
+        }
+
+        setScopedDashboardRows([]);
+        setScopedDashboardDataFiles([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardYear, selectedProjectId]);
 
   const overwriteRequestsForYear = useMemo(
     () => overwriteRequests.filter((request) => request.projectId === selectedProjectId && request.year === dashboardYear),
@@ -4182,6 +4240,19 @@ function DashboardOverview({
     return map;
   }, [dataFilesForYear]);
 
+  const rowsByUnit = useMemo(() => {
+    const map = new Map<string, DataRow[]>();
+    rowsForYear.forEach((row) => {
+      const current = map.get(row.unitCode);
+      if (current) {
+        current.push(row);
+      } else {
+        map.set(row.unitCode, [row]);
+      }
+    });
+    return map;
+  }, [rowsForYear]);
+
   const overwriteRequestsByUnit = useMemo(() => {
     const map = new Map<string, OverwriteRequestRecord[]>();
     overwriteRequestsForYear.forEach((request) => {
@@ -4214,7 +4285,7 @@ function DashboardOverview({
     const sheetOrder = new Map(SHEET_CONFIGS.map((sheet, index) => [sheet.name, index]));
 
     return units.map((unit) => {
-      const unitRows = rowsForYear.filter((row) => row.unitCode === unit.code);
+      const unitRows = rowsByUnit.get(unit.code) || [];
       const unitFile = latestDataFileByUnit.get(unit.code);
       const unitRequests = overwriteRequestsByUnit.get(unit.code) || [];
       const latestRequest = unitRequests.reduce<OverwriteRequestRecord | null>((latest, current) => {
@@ -4268,7 +4339,7 @@ function DashboardOverview({
 
       return left.name.localeCompare(right.name, 'vi');
     });
-  }, [assignmentMap, lastUpdatedBy, latestDataFileByUnit, overwriteRequestsByUnit, rowsForYear, submittedUnitCodes, templateMap, units]);
+  }, [assignmentMap, lastUpdatedBy, latestDataFileByUnit, overwriteRequestsByUnit, rowsByUnit, submittedUnitCodes, templateMap, units]);
 
   const unitLogs = useMemo<UnitLog[]>(() => {
     if (isAuthenticated && !isAdmin) {
@@ -4316,6 +4387,9 @@ function DashboardOverview({
   const submittedCount = dashboardScopeLogs.filter((unit) => unit.isSubmitted).length;
   const totalUnits = dashboardScopeLogs.length;
   const completionRate = totalUnits === 0 ? '0.0' : ((submittedCount / totalUnits) * 100).toFixed(1);
+  const formattedSubmittedCount = isDashboardScopeLoading ? '...' : `${submittedCount}/${totalUnits}`;
+  const formattedCompletionRate = isDashboardScopeLoading ? '...' : `${completionRate}%`;
+  const formattedTotalUnits = isDashboardScopeLoading ? '...' : totalUnits;
 
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
   const completedProjects = projects.filter((p) => p.status === 'COMPLETED').length;
@@ -4331,17 +4405,17 @@ function DashboardOverview({
   }, [currentAssignmentKey, shouldLockToCurrentUserAssignments]);
 
   const stats = [
-    { label: 'T\u1ed5ng \u0111\u01a1n v\u1ecb', value: totalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
+    { label: 'T\u1ed5ng \u0111\u01a1n v\u1ecb', value: formattedTotalUnits, icon: Users, iconColor: 'text-[var(--primary)]', tone: 'bg-[var(--primary-soft)]' },
     {
       label: '\u0110\u01a1n v\u1ecb \u0111\u00e3 ti\u1ebfp nh\u1eadn',
-      value: `${submittedCount}/${totalUnits}`,
+      value: formattedSubmittedCount,
       icon: FileBarChart,
       iconColor: 'text-[var(--success)]',
       tone: 'bg-[rgba(47,110,73,0.12)]',
     },
     {
       label: 'T\u1ef7 l\u1ec7 ho\u00e0n th\u00e0nh',
-      value: `${completionRate}%`,
+      value: formattedCompletionRate,
       icon: Activity,
       iconColor: 'text-[var(--primary-dark)]',
       tone: 'bg-[rgba(135,17,22,0.12)]',
@@ -4426,18 +4500,15 @@ function DashboardOverview({
               </button>
             </div>
           )}
-          <div className="relative z-10">
+          <div className="relative z-10 min-h-[180px] md:min-h-[220px]">
             <h2 className="max-w-5xl text-[1.9rem] font-black leading-[1.05] tracking-[-0.03em] text-white md:text-[2.3rem] xl:text-[2.55rem]">
               {'H\u1ec6 TH\u1ed0NG QU\u1ea2N TR\u1eca D\u1eee LI\u1ec6U TC\u0110, \u0110V T\u1eacP TRUNG'}
             </h2>
             {currentUser && (
-              <p className="mt-3 text-sm font-bold text-white/90">
+              <p className="absolute bottom-0 left-0 text-sm font-bold text-white/90">
                 {'T\u00e0i kho\u1ea3n \u0111ang \u0111\u0103ng nh\u1eadp: '}{getReadableDisplayName(currentUser.displayName, currentUser.email, 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh')}
               </p>
             )}
-            <p className="mt-3 max-w-3xl text-sm text-white/80">
-              {'Theo d\u00f5i nhanh t\u00ecnh h\u00ecnh ti\u1ebfp nh\u1eadn d\u1eef li\u1ec7u c\u1ee7a c\u00e1c \u0111\u01a1n v\u1ecb, s\u1ed1 bi\u1ec3u \u0111\u00e3 nh\u1eadp v\u00e0 m\u1ee9c \u0111\u1ed9 ho\u00e0n th\u00e0nh t\u1ed5ng h\u1ee3p tr\u00ean to\u00e0n h\u1ec7 th\u1ed1ng.'}
-            </p>
           </div>
         </div>
         {canUseNotifications && isNotificationOpen && (
@@ -4552,9 +4623,15 @@ function DashboardOverview({
           </div>
 
           <div className="space-y-1.5 border-b border-[var(--line)] pb-3 text-sm leading-tight text-[var(--ink)]">
-            <p>{`Tổng số đơn vị: ${totalUnits}`}</p>
-            <p>{`Đơn vị đã tiếp nhận: ${submittedCount}/${totalUnits}`}</p>
-            <p>{`Tỷ lệ hoàn thành: ${completionRate}%`}</p>
+            {isDashboardScopeLoading ? (
+              <p className="text-[var(--ink-soft)]">{`Đang cập nhật số liệu năm ${dashboardYear}...`}</p>
+            ) : (
+              <>
+                <p>{`Tổng số đơn vị: ${totalUnits}`}</p>
+                <p>{`Đơn vị đã tiếp nhận: ${submittedCount}/${totalUnits}`}</p>
+                <p>{`Tỷ lệ hoàn thành: ${completionRate}%`}</p>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -4681,56 +4758,25 @@ function DashboardOverview({
             <h3 className="section-title">{'Biểu đồ tiếp nhận dữ liệu'}</h3>
             <p className="page-subtitle mt-2 text-sm">{`Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm ${dashboardYear}.`}</p>
           </div>
-          <div className="status-pill status-pill-submitted self-start">{`${submittedCount} đơn vị đã nộp`}</div>
-        </div>
-
-        <div className="mt-8 h-[280px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={56}
-                outerRadius={96}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`${entry.name}-${index}`} fill={index === 0 ? '#b30f14' : '#e2d6c4'} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend verticalAlign="bottom" height={36} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="mt-2 text-center">
-          <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
-          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">{'Mức độ hoàn thành tiếp nhận'}</p>
-        </div>
-      </div>
-
-      <div className={`mt-8 hidden grid-cols-1 gap-8 md:grid ${selectedProject ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]' : ''}`}>
-        <div className="panel-card rounded-[28px] p-6 md:p-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h3 className="section-title">{'Biểu đồ tiếp nhận dữ liệu'}</h3>
-              <p className="page-subtitle mt-2 text-sm">{`Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm ${dashboardYear}.`}</p>
-            </div>
-            <div className="status-pill status-pill-submitted">{`${submittedCount} đơn vị đã nộp`}</div>
+          <div className="status-pill status-pill-submitted self-start">
+            {isDashboardScopeLoading ? 'Đang tải số liệu' : `${submittedCount} đơn vị đã nộp`}
           </div>
+        </div>
 
-          <div className="mt-8 h-[300px] w-full">
+        {isDashboardScopeLoading ? (
+          <div className="mt-8 flex h-[280px] w-full items-center justify-center rounded-[24px] bg-[var(--surface-soft)] text-sm text-[var(--ink-soft)]">
+            {`Đang cập nhật số liệu năm ${dashboardYear}...`}
+          </div>
+        ) : (
+          <div className="mt-8 h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={pieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={68}
-                  outerRadius={108}
+                  innerRadius={56}
+                  outerRadius={96}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -4743,9 +4789,56 @@ function DashboardOverview({
               </PieChart>
             </ResponsiveContainer>
           </div>
+        )}
+
+        <div className="mt-2 text-center">
+          <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{formattedCompletionRate}</p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">{'Mức độ hoàn thành tiếp nhận'}</p>
+        </div>
+      </div>
+
+      <div className={`mt-8 hidden grid-cols-1 gap-8 md:grid ${selectedProject ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]' : ''}`}>
+        <div className="panel-card rounded-[28px] p-6 md:p-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="section-title">{'Biểu đồ tiếp nhận dữ liệu'}</h3>
+              <p className="page-subtitle mt-2 text-sm">{`Tỷ lệ đơn vị đã nộp dữ liệu so với tổng số đơn vị trong năm ${dashboardYear}.`}</p>
+            </div>
+            <div className="status-pill status-pill-submitted">
+              {isDashboardScopeLoading ? 'Đang tải số liệu' : `${submittedCount} đơn vị đã nộp`}
+            </div>
+          </div>
+
+          {isDashboardScopeLoading ? (
+            <div className="mt-8 flex h-[300px] w-full items-center justify-center rounded-[24px] bg-[var(--surface-soft)] text-sm text-[var(--ink-soft)]">
+              {`Đang cập nhật số liệu năm ${dashboardYear}...`}
+            </div>
+          ) : (
+            <div className="mt-8 h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={68}
+                    outerRadius={108}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`${entry.name}-${index}`} fill={index === 0 ? '#b30f14' : '#e2d6c4'} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           <div className="mt-2 text-center">
-            <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{completionRate}%</p>
+            <p className="data-value text-4xl font-bold text-[var(--primary-dark)]">{formattedCompletionRate}</p>
             <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-[var(--ink-soft)]">{'Mức độ hoàn thành tiếp nhận'}</p>
           </div>
         </div>
@@ -4776,31 +4869,44 @@ function DashboardOverview({
           </div>
 
           <div className="mt-6 space-y-3">
-            {previewLogs.map((unit) => (
-              <div
-                key={unit.code}
-                className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 md:flex-row md:items-center md:justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
-                  <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                    {unit.isSubmitted
-                      ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} biểu`
-                      : 'Chưa tiếp nhận dữ liệu'}
-                  </p>
-                  <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
-                    {`Nộp gần nhất: ${formatDateTime(unit.submittedAt)} · Cập nhật lại: ${unit.overwriteRequestCount}`}
-                  </p>
+            {isDashboardScopeLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={`dashboard-loading-${index}`}
+                  className="animate-pulse rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4"
+                >
+                  <div className="h-4 w-48 rounded-full bg-[rgba(135,17,22,0.08)]" />
+                  <div className="mt-3 h-3 w-32 rounded-full bg-[rgba(44,62,80,0.08)]" />
+                  <div className="mt-2 h-3 w-40 rounded-full bg-[rgba(44,62,80,0.08)]" />
                 </div>
+              ))
+            ) : (
+              previewLogs.map((unit) => (
+                <div
+                  key={unit.code}
+                  className="flex flex-col gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{unit.name}</p>
+                    <p className="mt-1 text-xs text-[var(--ink-soft)]">
+                      {unit.isSubmitted
+                        ? `Đã nhập ${unit.importedSheets.length}/${projectTemplates.length} biểu`
+                        : 'Chưa tiếp nhận dữ liệu'}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
+                      {`Nộp gần nhất: ${formatDateTime(unit.submittedAt)} · Cập nhật lại: ${unit.overwriteRequestCount}`}
+                    </p>
+                  </div>
 
-                <div className="flex items-center gap-3 self-start md:self-auto">
-                  <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
-                    {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
-                  </span>
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
+                  <div className="flex items-center gap-3 self-start md:self-auto">
+                    <span className={unit.isSubmitted ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending'}>
+                      {unit.isSubmitted ? 'Đã tiếp nhận' : 'Chưa tiếp nhận'}
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">{unit.code}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           <div className="mt-6">
