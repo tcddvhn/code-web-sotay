@@ -2221,8 +2221,23 @@ export function FormLearner({
     setIsManualPreviewExpanded(false);
     clearManualPreviewSelectionDraft();
     setManualPreviewActionMessage(null);
+    setManualPreviewUndoStack([]);
     setIsManualPreviewModalOpen(true);
   };
+
+  const handleConfirmManualPreviewSelection = () => {
+    setError(null);
+    setNotice(
+      'Đã áp các thông số vừa chọn từ cửa sổ xem trước vào phần thiết lập biểu mẫu. Kiểm tra lại rồi bấm "Tạo biểu mẫu" để lưu thành biểu chính thức.',
+    );
+    setIsManualPreviewModalOpen(false);
+    setIsManualPreviewExpanded(false);
+    clearManualPreviewSelectionDraft();
+    setManualPreviewActionMessage(null);
+    setManualPreviewUndoStack([]);
+  };
+
+  const canConfirmManualPreviewSelection = manualPreviewUndoStack.length > 0 || Boolean(manualPreviewActionMessage);
 
   const manualPreviewPanelStyle = isManualPreviewExpanded
     ? { width: 'calc(100vw - 16px)', height: '96vh' }
@@ -2750,6 +2765,7 @@ export function FormLearner({
                     setIsManualPreviewExpanded(false);
                     clearManualPreviewSelectionDraft();
                     setManualPreviewActionMessage(null);
+                    setManualPreviewUndoStack([]);
                   }}
                   className="secondary-btn inline-flex items-center gap-2"
                 >
@@ -2922,6 +2938,25 @@ export function FormLearner({
                   </span>
                 </div>
               )}
+            </div>
+
+            <div className="border-t border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 md:px-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p className="text-[12px] leading-5 text-[var(--ink-soft)]">
+                  Sau khi chọn đúng vùng trong preview, bấm <strong>Lưu thông số vào thiết lập</strong> để xác nhận và quay lại form.
+                </p>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmManualPreviewSelection}
+                    disabled={!canUseManualPreviewSelection || !canConfirmManualPreviewSelection}
+                    className="primary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Save size={15} />
+                    Lưu thông số vào thiết lập
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
