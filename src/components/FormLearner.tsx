@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
-import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Maximize2, Minimize2, Plus, Save, Trash2, Unlock, X } from 'lucide-react';
+import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Maximize2, Minimize2, Plus, RotateCcw, Save, Trash2, Unlock, X } from 'lucide-react';
 import { uploadFile } from '../supabase';
 import { FormTemplate, HeaderLayout, Project, TemplateBlockConfig } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
@@ -44,6 +44,8 @@ type ManualPreviewSelectionPoint = {
   rowNumber: number;
   columnLetter: string;
 };
+
+type ManualPreviewAppliedSection = ManualPreviewSelectionMode | null;
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
 const STORAGE_OPERATION_TIMEOUT_MS = 25000;
@@ -252,6 +254,13 @@ function compressRowNumbers(rows: number[]) {
 
   ranges.push(rangeStart === previous ? `${rangeStart}` : `${rangeStart}-${previous}`);
   return ranges.join(',');
+}
+
+function cloneManualFormState(form: typeof DEFAULT_MANUAL_FORM): typeof DEFAULT_MANUAL_FORM {
+  return {
+    ...form,
+    blocks: form.blocks.map((block) => ({ ...block })),
+  };
 }
 
 function buildManualSummaryLines(form: typeof DEFAULT_MANUAL_FORM) {
@@ -465,6 +474,8 @@ export function FormLearner({
   const [manualPreviewSelectionCurrent, setManualPreviewSelectionCurrent] = useState<ManualPreviewSelectionPoint | null>(null);
   const [isManualPreviewDragging, setIsManualPreviewDragging] = useState(false);
   const [manualPreviewActionMessage, setManualPreviewActionMessage] = useState<string | null>(null);
+  const [manualPreviewUndoStack, setManualPreviewUndoStack] = useState<Array<typeof DEFAULT_MANUAL_FORM>>([]);
+  const [manualPreviewLastAppliedSection, setManualPreviewLastAppliedSection] = useState<ManualPreviewAppliedSection>(null);
   const [isDesktopPreviewViewport, setIsDesktopPreviewViewport] = useState(() =>
     typeof window === 'undefined' ? true : window.innerWidth >= 1024,
   );
@@ -754,6 +765,8 @@ export function FormLearner({
     setManualPreviewSelectionCurrent(null);
     setIsManualPreviewDragging(false);
     setManualPreviewActionMessage(null);
+    setManualPreviewUndoStack([]);
+    setManualPreviewLastAppliedSection(null);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -1002,20 +1015,65 @@ export function FormLearner({
     setManualPreviewActionMessage(null);
   };
 
+  const pushManualPreviewUndoSnapshot = () => {
+    setManualPreviewUndoStack((prev) => [...prev.slice(-9), cloneManualFormState(manualForm)]);
+  };
+
+  const handleUndoManualPreviewSelection = () => {
+    setManualPreviewUndoStack((prev) => {
+      if (prev.length === 0) {
+        return prev;
+      }
+
+      const nextStack = [...prev];
+      const previousForm = nextStack.pop();
+      if (previousForm) {
+        setManualForm(cloneManualFormState(previousForm));
+        setManualPreviewLastAppliedSection(null);
+        setManualPreviewActionMessage('Đã hoàn tác lần chọn gần nhất và dựng lại preview theo cấu hình trước đó.');
+      }
+      return nextStack;
+    });
+    clearManualPreviewSelectionDraft();
+  };
+
+  const getManualSectionHighlightClass = (section: ManualPreviewAppliedSection) =>
+    manualPreviewLastAppliedSection === section
+      ? 'ring-2 ring-[rgba(217,159,43,0.55)] shadow-[0_0_0_3px_rgba(217,159,43,0.12)]'
+      : '';
+
+  const handleResetManualConfiguration = () => {
+    setManualSetupView('QUICK');
+    setManualForm((prev) => ({
+      ...cloneManualFormState(DEFAULT_MANUAL_FORM),
+      sheetName: prev.sheetName,
+    }));
+    setManualPreviewUndoStack([]);
+    setManualPreviewLastAppliedSection(null);
+    clearManualPreviewSelectionDraft();
+    setManualPreviewActionMessage(null);
+    setError(null);
+    setNotice('Đã xóa cấu hình hiện tại và đưa biểu mẫu về trạng thái khởi đầu, vẫn giữ file mẫu và sheet đang chọn để bạn thiết lập lại nhanh hơn.');
+  };
+
   const toggleManualSpecialRow = (rowNumber: number) => {
     const nextRows = expandRowSelection(manualForm.specialRows);
     const existing = new Set(nextRows);
 
     if (existing.has(rowNumber)) {
+      pushManualPreviewUndoSnapshot();
       existing.delete(rowNumber);
       setManualForm((prev) => ({ ...prev, specialRows: compressRowNumbers(Array.from(existing)) }));
-      setManualPreviewActionMessage(`Đã bỏ dòng ${rowNumber} khỏi danh sách dòng bỏ qua.`);
+      setManualPreviewLastAppliedSection('SKIP_ROWS');
+      setManualPreviewActionMessage(`Đã bỏ dòng ${rowNumber} khỏi danh sách dòng bỏ qua. Preview đã dựng lại theo cấu hình mới.`);
       return;
     }
 
+    pushManualPreviewUndoSnapshot();
     existing.add(rowNumber);
     setManualForm((prev) => ({ ...prev, specialRows: compressRowNumbers(Array.from(existing)) }));
-    setManualPreviewActionMessage(`Đã thêm dòng ${rowNumber} vào danh sách dòng bỏ qua.`);
+    setManualPreviewLastAppliedSection('SKIP_ROWS');
+    setManualPreviewActionMessage(`Đã thêm dòng ${rowNumber} vào danh sách dòng bỏ qua. Preview đã dựng lại theo cấu hình mới.`);
   };
 
   const applyManualPreviewSelection = () => {
@@ -1029,6 +1087,7 @@ export function FormLearner({
 
     if (manualPreviewSelectionMode === 'LABEL') {
       const labelRange = buildColumnRangeSelection(startColumnLetter, endColumnLetter);
+      pushManualPreviewUndoSnapshot();
       setManualForm((prev) => ({
         ...prev,
         labelColumn: endColumnLetter,
@@ -1038,21 +1097,24 @@ export function FormLearner({
         verticalHeaderStartRow: manualPreviewSelectionRect.startRow,
         verticalHeaderEndRow: manualPreviewSelectionRect.endRow,
       }));
+      setManualPreviewLastAppliedSection('LABEL');
       setManualPreviewActionMessage(
-        `Đã cập nhật tiêu chí dọc: cột ${labelRange}, dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}. Cột hiển thị chính tạm lấy là ${endColumnLetter}.`,
+        `Đã cập nhật tiêu chí dọc: cột ${labelRange}, dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}. Cột hiển thị chính tạm lấy là ${endColumnLetter}. Preview đã dựng lại theo cấu hình mới.`,
       );
       clearManualPreviewSelectionDraft();
       return;
     }
 
     if (manualPreviewSelectionMode === 'HEADER') {
+      pushManualPreviewUndoSnapshot();
       setManualForm((prev) => ({
         ...prev,
         horizontalHeaderStartRow: manualPreviewSelectionRect.startRow,
         horizontalHeaderEndRow: manualPreviewSelectionRect.endRow,
       }));
+      setManualPreviewLastAppliedSection('HEADER');
       setManualPreviewActionMessage(
-        `Đã cập nhật tiêu đề ngang: dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}.`,
+        `Đã cập nhật tiêu đề ngang: dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}. Preview đã dựng lại theo cấu hình mới.`,
       );
       clearManualPreviewSelectionDraft();
       return;
@@ -1060,14 +1122,16 @@ export function FormLearner({
 
     if (manualPreviewSelectionMode === 'DATA') {
       const dataRange = buildColumnRangeSelection(startColumnLetter, endColumnLetter);
+      pushManualPreviewUndoSnapshot();
       setManualForm((prev) => ({
         ...prev,
         dataColumns: dataRange,
         startRow: manualPreviewSelectionRect.startRow,
         endRow: manualPreviewSelectionRect.endRow,
       }));
+      setManualPreviewLastAppliedSection('DATA');
       setManualPreviewActionMessage(
-        `Đã cập nhật vùng dữ liệu: cột ${dataRange}, dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}.`,
+        `Đã cập nhật vùng dữ liệu: cột ${dataRange}, dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}. Preview đã dựng lại theo cấu hình mới.`,
       );
       clearManualPreviewSelectionDraft();
       return;
@@ -2724,22 +2788,34 @@ export function FormLearner({
               {canUseManualPreviewSelection ? (
                 <div className="mb-4 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
                   <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="flex flex-wrap gap-2">
-                      {([
-                        ['LABEL', 'Chọn tiêu chí dọc'],
-                        ['HEADER', 'Chọn tiêu đề ngang'],
-                        ['DATA', 'Chọn vùng dữ liệu'],
-                        ['SKIP_ROWS', 'Chọn dòng bỏ qua'],
-                      ] as Array<[ManualPreviewSelectionMode, string]>).map(([modeKey, label]) => (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {([
+                          ['LABEL', 'Chọn tiêu chí dọc'],
+                          ['HEADER', 'Chọn tiêu đề ngang'],
+                          ['DATA', 'Chọn vùng dữ liệu'],
+                          ['SKIP_ROWS', 'Chọn dòng bỏ qua'],
+                        ] as Array<[ManualPreviewSelectionMode, string]>).map(([modeKey, label]) => (
+                          <button
+                            key={modeKey}
+                            type="button"
+                            onClick={() => handleManualPreviewModeChange(modeKey)}
+                            className={manualPreviewSelectionMode === modeKey ? 'primary-btn' : 'secondary-btn'}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
                         <button
-                          key={modeKey}
                           type="button"
-                          onClick={() => handleManualPreviewModeChange(modeKey)}
-                          className={manualPreviewSelectionMode === modeKey ? 'primary-btn' : 'secondary-btn'}
+                          onClick={handleUndoManualPreviewSelection}
+                          className="secondary-btn"
+                          disabled={manualPreviewUndoStack.length === 0}
                         >
-                          {label}
+                          Hoàn tác lần chọn gần nhất
                         </button>
-                      ))}
+                      </div>
                     </div>
                     <div className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[11px] font-semibold text-[var(--ink-soft)]">
                       Đang chọn: {manualPreviewSelectionModeLabel}
@@ -2871,6 +2947,10 @@ export function FormLearner({
                 <button type="button" onClick={handleOpenManualPreview} className="secondary-btn inline-flex items-center gap-2">
                   <Eye size={14} />
                   Xem trước biểu
+                </button>
+                <button type="button" onClick={handleResetManualConfiguration} className="secondary-btn inline-flex items-center gap-2">
+                  <RotateCcw size={14} />
+                  Xóa cấu hình
                 </button>
               </div>
             </div>
@@ -3067,7 +3147,7 @@ export function FormLearner({
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div className="panel-soft rounded-[18px] p-4">
+                    <div className={`panel-soft rounded-[18px] p-4 ${getManualSectionHighlightClass('LABEL')}`}>
                       <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                         1. Tiêu chí dọc
                       </p>
@@ -3137,7 +3217,7 @@ export function FormLearner({
                       </div>
                     </div>
 
-                    <div className="panel-soft rounded-[18px] p-4">
+                    <div className={`panel-soft rounded-[18px] p-4 ${getManualSectionHighlightClass('HEADER')}`}>
                       <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                         2. Tiêu chí ngang
                       </p>
@@ -3173,7 +3253,13 @@ export function FormLearner({
                       </div>
                     </div>
 
-                    <div className="panel-soft rounded-[18px] p-4">
+                    <div
+                      className={`panel-soft rounded-[18px] p-4 ${
+                        manualPreviewLastAppliedSection === 'DATA' || manualPreviewLastAppliedSection === 'SKIP_ROWS'
+                          ? 'ring-2 ring-[rgba(217,159,43,0.55)] shadow-[0_0_0_3px_rgba(217,159,43,0.12)]'
+                          : ''
+                      }`}
+                    >
                       <p className="mb-3 text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                         3. Vùng lấy dữ liệu
                       </p>
