@@ -2943,7 +2943,7 @@ export function FormLearner({
             <div className="border-t border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 md:px-6">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <p className="text-[12px] leading-5 text-[var(--ink-soft)]">
-                  Sau khi chọn đúng vùng trong preview, bấm <strong>Lưu thông số vào thiết lập</strong> để xác nhận và quay lại form.
+                  Sau khi chọn đúng vùng trong preview, bấm <strong>Hoàn tất và quay lại thiết lập</strong> để xác nhận và quay lại form.
                 </p>
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
@@ -2953,7 +2953,7 @@ export function FormLearner({
                     className="primary-btn inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Save size={15} />
-                    Lưu thông số vào thiết lập
+                    Hoàn tất và quay lại thiết lập
                   </button>
                 </div>
               </div>
