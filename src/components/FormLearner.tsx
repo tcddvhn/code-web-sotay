@@ -2367,7 +2367,7 @@ export function FormLearner({
       )}
 
       {mode === 'MANUAL' && (
-        <div className="max-w-6xl space-y-6">
+        <div className="w-full space-y-6">
           <div className="panel-card rounded-[24px] p-6">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -2459,7 +2459,7 @@ export function FormLearner({
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
                   <div>
@@ -2964,7 +2964,7 @@ export function FormLearner({
                 )}
               </div>
 
-              <div className="hidden lg:block">
+              <div className="hidden xl:block">
                 <div className="sticky top-6 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
