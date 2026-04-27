@@ -313,6 +313,18 @@ function buildWorksheetPreview(worksheet: XLSX.WorkSheet, form: typeof DEFAULT_M
   };
 }
 
+function FieldHelpBadge({ text }: { text: string }) {
+  return (
+    <span
+      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--line)] bg-white text-[10px] font-bold text-[var(--ink-soft)]"
+      title={text}
+      aria-label={text}
+    >
+      ?
+    </span>
+  );
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = window.setTimeout(() => {
@@ -780,6 +792,39 @@ export function FormLearner({
   );
 
   const manualSummaryLines = useMemo(() => buildManualSummaryLines(manualForm), [manualForm]);
+
+  const manualReadinessChecks = useMemo(() => {
+    const dataColumns = expandColumnSelection(manualForm.dataColumns);
+    return [
+      {
+        label: 'Đã chọn dự án và tải file mẫu Excel',
+        ready: Boolean(project?.id && manualFile),
+        hint: 'Cần có file mẫu để hệ thống đọc sheet và hỗ trợ preview vùng dữ liệu.',
+      },
+      {
+        label: 'Đã đặt tên biểu mẫu và chọn đúng sheet',
+        ready: Boolean(manualForm.name.trim() && manualForm.sheetName.trim()),
+        hint: 'Tên biểu mẫu và tên sheet là 2 thông tin bắt buộc trước khi tạo.',
+      },
+      {
+        label: 'Vùng số liệu hợp lệ',
+        ready: dataColumns.length > 0 && Number(manualForm.endRow) >= Number(manualForm.startRow),
+        hint: 'Các cột số liệu phải đúng định dạng và dòng kết thúc không được nhỏ hơn dòng bắt đầu.',
+      },
+      {
+        label: 'Vùng tiêu chí dọc và ngang hợp lệ',
+        ready:
+          Number(manualForm.verticalHeaderEndRow) >= Number(manualForm.verticalHeaderStartRow) &&
+          Number(manualForm.horizontalHeaderEndRow) >= Number(manualForm.horizontalHeaderStartRow),
+        hint: 'Nếu chọn sai khoảng dòng tiêu chí, biểu sẽ dễ đọc lệch vùng.',
+      },
+      {
+        label: 'Tên biểu mẫu chưa bị trùng trong dự án',
+        ready: manualForm.name.trim() ? !existingNames.has(manualForm.name.trim().toLowerCase()) : true,
+        hint: 'Nếu trùng tên với biểu đã có, hệ thống sẽ không cho tạo mới.',
+      },
+    ];
+  }, [existingNames, manualFile, manualForm, project?.id]);
 
   const previewLegend = useMemo(
     () => [
@@ -2362,6 +2407,58 @@ export function FormLearner({
               </span>
             </div>
 
+            <div className="mb-5 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">Mẹo thiết lập 3 bước</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-[16px] bg-white px-4 py-3">
+                  <p className="text-sm font-semibold text-[var(--ink)]">Bước 1. Chọn đúng sheet</p>
+                  <p className="mt-2 text-[12px] leading-5 text-[var(--ink-soft)]">
+                    Tải file mẫu gốc, rồi chọn đúng sheet đang chứa biểu cần cấu hình.
+                  </p>
+                </div>
+                <div className="rounded-[16px] bg-white px-4 py-3">
+                  <p className="text-sm font-semibold text-[var(--ink)]">Bước 2. Đánh dấu vùng tiêu chí</p>
+                  <p className="mt-2 text-[12px] leading-5 text-[var(--ink-soft)]">
+                    Xác định cột tên chỉ tiêu và các dòng tiêu đề ngang để hệ thống hiểu đúng cấu trúc biểu.
+                  </p>
+                </div>
+                <div className="rounded-[16px] bg-white px-4 py-3">
+                  <p className="text-sm font-semibold text-[var(--ink)]">Bước 3. Chốt vùng số liệu</p>
+                  <p className="mt-2 text-[12px] leading-5 text-[var(--ink-soft)]">
+                    Chỉ chọn những cột và dòng thật sự chứa số cần tổng hợp, sau đó xem lại phần kiểm tra nhanh bên dưới.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-5 rounded-[18px] border border-[var(--line)] bg-white px-4 py-4">
+              {manualSetupView === 'QUICK' ? (
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">Ví dụ nhanh kiểu B1</p>
+                  <p className="text-sm font-semibold text-[var(--ink)]">
+                    Một biểu có 1 bảng liên tục, 1 vùng tiêu đề ngang và 1 vùng số liệu.
+                  </p>
+                  <div className="space-y-1 text-[12px] leading-5 text-[var(--ink-soft)]">
+                    <p>- Tên chỉ tiêu thường nằm ở cột A hoặc A-B.</p>
+                    <p>- Các cột số liệu thường chạy liên tục như B-E hoặc C-I.</p>
+                    <p>- Người mới nên bắt đầu từ chế độ này để khai báo nhanh một biểu cơ bản.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">Ví dụ kiểu B2 / nhiều khối</p>
+                  <p className="text-sm font-semibold text-[var(--ink)]">
+                    Một sheet có nhiều cụm tiêu đề và nhiều cụm số liệu tách biệt trong cùng trang.
+                  </p>
+                  <div className="space-y-1 text-[12px] leading-5 text-[var(--ink-soft)]">
+                    <p>- Mỗi cụm sẽ khai báo thành một khối tiêu đề - dữ liệu riêng.</p>
+                    <p>- Thường dùng khi biểu có Khối 1, Khối 2, Khối 3 xếp nối tiếp nhau theo chiều dọc.</p>
+                    <p>- Nếu file nhìn như nhiều bảng nhỏ ghép trong một sheet, hãy dùng chế độ này.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
@@ -2407,6 +2504,36 @@ export function FormLearner({
                     {manualSummaryLines.map((line, index) => (
                       <p key={`manual-summary-${index}`}>- {line}</p>
                     ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="rounded-[18px] border border-[var(--line)] bg-white px-4 py-4">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Hiểu nhanh 1
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-[var(--ink)]">Tiêu chí dọc là gì?</p>
+                    <p className="mt-2 text-[12px] leading-5 text-[var(--ink-soft)]">
+                      Đây là cột hoặc nhóm cột ghi tên chỉ tiêu, ví dụ tên hạng mục, tên nội dung, tên đối tượng cần thống kê.
+                    </p>
+                  </div>
+                  <div className="rounded-[18px] border border-[var(--line)] bg-white px-4 py-4">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Hiểu nhanh 2
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-[var(--ink)]">Tiêu chí ngang là gì?</p>
+                    <p className="mt-2 text-[12px] leading-5 text-[var(--ink-soft)]">
+                      Đây là phần tiêu đề phía trên các cột số liệu, ví dụ Tổng số, Nam, Nữ, Tăng, Giảm...
+                    </p>
+                  </div>
+                  <div className="rounded-[18px] border border-[var(--line)] bg-white px-4 py-4">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                      Hiểu nhanh 3
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-[var(--ink)]">Vùng dữ liệu là gì?</p>
+                    <p className="mt-2 text-[12px] leading-5 text-[var(--ink-soft)]">
+                      Đây là khu vực chứa các con số thực tế cần tổng hợp. Chỉ những ô nằm trong vùng này mới được hệ thống đọc.
+                    </p>
                   </div>
                 </div>
 
@@ -2458,7 +2585,7 @@ export function FormLearner({
                       </p>
                       <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="min-w-[148px]">- Cột tiêu chí mặc định:</span>
+                          <span className="min-w-[148px]">- Cột tên tiêu chí:</span>
                           <input
                             className="field-input h-11 min-w-[110px] flex-1 text-[15px] font-semibold"
                             placeholder="VD: A"
@@ -2483,7 +2610,8 @@ export function FormLearner({
                           />
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="min-w-[148px]">- Cột tiêu chí chính:</span>
+                          <span className="min-w-[148px]">- Cột hiển thị chính:</span>
+                          <FieldHelpBadge text="Đây là cột hệ thống sẽ dùng làm tên chỉ tiêu chính khi hiển thị ra báo cáo hoặc danh sách dữ liệu." />
                           <input
                             className="field-input h-11 min-w-[110px] flex-1 text-[15px] font-semibold"
                             placeholder="VD: B"
@@ -2516,7 +2644,7 @@ export function FormLearner({
                           <code className="mx-1">A:B</code> nhưng tên tiêu chí chính nằm ở <code>B</code>.
                         </p>
                         <p className="text-[11px] leading-5 text-[var(--ink-soft)]">
-                          Nếu chưa chắc, hãy nhìn preview bên phải: vùng xanh lam là nơi hệ thống đang hiểu là tiêu chí dọc.
+                          Nếu chưa chắc, hãy nhìn preview bên phải: vùng xanh lam là nơi hệ thống đang hiểu là cột tên chỉ tiêu.
                         </p>
                       </div>
                     </div>
@@ -2563,7 +2691,7 @@ export function FormLearner({
                       </p>
                       <div className="space-y-2.5 text-[14px] font-semibold text-[var(--ink)]">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="min-w-[148px]">- Cột dữ liệu:</span>
+                          <span className="min-w-[148px]">- Các cột chứa số liệu:</span>
                           <input
                             className="field-input h-11 min-w-[180px] flex-1 text-[15px] font-semibold"
                             placeholder="VD: A-C, F hoặc B,D,G"
@@ -2572,7 +2700,8 @@ export function FormLearner({
                           />
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="min-w-[148px]">- Dòng đặc biệt:</span>
+                          <span className="min-w-[148px]">- Dòng bỏ qua:</span>
+                          <FieldHelpBadge text="Dùng khi trong vùng số liệu có các dòng ghi chú, dòng cộng phụ hoặc dòng không muốn hệ thống đọc vào kết quả tổng hợp." />
                           <input
                             className="field-input h-11 min-w-[180px] flex-1 text-[15px] font-semibold"
                             placeholder="VD: 34 hoặc 34,56-58"
@@ -2643,7 +2772,7 @@ export function FormLearner({
                             <div>
                               <p className="text-sm font-semibold text-[var(--ink)]">Khối {index + 1}</p>
                               <p className="mt-1 text-[11px] text-[var(--ink-soft)]">
-                                Mỗi khối có vùng tiêu đề riêng và vùng số liệu riêng, phù hợp với sheet có nhiều phần tách biệt trong cùng một trang.
+                                Mỗi khối là một cụm tiêu đề và số liệu riêng. Dùng khi cùng một sheet có nhiều bảng nhỏ tách biệt trong cùng một trang.
                               </p>
                             </div>
                             <button
@@ -2726,7 +2855,7 @@ export function FormLearner({
                               />
                             </label>
                             <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                              Cột chứa tên tiêu chí chính
+                              Cột hiển thị tên tiêu chí chính
                               <input
                                 className="field-input mt-2"
                                 value={block.primaryLabelColumn}
@@ -2752,7 +2881,7 @@ export function FormLearner({
                               />
                             </label>
                             <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                              Dòng đặc biệt bỏ qua khi tổng hợp
+                              Dòng bỏ qua khi tổng hợp
                               <input
                                 className="field-input mt-2"
                                 value={block.specialRows}
@@ -2784,9 +2913,12 @@ export function FormLearner({
                 <div className="mt-4 panel-soft rounded-[18px] p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        Chỉ số khóa nhận diện sheet
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                          Chỉ số khóa nhận diện sheet
+                        </p>
+                        <FieldHelpBadge text="Đây là vùng hệ thống dùng để đối chiếu xem file người dùng nộp lên có đúng cấu trúc của biểu mẫu đã thiết lập hay không." />
+                      </div>
                       <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
                         Hệ thống dùng hàng đầu, hàng cuối và số dòng ở giữa để kiểm tra file tiếp nhận có đúng mẫu hay không.
                       </p>
@@ -2914,6 +3046,48 @@ export function FormLearner({
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-[18px] border border-[var(--line)] bg-white px-4 py-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">Kiểm tra nhanh cấu hình</p>
+                  <p className="mt-1 text-[12px] leading-5 text-[var(--ink-soft)]">
+                    Trước khi bấm tạo biểu mẫu, hãy xem còn mục nào chưa sẵn sàng.
+                  </p>
+                </div>
+                <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--ink-soft)]">
+                  {manualReadinessChecks.filter((item) => item.ready).length}/{manualReadinessChecks.length} mục đã sẵn sàng
+                </span>
+              </div>
+              <div className="mt-4 space-y-3">
+                {manualReadinessChecks.map((item) => (
+                  <div
+                    key={item.label}
+                    className={`rounded-[16px] border px-4 py-3 ${
+                      item.ready
+                        ? 'border-emerald-200 bg-emerald-50'
+                        : 'border-amber-200 bg-amber-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {item.ready ? (
+                        <CheckCircle size={16} className="mt-0.5 text-emerald-600" />
+                      ) : (
+                        <AlertCircle size={16} className="mt-0.5 text-amber-600" />
+                      )}
+                      <div>
+                        <p className={`text-sm font-semibold ${item.ready ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          {item.label}
+                        </p>
+                        <p className={`mt-1 text-[12px] leading-5 ${item.ready ? 'text-emerald-700/80' : 'text-amber-700/80'}`}>
+                          {item.hint}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
