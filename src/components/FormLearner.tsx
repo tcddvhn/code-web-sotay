@@ -414,14 +414,9 @@ export function FormLearner({
   const [previewRows, setPreviewRows] = useState<string[][]>([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isManualPreviewModalOpen, setIsManualPreviewModalOpen] = useState(false);
   const [manualWorksheetPreview, setManualWorksheetPreview] = useState<ManualWorksheetPreview | null>(null);
   const [isManualPreviewLoading, setIsManualPreviewLoading] = useState(false);
-  const [isDesktopManualPreviewEnabled, setIsDesktopManualPreviewEnabled] = useState(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return true;
-    }
-    return window.matchMedia('(min-width: 1024px)').matches;
-  });
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -671,24 +666,6 @@ export function FormLearner({
   }, [geminiApiKey]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia('(min-width: 1024px)');
-    const syncPreviewMode = () => setIsDesktopManualPreviewEnabled(mediaQuery.matches);
-    syncPreviewMode();
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', syncPreviewMode);
-      return () => mediaQuery.removeEventListener('change', syncPreviewMode);
-    }
-
-    mediaQuery.addListener(syncPreviewMode);
-    return () => mediaQuery.removeListener(syncPreviewMode);
-  }, []);
-
-  useEffect(() => {
     setFile(null);
     setManualFile(null);
     setManualSetupView('QUICK');
@@ -701,6 +678,7 @@ export function FormLearner({
     setError(null);
     setNotice(null);
     setManualForm(DEFAULT_MANUAL_FORM);
+    setIsManualPreviewModalOpen(false);
     setManualWorksheetPreview(null);
   }, [selectedProjectId]);
 
@@ -757,7 +735,7 @@ export function FormLearner({
   useEffect(() => {
     let isCancelled = false;
 
-    if (!isDesktopManualPreviewEnabled || !manualWorkbook || !manualForm.sheetName) {
+    if (!isManualPreviewModalOpen || !manualWorkbook || !manualForm.sheetName) {
       setManualWorksheetPreview(null);
       setIsManualPreviewLoading(false);
       return undefined;
@@ -784,7 +762,7 @@ export function FormLearner({
     return () => {
       isCancelled = true;
     };
-  }, [isDesktopManualPreviewEnabled, manualWorkbook, manualForm]);
+  }, [isManualPreviewModalOpen, manualWorkbook, manualForm]);
 
   const existingNames = useMemo(
     () => new Set(manualTemplates.map((tpl) => tpl.name.trim().toLowerCase()).filter(Boolean)),
@@ -1889,6 +1867,23 @@ export function FormLearner({
     }
   };
 
+  const handleOpenManualPreview = () => {
+    if (!manualFile || !manualWorkbook) {
+      setError('Vui lòng tải file mẫu trước khi xem trước biểu.');
+      setNotice(null);
+      return;
+    }
+
+    if (!manualForm.sheetName.trim()) {
+      setError('Vui lòng chọn đúng sheet trước khi xem trước biểu.');
+      setNotice(null);
+      return;
+    }
+
+    setError(null);
+    setIsManualPreviewModalOpen(true);
+  };
+
   return (
     <div className="p-6 md:p-8">
       <div className="mb-8">
@@ -2366,6 +2361,114 @@ export function FormLearner({
         </div>
       )}
 
+      {isManualPreviewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-[rgba(15,15,15,0.75)] p-3 md:p-4">
+          <div className="panel-card flex h-[92vh] w-full max-w-[1440px] flex-col overflow-hidden rounded-[28px] shadow-xl">
+            <div className="flex flex-col gap-3 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+              <div>
+                <div className="surface-tag">{manualForm.name || 'Preview biểu mẫu thủ công'}</div>
+                <h3 className="section-title mt-2 text-lg">Xem trước biểu mẫu</h3>
+                <p className="mt-2 text-xs leading-5 text-[var(--ink-soft)]">
+                  Cửa sổ này giúp chúng ta xem biểu rộng hơn trước khi lưu, đặc biệt với biểu có nhiều tiêu chí và nhiều cột số liệu.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 self-end md:self-auto">
+                {manualForm.sheetName && (
+                  <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                    {manualForm.sheetName}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsManualPreviewModalOpen(false)}
+                  className="secondary-btn inline-flex items-center gap-2"
+                >
+                  <X size={16} />
+                  Đóng
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 md:p-6">
+              <div className="mb-4 flex flex-wrap gap-2">
+                {previewLegend.map((item) => (
+                  <span
+                    key={`manual-preview-legend-modal-${item.label}`}
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${item.className}`}
+                  >
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mb-4 rounded-[18px] border border-[var(--line)] bg-[rgba(179,15,20,0.04)] px-4 py-4">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+                  Hệ thống đang hiểu cấu hình này như sau
+                </p>
+                <div className="mt-3 space-y-2 text-sm leading-6 text-[var(--ink)]">
+                  {manualSummaryLines.map((line, index) => (
+                    <p key={`manual-summary-modal-${index}`}>- {line}</p>
+                  ))}
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-[22px] border border-[var(--line)] bg-white">
+                {isManualPreviewLoading ? (
+                  <div className="flex h-[60vh] items-center justify-center text-sm text-[var(--ink-soft)]">
+                    <Loader2 size={18} className="mr-2 animate-spin" />
+                    Đang dựng preview từ file mẫu...
+                  </div>
+                ) : manualWorksheetPreview ? (
+                  <div className="max-h-[60vh] overflow-auto">
+                    <table className="min-w-full border-collapse text-xs md:text-[12px]">
+                      <thead className="sticky top-0 z-10 bg-[var(--surface-soft)]">
+                        <tr>
+                          <th className="border-b border-r border-[var(--line)] px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                            Dòng
+                          </th>
+                          {manualWorksheetPreview.headers.map((header) => (
+                            <th
+                              key={`manual-preview-modal-header-${header}`}
+                              className="border-b border-r border-[var(--line)] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]"
+                            >
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {manualWorksheetPreview.rows.map((row) => (
+                          <tr key={`manual-preview-modal-row-${row.rowNumber}`}>
+                            <td className="border-b border-r border-[var(--line)] bg-[var(--surface-soft)] px-2 py-2 text-center text-[10px] font-bold text-[var(--ink-soft)]">
+                              {row.rowNumber}
+                            </td>
+                            {row.cells.map((cell, cellIndex) => {
+                              const columnLetter = XLSX.utils.encode_col(manualWorksheetPreview.startCol + cellIndex);
+                              return (
+                                <td
+                                  key={`manual-preview-modal-cell-${row.rowNumber}-${columnLetter}`}
+                                  className={`min-w-[110px] border-b border-r border-[var(--line)] px-3 py-2 align-top text-[11px] text-[var(--ink)] md:min-w-[132px] md:text-[12px] ${getManualPreviewCellTone(row.rowNumber, columnLetter)}`}
+                                >
+                                  {cell || '\u00A0'}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="flex h-[60vh] items-center justify-center px-4 text-center text-sm text-[var(--ink-soft)]">
+                    Hãy tải file mẫu và chọn đúng sheet để xem trước biểu mẫu.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {mode === 'MANUAL' && (
         <div className="w-full space-y-6">
           <div className="panel-card rounded-[24px] p-6">
@@ -2382,6 +2485,10 @@ export function FormLearner({
                 </button>
                 <button type="button" onClick={() => applyManualPreset('B2')} className="secondary-btn">
                   Điền nhanh B2
+                </button>
+                <button type="button" onClick={handleOpenManualPreview} className="secondary-btn inline-flex items-center gap-2">
+                  <Eye size={14} />
+                  Xem trước biểu
                 </button>
               </div>
             </div>
@@ -2459,8 +2566,7 @@ export function FormLearner({
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-              <div className="space-y-4">
+            <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
                   <div>
                     <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
@@ -2644,7 +2750,7 @@ export function FormLearner({
                           <code className="mx-1">A:B</code> nhưng tên tiêu chí chính nằm ở <code>B</code>.
                         </p>
                         <p className="text-[11px] leading-5 text-[var(--ink-soft)]">
-                          Nếu chưa chắc, hãy nhìn preview bên phải: vùng xanh lam là nơi hệ thống đang hiểu là cột tên chỉ tiêu.
+                          Nếu chưa chắc, hãy bấm <strong>Xem trước biểu</strong>; vùng xanh lam trong cửa sổ preview là nơi hệ thống đang hiểu là cột tên chỉ tiêu.
                         </p>
                       </div>
                     </div>
@@ -2962,91 +3068,6 @@ export function FormLearner({
                     Nếu sheet có nhiều vùng tiêu đề hoặc nhiều vùng số liệu tách biệt như <strong>B2</strong>, hãy chuyển sang <strong>Thiết lập nâng cao</strong> để khai báo khối tiêu đề - dữ liệu và chỉ số khóa nhận diện.
                   </div>
                 )}
-              </div>
-
-              <div className="hidden xl:block">
-                <div className="sticky top-6 rounded-[22px] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                        Xem trước vùng đang chọn
-                      </p>
-                      <p className="mt-2 text-[11px] leading-5 text-[var(--ink-soft)]">
-                        Preview này chỉ dành cho desktop để giúp người mới nhìn ra hệ thống đang đọc vùng nào trong sheet.
-                      </p>
-                    </div>
-                    {manualForm.sheetName && (
-                      <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                        {manualForm.sheetName}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {previewLegend.map((item) => (
-                      <span
-                        key={item.label}
-                        className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${item.className}`}
-                      >
-                        {item.label}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 overflow-hidden rounded-[18px] border border-[var(--line)] bg-white">
-                    {isManualPreviewLoading ? (
-                      <div className="flex h-[340px] items-center justify-center text-sm text-[var(--ink-soft)]">
-                        <Loader2 size={16} className="mr-2 animate-spin" />
-                        Đang dựng preview từ file mẫu...
-                      </div>
-                    ) : manualWorksheetPreview ? (
-                      <div className="max-h-[340px] overflow-auto">
-                        <table className="min-w-full border-collapse text-[11px]">
-                          <thead className="sticky top-0 z-10 bg-[var(--surface-soft)]">
-                            <tr>
-                              <th className="border-b border-r border-[var(--line)] px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                                Dòng
-                              </th>
-                              {manualWorksheetPreview.headers.map((header) => (
-                                <th
-                                  key={`manual-preview-header-${header}`}
-                                  className="border-b border-r border-[var(--line)] px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]"
-                                >
-                                  {header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {manualWorksheetPreview.rows.map((row) => (
-                              <tr key={`manual-preview-row-${row.rowNumber}`}>
-                                <td className="border-b border-r border-[var(--line)] bg-[var(--surface-soft)] px-2 py-2 text-center text-[10px] font-bold text-[var(--ink-soft)]">
-                                  {row.rowNumber}
-                                </td>
-                                {row.cells.map((cell, cellIndex) => {
-                                  const columnLetter = XLSX.utils.encode_col(manualWorksheetPreview.startCol + cellIndex);
-                                  return (
-                                    <td
-                                      key={`manual-preview-cell-${row.rowNumber}-${columnLetter}`}
-                                      className={`border-b border-r border-[var(--line)] px-2 py-2 align-top text-[11px] text-[var(--ink)] ${getManualPreviewCellTone(row.rowNumber, columnLetter)}`}
-                                    >
-                                      {cell || '\u00A0'}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="flex h-[340px] items-center justify-center px-4 text-center text-sm text-[var(--ink-soft)]">
-                        Hãy tải file mẫu và chọn đúng sheet để xem trước vùng tiêu chí, vùng tiêu đề và vùng số liệu.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className="mt-6 rounded-[18px] border border-[var(--line)] bg-white px-4 py-4">
