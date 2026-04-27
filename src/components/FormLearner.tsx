@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from '@google/genai';
-import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Plus, Save, Trash2, Unlock, X } from 'lucide-react';
+import { AlertCircle, Brain, CheckCircle, Eye, FileSpreadsheet, Loader2, Lock, Maximize2, Minimize2, Plus, Save, Trash2, Unlock, X } from 'lucide-react';
 import { uploadFile } from '../supabase';
 import { FormTemplate, HeaderLayout, Project, TemplateBlockConfig } from '../types';
 import { columnLetterToIndex } from '../utils/columnUtils';
@@ -36,6 +36,13 @@ type ManualWorksheetPreview = {
     rowNumber: number;
     cells: string[];
   }>;
+};
+
+type ManualPreviewSelectionMode = 'LABEL' | 'HEADER' | 'DATA' | 'SKIP_ROWS';
+
+type ManualPreviewSelectionPoint = {
+  rowNumber: number;
+  columnLetter: string;
 };
 
 const GEMINI_API_KEY_STORAGE_KEY = 'sotay_gemini_api_key';
@@ -210,6 +217,41 @@ function buildReadableDataColumnsLabel(dataColumns: string) {
     return 'chưa chọn cột dữ liệu';
   }
   return normalizedColumns.join(', ');
+}
+
+function buildColumnRangeSelection(startColumn: string, endColumn: string) {
+  const startIndex = columnLetterToIndex(normalizeColumnValue(startColumn));
+  const endIndex = columnLetterToIndex(normalizeColumnValue(endColumn));
+  const minIndex = Math.min(startIndex, endIndex);
+  const maxIndex = Math.max(startIndex, endIndex);
+  const startLabel = XLSX.utils.encode_col(minIndex - 1);
+  const endLabel = XLSX.utils.encode_col(maxIndex - 1);
+  return startLabel === endLabel ? startLabel : `${startLabel}-${endLabel}`;
+}
+
+function compressRowNumbers(rows: number[]) {
+  const sortedRows = Array.from(new Set(rows.filter((value) => Number.isFinite(value) && value > 0))).sort((a, b) => a - b);
+  if (sortedRows.length === 0) {
+    return '';
+  }
+
+  const ranges: string[] = [];
+  let rangeStart = sortedRows[0];
+  let previous = sortedRows[0];
+
+  for (let index = 1; index < sortedRows.length; index += 1) {
+    const current = sortedRows[index];
+    if (current === previous + 1) {
+      previous = current;
+      continue;
+    }
+    ranges.push(rangeStart === previous ? `${rangeStart}` : `${rangeStart}-${previous}`);
+    rangeStart = current;
+    previous = current;
+  }
+
+  ranges.push(rangeStart === previous ? `${rangeStart}` : `${rangeStart}-${previous}`);
+  return ranges.join(',');
 }
 
 function buildManualSummaryLines(form: typeof DEFAULT_MANUAL_FORM) {
@@ -415,8 +457,17 @@ export function FormLearner({
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isManualPreviewModalOpen, setIsManualPreviewModalOpen] = useState(false);
+  const [isManualPreviewExpanded, setIsManualPreviewExpanded] = useState(false);
   const [manualWorksheetPreview, setManualWorksheetPreview] = useState<ManualWorksheetPreview | null>(null);
   const [isManualPreviewLoading, setIsManualPreviewLoading] = useState(false);
+  const [manualPreviewSelectionMode, setManualPreviewSelectionMode] = useState<ManualPreviewSelectionMode>('LABEL');
+  const [manualPreviewSelectionStart, setManualPreviewSelectionStart] = useState<ManualPreviewSelectionPoint | null>(null);
+  const [manualPreviewSelectionCurrent, setManualPreviewSelectionCurrent] = useState<ManualPreviewSelectionPoint | null>(null);
+  const [isManualPreviewDragging, setIsManualPreviewDragging] = useState(false);
+  const [manualPreviewActionMessage, setManualPreviewActionMessage] = useState<string | null>(null);
+  const [isDesktopPreviewViewport, setIsDesktopPreviewViewport] = useState(() =>
+    typeof window === 'undefined' ? true : window.innerWidth >= 1024,
+  );
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -591,6 +642,24 @@ export function FormLearner({
   };
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const applyMatch = () => setIsDesktopPreviewViewport(mediaQuery.matches);
+    applyMatch();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', applyMatch);
+      return () => mediaQuery.removeEventListener('change', applyMatch);
+    }
+
+    mediaQuery.addListener(applyMatch);
+    return () => mediaQuery.removeListener(applyMatch);
+  }, []);
+
+  useEffect(() => {
     let isCancelled = false;
 
     if (!file) {
@@ -679,7 +748,12 @@ export function FormLearner({
     setNotice(null);
     setManualForm(DEFAULT_MANUAL_FORM);
     setIsManualPreviewModalOpen(false);
+    setIsManualPreviewExpanded(false);
     setManualWorksheetPreview(null);
+    setManualPreviewSelectionStart(null);
+    setManualPreviewSelectionCurrent(null);
+    setIsManualPreviewDragging(false);
+    setManualPreviewActionMessage(null);
   }, [selectedProjectId]);
 
   useEffect(() => {
@@ -764,6 +838,15 @@ export function FormLearner({
     };
   }, [isManualPreviewModalOpen, manualWorkbook, manualForm]);
 
+  useEffect(() => {
+    if (isManualPreviewModalOpen) {
+      return;
+    }
+
+    clearManualPreviewSelectionDraft();
+    setManualPreviewActionMessage(null);
+  }, [isManualPreviewModalOpen]);
+
   const existingNames = useMemo(
     () => new Set(manualTemplates.map((tpl) => tpl.name.trim().toLowerCase()).filter(Boolean)),
     [manualTemplates],
@@ -804,15 +887,20 @@ export function FormLearner({
     ];
   }, [existingNames, manualFile, manualForm, project?.id]);
 
-  const previewLegend = useMemo(
-    () => [
+  const previewLegend = useMemo(() => {
+    const items = [
       { label: 'Tiêu chí dọc', className: 'bg-sky-50 text-sky-700 border-sky-200' },
       { label: 'Tiêu đề ngang', className: 'bg-amber-50 text-amber-700 border-amber-200' },
       { label: 'Vùng dữ liệu', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-      { label: 'Khối nâng cao', className: 'bg-rose-50 text-rose-700 border-rose-200' },
-    ],
-    [],
-  );
+      { label: 'Dòng bỏ qua', className: 'bg-slate-50 text-slate-700 border-slate-200' },
+    ];
+
+    if (manualForm.enableAdvancedStructure) {
+      items.push({ label: 'Khối nâng cao', className: 'bg-rose-50 text-rose-700 border-rose-200' });
+    }
+
+    return items;
+  }, [manualForm.enableAdvancedStructure]);
 
   const manualPreviewConfig = useMemo(() => {
     const labelColumns = new Set(
@@ -841,6 +929,7 @@ export function FormLearner({
     return {
       labelColumns,
       dataColumns,
+      specialRows: new Set(expandRowSelection(manualForm.specialRows)),
       horizontalHeaderStartRow: manualForm.horizontalHeaderStartRow,
       horizontalHeaderEndRow: manualForm.horizontalHeaderEndRow,
       startRow: manualForm.startRow,
@@ -849,7 +938,163 @@ export function FormLearner({
     };
   }, [manualForm]);
 
+  const canUseManualPreviewSelection = isDesktopPreviewViewport && manualSetupView === 'QUICK' && !manualForm.enableAdvancedStructure;
+
+  const manualPreviewSelectionRect = useMemo(() => {
+    if (!manualPreviewSelectionStart || !manualPreviewSelectionCurrent) {
+      return null;
+    }
+
+    const startColumnIndex = columnLetterToIndex(manualPreviewSelectionStart.columnLetter);
+    const endColumnIndex = columnLetterToIndex(manualPreviewSelectionCurrent.columnLetter);
+
+    return {
+      startRow: Math.min(manualPreviewSelectionStart.rowNumber, manualPreviewSelectionCurrent.rowNumber),
+      endRow: Math.max(manualPreviewSelectionStart.rowNumber, manualPreviewSelectionCurrent.rowNumber),
+      startColIndex: Math.min(startColumnIndex, endColumnIndex),
+      endColIndex: Math.max(startColumnIndex, endColumnIndex),
+    };
+  }, [manualPreviewSelectionCurrent, manualPreviewSelectionStart]);
+
+  const manualPreviewSelectionModeLabel = useMemo(() => {
+    switch (manualPreviewSelectionMode) {
+      case 'LABEL':
+        return 'Tiêu chí dọc';
+      case 'HEADER':
+        return 'Tiêu đề ngang';
+      case 'DATA':
+        return 'Vùng dữ liệu';
+      case 'SKIP_ROWS':
+        return 'Dòng bỏ qua';
+      default:
+        return '';
+    }
+  }, [manualPreviewSelectionMode]);
+
+  const manualPreviewSelectionHint = useMemo(() => {
+    if (!canUseManualPreviewSelection) {
+      return 'Chọn trực tiếp bằng chuột hiện chỉ hỗ trợ trên desktop và chỉ áp dụng cho Thiết lập nhanh.';
+    }
+
+    switch (manualPreviewSelectionMode) {
+      case 'LABEL':
+        return 'Kéo chuột trên bảng để chọn vùng cột tên chỉ tiêu. Hệ thống sẽ tự điền cột tiêu chí, cột hiển thị chính và khoảng dòng.';
+      case 'HEADER':
+        return 'Kéo chuột trên vùng tiêu đề ngang để hệ thống tự điền dòng bắt đầu và dòng kết thúc của tiêu đề ngang.';
+      case 'DATA':
+        return 'Kéo chuột trên vùng số liệu để hệ thống tự điền cột dữ liệu cùng khoảng dòng bắt đầu - kết thúc.';
+      case 'SKIP_ROWS':
+        return 'Bấm vào ô số dòng bên trái để thêm hoặc bỏ dòng đó khỏi danh sách Dòng bỏ qua.';
+      default:
+        return '';
+    }
+  }, [canUseManualPreviewSelection, manualPreviewSelectionMode]);
+
+  const clearManualPreviewSelectionDraft = () => {
+    setManualPreviewSelectionStart(null);
+    setManualPreviewSelectionCurrent(null);
+    setIsManualPreviewDragging(false);
+  };
+
+  const handleManualPreviewModeChange = (nextMode: ManualPreviewSelectionMode) => {
+    setManualPreviewSelectionMode(nextMode);
+    clearManualPreviewSelectionDraft();
+    setManualPreviewActionMessage(null);
+  };
+
+  const toggleManualSpecialRow = (rowNumber: number) => {
+    const nextRows = expandRowSelection(manualForm.specialRows);
+    const existing = new Set(nextRows);
+
+    if (existing.has(rowNumber)) {
+      existing.delete(rowNumber);
+      setManualForm((prev) => ({ ...prev, specialRows: compressRowNumbers(Array.from(existing)) }));
+      setManualPreviewActionMessage(`Đã bỏ dòng ${rowNumber} khỏi danh sách dòng bỏ qua.`);
+      return;
+    }
+
+    existing.add(rowNumber);
+    setManualForm((prev) => ({ ...prev, specialRows: compressRowNumbers(Array.from(existing)) }));
+    setManualPreviewActionMessage(`Đã thêm dòng ${rowNumber} vào danh sách dòng bỏ qua.`);
+  };
+
+  const applyManualPreviewSelection = () => {
+    if (!manualPreviewSelectionRect || !canUseManualPreviewSelection) {
+      clearManualPreviewSelectionDraft();
+      return;
+    }
+
+    const startColumnLetter = XLSX.utils.encode_col(manualPreviewSelectionRect.startColIndex - 1);
+    const endColumnLetter = XLSX.utils.encode_col(manualPreviewSelectionRect.endColIndex - 1);
+
+    if (manualPreviewSelectionMode === 'LABEL') {
+      const labelRange = buildColumnRangeSelection(startColumnLetter, endColumnLetter);
+      setManualForm((prev) => ({
+        ...prev,
+        labelColumn: endColumnLetter,
+        labelColumnStart: startColumnLetter,
+        labelColumnEnd: endColumnLetter,
+        primaryLabelColumn: endColumnLetter,
+        verticalHeaderStartRow: manualPreviewSelectionRect.startRow,
+        verticalHeaderEndRow: manualPreviewSelectionRect.endRow,
+      }));
+      setManualPreviewActionMessage(
+        `Đã cập nhật tiêu chí dọc: cột ${labelRange}, dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}. Cột hiển thị chính tạm lấy là ${endColumnLetter}.`,
+      );
+      clearManualPreviewSelectionDraft();
+      return;
+    }
+
+    if (manualPreviewSelectionMode === 'HEADER') {
+      setManualForm((prev) => ({
+        ...prev,
+        horizontalHeaderStartRow: manualPreviewSelectionRect.startRow,
+        horizontalHeaderEndRow: manualPreviewSelectionRect.endRow,
+      }));
+      setManualPreviewActionMessage(
+        `Đã cập nhật tiêu đề ngang: dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}.`,
+      );
+      clearManualPreviewSelectionDraft();
+      return;
+    }
+
+    if (manualPreviewSelectionMode === 'DATA') {
+      const dataRange = buildColumnRangeSelection(startColumnLetter, endColumnLetter);
+      setManualForm((prev) => ({
+        ...prev,
+        dataColumns: dataRange,
+        startRow: manualPreviewSelectionRect.startRow,
+        endRow: manualPreviewSelectionRect.endRow,
+      }));
+      setManualPreviewActionMessage(
+        `Đã cập nhật vùng dữ liệu: cột ${dataRange}, dòng ${manualPreviewSelectionRect.startRow}-${manualPreviewSelectionRect.endRow}.`,
+      );
+      clearManualPreviewSelectionDraft();
+      return;
+    }
+
+    clearManualPreviewSelectionDraft();
+  };
+
+  useEffect(() => {
+    if (!isManualPreviewDragging) {
+      return undefined;
+    }
+
+    const handleMouseUp = () => {
+      setIsManualPreviewDragging(false);
+      applyManualPreviewSelection();
+    };
+
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [applyManualPreviewSelection, isManualPreviewDragging]);
+
   const getManualPreviewCellTone = (rowNumber: number, columnLetter: string) => {
+    if (manualPreviewConfig.specialRows.has(rowNumber)) {
+      return 'bg-slate-50 ring-1 ring-inset ring-slate-200';
+    }
+
     for (const block of manualPreviewConfig.blockRanges) {
       const inBlockHeader = rowNumber >= block.headerStartRow && rowNumber <= block.headerEndRow;
       const inBlockData = rowNumber >= block.startRow && rowNumber <= block.endRow;
@@ -879,6 +1124,34 @@ export function FormLearner({
     }
 
     return 'bg-white';
+  };
+
+  const getManualPreviewSelectionTone = (rowNumber: number, columnLetter: string) => {
+    if (!manualPreviewSelectionRect || manualPreviewSelectionMode === 'SKIP_ROWS') {
+      return '';
+    }
+
+    const columnIndex = columnLetterToIndex(columnLetter);
+    const isWithinSelection =
+      rowNumber >= manualPreviewSelectionRect.startRow &&
+      rowNumber <= manualPreviewSelectionRect.endRow &&
+      columnIndex >= manualPreviewSelectionRect.startColIndex &&
+      columnIndex <= manualPreviewSelectionRect.endColIndex;
+
+    if (!isWithinSelection) {
+      return '';
+    }
+
+    switch (manualPreviewSelectionMode) {
+      case 'LABEL':
+        return 'bg-sky-100/90 shadow-[inset_0_0_0_2px_rgba(2,132,199,0.6)]';
+      case 'HEADER':
+        return 'bg-amber-100/90 shadow-[inset_0_0_0_2px_rgba(217,119,6,0.6)]';
+      case 'DATA':
+        return 'bg-emerald-100/90 shadow-[inset_0_0_0_2px_rgba(5,150,105,0.6)]';
+      default:
+        return '';
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1881,8 +2154,25 @@ export function FormLearner({
     }
 
     setError(null);
+    setIsManualPreviewExpanded(false);
+    clearManualPreviewSelectionDraft();
+    setManualPreviewActionMessage(null);
     setIsManualPreviewModalOpen(true);
   };
+
+  const manualPreviewPanelStyle = isManualPreviewExpanded
+    ? { width: 'calc(100vw - 16px)', height: '96vh' }
+    : isDesktopPreviewViewport
+      ? {
+          width: 'min(1440px, calc(100vw - 32px))',
+          height: '92vh',
+          resize: 'both' as const,
+          minWidth: '980px',
+          minHeight: '640px',
+          maxWidth: 'calc(100vw - 16px)',
+          maxHeight: '96vh',
+        }
+      : { width: '100%', height: '92vh' };
 
   return (
     <div className="p-6 md:p-8">
@@ -2363,13 +2653,16 @@ export function FormLearner({
 
       {isManualPreviewModalOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-[rgba(15,15,15,0.75)] p-3 md:p-4">
-          <div className="panel-card flex h-[92vh] w-full max-w-[1440px] flex-col overflow-hidden rounded-[28px] shadow-xl">
+          <div
+            className="panel-card flex w-full max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-[28px] shadow-xl transition-all"
+            style={manualPreviewPanelStyle}
+          >
             <div className="flex flex-col gap-3 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
               <div>
                 <div className="surface-tag">{manualForm.name || 'Preview biểu mẫu thủ công'}</div>
                 <h3 className="section-title mt-2 text-lg">Xem trước biểu mẫu</h3>
                 <p className="mt-2 text-xs leading-5 text-[var(--ink-soft)]">
-                  Cửa sổ này giúp chúng ta xem biểu rộng hơn trước khi lưu, đặc biệt với biểu có nhiều tiêu chí và nhiều cột số liệu.
+                  Popup này dùng để soi biểu rõ hơn và, với Thiết lập nhanh trên desktop, có thể kéo chọn trực tiếp để điền thông số xuống form.
                 </p>
               </div>
               <div className="flex items-center gap-2 self-end md:self-auto">
@@ -2380,7 +2673,20 @@ export function FormLearner({
                 )}
                 <button
                   type="button"
-                  onClick={() => setIsManualPreviewModalOpen(false)}
+                  onClick={() => setIsManualPreviewExpanded((prev) => !prev)}
+                  className="secondary-btn inline-flex items-center gap-2"
+                >
+                  {isManualPreviewExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  {isManualPreviewExpanded ? 'Thu gọn' : 'Phóng to'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsManualPreviewModalOpen(false);
+                    setIsManualPreviewExpanded(false);
+                    clearManualPreviewSelectionDraft();
+                    setManualPreviewActionMessage(null);
+                  }}
                   className="secondary-btn inline-flex items-center gap-2"
                 >
                   <X size={16} />
@@ -2390,6 +2696,20 @@ export function FormLearner({
             </div>
 
             <div className="flex-1 overflow-auto p-4 md:p-6">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                  {manualSetupView === 'QUICK' ? 'Thiết lập nhanh' : 'Thiết lập nâng cao'}
+                </span>
+                <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                  {manualReadinessChecks.filter((item) => item.ready).length}/{manualReadinessChecks.length} mục đã sẵn sàng
+                </span>
+                {manualForm.enableAdvancedStructure && (
+                  <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-rose-700">
+                    {manualForm.blocks.length} khối nâng cao
+                  </span>
+                )}
+              </div>
+
               <div className="mb-4 flex flex-wrap gap-2">
                 {previewLegend.map((item) => (
                   <span
@@ -2401,25 +2721,51 @@ export function FormLearner({
                 ))}
               </div>
 
-              <div className="mb-4 rounded-[18px] border border-[var(--line)] bg-[rgba(179,15,20,0.04)] px-4 py-4">
-                <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                  Hệ thống đang hiểu cấu hình này như sau
-                </p>
-                <div className="mt-3 space-y-2 text-sm leading-6 text-[var(--ink)]">
-                  {manualSummaryLines.map((line, index) => (
-                    <p key={`manual-summary-modal-${index}`}>- {line}</p>
-                  ))}
+              {canUseManualPreviewSelection ? (
+                <div className="mb-4 rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="flex flex-wrap gap-2">
+                      {([
+                        ['LABEL', 'Chọn tiêu chí dọc'],
+                        ['HEADER', 'Chọn tiêu đề ngang'],
+                        ['DATA', 'Chọn vùng dữ liệu'],
+                        ['SKIP_ROWS', 'Chọn dòng bỏ qua'],
+                      ] as Array<[ManualPreviewSelectionMode, string]>).map(([modeKey, label]) => (
+                        <button
+                          key={modeKey}
+                          type="button"
+                          onClick={() => handleManualPreviewModeChange(modeKey)}
+                          className={manualPreviewSelectionMode === modeKey ? 'primary-btn' : 'secondary-btn'}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[11px] font-semibold text-[var(--ink-soft)]">
+                      Đang chọn: {manualPreviewSelectionModeLabel}
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-[var(--ink)]">{manualPreviewSelectionHint}</p>
+                  {manualPreviewActionMessage && (
+                    <div className="mt-3 rounded-[14px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-medium leading-5 text-emerald-700">
+                      {manualPreviewActionMessage}
+                    </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="mb-4 rounded-[18px] border border-[var(--line)] bg-[rgba(179,15,20,0.04)] px-4 py-4 text-sm leading-6 text-[var(--ink)]">
+                  {manualPreviewSelectionHint}
+                </div>
+              )}
 
               <div className="overflow-hidden rounded-[22px] border border-[var(--line)] bg-white">
                 {isManualPreviewLoading ? (
-                  <div className="flex h-[60vh] items-center justify-center text-sm text-[var(--ink-soft)]">
+                  <div className="flex h-[65vh] items-center justify-center text-sm text-[var(--ink-soft)]">
                     <Loader2 size={18} className="mr-2 animate-spin" />
                     Đang dựng preview từ file mẫu...
                   </div>
                 ) : manualWorksheetPreview ? (
-                  <div className="max-h-[60vh] overflow-auto">
+                  <div className="max-h-[65vh] overflow-auto">
                     <table className="min-w-full border-collapse text-xs md:text-[12px]">
                       <thead className="sticky top-0 z-10 bg-[var(--surface-soft)]">
                         <tr>
@@ -2439,7 +2785,18 @@ export function FormLearner({
                       <tbody>
                         {manualWorksheetPreview.rows.map((row) => (
                           <tr key={`manual-preview-modal-row-${row.rowNumber}`}>
-                            <td className="border-b border-r border-[var(--line)] bg-[var(--surface-soft)] px-2 py-2 text-center text-[10px] font-bold text-[var(--ink-soft)]">
+                            <td
+                              className={`border-b border-r border-[var(--line)] bg-[var(--surface-soft)] px-2 py-2 text-center text-[10px] font-bold text-[var(--ink-soft)] ${
+                                canUseManualPreviewSelection && manualPreviewSelectionMode === 'SKIP_ROWS'
+                                  ? 'cursor-pointer transition hover:bg-slate-100'
+                                  : ''
+                              } ${manualPreviewConfig.specialRows.has(row.rowNumber) ? 'bg-slate-100 text-slate-700' : ''}`}
+                              onClick={() => {
+                                if (canUseManualPreviewSelection && manualPreviewSelectionMode === 'SKIP_ROWS') {
+                                  toggleManualSpecialRow(row.rowNumber);
+                                }
+                              }}
+                            >
                               {row.rowNumber}
                             </td>
                             {row.cells.map((cell, cellIndex) => {
@@ -2447,7 +2804,25 @@ export function FormLearner({
                               return (
                                 <td
                                   key={`manual-preview-modal-cell-${row.rowNumber}-${columnLetter}`}
-                                  className={`min-w-[110px] border-b border-r border-[var(--line)] px-3 py-2 align-top text-[11px] text-[var(--ink)] md:min-w-[132px] md:text-[12px] ${getManualPreviewCellTone(row.rowNumber, columnLetter)}`}
+                                  onMouseDown={(event) => {
+                                    if (!canUseManualPreviewSelection || manualPreviewSelectionMode === 'SKIP_ROWS') {
+                                      return;
+                                    }
+                                    event.preventDefault();
+                                    setManualPreviewSelectionStart({ rowNumber: row.rowNumber, columnLetter });
+                                    setManualPreviewSelectionCurrent({ rowNumber: row.rowNumber, columnLetter });
+                                    setIsManualPreviewDragging(true);
+                                    setManualPreviewActionMessage(null);
+                                  }}
+                                  onMouseEnter={() => {
+                                    if (!canUseManualPreviewSelection || !isManualPreviewDragging || manualPreviewSelectionMode === 'SKIP_ROWS') {
+                                      return;
+                                    }
+                                    setManualPreviewSelectionCurrent({ rowNumber: row.rowNumber, columnLetter });
+                                  }}
+                                  className={`min-w-[110px] border-b border-r border-[var(--line)] px-3 py-2 align-top text-[11px] text-[var(--ink)] md:min-w-[132px] md:text-[12px] ${
+                                    canUseManualPreviewSelection && manualPreviewSelectionMode !== 'SKIP_ROWS' ? 'cursor-crosshair select-none' : ''
+                                  } ${getManualPreviewCellTone(row.rowNumber, columnLetter)} ${getManualPreviewSelectionTone(row.rowNumber, columnLetter)}`}
                                 >
                                   {cell || '\u00A0'}
                                 </td>
@@ -2459,11 +2834,18 @@ export function FormLearner({
                     </table>
                   </div>
                 ) : (
-                  <div className="flex h-[60vh] items-center justify-center px-4 text-center text-sm text-[var(--ink-soft)]">
+                  <div className="flex h-[65vh] items-center justify-center px-4 text-center text-sm text-[var(--ink-soft)]">
                     Hãy tải file mẫu và chọn đúng sheet để xem trước biểu mẫu.
                   </div>
                 )}
               </div>
+              {isDesktopPreviewViewport && !isManualPreviewExpanded && (
+                <div className="mt-3 hidden items-center justify-end md:flex">
+                  <span className="rounded-full border border-[var(--line)] bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ink-soft)]">
+                    Kéo góc phải dưới để mở rộng cửa sổ
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2566,8 +2948,8 @@ export function FormLearner({
               )}
             </div>
 
-            <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_320px] xl:col-start-1">
                   <div>
                     <label className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                       Tên biểu mẫu
@@ -2602,7 +2984,7 @@ export function FormLearner({
                   </div>
                 </div>
 
-                <div className="rounded-[18px] border border-[var(--line)] bg-[rgba(179,15,20,0.04)] px-4 py-4">
+                <div className="rounded-[18px] border border-[var(--line)] bg-[rgba(179,15,20,0.04)] px-4 py-4 xl:col-start-2 xl:row-start-1">
                   <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                     Hệ thống đang hiểu cấu hình này như sau
                   </p>
@@ -2613,7 +2995,7 @@ export function FormLearner({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:col-start-2 xl:row-start-2 xl:grid-cols-1">
                   <div className="rounded-[18px] border border-[var(--line)] bg-white px-4 py-4">
                     <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                       Hiểu nhanh 1
@@ -2643,7 +3025,7 @@ export function FormLearner({
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-1 gap-4">
+                <div className="mt-5 grid grid-cols-1 gap-4 xl:col-start-1 xl:row-span-3 xl:mt-0">
                   <div className="panel-soft rounded-[18px] p-4">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
                       <div>
@@ -3070,7 +3452,7 @@ export function FormLearner({
                 )}
             </div>
 
-            <div className="mt-6 rounded-[18px] border border-[var(--line)] bg-white px-4 py-4">
+            <div className="mt-6 rounded-[18px] border border-[var(--line)] bg-white px-4 py-4 xl:col-start-2 xl:mt-0">
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">Kiểm tra nhanh cấu hình</p>
