@@ -5,12 +5,23 @@ import { YEARS } from '../constants';
 import { getAssignmentKey } from '../access';
 import { uploadFile } from '../supabase';
 import {
+  appendSubmissionEvents,
   createOverwriteRequest,
   listOverwriteRequests,
+  resolveDeadlineNotifications,
   updateOverwriteRequestDecision,
   upsertDataFileRecord,
 } from '../supabaseStore';
-import { DataFileRecordSummary, DataRow, FormTemplate, ManagedUnit, OverwriteRequestRecord, Project, UserProfile } from '../types';
+import {
+  DataFileRecordSummary,
+  DataRow,
+  FormTemplate,
+  ManagedUnit,
+  OverwriteRequestRecord,
+  Project,
+  ProjectUnitSubmissionEvent,
+  UserProfile,
+} from '../types';
 import { parseLegacyFromWorkbook, parseTemplateFromWorkbook } from '../utils/excelParser';
 import { getPinnedYearPreference, getPreferredReportingYear, setPinnedYearPreference } from '../utils/reportingYear';
 import { validateTemplateSheetSignature, validateWorkbookSheetNames } from '../utils/workbookUtils';
@@ -372,8 +383,18 @@ export function ImportFiles({
   assignments,
   currentUser,
 }: {
-  onDataImported: (rows: DataRow[]) => Promise<void>;
-  onDeleteUnitData: (year: string, unitCode: string) => Promise<number>;
+  onDataImported: (
+    rows: DataRow[],
+    options?: {
+      updatedBy?: {
+        uid?: string | null;
+        email?: string | null;
+        displayName?: string | null;
+      } | null;
+      updatedAt?: string | null;
+    },
+  ) => Promise<void>;
+  onDeleteUnitData: (year: string, unitCode: string, options?: { preserveSubmissionHistory?: boolean }) => Promise<number>;
   onDeleteYearData: (year: string) => Promise<number>;
   onDeleteProjectData: (projectId: string) => Promise<number>;
   projects: Project[];
@@ -982,7 +1003,7 @@ export function ImportFiles({
 
     try {
       if (decision === 'APPROVED') {
-        await onDeleteUnitData(request.year, request.unitCode);
+        await onDeleteUnitData(request.year, request.unitCode, { preserveSubmissionHistory: true });
         await upsertDataFileRecord({
           projectId: request.projectId,
           unitCode: request.unitCode,
@@ -992,7 +1013,35 @@ export function ImportFiles({
           storagePath: request.storagePath,
           downloadURL: request.downloadURL || '',
         });
-        await onDataImported(request.rowPayload || []);
+        await onDataImported(request.rowPayload || [], {
+          updatedBy: request.requestedBy,
+          updatedAt: typeof request.createdAt === 'string' ? request.createdAt : null,
+        });
+        await appendSubmissionEvents([
+          {
+            id: `submission_${Date.now()}_${request.id}`,
+            projectId: request.projectId,
+            unitCode: request.unitCode,
+            year: request.year,
+            dataFileId: null,
+            eventType: 'APPROVED_OVERWRITE',
+            submittedAt: typeof request.createdAt === 'string' ? request.createdAt : new Date().toISOString(),
+            submittedBy: request.requestedBy,
+            approvedAt: new Date().toISOString(),
+            approvedBy: {
+              uid: currentUser.id,
+              email: currentUser.email,
+              displayName: currentUser.displayName,
+            },
+            overwriteRequestId: request.id,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        await resolveDeadlineNotifications({
+          projectId: request.projectId,
+          unitCode: request.unitCode,
+          year: request.year,
+        });
       }
 
       await updateOverwriteRequestDecision({
@@ -1052,6 +1101,7 @@ export function ImportFiles({
 
     try {
       const importedRows: DataRow[] = [];
+      const acceptedSubmissionEvents: ProjectUnitSubmissionEvent[] = [];
       const failedFiles: FailedFile[] = [];
       const partialWarnings: string[] = [];
       const completedFileKeys = new Set<string>();
@@ -1229,7 +1279,7 @@ export function ImportFiles({
           }
 
           try {
-            await onDeleteUnitData(importYear, fileItem.unitCode);
+            await onDeleteUnitData(importYear, fileItem.unitCode, { preserveSubmissionHistory: true });
           } catch (overwriteError) {
             failedFiles.push({
               unitName,
@@ -1246,6 +1296,33 @@ export function ImportFiles({
         }
 
         importedRows.push(...parsedRowsForFile);
+        acceptedSubmissionEvents.push({
+          id: `submission_${Date.now()}_${fileItem.id}`,
+          projectId: selectedProjectId,
+          unitCode: fileItem.unitCode,
+          year: importYear,
+          dataFileId: null,
+          eventType: canOverwriteDirectly && unitAlreadyHasData ? 'APPROVED_OVERWRITE' : 'INITIAL_SUBMISSION',
+          submittedAt: new Date().toISOString(),
+          submittedBy: currentUser
+            ? {
+                uid: currentUser.id,
+                email: currentUser.email,
+                displayName: currentUser.displayName,
+              }
+            : null,
+          approvedAt: canOverwriteDirectly && unitAlreadyHasData ? new Date().toISOString() : null,
+          approvedBy:
+            canOverwriteDirectly && unitAlreadyHasData && currentUser
+              ? {
+                  uid: currentUser.id,
+                  email: currentUser.email,
+                  displayName: currentUser.displayName,
+                }
+              : null,
+          overwriteRequestId: null,
+          createdAt: new Date().toISOString(),
+        });
         try {
           await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, importYear, unitName);
         } catch (uploadError) {
@@ -1272,6 +1349,18 @@ export function ImportFiles({
       if (importedRows.length > 0) {
       showProgress('\u0110ang t\u1ed5ng h\u1ee3p d\u1eef li\u1ec7u', '\u0110ang ghi d\u1eef li\u1ec7u t\u1ed5ng h\u1ee3p v\u00e0o h\u1ec7 th\u1ed1ng...', 90);
         await onDataImported(importedRows);
+        if (acceptedSubmissionEvents.length > 0) {
+          await appendSubmissionEvents(acceptedSubmissionEvents);
+          await Promise.all(
+            acceptedSubmissionEvents.map((event) =>
+              resolveDeadlineNotifications({
+                projectId: event.projectId,
+                unitCode: event.unitCode,
+                year: event.year,
+              }),
+            ),
+          );
+        }
       }
 
       setLastFailedFiles(failedFiles);

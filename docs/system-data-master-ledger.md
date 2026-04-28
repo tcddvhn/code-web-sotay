@@ -476,10 +476,10 @@ Rui ro con mo:
 - Repo con no ky thuat ve encoding/mojibake trong mot so file shared. Van build duoc, nhung can mot dot don rieng neu muon `check:encoding` xanh lai.
 - RLS hien chua khoa chat overwrite o muc backend cho `consolidated_rows`; luong overwrite hien dang duoc khong che o UI + bang `data_overwrite_requests`. Neu can khoa sat hon thi phai tach them luong RPC/server-side cho import.
 
-## C?p nh?t 2026-04-07
-- Màn Cài d?t hi?n là d?u m?i qu?n tr? don v?, phân công theo dõi và h? so tài kho?n don v?.
-- Dashboard không còn ch?a UI phân công theo dõi don v?.
-- Các h? so tài kho?n don v? trong UI dang qu?n lý b?ng user_profiles; vi?c t?o/xóa Supabase Auth user th?t v?n là tác v? admin riêng ngoài frontend.
+## Cap nhat 2026-04-07
+- Man Cai dat hien la dau moi quan tri don vi, phan cong theo doi va ho so tai khoan don vi.
+- Dashboard khong con chua UI phan cong theo doi don vi.
+- Cac ho so tai khoan don vi trong UI dang quan ly bang user_profiles; viec tao/xoa Supabase Auth user that van la tac vu admin rieng ngoai frontend.
 
 [2026-04-07 14:37:15] Project unit scope model
 - New projects can now be created with a fixed unit scope.
@@ -512,3 +512,11 @@ Rui ro con mo:
 - Storage: table extract_report_blueprints (JSON field array for MVP).
 - Catalog source: existing template metadata + resolved row labels from workbook source.
 - Rollout SQL: C:\CODE_APPWEB\supabase\extract_reports_rollout.sql
+
+## Deadline and Reminder Upgrade
+- Projects now support a report deadline field (stored as deadlineAt in the frontend model and deadline_at in Supabase).
+- Accepted submission history is tracked separately from the current effective file via project_unit_submission_events.
+- Dashboard summary now has a second quality layer: on-time count, late count, and on-time rate, computed from the first accepted submission per project/unit/year.
+- Unit-user bell notifications now also support PROJECT_DEADLINE_REMINDER records from app_notifications.
+- Rollout SQL for this feature: C:\CODE_APPWEB\supabase\report_deadlines_rollout.sql.
+- Scheduled implementation direction: DB-side reminder generation via pg_cron + public.generate_project_deadline_reminders(), not client-side lazy creation.

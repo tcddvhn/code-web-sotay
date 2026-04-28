@@ -141,6 +141,7 @@ export interface Project {
   description: string;
   status: 'ACTIVE' | 'COMPLETED';
   ownerDepartmentId?: string | null;
+  deadlineAt?: string | null;
   createdByEmail?: string | null;
   createdByAuthUserId?: string | null;
   createdAt: any;
@@ -233,6 +234,51 @@ export interface ExtractReportBlueprintVersion {
   fields: ExtractReportFieldConfig[];
   createdById?: string | null;
   createdByName?: string | null;
+  createdAt: any;
+}
+
+export type SubmissionEventType = 'INITIAL_SUBMISSION' | 'APPROVED_OVERWRITE';
+
+export interface ProjectUnitSubmissionEvent {
+  id: string;
+  projectId: string;
+  unitCode: string;
+  year: string;
+  dataFileId?: string | null;
+  eventType: SubmissionEventType;
+  submittedAt: any;
+  submittedBy?: {
+    uid?: string | null;
+    email?: string | null;
+    displayName?: string | null;
+  } | null;
+  approvedAt?: any;
+  approvedBy?: {
+    uid?: string | null;
+    email?: string | null;
+    displayName?: string | null;
+  } | null;
+  overwriteRequestId?: string | null;
+  createdAt: any;
+}
+
+export type AppNotificationKind = 'PROJECT_DEADLINE_REMINDER';
+
+export interface AppNotificationRecord {
+  id: string;
+  notificationKey: string;
+  recipientAuthUserId?: string | null;
+  recipientEmail: string;
+  recipientDisplayName?: string | null;
+  kind: AppNotificationKind;
+  title: string;
+  body: string;
+  projectId?: string | null;
+  projectName?: string | null;
+  unitCode?: string | null;
+  year?: string | null;
+  dueAt?: any;
+  readAt?: any;
   createdAt: any;
 }
 

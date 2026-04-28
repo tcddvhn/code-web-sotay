@@ -2,6 +2,7 @@
 import { getReadableDisplayName, repairLegacyUtf8 } from './utils/textEncoding';
 import { supabase } from './supabase';
 import {
+  AppNotificationRecord,
   AppSettings,
   AssignmentUser,
   DataFileRecordSummary,
@@ -14,7 +15,9 @@ import {
   ManagedUnit,
   OverwriteRequestRecord,
   Project,
+  ProjectUnitSubmissionEvent,
   ProjectUnitScope,
+  SubmissionEventType,
   UserProfile,
 } from './types';
 
@@ -27,6 +30,7 @@ type SupabaseProjectRow = {
   description: string | null;
   status: 'ACTIVE' | 'COMPLETED';
   owner_department_id: string | null;
+  deadline_at: string | null;
   created_by_email: string | null;
   created_by_auth_user_id: string | null;
   created_at: string | null;
@@ -158,6 +162,39 @@ type SupabaseDataFileRow = {
   updated_at: string | null;
 };
 
+type SupabaseProjectUnitSubmissionEventRow = {
+  id: string;
+  project_id: string;
+  unit_code: string;
+  year: string;
+  data_file_id: string | null;
+  event_type: SubmissionEventType;
+  submitted_at: string;
+  submitted_by: ProjectUnitSubmissionEvent['submittedBy'] | null;
+  approved_at: string | null;
+  approved_by: ProjectUnitSubmissionEvent['approvedBy'] | null;
+  overwrite_request_id: string | null;
+  created_at: string | null;
+};
+
+type SupabaseAppNotificationRow = {
+  id: string;
+  notification_key: string;
+  recipient_auth_user_id: string | null;
+  recipient_email: string;
+  recipient_display_name: string | null;
+  kind: AppNotificationRecord['kind'];
+  title: string;
+  body: string;
+  project_id: string | null;
+  project_name: string | null;
+  unit_code: string | null;
+  year: string | null;
+  due_at: string | null;
+  read_at: string | null;
+  created_at: string | null;
+};
+
 type SupabaseReportExportRow = {
   id?: string;
   project_id: string;
@@ -212,6 +249,7 @@ function mapProject(row: SupabaseProjectRow): Project {
     description: row.description || '',
     status: row.status,
     ownerDepartmentId: row.owner_department_id || null,
+    deadlineAt: row.deadline_at || null,
     createdByEmail: row.created_by_email || null,
     createdByAuthUserId: row.created_by_auth_user_id || null,
     createdAt: row.created_at || nowIso(),
@@ -357,6 +395,43 @@ function mapExtractReportBlueprintVersion(
   };
 }
 
+function mapSubmissionEvent(row: SupabaseProjectUnitSubmissionEventRow): ProjectUnitSubmissionEvent {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    unitCode: row.unit_code,
+    year: row.year,
+    dataFileId: row.data_file_id || null,
+    eventType: row.event_type,
+    submittedAt: row.submitted_at,
+    submittedBy: row.submitted_by || null,
+    approvedAt: row.approved_at || null,
+    approvedBy: row.approved_by || null,
+    overwriteRequestId: row.overwrite_request_id || null,
+    createdAt: row.created_at || row.submitted_at || nowIso(),
+  };
+}
+
+function mapAppNotification(row: SupabaseAppNotificationRow): AppNotificationRecord {
+  return {
+    id: row.id,
+    notificationKey: row.notification_key,
+    recipientAuthUserId: row.recipient_auth_user_id || null,
+    recipientEmail: row.recipient_email,
+    recipientDisplayName: getReadableDisplayName(row.recipient_display_name, row.recipient_email),
+    kind: row.kind,
+    title: row.title,
+    body: row.body,
+    projectId: row.project_id || null,
+    projectName: row.project_name || null,
+    unitCode: row.unit_code || null,
+    year: row.year || null,
+    dueAt: row.due_at || null,
+    readAt: row.read_at || null,
+    createdAt: row.created_at || nowIso(),
+  };
+}
+
 export async function listProjects() {
   const { data, error } = await supabase
     .from('projects')
@@ -377,6 +452,7 @@ export async function upsertProject(project: Project) {
     description: project.description || '',
     status: project.status,
     owner_department_id: project.ownerDepartmentId || null,
+    deadline_at: project.deadlineAt || null,
     created_by_email: project.createdByEmail || null,
     created_by_auth_user_id: project.createdByAuthUserId || null,
     created_at: typeof project.createdAt === 'string' ? project.createdAt : nowIso(),
@@ -1184,6 +1260,240 @@ export async function upsertDataFileRecord(record: {
 
   const { error } = await supabase.from('data_files').upsert(payload, { onConflict: 'id' });
   if (error) {
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function appendSubmissionEvents(events: ProjectUnitSubmissionEvent[]) {
+  if (events.length === 0) {
+    return;
+  }
+
+  const payload = events.map((event) => ({
+    id: event.id,
+    project_id: event.projectId,
+    unit_code: event.unitCode,
+    year: event.year,
+    data_file_id: event.dataFileId || null,
+    event_type: event.eventType,
+    submitted_at: typeof event.submittedAt === 'string' ? event.submittedAt : nowIso(),
+    submitted_by: event.submittedBy || null,
+    approved_at: typeof event.approvedAt === 'string' ? event.approvedAt : event.approvedAt || null,
+    approved_by: event.approvedBy || null,
+    overwrite_request_id: event.overwriteRequestId || null,
+    created_at: typeof event.createdAt === 'string' ? event.createdAt : nowIso(),
+  }));
+
+  const { error } = await supabase.from('project_unit_submission_events').insert(payload);
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.project_unit_submission_events'")) {
+      throw new Error('Bảng project_unit_submission_events chưa được khởi tạo. Hãy chạy file supabase/report_deadlines_rollout.sql trước.');
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function listSubmissionEventsByScope(params: {
+  projectId?: string;
+  projectIds?: string[];
+  years?: string[];
+  unitCodes?: string[];
+}): Promise<ProjectUnitSubmissionEvent[]> {
+  let builder = supabase
+    .from('project_unit_submission_events')
+    .select('*')
+    .order('submitted_at', { ascending: true })
+    .order('created_at', { ascending: true });
+
+  if (params.projectId) {
+    builder = builder.eq('project_id', params.projectId);
+  } else if (params.projectIds && params.projectIds.length > 0) {
+    builder = builder.in('project_id', params.projectIds);
+  }
+
+  if (params.years && params.years.length > 0) {
+    builder = builder.in('year', params.years);
+  }
+
+  if (params.unitCodes && params.unitCodes.length > 0) {
+    builder = builder.in('unit_code', params.unitCodes);
+  }
+
+  const { data, error } = await builder;
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.project_unit_submission_events'")) {
+      return [] as ProjectUnitSubmissionEvent[];
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+
+  return ((data || []) as SupabaseProjectUnitSubmissionEventRow[]).map(mapSubmissionEvent);
+}
+
+export async function deleteSubmissionEventsByUnit(projectId: string, year: string, unitCode: string) {
+  const { error } = await supabase
+    .from('project_unit_submission_events')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('year', year)
+    .eq('unit_code', unitCode);
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.project_unit_submission_events'")) {
+      return;
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function deleteSubmissionEventsByYear(projectId: string, year: string) {
+  const { error } = await supabase
+    .from('project_unit_submission_events')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('year', year);
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.project_unit_submission_events'")) {
+      return;
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function deleteSubmissionEventsByProject(projectId: string) {
+  const { error } = await supabase
+    .from('project_unit_submission_events')
+    .delete()
+    .eq('project_id', projectId);
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.project_unit_submission_events'")) {
+      return;
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function listAppNotifications(params: {
+  recipientEmail?: string | null;
+  unreadOnly?: boolean;
+  kinds?: AppNotificationRecord['kind'][];
+}): Promise<AppNotificationRecord[]> {
+  let builder = supabase
+    .from('app_notifications')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (params.recipientEmail) {
+    builder = builder.eq('recipient_email', params.recipientEmail);
+  }
+  if (params.unreadOnly) {
+    builder = builder.is('read_at', null);
+  }
+  if (params.kinds && params.kinds.length > 0) {
+    builder = builder.in('kind', params.kinds);
+  }
+
+  const { data, error } = await builder;
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.app_notifications'")) {
+      return [] as AppNotificationRecord[];
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+
+  return ((data || []) as SupabaseAppNotificationRow[]).map(mapAppNotification);
+}
+
+export async function markAppNotificationsRead(notificationIds: string[]) {
+  if (notificationIds.length === 0) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from('app_notifications')
+    .update({ read_at: nowIso() })
+    .in('id', notificationIds);
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.app_notifications'")) {
+      return;
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function resolveDeadlineNotifications(params: {
+  projectId: string;
+  unitCode: string;
+  year?: string | null;
+}) {
+  let builder = supabase
+    .from('app_notifications')
+    .update({ read_at: nowIso() })
+    .eq('kind', 'PROJECT_DEADLINE_REMINDER')
+    .eq('project_id', params.projectId)
+    .eq('unit_code', params.unitCode)
+    .is('read_at', null);
+
+  if (params.year) {
+    builder = builder.eq('year', params.year);
+  }
+
+  const { error } = await builder;
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.app_notifications'")) {
+      return;
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function deleteDeadlineNotificationsByUnit(projectId: string, year: string, unitCode: string) {
+  const { error } = await supabase
+    .from('app_notifications')
+    .delete()
+    .eq('kind', 'PROJECT_DEADLINE_REMINDER')
+    .eq('project_id', projectId)
+    .eq('year', year)
+    .eq('unit_code', unitCode);
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.app_notifications'")) {
+      return;
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function deleteDeadlineNotificationsByYear(projectId: string, year: string) {
+  const { error } = await supabase
+    .from('app_notifications')
+    .delete()
+    .eq('kind', 'PROJECT_DEADLINE_REMINDER')
+    .eq('project_id', projectId)
+    .eq('year', year);
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.app_notifications'")) {
+      return;
+    }
+    throw new Error(error.message || 'Supabase request failed.');
+  }
+}
+
+export async function deleteDeadlineNotificationsByProject(projectId: string) {
+  const { error } = await supabase
+    .from('app_notifications')
+    .delete()
+    .eq('kind', 'PROJECT_DEADLINE_REMINDER')
+    .eq('project_id', projectId);
+
+  if (error) {
+    if (error.message?.includes("Could not find the table 'public.app_notifications'")) {
+      return;
+    }
     throw new Error(error.message || 'Supabase request failed.');
   }
 }

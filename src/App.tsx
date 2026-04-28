@@ -3,11 +3,14 @@ import {
   Activity,
   Bell,
   BellDot,
+  CheckCircle,
   CheckCircle2,
+  Clock4,
   FileBarChart,
   Lock,
   LogIn,
   LogOut,
+  TimerReset,
   Users,
   X,
 } from 'lucide-react';
@@ -29,6 +32,7 @@ import {
 } from './supabase';
 import {
   AppSettings,
+  AppNotificationRecord,
   AssignmentUser,
   AuthenticatedUser,
   ConsolidatedData,
@@ -40,6 +44,7 @@ import {
   ManagedUnit,
   OverwriteRequestRecord,
   Project,
+  ProjectUnitSubmissionEvent,
   ProjectUnitScope,
   ReportTreeProjectNode,
   UserProfile,
@@ -51,12 +56,20 @@ import { getReadableDisplayName, repairLegacyUtf8 } from './utils/textEncoding';
 import {
   countDataFilesByYear,
   countRowsByYear,
+  deleteDeadlineNotificationsByProject,
+  deleteDeadlineNotificationsByUnit,
+  deleteDeadlineNotificationsByYear,
   deleteDataFileByUnit,
   deleteDataFilesByYear,
+  deleteSubmissionEventsByProject,
+  deleteSubmissionEventsByUnit,
+  deleteSubmissionEventsByYear,
   getUserProfileByEmail,
   getSettings as getSettingsFromSupabase,
+  listAppNotifications as listAppNotificationsFromSupabase,
   listDataFilesByProject as listDataFilesByProjectFromSupabase,
   listDataFilesByScope as listDataFilesByScopeFromSupabase,
+  listSubmissionEventsByScope as listSubmissionEventsByScopeFromSupabase,
   listUserProfiles as listUserProfilesFromSupabase,
   deleteDataFilesByProject,
   deleteProjectById as deleteProjectFromSupabase,
@@ -80,6 +93,7 @@ import {
   listRowsByScope as listRowsByScopeFromSupabase,
   listTemplates as listTemplatesFromSupabase,
   listUnits as listUnitsFromSupabase,
+  markAppNotificationsRead as markAppNotificationsReadInSupabase,
   markOverwriteRequestsSeen as markOverwriteRequestsSeenInSupabase,
   replaceAssignments as replaceAssignmentsInSupabase,
   replaceGlobalAssignments as replaceGlobalAssignmentsInSupabase,
@@ -94,7 +108,7 @@ import {
   upsertSettings as upsertSettingsToSupabase,
   upsertUnit as upsertUnitToSupabase,
   upsertUserProfile as upsertUserProfileToSupabase,
-} from './supabaseStore';
+  } from './supabaseStore';
 import {
   deleteAnalysisCellsByProject,
   deleteAnalysisCellsByTemplate,
@@ -204,6 +218,65 @@ function formatDateTime(value?: string | number | Date | null) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatDateOnly(value?: string | number | Date | null) {
+  if (!value) {
+    return 'Chưa đặt hạn';
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Chưa đặt hạn';
+  }
+
+  return date.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function toDeadlineIsoFromDateInput(dateInput: string) {
+  if (!dateInput) {
+    return null;
+  }
+
+  return `${dateInput}T23:59:59+07:00`;
+}
+
+function toDateInputValueFromDeadline(deadlineAt?: string | null) {
+  if (!deadlineAt) {
+    return '';
+  }
+
+  const date = new Date(deadlineAt);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+function getReportYearFromDeadline(deadlineAt?: string | null) {
+  if (!deadlineAt) {
+    return null;
+  }
+
+  const date = new Date(deadlineAt);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+  }).format(date);
 }
 
 function RouteLoadingFallback({ label = 'Đang tải nội dung...' }: { label?: string }) {
@@ -1254,6 +1327,8 @@ export default function App() {
         console.warn('Không thể xóa lớp dữ liệu phân tích AI theo dự án:', analysisError);
       }
       await replaceAssignmentsInSupabase(projectId, []);
+      await deleteSubmissionEventsByProject(projectId);
+      await deleteDeadlineNotificationsByProject(projectId);
       const deletedDataFilePaths = await deleteDataFilesByProject(projectId);
       for (const storagePath of deletedDataFilePaths) {
         try {
@@ -1327,6 +1402,7 @@ export default function App() {
     description: string;
     unitCodes: string[];
     ownerDepartmentId?: string | null;
+    deadlineDate?: string;
   }) => {
     if (!canManageProjects) {
       throw new Error('Bạn không có quyền tạo dự án.');
@@ -1350,6 +1426,7 @@ export default function App() {
       description: payload.description.trim(),
       status: 'ACTIVE',
       ownerDepartmentId,
+      deadlineAt: toDeadlineIsoFromDateInput(payload.deadlineDate || ''),
       createdByEmail: effectiveUserProfile?.email || null,
       createdByAuthUserId: effectiveUserProfile?.id || null,
       createdAt: new Date().toISOString(),
@@ -1369,7 +1446,7 @@ export default function App() {
 
   const handleUpdateProject = async (
     project: Project,
-    payload: { name: string; description: string; ownerDepartmentId?: string | null },
+    payload: { name: string; description: string; ownerDepartmentId?: string | null; deadlineDate?: string },
   ) => {
     if (!isAdmin && !(isDepartmentManager && project.ownerDepartmentId === currentDepartmentId)) {
       throw new Error('Bạn không có quyền cập nhật dự án này.');
@@ -1389,6 +1466,7 @@ export default function App() {
       name: payload.name.trim(),
       description: payload.description.trim(),
       ownerDepartmentId: isAdmin ? payload.ownerDepartmentId || null : project.ownerDepartmentId,
+      deadlineAt: toDeadlineIsoFromDateInput(payload.deadlineDate || ''),
       updatedAt: new Date().toISOString(),
     };
 
@@ -1519,7 +1597,7 @@ export default function App() {
     }
   };
 
-  const handleDeleteUnitData = async (year: string, unitCode: string) => {
+  const handleDeleteUnitData = async (year: string, unitCode: string, options?: { preserveSubmissionHistory?: boolean }) => {
     if (!isAdmin || !currentProject) {
       return 0;
     }
@@ -1531,6 +1609,10 @@ export default function App() {
         return 0;
       }
       await deleteRowsByUnitFromSupabase(currentProject.id, year, unitCode);
+      if (!options?.preserveSubmissionHistory) {
+        await deleteSubmissionEventsByUnit(currentProject.id, year, unitCode);
+        await deleteDeadlineNotificationsByUnit(currentProject.id, year, unitCode);
+      }
       try {
         await deleteAnalysisCellsByUnit(currentProject.id, year, unitCode);
       } catch (analysisError) {
@@ -1576,6 +1658,8 @@ export default function App() {
       }
 
       await deleteRowsByYearFromSupabase(currentProject.id, year);
+      await deleteSubmissionEventsByYear(currentProject.id, year);
+      await deleteDeadlineNotificationsByYear(currentProject.id, year);
       try {
         await deleteAnalysisCellsByYear(currentProject.id, year);
       } catch (analysisError) {
@@ -4080,6 +4164,8 @@ function DashboardOverview({
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [overwriteRequests, setOverwriteRequests] = useState<OverwriteRequestRecord[]>([]);
+  const [submissionEvents, setSubmissionEvents] = useState<ProjectUnitSubmissionEvent[]>([]);
+  const [appNotifications, setAppNotifications] = useState<AppNotificationRecord[]>([]);
   const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<UnitStatusFilter>('ALL');
   const [dashboardYear, setDashboardYear] = useState(() => getPreferredReportingYear());
@@ -4189,6 +4275,34 @@ function DashboardOverview({
     };
   }, [dashboardYear, selectedProjectId]);
 
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setSubmissionEvents([]);
+      return;
+    }
+
+    let cancelled = false;
+    listSubmissionEventsByScopeFromSupabase({
+      projectId: selectedProjectId,
+      years: [dashboardYear],
+    })
+      .then((items) => {
+        if (!cancelled) {
+          setSubmissionEvents(items);
+        }
+      })
+      .catch((error) => {
+        console.error('Không thể tải lịch sử nộp báo cáo:', error);
+        if (!cancelled) {
+          setSubmissionEvents([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dashboardYear, selectedProjectId]);
+
   const overwriteRequestsForYear = useMemo(
     () => overwriteRequests.filter((request) => request.projectId === selectedProjectId && request.year === dashboardYear),
     [dashboardYear, overwriteRequests, selectedProjectId],
@@ -4212,19 +4326,84 @@ function DashboardOverview({
     );
   }, [currentUser?.email, overwriteRequests]);
 
-  const activeNotifications = isAdmin ? adminNotifications : currentUser?.role === 'unit_user' ? unitNotifications : [];
+  const deadlineReminderNotifications = useMemo(
+    () =>
+      appNotifications.filter(
+        (notification) => notification.kind === 'PROJECT_DEADLINE_REMINDER' && !notification.readAt,
+      ),
+    [appNotifications],
+  );
+
+  const activeNotifications = useMemo(() => {
+    if (isAdmin) {
+      return adminNotifications.map((request) => ({
+        id: `overwrite-${request.id}`,
+        projectId: request.projectId,
+        title: `${request.unitName} đề nghị ghi đè dữ liệu`,
+        subtitle: `${request.projectName || request.projectId} - Năm ${request.year}`,
+        timestamp: typeof request.createdAt === 'string' ? request.createdAt : null,
+        badge: 'Chờ duyệt',
+        tone: 'status-pill status-pill-pending',
+        source: 'overwrite' as const,
+        overwriteRequest: request,
+      }));
+    }
+
+    if (currentUser?.role === 'unit_user') {
+      return [
+        ...deadlineReminderNotifications.map((notification) => ({
+          id: `deadline-${notification.id}`,
+          projectId: notification.projectId || selectedProjectId,
+          title: notification.title,
+          subtitle: notification.body,
+          timestamp: typeof notification.dueAt === 'string' ? notification.dueAt : null,
+          badge: 'Sắp đến hạn',
+          tone: 'status-pill status-pill-pending',
+          source: 'deadline' as const,
+          appNotification: notification,
+        })),
+        ...unitNotifications.map((request) => ({
+          id: `overwrite-${request.id}`,
+          projectId: request.projectId,
+          title: `Yêu cầu ghi đè của ${request.unitName} đã ${request.status === 'APPROVED' ? 'được phê duyệt' : 'bị từ chối'}`,
+          subtitle: `${request.projectName || request.projectId} - Năm ${request.year}`,
+          timestamp: typeof request.reviewedAt === 'string' ? request.reviewedAt : null,
+          badge: request.status === 'APPROVED' ? 'Đã duyệt' : 'Từ chối',
+          tone: request.status === 'APPROVED' ? 'status-pill status-pill-submitted' : 'status-pill status-pill-pending',
+          source: 'overwrite' as const,
+          overwriteRequest: request,
+        })),
+      ].sort((left, right) => (getTimestampMs(right.timestamp) || 0) - (getTimestampMs(left.timestamp) || 0));
+    }
+
+    return [] as Array<{
+      id: string;
+      projectId?: string | null;
+      title: string;
+      subtitle: string;
+      timestamp: string | null;
+      badge: string;
+      tone: string;
+      source: 'overwrite' | 'deadline';
+      overwriteRequest?: OverwriteRequestRecord;
+      appNotification?: AppNotificationRecord;
+    }>;
+  }, [adminNotifications, currentUser?.role, deadlineReminderNotifications, isAdmin, selectedProjectId, unitNotifications]);
   const canUseNotifications = isAdmin || currentUser?.role === 'unit_user';
 
   const handleToggleNotifications = async () => {
     const nextOpen = !isNotificationOpen;
     setIsNotificationOpen(nextOpen);
 
-    if (!nextOpen || isAdmin || unitNotifications.length === 0) {
+    if (!nextOpen || isAdmin) {
       return;
     }
 
     try {
-      await markOverwriteRequestsSeenInSupabase(unitNotifications.map((request) => request.id));
+      await Promise.all([
+        markOverwriteRequestsSeenInSupabase(unitNotifications.map((request) => request.id)),
+        markAppNotificationsReadInSupabase(deadlineReminderNotifications.map((notification) => notification.id)),
+      ]);
       const seenAt = new Date().toISOString();
       setOverwriteRequests((current) =>
         current.map((request) =>
@@ -4233,14 +4412,22 @@ function DashboardOverview({
             : request,
         ),
       );
+      setAppNotifications((current) =>
+        current.map((notification) =>
+          deadlineReminderNotifications.some((item) => item.id === notification.id)
+            ? { ...notification, readAt: seenAt }
+            : notification,
+        ),
+      );
     } catch (error) {
-      console.error('Không thể đánh dấu thông báo ghi đè là đã xem:', error);
+      console.error('Không thể đánh dấu thông báo là đã xem:', error);
     }
   };
 
   useEffect(() => {
     if (!isAuthenticated || (!isAdmin && currentUser?.role !== 'unit_user')) {
       setOverwriteRequests([]);
+      setAppNotifications([]);
       setIsNotificationOpen(false);
       return;
     }
@@ -4248,16 +4435,27 @@ function DashboardOverview({
     let active = true;
     setNotificationLoading(true);
 
-    listOverwriteRequestsFromSupabase()
-      .then((items) => {
+    Promise.all([
+      listOverwriteRequestsFromSupabase(),
+      currentUser?.role === 'unit_user' && currentUser.email
+        ? listAppNotificationsFromSupabase({
+            recipientEmail: currentUser.email,
+            unreadOnly: true,
+            kinds: ['PROJECT_DEADLINE_REMINDER'],
+          })
+        : Promise.resolve([] as AppNotificationRecord[]),
+    ])
+      .then(([overwriteItems, notificationItems]) => {
         if (active) {
-          setOverwriteRequests(items);
+          setOverwriteRequests(overwriteItems);
+          setAppNotifications(notificationItems);
         }
       })
       .catch((error) => {
-        console.error('Không thể tải thông báo ghi đè dữ liệu:', error);
+        console.error('Không thể tải thông báo dashboard:', error);
         if (active) {
           setOverwriteRequests([]);
+          setAppNotifications([]);
         }
       })
       .finally(() => {
@@ -4364,6 +4562,24 @@ function DashboardOverview({
     return units;
   }, [isAdmin, isAuthenticated, scopedUnitCodesForCurrentUser, units]);
 
+  const firstAcceptedSubmissionByUnit = useMemo(() => {
+    const map = new Map<string, ProjectUnitSubmissionEvent>();
+    submissionEvents.forEach((event) => {
+      const existing = map.get(event.unitCode);
+      const currentTime = getTimestampMs(event.submittedAt) || 0;
+      const existingTime = getTimestampMs(existing?.submittedAt) || 0;
+      if (!existing || currentTime < existingTime) {
+        map.set(event.unitCode, event);
+      }
+    });
+    return map;
+  }, [submissionEvents]);
+
+  const projectDeadlineTimestamp = useMemo(
+    () => (selectedProject?.deadlineAt ? getTimestampMs(selectedProject.deadlineAt) || null : null),
+    [selectedProject?.deadlineAt],
+  );
+
   const allUnitLogs = useMemo<UnitLog[]>(() => {
     const sheetOrder = new Map(SHEET_CONFIGS.map((sheet, index) => [sheet.name, index]));
 
@@ -4462,9 +4678,25 @@ function DashboardOverview({
   const submittedCount = dashboardScopeUnits.filter((unit) => dashboardSubmittedUnitCodes.has(unit.code)).length;
   const totalUnits = dashboardScopeUnits.length;
   const completionRate = totalUnits === 0 ? '0.0' : ((submittedCount / totalUnits) * 100).toFixed(1);
+  const onTimeCount = projectDeadlineTimestamp
+    ? dashboardScopeUnits.filter((unit) => {
+        const firstEvent = firstAcceptedSubmissionByUnit.get(unit.code);
+        return firstEvent && (getTimestampMs(firstEvent.submittedAt) || 0) <= projectDeadlineTimestamp;
+      }).length
+    : 0;
+  const lateCount = projectDeadlineTimestamp
+    ? dashboardScopeUnits.filter((unit) => {
+        const firstEvent = firstAcceptedSubmissionByUnit.get(unit.code);
+        return firstEvent && (getTimestampMs(firstEvent.submittedAt) || 0) > projectDeadlineTimestamp;
+      }).length
+    : 0;
+  const onTimeRate = submittedCount === 0 || !projectDeadlineTimestamp ? '0.0' : ((onTimeCount / submittedCount) * 100).toFixed(1);
   const formattedSubmittedCount = isDashboardSummaryLoading ? '...' : `${submittedCount}/${totalUnits}`;
   const formattedCompletionRate = isDashboardSummaryLoading ? '...' : `${completionRate}%`;
   const formattedTotalUnits = isDashboardSummaryLoading ? '...' : totalUnits;
+  const formattedOnTimeCount = isDashboardSummaryLoading ? '...' : projectDeadlineTimestamp ? `${onTimeCount}` : '--';
+  const formattedLateCount = isDashboardSummaryLoading ? '...' : projectDeadlineTimestamp ? `${lateCount}` : '--';
+  const formattedOnTimeRate = isDashboardSummaryLoading ? '...' : projectDeadlineTimestamp ? `${onTimeRate}%` : '--';
 
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE').length;
   const completedProjects = projects.filter((p) => p.status === 'COMPLETED').length;
@@ -4492,6 +4724,27 @@ function DashboardOverview({
       label: 'T\u1ef7 l\u1ec7 ho\u00e0n th\u00e0nh',
       value: formattedCompletionRate,
       icon: Activity,
+      iconColor: 'text-[var(--primary-dark)]',
+      tone: 'bg-[rgba(135,17,22,0.12)]',
+    },
+    {
+      label: 'N\u1ed9p \u0111\u00fang h\u1ea1n',
+      value: formattedOnTimeCount,
+      icon: CheckCircle,
+      iconColor: 'text-[var(--success)]',
+      tone: 'bg-[rgba(47,110,73,0.12)]',
+    },
+    {
+      label: 'N\u1ed9p qu\u00e1 h\u1ea1n',
+      value: formattedLateCount,
+      icon: Clock4,
+      iconColor: 'text-[var(--warning)]',
+      tone: 'bg-[rgba(201,167,92,0.18)]',
+    },
+    {
+      label: 'T\u1ef7 l\u1ec7 \u0111\u00fang h\u1ea1n',
+      value: formattedOnTimeRate,
+      icon: TimerReset,
       iconColor: 'text-[var(--primary-dark)]',
       tone: 'bg-[rgba(135,17,22,0.12)]',
     },
@@ -4597,7 +4850,7 @@ function DashboardOverview({
               <p className="mt-1 text-sm text-[var(--ink-soft)]">
                 {isAdmin
                   ? 'C\u00e1c \u0111\u01a1n v\u1ecb v\u1eeba n\u1ed9p y\u00eau c\u1ea7u ghi \u0111\u00e8 \u0111ang ch\u1edd admin x\u1eed l\u00fd.'
-                  : 'C\u00e1c y\u00eau c\u1ea7u ghi \u0111\u00e8 c\u1ee7a \u0111\u01a1n v\u1ecb b\u1ea1n \u0111\u00e3 \u0111\u01b0\u1ee3c admin x\u1eed l\u00fd.'}
+                  : 'Thông báo hạn nộp và kết quả xử lý ghi đè của đơn vị bạn sẽ hiển thị tại đây.'}
               </p>
             </div>
             <div className="max-h-[360px] overflow-y-auto px-4 py-3">
@@ -4607,34 +4860,32 @@ function DashboardOverview({
                 <p className="rounded-2xl bg-[var(--surface-soft)] px-4 py-4 text-sm text-[var(--ink-soft)]">{'Hi\u1ec7n ch\u01b0a c\u00f3 th\u00f4ng b\u00e1o m\u1edbi.'}</p>
               ) : (
                 <div className="space-y-3">
-                  {activeNotifications.map((request) => (
+                  {activeNotifications.map((notification) => (
                     <button
-                      key={request.id}
+                      key={notification.id}
                       type="button"
                       onClick={() => {
                         setIsNotificationOpen(false);
-                        onOpenImport(request.projectId);
+                        onOpenImport(notification.projectId || selectedProjectId);
                       }}
                       className="block w-full rounded-[18px] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-4 text-left transition hover:border-[var(--primary)] hover:bg-white"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-[var(--ink)]">
-                            {isAdmin
-                              ? `${request.unitName} \u0111\u1ec1 ngh\u1ecb ghi \u0111\u00e8 d\u1eef li\u1ec7u`
-                              : `Y\u00eau c\u1ea7u ghi \u0111\u00e8 c\u1ee7a ${request.unitName} \u0111\u00e3 ${request.status === 'APPROVED' ? '\u0111\u01b0\u1ee3c ph\u00ea duy\u1ec7t' : 'b\u1ecb t\u1eeb ch\u1ed1i'}`}
+                            {notification.title}
                           </p>
                           <p className="mt-1 text-xs text-[var(--ink-soft)]">
-                            {request.projectName || request.projectId} - {'Năm'} {request.year}
+                            {notification.subtitle}
                           </p>
                           <p className="mt-2 text-xs text-[var(--ink-soft)]">
-                            {isAdmin
-                              ? `N\u1ed9p l\u00fac ${formatDateTime(typeof request.createdAt === 'string' ? request.createdAt : null)}`
-                              : `X\u1eed l\u00fd l\u00fac ${formatDateTime(typeof request.reviewedAt === 'string' ? request.reviewedAt : null)}`}
+                            {notification.source === 'deadline'
+                              ? `Đến hạn lúc ${formatDateTime(notification.timestamp)}`
+                              : `Cập nhật lúc ${formatDateTime(notification.timestamp)}`}
                           </p>
                         </div>
-                        <span className={request.status === 'APPROVED' ? 'status-pill status-pill-submitted' : request.status === 'REJECTED' ? 'status-pill status-pill-pending' : 'status-pill status-pill-pending'}>
-                          {request.status === 'PENDING' ? 'Chờ duyệt' : request.status === 'APPROVED' ? 'Đã duyệt' : 'Từ chối'}
+                        <span className={notification.tone}>
+                          {notification.badge}
                         </span>
                       </div>
                     </button>
