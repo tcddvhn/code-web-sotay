@@ -3,6 +3,9 @@
 alter table public.projects
   add column if not exists deadline_at timestamptz;
 
+alter table public.data_overwrite_requests
+  add column if not exists requester_seen_at timestamptz;
+
 create table if not exists public.project_unit_submission_events (
   id text primary key default ('submission_' || replace(gen_random_uuid()::text, '-', '')),
   project_id text not null references public.projects(id) on delete cascade,
@@ -239,5 +242,7 @@ begin
     raise notice 'Không thể tạo lịch pg_cron tự động: %', sqlerrm;
   end;
 end $$;
+
+notify pgrst, 'reload schema';
 
 select public.generate_project_deadline_reminders() as inserted_reminders_preview;

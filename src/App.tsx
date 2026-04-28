@@ -546,6 +546,17 @@ export default function App() {
       }),
     [visibleProjects],
   );
+  const reportTreeRowUnitKeys = useMemo(() => {
+    const keys = new Set<string>();
+    Object.values(data)
+      .flat()
+      .forEach((row) => {
+        if (row.year === selectedReportYear) {
+          keys.add(`${row.projectId}__${row.unitCode}`);
+        }
+      });
+    return keys;
+  }, [data, selectedReportYear]);
   const reportTreeProjects = useMemo<ReportTreeProjectNode[]>(() => {
     return sortedReportProjects.map((project) => {
       const scopedCodes = getProjectScopedUnitCodes(project.id);
@@ -556,20 +567,23 @@ export default function App() {
         .filter((unit) => !unit.isDeleted)
         .sort((left, right) => left.code.localeCompare(right.code, 'vi'))
         .filter((unit) => !isUnitUser || unit.code === effectiveUserProfile?.unitCode)
-        .map((unit) => ({
-          code: unit.code,
-          name: unit.name,
-          hasData: reportTreeDataFiles.some(
+        .map((unit) => {
+          const hasDataFile = reportTreeDataFiles.some(
             (file) => file.projectId === project.id && file.year === selectedReportYear && file.unitCode === unit.code,
-          ),
-          hasPendingOverwrite: reportOverwriteRequests.some(
-            (request) =>
-              request.projectId === project.id &&
-              request.year === selectedReportYear &&
-              request.unitCode === unit.code &&
-              request.status === 'PENDING',
-          ),
-        }));
+          );
+          return {
+            code: unit.code,
+            name: unit.name,
+            hasData: hasDataFile || reportTreeRowUnitKeys.has(`${project.id}__${unit.code}`),
+            hasPendingOverwrite: reportOverwriteRequests.some(
+              (request) =>
+                request.projectId === project.id &&
+                request.year === selectedReportYear &&
+                request.unitCode === unit.code &&
+                request.status === 'PENDING',
+            ),
+          };
+        });
 
       const importedCount = projectUnits.filter((unit) => unit.hasData).length;
       const pendingCount = reportOverwriteRequests.filter(
@@ -590,6 +604,7 @@ export default function App() {
     isUnitUser,
     reportOverwriteRequests,
     reportTreeDataFiles,
+    reportTreeRowUnitKeys,
     selectedReportYear,
     sortedReportProjects,
   ]);
@@ -1594,10 +1609,15 @@ export default function App() {
       }
     } catch (error) {
       console.error('Import data error:', error);
+      throw error;
     }
   };
 
-  const handleDeleteUnitData = async (year: string, unitCode: string, options?: { preserveSubmissionHistory?: boolean }) => {
+  const handleDeleteUnitData = async (
+    year: string,
+    unitCode: string,
+    options?: { preserveSubmissionHistory?: boolean; preserveDataFile?: boolean },
+  ) => {
     if (!isAdmin || !currentProject) {
       return 0;
     }
@@ -1618,12 +1638,14 @@ export default function App() {
       } catch (analysisError) {
         console.warn('Không thể xóa lớp dữ liệu phân tích AI theo đơn vị:', analysisError);
       }
-      const deletedDataFilePaths = await deleteDataFileByUnit(currentProject.id, year, unitCode);
-      for (const storagePath of deletedDataFilePaths) {
-        try {
-          await deleteFileByPath(storagePath);
-        } catch {
-          // ignore
+      if (!options?.preserveDataFile) {
+        const deletedDataFilePaths = await deleteDataFileByUnit(currentProject.id, year, unitCode);
+        for (const storagePath of deletedDataFilePaths) {
+          try {
+            await deleteFileByPath(storagePath);
+          } catch {
+            // ignore
+          }
         }
       }
       const refreshedRows = await listRowsByProjectFromSupabase(currentProject.id);
@@ -4470,16 +4492,24 @@ function DashboardOverview({
   }, [currentUser?.email, currentUser?.role, isAdmin, isAuthenticated]);
 
   const lastUpdatedBy = useMemo(() => {
-    const map = new Map<string, { name: string; at: number }>();
+    const map = new Map<string, { name: string; at: number; updatedAt: string | null }>();
     rowsForYear.forEach((row) => {
       if (!row.updatedAt || !row.updatedBy) {
         return;
       }
-      const time = row.updatedAt?.toDate ? row.updatedAt.toDate().getTime() : 0;
+      const time =
+        getTimestampMs(row.updatedAt) ||
+        (row.updatedAt?.toDate ? row.updatedAt.toDate().getTime() : 0);
+      const updatedAt =
+        typeof row.updatedAt === 'string'
+          ? row.updatedAt
+          : row.updatedAt?.toDate
+            ? row.updatedAt.toDate().toISOString()
+            : null;
       const label = getReadableDisplayName(row.updatedBy.displayName, row.updatedBy.email, 'Hệ thống');
       const existing = map.get(row.unitCode);
       if (!existing || time > existing.at) {
-        map.set(row.unitCode, { name: label || 'Hệ thống', at: time });
+        map.set(row.unitCode, { name: label || 'Hệ thống', at: time, updatedAt });
       }
     });
     return map;
@@ -4575,6 +4605,19 @@ function DashboardOverview({
     return map;
   }, [submissionEvents]);
 
+  const submissionEventsByUnit = useMemo(() => {
+    const map = new Map<string, ProjectUnitSubmissionEvent[]>();
+    submissionEvents.forEach((event) => {
+      const current = map.get(event.unitCode) || [];
+      current.push(event);
+      map.set(event.unitCode, current);
+    });
+    map.forEach((events) => {
+      events.sort((left, right) => (getTimestampMs(left.submittedAt) || 0) - (getTimestampMs(right.submittedAt) || 0));
+    });
+    return map;
+  }, [submissionEvents]);
+
   const projectDeadlineTimestamp = useMemo(
     () => (selectedProject?.deadlineAt ? getTimestampMs(selectedProject.deadlineAt) || null : null),
     [selectedProject?.deadlineAt],
@@ -4587,6 +4630,12 @@ function DashboardOverview({
       const unitRows = rowsByUnit.get(unit.code) || [];
       const unitFile = latestDataFileByUnit.get(unit.code);
       const unitRequests = overwriteRequestsByUnit.get(unit.code) || [];
+      const unitSubmissionEvents = submissionEventsByUnit.get(unit.code) || [];
+      const latestSubmissionEvent = unitSubmissionEvents.reduce<ProjectUnitSubmissionEvent | null>((latest, current) => {
+        const latestTime = getTimestampMs(latest?.submittedAt) || 0;
+        const currentTime = getTimestampMs(current.submittedAt) || 0;
+        return currentTime >= latestTime ? current : latest;
+      }, null);
       const latestRequest = unitRequests.reduce<OverwriteRequestRecord | null>((latest, current) => {
         const latestTime = getTimestampMs(latest?.createdAt) || 0;
         const currentTime = getTimestampMs(current.createdAt) || 0;
@@ -4599,21 +4648,60 @@ function DashboardOverview({
         ),
       ).sort((left, right) => (sheetOrder.get(left) ?? 0) - (sheetOrder.get(right) ?? 0));
 
-      const latestAcceptedTime = getTimestampMs(unitFile?.submittedAt || unitFile?.updatedAt);
+      const latestDataFileTime = getTimestampMs(unitFile?.submittedAt || unitFile?.updatedAt);
+      const latestSubmissionTime = getTimestampMs(latestSubmissionEvent?.submittedAt);
+      const latestRowUpdate = lastUpdatedBy.get(unit.code);
+      const latestRowUpdateTime = latestRowUpdate?.at || 0;
+      const latestAcceptedTime = Math.max(latestDataFileTime || 0, latestSubmissionTime || 0, latestRowUpdateTime);
       const latestRequestTime = getTimestampMs(latestRequest?.createdAt);
+      const submittedAtFromFile =
+        typeof unitFile?.submittedAt === 'string'
+          ? unitFile.submittedAt
+          : typeof unitFile?.updatedAt === 'string'
+            ? unitFile.updatedAt
+            : null;
+      const submittedAtFromEvent =
+        typeof latestSubmissionEvent?.submittedAt === 'string' ? latestSubmissionEvent.submittedAt : null;
+      const latestAcceptedSource =
+        latestDataFileTime && latestDataFileTime >= (latestSubmissionTime || 0) && latestDataFileTime >= latestRowUpdateTime
+          ? 'file'
+          : latestSubmissionTime && latestSubmissionTime >= latestRowUpdateTime
+            ? 'event'
+            : latestRowUpdateTime
+              ? 'row'
+              : null;
+      const acceptedSubmittedAt =
+        latestAcceptedSource === 'file'
+          ? submittedAtFromFile || submittedAtFromEvent || latestRowUpdate?.updatedAt || null
+          : latestAcceptedSource === 'event'
+            ? submittedAtFromEvent || submittedAtFromFile || latestRowUpdate?.updatedAt || null
+            : latestRowUpdate?.updatedAt || submittedAtFromFile || submittedAtFromEvent || null;
       const submittedAt =
         latestRequestTime && (!latestAcceptedTime || latestRequestTime >= latestAcceptedTime)
           ? (typeof latestRequest?.createdAt === 'string' ? latestRequest.createdAt : null)
-          : (typeof unitFile?.submittedAt === 'string'
-              ? unitFile.submittedAt
-              : typeof unitFile?.updatedAt === 'string'
-                ? unitFile.updatedAt
-                : null);
+          : acceptedSubmittedAt;
+
+      const eventActor = getReadableDisplayName(
+        latestSubmissionEvent?.submittedBy?.displayName,
+        latestSubmissionEvent?.submittedBy?.email,
+        '',
+      );
+      const fileActor =
+        unitFile?.submittedBy?.displayName ||
+        getReadableDisplayName(unitFile?.submittedBy?.displayName, unitFile?.submittedBy?.email, '') ||
+        latestRowUpdate?.name;
+      const acceptedActor =
+        latestAcceptedSource === 'event'
+          ? eventActor || fileActor || latestRowUpdate?.name
+          : latestAcceptedSource === 'file'
+            ? fileActor || eventActor || latestRowUpdate?.name
+            : latestRowUpdate?.name || fileActor || eventActor;
 
       const latestActor =
         latestRequestTime && (!latestAcceptedTime || latestRequestTime >= latestAcceptedTime)
           ? latestRequest?.unitName || latestRequest?.requestedBy?.displayName || latestRequest?.requestedBy?.email || unit.name
-          : unitFile?.submittedBy?.displayName || lastUpdatedBy.get(unit.code)?.name;
+          : acceptedActor || latestRowUpdate?.name;
+      const acceptedUpdateCount = Math.max(0, unitSubmissionEvents.length - 1);
 
       return {
         code: unit.code,
@@ -4624,7 +4712,7 @@ function DashboardOverview({
         lastUpdatedBy: latestActor,
         assignedTo: assignmentMap.get(unit.code),
         submittedAt,
-        overwriteRequestCount: unitRequests.length,
+        overwriteRequestCount: Math.max(unitRequests.length, acceptedUpdateCount),
         overwriteStatus: latestRequest?.status || null,
       };
     }).sort((left, right) => {
@@ -4638,7 +4726,17 @@ function DashboardOverview({
 
       return left.name.localeCompare(right.name, 'vi');
     });
-  }, [assignmentMap, lastUpdatedBy, latestDataFileByUnit, overwriteRequestsByUnit, rowsByUnit, submittedUnitCodes, templateMap, units]);
+  }, [
+    assignmentMap,
+    lastUpdatedBy,
+    latestDataFileByUnit,
+    overwriteRequestsByUnit,
+    rowsByUnit,
+    submissionEventsByUnit,
+    submittedUnitCodes,
+    templateMap,
+    units,
+  ]);
 
   const unitLogs = useMemo<UnitLog[]>(() => {
     if (isAuthenticated && !isAdmin) {

@@ -67,6 +67,21 @@ type FailedFile = {
   relativePath?: string;
 };
 
+type AcceptedDataFileUpload = {
+  dataFileId: string;
+  record: {
+    projectId: string;
+    unitCode: string;
+    unitName: string;
+    year: string;
+    fileName: string;
+    storagePath: string;
+    downloadURL: string;
+    submittedAt: string;
+    submittedBy: DataFileRecordSummary['submittedBy'];
+  };
+};
+
 type OperationProgress = {
   visible: boolean;
   title: string;
@@ -315,7 +330,9 @@ async function uploadAcceptedDataFile(
   unitCode: string,
   year: string,
   unitName: string,
-) {
+  submittedAt: string,
+  submittedBy: DataFileRecordSummary['submittedBy'],
+): Promise<AcceptedDataFileUpload> {
   const extension = fileItem.file.name.split('.').pop() || 'xlsx';
   const safeUnitName = sanitizeStorageName(unitName) || fileItem.unitCode;
   const fileName = `${unitCode}_${safeUnitName || fileItem.unitCode}.${extension}`;
@@ -329,15 +346,20 @@ async function uploadAcceptedDataFile(
     upsert: true,
   });
 
-  await upsertDataFileRecord({
-    projectId,
-    unitCode,
-    unitName,
-    year,
-    fileName,
-    storagePath: uploadResult.path,
-    downloadURL: uploadResult.publicUrl,
-  });
+  return {
+    dataFileId: `${projectId}_${unitCode}_${year}`,
+    record: {
+      projectId,
+      unitCode,
+      unitName,
+      year,
+      fileName,
+      storagePath: uploadResult.path,
+      downloadURL: uploadResult.publicUrl,
+      submittedAt,
+      submittedBy,
+    },
+  };
 }
 
 async function uploadOverwriteRequestFile(
@@ -394,7 +416,11 @@ export function ImportFiles({
       updatedAt?: string | null;
     },
   ) => Promise<void>;
-  onDeleteUnitData: (year: string, unitCode: string, options?: { preserveSubmissionHistory?: boolean }) => Promise<number>;
+  onDeleteUnitData: (
+    year: string,
+    unitCode: string,
+    options?: { preserveSubmissionHistory?: boolean; preserveDataFile?: boolean },
+  ) => Promise<number>;
   onDeleteYearData: (year: string) => Promise<number>;
   onDeleteProjectData: (projectId: string) => Promise<number>;
   projects: Project[];
@@ -1003,7 +1029,8 @@ export function ImportFiles({
 
     try {
       if (decision === 'APPROVED') {
-        await onDeleteUnitData(request.year, request.unitCode, { preserveSubmissionHistory: true });
+        const submittedAt = typeof request.createdAt === 'string' ? request.createdAt : new Date().toISOString();
+        const dataFileId = `${request.projectId}_${request.unitCode}_${request.year}`;
         await upsertDataFileRecord({
           projectId: request.projectId,
           unitCode: request.unitCode,
@@ -1012,10 +1039,16 @@ export function ImportFiles({
           fileName: request.fileName,
           storagePath: request.storagePath,
           downloadURL: request.downloadURL || '',
+          submittedAt,
+          submittedBy: request.requestedBy,
+        });
+        await onDeleteUnitData(request.year, request.unitCode, {
+          preserveSubmissionHistory: true,
+          preserveDataFile: true,
         });
         await onDataImported(request.rowPayload || [], {
           updatedBy: request.requestedBy,
-          updatedAt: typeof request.createdAt === 'string' ? request.createdAt : null,
+          updatedAt: submittedAt,
         });
         await appendSubmissionEvents([
           {
@@ -1023,9 +1056,9 @@ export function ImportFiles({
             projectId: request.projectId,
             unitCode: request.unitCode,
             year: request.year,
-            dataFileId: null,
+            dataFileId,
             eventType: 'APPROVED_OVERWRITE',
-            submittedAt: typeof request.createdAt === 'string' ? request.createdAt : new Date().toISOString(),
+            submittedAt,
             submittedBy: request.requestedBy,
             approvedAt: new Date().toISOString(),
             approvedBy: {
@@ -1266,20 +1299,84 @@ export function ImportFiles({
           continue;
         }
 
-        if (canOverwriteDirectly && unitAlreadyHasData) {
-          if (!overwriteApprovedIds[fileItem.id]) {
-            failedFiles.push({
-              unitName,
-              fileName: fileItem.file.name,
-              missingSheets: [],
-              reason: 'Đơn vị đã có dữ liệu. Hãy bấm "Cho phép ghi đè" trước khi tổng hợp.',
-              relativePath: fileItem.relativePath,
-            });
-            continue;
-          }
+        if (canOverwriteDirectly && unitAlreadyHasData && !overwriteApprovedIds[fileItem.id]) {
+          failedFiles.push({
+            unitName,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason: 'Đơn vị đã có dữ liệu. Hãy bấm "Cho phép ghi đè" trước khi tổng hợp.',
+            relativePath: fileItem.relativePath,
+          });
+          continue;
+        }
 
+        const submittedAt = new Date().toISOString();
+        const submittedBy = currentUser
+          ? {
+              uid: currentUser.id,
+              email: currentUser.email,
+              displayName: currentUser.displayName,
+            }
+          : null;
+        let dataFileUpload: AcceptedDataFileUpload | null = null;
+
+        try {
+          dataFileUpload = await uploadAcceptedDataFile(
+            fileItem,
+            selectedProjectId,
+            fileItem.unitCode,
+            importYear,
+            unitName,
+            submittedAt,
+            submittedBy,
+          );
+        } catch (uploadError) {
+          failedFiles.push({
+            unitName,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason:
+              uploadError instanceof Error
+                ? uploadError.message
+                : 'Không thể tải file gốc lên hệ thống lưu trữ.',
+            relativePath: fileItem.relativePath,
+          });
+          continue;
+        }
+
+        if (!dataFileUpload) {
+          failedFiles.push({
+            unitName,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason: 'Không thể chuẩn bị thông tin file gốc.',
+            relativePath: fileItem.relativePath,
+          });
+          continue;
+        }
+
+        try {
+          await upsertDataFileRecord(dataFileUpload.record);
+        } catch (metadataError) {
+          failedFiles.push({
+            unitName,
+            fileName: fileItem.file.name,
+            missingSheets: [],
+            reason:
+              metadataError instanceof Error
+                ? metadataError.message
+                : 'Không thể ghi thông tin file gốc vào hệ thống.',
+            relativePath: fileItem.relativePath,
+          });
+          continue;
+        }
+
+        if (canOverwriteDirectly && unitAlreadyHasData) {
           try {
-            await onDeleteUnitData(importYear, fileItem.unitCode, { preserveSubmissionHistory: true });
+            await onDeleteUnitData(importYear, fileItem.unitCode, {
+              preserveSubmissionHistory: true,
+              preserveDataFile: true,
+            });
           } catch (overwriteError) {
             failedFiles.push({
               unitName,
@@ -1301,17 +1398,11 @@ export function ImportFiles({
           projectId: selectedProjectId,
           unitCode: fileItem.unitCode,
           year: importYear,
-          dataFileId: null,
+          dataFileId: dataFileUpload.dataFileId,
           eventType: canOverwriteDirectly && unitAlreadyHasData ? 'APPROVED_OVERWRITE' : 'INITIAL_SUBMISSION',
-          submittedAt: new Date().toISOString(),
-          submittedBy: currentUser
-            ? {
-                uid: currentUser.id,
-                email: currentUser.email,
-                displayName: currentUser.displayName,
-              }
-            : null,
-          approvedAt: canOverwriteDirectly && unitAlreadyHasData ? new Date().toISOString() : null,
+          submittedAt,
+          submittedBy,
+          approvedAt: canOverwriteDirectly && unitAlreadyHasData ? submittedAt : null,
           approvedBy:
             canOverwriteDirectly && unitAlreadyHasData && currentUser
               ? {
@@ -1321,13 +1412,8 @@ export function ImportFiles({
                 }
               : null,
           overwriteRequestId: null,
-          createdAt: new Date().toISOString(),
+          createdAt: submittedAt,
         });
-        try {
-          await uploadAcceptedDataFile(fileItem, selectedProjectId, fileItem.unitCode, importYear, unitName);
-        } catch (uploadError) {
-            console.error('Kh\u00f4ng th\u1ec3 upload file d\u1eef li\u1ec7u \u0111\u1ec3 ti\u1ebfp nh\u1eadn:', uploadError);
-        }
         acceptedFiles += 1;
         completedFileKeys.add(`${fileItem.file.name}__${fileItem.relativePath || ''}`);
         if (canOverwriteDirectly && unitAlreadyHasData) {

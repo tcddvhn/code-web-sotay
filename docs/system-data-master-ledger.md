@@ -520,3 +520,4 @@ Rui ro con mo:
 - Unit-user bell notifications now also support PROJECT_DEADLINE_REMINDER records from app_notifications.
 - Rollout SQL for this feature: C:\CODE_APPWEB\supabase\report_deadlines_rollout.sql.
 - Scheduled implementation direction: DB-side reminder generation via pg_cron + public.generate_project_deadline_reminders(), not client-side lazy creation.
+- Consistency rule after 2026-04-28 live test: accepted imports must upload/store the original source file and upsert data_files before consolidated_rows/submission events are written. If file storage fails, the unit file must be rejected instead of partially accepted. Report tree and Dashboard logs may fall back to consolidated_rows/project_unit_submission_events for legacy rows that were accepted before this rule. Hotfix SQL: C:\CODE_APPWEB\supabase\submission_consistency_patch.sql.
