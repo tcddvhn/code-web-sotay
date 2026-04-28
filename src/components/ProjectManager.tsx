@@ -119,17 +119,17 @@ export function ProjectManager({
 
   const handleAddProject = async () => {
     if (!newProject.name.trim()) {
-      setMessage('Vui lÃ²ng nháº­p tÃªn dá»± Ã¡n trÆ°á»›c khi lÆ°u.');
+      setMessage('Vui lòng nhập tên dự án trước khi lưu.');
       return;
     }
 
     if (!newProjectUnitCodes.length) {
-      setMessage('Vui lÃ²ng chá»n Ã­t nháº¥t má»™t Ä‘Æ¡n vá»‹ thá»±c hiá»‡n dá»± Ã¡n.');
+      setMessage('Vui lòng chọn ít nhất một đơn vị thực hiện dự án.');
       return;
     }
 
     if (!(currentDepartmentId || newProject.ownerDepartmentId)) {
-      setMessage('Vui lÃ²ng chá»n phÃ²ng ban chá»§ quáº£n cho dá»± Ã¡n.');
+      setMessage('Vui lòng chọn phòng ban chủ quản cho dự án.');
       return;
     }
 
@@ -145,10 +145,10 @@ export function ProjectManager({
       });
       onSelectProject(project);
       closeAddProject();
-      setMessage(`ÄÃ£ lÆ°u dá»± Ã¡n "${project.name}".`);
+      setMessage(`Đã lưu dự án "${project.name}".`);
     } catch (error) {
       console.error('Create project error:', error);
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ lÆ°u dá»± Ã¡n má»›i.');
+      setMessage(error instanceof Error ? error.message : 'Không thể lưu dự án mới.');
     } finally {
       setIsSavingProject(false);
     }
@@ -158,10 +158,10 @@ export function ProjectManager({
     setUpdatingProjectId(project.id);
     try {
       const updated = await onToggleProjectStatus(project);
-      setMessage(`ÄÃ£ cáº­p nháº­t tráº¡ng thÃ¡i dá»± Ã¡n "${updated.name}".`);
+      setMessage(`Đã cập nhật trạng thái dự án "${updated.name}".`);
     } catch (error) {
       console.error('Update project status error:', error);
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ cáº­p nháº­t tráº¡ng thÃ¡i dá»± Ã¡n.');
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái dự án.');
     } finally {
       setUpdatingProjectId(null);
     }
@@ -185,7 +185,7 @@ export function ProjectManager({
 
   const saveProjectChanges = async (project: Project) => {
     if (!editingProjectDraft.name.trim()) {
-      setMessage('Vui lÃ²ng nháº­p tÃªn dá»± Ã¡n trÆ°á»›c khi lÆ°u chá»‰nh sá»­a.');
+      setMessage('Vui lòng nhập tên dự án trước khi lưu chỉnh sửa.');
       return;
     }
 
@@ -198,18 +198,18 @@ export function ProjectManager({
         ownerDepartmentId: isAdmin ? editingProjectDraft.ownerDepartmentId : project.ownerDepartmentId,
         deadlineDate: editingProjectDraft.deadlineDate,
       });
-      setMessage(`ÄÃ£ cáº­p nháº­t dá»± Ã¡n "${updated.name}".`);
+      setMessage(`Đã cập nhật dự án "${updated.name}".`);
       cancelEditingProject();
     } catch (error) {
       console.error('Update project error:', error);
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ cáº­p nháº­t dá»± Ã¡n.');
+      setMessage(error instanceof Error ? error.message : 'Không thể cập nhật dự án.');
     } finally {
       setUpdatingProjectId(null);
     }
   };
 
   const deleteProject = async (project: Project) => {
-    if (!window.confirm(`Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a toÃ n bá»™ dá»¯ liá»‡u cá»§a dá»± Ã¡n "${project.name}"?`)) {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ dữ liệu của dự án "${project.name}"?`)) {
       return;
     }
 
@@ -217,13 +217,13 @@ export function ProjectManager({
     try {
       const deleted = await onDeleteProject(project);
       if (!deleted) {
-        setMessage('KhÃ´ng thá»ƒ xÃ³a dá»± Ã¡n nÃ y. HÃ£y kiá»ƒm tra quyá»n vÃ  dá»¯ liá»‡u liÃªn quan.');
+        setMessage('Không thể xóa dự án này. Hãy kiểm tra quyền và dữ liệu liên quan.');
         return;
       }
-      setMessage(`ÄÃ£ xÃ³a dá»± Ã¡n "${project.name}".`);
+      setMessage(`Đã xóa dự án "${project.name}".`);
     } catch (error) {
       console.error('Delete project error:', error);
-      setMessage(error instanceof Error ? error.message : 'KhÃ´ng thá»ƒ xÃ³a dá»± Ã¡n.');
+      setMessage(error instanceof Error ? error.message : 'Không thể xóa dự án.');
     } finally {
       setDeletingProjectId(null);
     }
@@ -232,10 +232,10 @@ export function ProjectManager({
   return (
     <div className="p-6 md:p-8">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h2 className="page-title">Quáº£n lÃ½ dá»± Ã¡n</h2>
+        <h2 className="page-title">Quản lý dự án</h2>
         <button onClick={openAddProject} className="primary-btn flex items-center gap-2">
           <Plus size={16} />
-          Táº¡o dá»± Ã¡n má»›i
+          Tạo dự án mới
         </button>
       </div>
 
@@ -247,17 +247,17 @@ export function ProjectManager({
 
       {isAdding && (
         <div className="panel-card mb-8 rounded-[24px] p-6">
-          <h3 className="section-title mb-4">ThÃ´ng tin dá»± Ã¡n má»›i</h3>
+          <h3 className="section-title mb-4">Thông tin dự án mới</h3>
           <div className="space-y-4">
             <input
               type="text"
-              placeholder="TÃªn dá»± Ã¡n (vÃ­ dá»¥: Tá»•ng há»£p quÃ½ 1/2026)"
+              placeholder="Tên dự án (ví dụ: Tổng hợp quý 1/2026)"
               value={newProject.name}
               onChange={(event) => setNewProject((previous) => ({ ...previous, name: event.target.value }))}
               className="field-input"
             />
             <textarea
-              placeholder="MÃ´ táº£ chi tiáº¿t dá»± Ã¡n..."
+              placeholder="Mô tả chi tiết dự án..."
               value={newProject.description}
               onChange={(event) => setNewProject((previous) => ({ ...previous, description: event.target.value }))}
               className="field-input"
@@ -266,10 +266,10 @@ export function ProjectManager({
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px_240px]">
               <div>
-                <p className="col-header mb-2">PhÃ²ng ban chá»§ quáº£n</p>
+                <p className="col-header mb-2">Phòng ban chủ quản</p>
                 {currentDepartmentId && !isAdmin ? (
                   <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,255,255,0.92)] px-4 py-3 text-sm font-semibold text-[var(--ink)]">
-                    {departmentById[currentDepartmentId]?.name || 'ChÆ°a xÃ¡c Ä‘á»‹nh phÃ²ng ban'}
+                    {departmentById[currentDepartmentId]?.name || 'Chưa xác định phòng ban'}
                   </div>
                 ) : (
                   <select
@@ -279,7 +279,7 @@ export function ProjectManager({
                     }
                     className="field-select"
                   >
-                    <option value="">-- Chá»n phÃ²ng ban --</option>
+                    <option value="">-- Chọn phòng ban --</option>
                     {activeDepartments.map((department) => (
                       <option key={department.id} value={department.id}>
                         {department.name}
@@ -289,7 +289,7 @@ export function ProjectManager({
                 )}
               </div>
               <div>
-                <p className="col-header mb-2">Háº¡n ná»™p bÃ¡o cÃ¡o</p>
+                <p className="col-header mb-2">Hạn nộp báo cáo</p>
                 <input
                   type="date"
                   value={newProject.deadlineDate}
@@ -305,10 +305,10 @@ export function ProjectManager({
               <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--primary)]">
-                    Danh sÃ¡ch Ä‘Æ¡n vá»‹ thá»±c hiá»‡n dá»± Ã¡n
+                    Danh sách đơn vị thực hiện dự án
                   </p>
                   <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                    ÄÃ£ chá»n {newProjectUnitCodes.length}/{activeUnits.length} Ä‘Æ¡n vá»‹. Máº·c Ä‘á»‹nh toÃ n bá»™ Ä‘Æ¡n vá»‹ Ä‘ang hoáº¡t Ä‘á»™ng Ä‘Æ°á»£c chá»n sáºµn.
+                    Đã chọn {newProjectUnitCodes.length}/{activeUnits.length} đơn vị. Mặc định toàn bộ đơn vị đang hoạt động được chọn sẵn.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -317,14 +317,14 @@ export function ProjectManager({
                     onClick={() => setNewProjectUnitCodes(defaultUnitCodes)}
                     className="secondary-btn !px-4 !py-2 text-xs"
                   >
-                    Chá»n táº¥t cáº£
+                    Chọn tất cả
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewProjectUnitCodes([])}
                     className="secondary-btn !px-4 !py-2 text-xs"
                   >
-                    Bá» chá»n táº¥t cáº£
+                    Bỏ chọn tất cả
                   </button>
                 </div>
               </div>
@@ -333,7 +333,7 @@ export function ProjectManager({
                 type="text"
                 value={unitSearch}
                 onChange={(event) => setUnitSearch(event.target.value)}
-                placeholder="TÃ¬m theo mÃ£ hoáº·c tÃªn Ä‘Æ¡n vá»‹..."
+                placeholder="Tìm theo mã hoặc tên đơn vị..."
                 className="field-input !h-11"
               />
 
@@ -361,7 +361,7 @@ export function ProjectManager({
 
                 {filteredUnits.length === 0 && (
                   <div className="rounded-[16px] border border-dashed border-[var(--line)] px-4 py-6 text-center text-sm text-[var(--ink-soft)]">
-                    KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n vá»‹ phÃ¹ há»£p.
+                    Không tìm thấy đơn vị phù hợp.
                   </div>
                 )}
               </div>
@@ -373,14 +373,14 @@ export function ProjectManager({
                 disabled={isSavingProject}
                 className="primary-btn disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {isSavingProject ? 'Äang lÆ°u...' : 'LÆ°u dá»± Ã¡n'}
+                {isSavingProject ? 'Đang lưu...' : 'Lưu dự án'}
               </button>
               <button
                 onClick={closeAddProject}
                 disabled={isSavingProject}
                 className="secondary-btn disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Há»§y
+                Hủy
               </button>
             </div>
           </div>
@@ -396,12 +396,12 @@ export function ProjectManager({
                 <div
                   className={`status-pill ${project.status === 'ACTIVE' ? 'status-pill-submitted' : 'status-pill-pending'}`}
                 >
-                  {project.status === 'ACTIVE' ? 'Äang triá»ƒn khai' : 'ÄÃ£ hoÃ n thÃ nh'}
+                  {project.status === 'ACTIVE' ? 'Đang triển khai' : 'Đã hoàn thành'}
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => startEditingProject(project)}
-                    title="Sá»­a thÃ´ng tin dá»± Ã¡n"
+                    title="Sửa thông tin dự án"
                     disabled={updatingProjectId === project.id || deletingProjectId === project.id}
                     className="disabled:cursor-not-allowed disabled:opacity-40"
                   >
@@ -409,7 +409,7 @@ export function ProjectManager({
                   </button>
                   <button
                     onClick={() => toggleStatus(project)}
-                    title="Äá»•i tráº¡ng thÃ¡i"
+                    title="Đổi trạng thái"
                     disabled={updatingProjectId === project.id}
                     className="disabled:cursor-not-allowed disabled:opacity-40"
                   >
@@ -437,7 +437,7 @@ export function ProjectManager({
                       onChange={(event) =>
                         setEditingProjectDraft((previous) => ({ ...previous, name: event.target.value }))
                       }
-                      placeholder="TÃªn dá»± Ã¡n"
+                      placeholder="Tên dự án"
                     />
                     <textarea
                       className="field-input"
@@ -446,10 +446,10 @@ export function ProjectManager({
                       onChange={(event) =>
                         setEditingProjectDraft((previous) => ({ ...previous, description: event.target.value }))
                       }
-                      placeholder="MÃ´ táº£ chi tiáº¿t dá»± Ã¡n..."
+                      placeholder="Mô tả chi tiết dự án..."
                     />
                     <div>
-                      <p className="col-header mb-2">PhÃ²ng ban chá»§ quáº£n</p>
+                      <p className="col-header mb-2">Phòng ban chủ quản</p>
                       {isAdmin ? (
                         <select
                           value={editingProjectDraft.ownerDepartmentId}
@@ -461,7 +461,7 @@ export function ProjectManager({
                           }
                           className="field-select h-11 text-sm"
                         >
-                          <option value="">-- Chá»n phÃ²ng ban --</option>
+                          <option value="">-- Chọn phòng ban --</option>
                           {activeDepartments.map((department) => (
                             <option key={department.id} value={department.id}>
                               {department.name}
@@ -470,7 +470,7 @@ export function ProjectManager({
                         </select>
                       ) : (
                         <div className="rounded-[16px] border border-[var(--line)] bg-[rgba(255,255,255,0.92)] px-4 py-3 text-sm font-semibold text-[var(--ink)]">
-                          {ownerDepartment?.name || 'ChÆ°a xÃ¡c Ä‘á»‹nh phÃ²ng ban'}
+                          {ownerDepartment?.name || 'Chưa xác định phòng ban'}
                         </div>
                       )}
                     </div>
@@ -493,7 +493,7 @@ export function ProjectManager({
                       className="primary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Save size={16} />
-                      {updatingProjectId === project.id ? 'Äang lÆ°u...' : 'LÆ°u chá»‰nh sá»­a'}
+                      {updatingProjectId === project.id ? 'Đang lưu...' : 'Lưu chỉnh sửa'}
                     </button>
                     <button
                       onClick={cancelEditingProject}
@@ -501,17 +501,17 @@ export function ProjectManager({
                       className="secondary-btn flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <X size={16} />
-                      Há»§y
+                      Hủy
                     </button>
                   </div>
                 </>
               ) : (
                 <>
                   <h3 className="mb-2 text-xl font-semibold text-[var(--ink)]">{project.name}</h3>
-                  <p className="text-xs text-[var(--ink-soft)]">{project.description || 'KhÃ´ng cÃ³ mÃ´ táº£.'}</p>
+                  <p className="text-xs text-[var(--ink-soft)]">{project.description || 'Không có mô tả.'}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-                      {ownerDepartment?.name || 'ChÆ°a gÃ¡n phÃ²ng ban'}
+                      {ownerDepartment?.name || 'Chưa gán phòng ban'}
                     </span>
                     <span className="rounded-full border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                       {project.deadlineAt ? `Hạn nộp ${project.deadlineAt.slice(0, 10)}` : 'Chưa đặt hạn nộp'}
@@ -522,7 +522,7 @@ export function ProjectManager({
                     className="secondary-btn mt-6 flex items-center justify-center gap-2"
                   >
                     <FolderOpen size={16} />
-                    Truy cáº­p dá»± Ã¡n
+                    Truy cập dự án
                   </button>
                 </>
               )}
